@@ -14,39 +14,6 @@ mod fixture {
     use sapid::{
         ContentPolicy, DrawerSide, DrawerSnap, DrawerSnaps, Theme, button, drawer, text_field,
     };
-    pub fn sheet_stream_probe() -> impl Widget {
-        view()
-            .class("stream-sheet")
-            .role(Role::Dialog)
-            .focus(FocusMode::Programmatic)
-            .name("Streaming sheet")
-            .semantics(Some(Box::new(Semantics {
-                id: Some(SemanticId::new("stream-sheet").unwrap()),
-                layer: Some(Layer {
-                    placement: LayerPlacement::Bottom,
-                    sheet: Some(SheetConfig {
-                        fractions: vec![0.25, 0.5, 1.0],
-                        current: 2,
-                        max_extent: 640.0,
-                        settle_millis: 180,
-                        dismissible: true,
-                        revision: 1,
-                    }),
-                    ..Default::default()
-                }),
-                ..Default::default()
-            })))
-            .fill((
-                view()
-                    .class("stream-sheet-grip")
-                    .semantics(Some(Box::new(Semantics {
-                        sheet_grip: true,
-                        ..Default::default()
-                    })))
-                    .style(Style::new().height(Length::Px(24.0))),
-                sapid::button().label("Stream action"),
-            ))
-    }
     pub fn sheet_form(theme: Theme) -> impl Widget {
         widget(move |scope| {
             let blocked = scope.cage(false);

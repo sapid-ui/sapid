@@ -282,6 +282,7 @@ def literal(text):
 def fixture_source(module):
     path = WEB / "src" / f"{module}.rs"
     text = path.read_text(encoding="utf-8")
+    text = re.sub(r'(?ms)^pub fn (?:inert_stream_probe|sheet_stream_probe)\(\) -> impl Widget \{.*?\n\}\n', '', text)
     boundary = re.search(r'\n#\[cfg\((?:target_arch = "wasm32"|test)\)\]\nmod (?:browser|tests) \{', text)
     if boundary:
         text = text[:boundary.start()]

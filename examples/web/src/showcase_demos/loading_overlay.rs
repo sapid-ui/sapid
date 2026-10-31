@@ -10,38 +10,6 @@ mod fixture {
     use glory::ui::{Widget, text, widget};
     use sapid::{ContentPolicy, Theme, button, dialog, loading_overlay, overlay, text_field};
     /// Matches the final Glory inert stream probe for an actual adoption check.
-    pub fn inert_stream_probe() -> impl Widget {
-        use glory::render::{FocusMode, Layer, Role, SemanticId, Semantics};
-        glory::ui::view()
-            .class("stream-loading-region")
-            .name("Streaming region")
-            .semantics(Some(Box::new(Semantics {
-                busy: Some(true),
-                ..Default::default()
-            })))
-            .fill(
-                glory::ui::view()
-                    .class("stream-inert-content")
-                    .semantics(Some(Box::new(Semantics {
-                        inert: true,
-                        ..Default::default()
-                    })))
-                    .fill((
-                        sapid::button().label("Retained action"),
-                        glory::ui::view()
-                            .class("stream-inert-layer")
-                            .role(Role::Dialog)
-                            .focus(FocusMode::Programmatic)
-                            .name("Retained dialog")
-                            .semantics(Some(Box::new(Semantics {
-                                id: Some(SemanticId::new("stream-inert-dialog").unwrap()),
-                                layer: Some(Layer::default()),
-                                ..Default::default()
-                            })))
-                            .fill(sapid::button().label("Layer action")),
-                    )),
-            )
-    }
     pub fn loading_overlay_form(theme: Theme) -> impl Widget {
         widget(move |scope| {
             let loading = scope.cage(false);
