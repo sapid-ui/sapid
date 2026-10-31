@@ -296,6 +296,10 @@ mod focused_p5_05;
 pub fn focused_p5_05_widget(theme: sapid::Theme) -> Box<dyn Widget> {
     Box::new(focused_p5_05::demo(theme))
 }
+mod focused_p5_08;
+pub fn focused_p5_08_widget(theme: sapid::Theme) -> Box<dyn Widget> {
+    Box::new(focused_p5_08::demo(theme))
+}
 mod focused_p5_10;
 pub fn focused_p5_10_widget(theme: sapid::Theme) -> Box<dyn Widget> {
     Box::new(focused_p5_10::demo(theme))
@@ -315,6 +319,14 @@ pub fn focused_p6_02_widget(theme: sapid::Theme) -> Box<dyn Widget> {
 mod focused_p6_10;
 pub fn focused_p6_10_widget(theme: sapid::Theme) -> Box<dyn Widget> {
     Box::new(focused_p6_10::demo(theme))
+}
+mod focused_p7_02;
+pub fn focused_p7_02_widget(theme: sapid::Theme) -> Box<dyn Widget> {
+    Box::new(focused_p7_02::demo(theme))
+}
+mod focused_p7_05;
+pub fn focused_p7_05_widget(theme: sapid::Theme) -> Box<dyn Widget> {
+    Box::new(focused_p7_05::demo(theme))
 }
 mod forms;
 pub fn forms_widget(theme: sapid::Theme) -> Box<dyn Widget> {
@@ -428,10 +440,6 @@ mod polar_charts;
 pub fn polar_charts_widget(theme: sapid::Theme) -> Box<dyn Widget> {
     Box::new(polar_charts::demo(theme))
 }
-mod progress;
-pub fn progress_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(progress::demo(theme))
-}
 mod prompt;
 pub fn prompt_widget(theme: sapid::Theme) -> Box<dyn Widget> {
     Box::new(prompt::demo(theme))
@@ -451,10 +459,6 @@ pub fn range_charts_widget(theme: sapid::Theme) -> Box<dyn Widget> {
 mod range_slider;
 pub fn range_slider_widget(theme: sapid::Theme) -> Box<dyn Widget> {
     Box::new(range_slider::demo(theme))
-}
-mod rating;
-pub fn rating_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(rating::demo(theme))
 }
 mod resource_schedule;
 pub fn resource_schedule_widget(theme: sapid::Theme) -> Box<dyn Widget> {
@@ -495,10 +499,6 @@ pub fn sheet_widget(theme: sapid::Theme) -> Box<dyn Widget> {
 mod shell;
 pub fn shell_widget(theme: sapid::Theme) -> Box<dyn Widget> {
     Box::new(shell::demo(theme))
-}
-mod slider;
-pub fn slider_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(slider::demo(theme))
 }
 mod spinner;
 pub fn spinner_widget(theme: sapid::Theme) -> Box<dyn Widget> {

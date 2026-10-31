@@ -5,7 +5,7 @@ use crate::composite::{self, Callback, Observers};
 use crate::state::Value;
 use glory::render::{
     Direction, Event, EventKind, FocusMode, GraphicPoint, GraphicProps, GraphicStroke, Orientation,
-    PathCommand,
+    PathCommand, PointerPhase,
 };
 use glory::style::{BorderStyle, Edges, Length, Overflow, PointerEvents, Position, Style};
 use glory::ui::{Result, Widget};
@@ -27,6 +27,8 @@ pub struct Rating {
     direction: Direction,
     on_change: Option<Box<dyn FnMut(f64)>>,
     display_only: bool,
+    hover_preview: Vary<bool>,
+    highlight_selected_only: Vary<bool>,
 }
 pub fn rating(key: impl Into<String>) -> Rating {
     Rating {
@@ -44,6 +46,8 @@ pub fn rating(key: impl Into<String>) -> Rating {
         direction: Direction::Ltr,
         on_change: None,
         display_only: false,
+        hover_preview: true.into(),
+        highlight_selected_only: false.into(),
     }
 }
 impl Rating {
@@ -64,6 +68,16 @@ impl Rating {
     /// Add an explicit, named zero-value radio; selecting a checked star never clears implicitly.
     pub fn clearable(mut self, value: bool) -> Self {
         self.clearable = value;
+        self
+    }
+    /// Preview values on pointer hover. Clicking locks the value until pointer exit.
+    pub fn hover_preview(mut self, value: impl Into<Vary<bool>>) -> Self {
+        self.hover_preview = value.into();
+        self
+    }
+    /// Highlight only the exact preview/accepted value instead of every preceding star.
+    pub fn highlight_selected_only(mut self, value: impl Into<Vary<bool>>) -> Self {
+        self.highlight_selected_only = value.into();
         self
     }
     pub fn value(mut self, value: impl Into<Vary<f64>>) -> Self {
@@ -189,6 +203,12 @@ impl Widget for Rating {
         scope.on_cleanup(move || cleanup.clear())?;
         let owner = scope.id();
         let weak = scope.downgrade();
+        let preview = scope.cage(None::<f64>);
+        let locked = scope.cage(false);
+        let click_preview = preview;
+        let click_locked = locked;
+        let hover_preview = self.hover_preview.clone();
+        let highlight_selected_only = self.highlight_selected_only.clone();
         let mut group = crate::radio_group(self.key.clone())
             .label(label)
             .class(classes)
@@ -210,7 +230,11 @@ impl Widget for Rating {
                     && let Some(value) = domain.value(unit)
                 {
                     match control.accept(&value) {
-                        Ok(()) => callback.emit(owner, value),
+                        Ok(()) => {
+                            click_preview.revise(|current| *current = None);
+                            click_locked.revise(|current| *current = true);
+                            callback.emit(owner, value);
+                        }
                         Err(error) => {
                             if let Some(scope) = weak.upgrade() {
                                 scope.report_error(error);
@@ -219,6 +243,16 @@ impl Widget for Rating {
                     }
                 }
             });
+        group = group.on(EventKind::PointerWithin, move |event| {
+            if let Event::PointerWithin {
+                phase: PointerPhase::Leave,
+                ..
+            } = event
+            {
+                preview.revise(|current| *current = None);
+                locked.revise(|current| *current = false);
+            }
+        });
         if self.field.is_some() && !named {
             group = group.label("");
         } else if named {
@@ -263,6 +297,15 @@ impl Widget for Rating {
             .as_ref()
             .map(|field| field.enabled(scope, self.common.enabled.clone()))
             .unwrap_or_else(|| self.common.enabled.clone());
+        let root_readonly = self
+            .field
+            .as_ref()
+            .map(|field| field.readonly_state(scope, self.readonly.clone()))
+            .unwrap_or_else(|| self.readonly.clone());
+        let hover_enabled = scope.bond({
+            let enabled = root_enabled.clone();
+            move || hover_preview.get() && enabled.get() && !root_readonly.get()
+        });
         let denominator = self.precision.denominator();
         let count = domain.option_count(clearable).map_err(invalid)?;
         for index in 0..count {
@@ -288,6 +331,11 @@ impl Widget for Rating {
             let theme = theme.clone();
             let enabled = root_enabled.clone();
             let foreground = theme.foreground;
+            let ring = theme.focus_ring;
+            let item_preview = preview;
+            let item_locked = locked;
+            let item_hover_enabled = hover_enabled;
+            let selected_only = highlight_selected_only.clone();
             let observers = checked_observers.clone();
             let item = crate::radio(format!("rating-{unit}"))
                 .form_value(value.to_string())
@@ -300,8 +348,10 @@ impl Widget for Rating {
                     format!("{value} of {}", domain.count)
                 })
                 .visual(move |control| {
+                    let selected_only = selected_only.clone();
                     let mut control = Some(control);
                     Box::new(glory::ui::widget(move |scope| {
+                        let selected_only = selected_only.clone();
                         let focused = scope.cage(false);
                         let enabled = enabled.clone();
                         let mut wrapper = glory::ui::view()
@@ -322,6 +372,17 @@ impl Widget for Rating {
                             .on(EventKind::FocusWithin, move |event| {
                                 if let Event::FocusWithin { focused: next, .. } = event {
                                     focused.revise(|v| *v = next)
+                                }
+                            })
+                            .on(EventKind::PointerWithin, move |event| {
+                                if let Event::PointerWithin {
+                                    phase: PointerPhase::Enter,
+                                    ..
+                                } = event
+                                    && item_hover_enabled.get()
+                                    && !item_locked.get()
+                                {
+                                    item_preview.revise(|current| *current = Some(value));
                                 }
                             });
                         if clear {
@@ -345,8 +406,15 @@ impl Widget for Rating {
                                             .pointer_events(PointerEvents::None),
                                     )
                                     .drawing(scope.bond(move || {
+                                        let displayed =
+                                            preview.get().unwrap_or_else(|| accepted.get());
+                                        let filled = if selected_only.get() {
+                                            displayed == value
+                                        } else {
+                                            displayed >= value
+                                        };
                                         star(
-                                            if accepted.get() >= value {
+                                            if filled {
                                                 if unstyled {
                                                     theme.foreground
                                                 } else {
@@ -380,12 +448,12 @@ impl Widget for Rating {
                                         .height(Length::Px(side))
                                         .pointer_events(PointerEvents::None)
                                         .border_width(Edges::all(if focused.get() {
-                                            2.
+                                            1.
                                         } else {
                                             0.
                                         }))
                                         .border_style(BorderStyle::Solid)
-                                        .border_color(foreground)
+                                        .border_color(ring)
                                 }));
                         wrapper
                             .fill(indicator)
@@ -444,6 +512,7 @@ impl Rating {
                 .get_or_insert(if enabled.get() { 1. } else { 0.45 });
             style
         });
+        let highlight_selected_only = self.highlight_selected_only.clone();
         let mut children: Vec<Box<dyn Widget>> =
             Vec::with_capacity(domain.option_count(false).map_err(invalid)?);
         for unit in 1..=domain.count * domain.precision.denominator() {
@@ -456,6 +525,7 @@ impl Rating {
             };
             let theme = self.common.theme.clone();
             let unstyled = self.common.unstyled;
+            let selected_only = highlight_selected_only.clone();
             let threshold = domain
                 .value(unit)
                 .ok_or_else(|| invalid("invalid display rating unit"))?;
@@ -470,8 +540,13 @@ impl Rating {
                         .height(Length::Px(side)),
                 )
                 .drawing(scope.bond(move || {
+                    let filled = if selected_only.get() {
+                        accepted.get() == threshold
+                    } else {
+                        accepted.get() >= threshold
+                    };
                     star(
-                        if accepted.get() >= threshold {
+                        if filled {
                             if unstyled {
                                 theme.foreground
                             } else {

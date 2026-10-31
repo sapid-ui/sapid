@@ -346,7 +346,7 @@ fn wrapped_members_keep_radio_navigation_and_visible_focus_within_decoration() {
             .unwrap();
         assert_eq!(
             indicator.descriptor.view().style.border_width,
-            Some(Edges::all(2.))
+            Some(Edges::all(1.))
         );
     }
     app.dispatch(
@@ -376,4 +376,23 @@ fn wrapped_members_keep_radio_navigation_and_visible_focus_within_decoration() {
     )
     .unwrap();
     assert!(checked(&app, &members)[10]);
+}
+
+#[test]
+fn selected_only_highlight_is_independent_from_accepted_value() {
+    let html = glory::ssr::render(
+        rating("selected-only")
+            .default_value(2.)
+            .highlight_selected_only(true),
+    )
+    .unwrap();
+    assert_eq!(html.matches("fill=\"rgba(25,113,194,1)\"").count(), 1);
+    let display = glory::ssr::render(
+        rating("selected-display")
+            .display_only()
+            .default_value(2.)
+            .highlight_selected_only(true),
+    )
+    .unwrap();
+    assert_eq!(display.matches("fill=\"rgba(25,113,194,1)\"").count(), 1);
 }

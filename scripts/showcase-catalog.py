@@ -33,6 +33,8 @@ FOCUSED_GROUPS = {
     "hints": ["P5-03", "P5-04"],
     "navigation": ["P6-01", "P6-02"],
     "timeline": ["P3-12", "P3-19"],
+    "rating": ["P7-05"],
+    "measurement": ["P7-02", "P5-08"],
     "toolbar": ["P2-07", "P6-10"],
     "model_suggestions": ["P13-05", "P13-06"],
 }
@@ -337,9 +339,11 @@ def bundle(page):
 
 def focused_bundle(identity, family):
     body = (WEB / f"src/focused_demos/{family}.rs").read_text(encoding="utf-8")
+    controls = (WEB / "src/focused_demos/controls.rs").read_text(encoding="utf-8")
     return formatted('use glory::prelude::*;\n\npub fn demo(theme: sapid::Theme) -> impl Widget {\n    '
                      + f'focused::demo_for("{identity}", theme)\n'
-                     + '}\n\n#[allow(dead_code, unused_imports)]\nmod focused {\n'
+                     + '}\n\n#[allow(dead_code, unused_imports)]\nmod controls {\n'
+                     + controls + '\n}\n\n#[allow(dead_code, unused_imports)]\nmod focused {\n'
                      + body + '\n}\n')
 
 
@@ -354,6 +358,9 @@ for task in tasks:
     if identity in CORE:
         key = 'core_' + CORE[identity]
         code = (WEB / f"src/showcase_demos/{key}.rs").read_text(encoding="utf-8")
+        code = code.split('\n#[allow(dead_code, unused_imports)]\nmod controls {', 1)[0].rstrip()
+        controls = (WEB / "src/focused_demos/controls.rs").read_text(encoding="utf-8")
+        code = formatted(code + '\n\n#[allow(dead_code, unused_imports)]\nmod controls {\n' + controls + '\n}\n')
     elif identity in FOCUSED:
         key = 'focused_' + identity.lower().replace('-', '_')
         code = focused_bundle(identity, FOCUSED[identity])

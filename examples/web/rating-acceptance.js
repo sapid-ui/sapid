@@ -11,9 +11,14 @@ async (hostPage) => {
    assert(await group.getByRole('radio',{name:'2.5 of 5',exact:true}).isChecked(),`${label}: initial half value missing`);
    const boxes=await parts.evaluateAll(items=>items.map(e=>{const r=e.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height}}));
    for(let i=0;i<boxes.length;i++){assert(boxes[i].width===15&&boxes[i].height===30,`${label}: half-hit geometry missing`);if(i)assert(Math.abs(boxes[i].x-boxes[i-1].x-boxes[i-1].width)<.1,`${label}: artificial gap between half stars`)}
+   const accent=hue==='blue'?'rgba(25,113,194,1)':'rgba(35,112,50,1)',filled=()=>group.locator(`.sapid-rating-star path[fill="${accent}"]`).count();
+   await parts.nth(7).hover();await settle(page);assert(await filled()===8,`${label}: pointer hover does not preview without clicking`);
+   await parts.nth(7).click();await settle(page);assert(await filled()===8,`${label}: clicked value is not retained`);
+   await parts.nth(9).hover();await settle(page);assert(await filled()===8,`${label}: pointer moves after confirmation replace the locked value`);
+   await page.mouse.move(0,0);await settle(page);await parts.nth(9).hover();await settle(page);assert(await filled()===10,`${label}: pointer exit does not rearm hover preview`);
    await draft.fill('Stable rating draft');await draft.evaluate(e=>{window.ratingDraft=e;e.setSelectionRange(2,8,'backward')});
    await page.mouse.click(boxes[5].x+boxes[5].width*.65,boxes[5].y+boxes[5].height/2);await settle(page);assert(await group.getByRole('radio',{name:'3 of 5',exact:true}).isChecked(),`${label}: actual right-half mouse hit failed`);
-   assert(await group.locator('.sapid-rating-focus').evaluateAll(items=>items.some(e=>getComputedStyle(e).borderTopWidth==='2px')),`${label}: transparent control lost visible focus`);
+   assert(await group.locator('.sapid-rating-focus').evaluateAll(items=>items.some(e=>getComputedStyle(e).borderTopWidth==='1px')),`${label}: transparent control lost visible focus`);
    await page.keyboard.press('ArrowRight');await settle(page);assert(await group.getByRole('radio',{name:'3.5 of 5',exact:true}).isChecked(),`${label}: radio keyboard did not advance half`);
    await page.keyboard.press('Home');await settle(page);assert(await group.getByRole('radio',{name:'Clear rating'}).isChecked(),`${label}: explicit zero radio inaccessible`);await page.keyboard.press('End');await settle(page);assert(await group.getByRole('radio',{name:'5 of 5',exact:true}).isChecked(),`${label}: End did not select maximum`);
    await page.evaluate(()=>window.demo.rating_policy(false,true,false));await group.getByRole('radio',{name:'4 of 5',exact:true}).click();await settle(page);assert(await group.getByRole('radio',{name:'5 of 5',exact:true}).isChecked()&&await group.locator('input[type=radio]:checked').count()===1&&(await status.textContent()).includes('request=4'),`${label}: controlled rejection did not restore actual native peers`);

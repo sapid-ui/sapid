@@ -58,24 +58,43 @@ pub fn demo_for(id: &str, theme: Theme) -> Box<dyn Widget> {
                 ))
                 .show_in(scope)
         })),
-        "P2-02" => Box::new(
-            sapid::stack().theme(theme.clone()).gap(18.0).fill((
-                sapid::field("focused-notifications")
-                    .theme(theme.clone())
-                    .label("Notifications")
-                    .description("Receive product updates by email.")
-                    .control(|field| sapid::switch().field(field).default_checked(true)),
-                sapid::field("focused-autosave")
-                    .theme(theme.clone())
-                    .label("Autosave")
-                    .control(|field| sapid::switch().field(field)),
-                sapid::field("focused-locked-switch")
-                    .theme(theme.clone())
-                    .label("Managed by your organization")
-                    .enabled(false)
-                    .control(|field| sapid::switch().field(field)),
-            )),
-        ),
+        "P2-02" => Box::new(widget(move |scope| {
+            let checked = scope.cage(true);
+            let size = scope.cage(Some("md".to_owned()));
+            let readonly = scope.cage(false);
+            let disabled = scope.cage(false);
+            let enabled = scope.bond(move || !disabled.get());
+            let revision = scope.bond(move || vec![size.get().unwrap_or_default()]);
+            let preview_theme = theme.clone();
+            let preview = each(revision)
+                .key(|revision| revision.clone())
+                .children(move |entry| {
+                    let size = super::controls::size_value(&entry.value.get());
+                    sapid::field("focused-notifications")
+                        .theme(preview_theme.clone())
+                        .label("Notifications")
+                        .description("Receive product updates by email.")
+                        .readonly(readonly)
+                        .enabled(enabled)
+                        .control({
+                            let theme = preview_theme.clone();
+                            move |field| {
+                                sapid::switch()
+                                    .theme(theme.clone())
+                                    .size(size)
+                                    .field(field)
+                                    .checked(checked)
+                                    .on_checked_change(move |next| checked.revise(|v| *v = next))
+                            }
+                        })
+                });
+            let controls = vec![
+                super::controls::size(size, &theme),
+                super::controls::checkbox("Read only", readonly, &theme),
+                super::controls::checkbox("Disabled", disabled, &theme),
+            ];
+            super::controls::playground(Box::new(preview), controls).show_in(scope)
+        })),
         "P2-03" => Box::new(
             sapid::field("focused-delivery")
                 .theme(theme.clone())

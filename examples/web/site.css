@@ -359,3 +359,9 @@ html,body{margin:0;padding:0}
 .sapid-site .studio-ramp{display:flex;gap:0;margin-top:18px;border:1px solid var(--site-border);border-radius:6px;overflow:hidden}.sapid-site .studio-ramp-tone{min-width:0;flex:1;min-height:42px;cursor:pointer;border:0;font-size:0}.sapid-site .studio-ramp-tone:focus-visible{outline-offset:-3px}
 
 .sapid-site .site-sidebar,.sapid-site .site-toc{background:var(--site-bg)}
+
+.sapid-site .site-control-label{font-size:12px;font-weight:600;color:var(--site-fg)}
+.sapid-site .site-control-swatches{display:grid;grid-template-columns:repeat(6,28px);gap:6px;max-width:100%}
+.sapid-site .site-control-swatch{width:28px;height:28px;min-width:28px;min-height:28px;padding:0;border:1px solid var(--site-border);border-radius:4px;cursor:pointer;outline:2px solid transparent;outline-offset:2px}
+.sapid-site .site-control-swatch.is-active{outline-color:var(--site-fg)}
+.sapid-site .site-control-swatch:focus-visible{outline:2px solid var(--site-ring);outline-offset:2px}
