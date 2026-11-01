@@ -309,3 +309,35 @@ fn decimal_gap_boundaries_round_inwards_and_never_publish_a_too_small_distance()
 fn value(app: &App, id: NodeId) -> f64 {
     range(app, id).range.value
 }
+
+#[test]
+fn focused_thumb_uses_a_theme_ring_instead_of_the_default_outline() {
+    let app = App::memory();
+    let lower = app.scope().cage(None);
+    let theme = sapid::Theme::blue_light();
+    let ring = theme.focus_ring;
+    app.mount(
+        range_slider("focus-ring")
+            .theme(theme)
+            .thumb_ref(RangeThumb::Lower, lower),
+    )
+    .unwrap();
+    let id = lower.get().unwrap();
+    app.dispatch(id, Event::FocusChanged(true)).unwrap();
+    let tree = app.tree();
+    let style = &tree.node(id).unwrap().descriptor.view().style;
+    assert_eq!(style.border_width, Some(glory::style::Edges::all(1.)));
+    assert_eq!(style.border_color, Some(ring));
+    drop(tree);
+    app.dispatch(id, Event::FocusChanged(false)).unwrap();
+    assert_eq!(
+        app.tree()
+            .node(id)
+            .unwrap()
+            .descriptor
+            .view()
+            .style
+            .border_width,
+        None
+    );
+}

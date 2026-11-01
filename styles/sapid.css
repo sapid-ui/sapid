@@ -15,6 +15,10 @@
 .sapid-text-field:where(:not(.sapid-unstyled))[data-gly-invalid]{color:var(--sp-danger)}
 .sapid-text-field:where(:not(.sapid-unstyled))[readonly]{cursor:default}
 .sapid-text-field:where(:not(.sapid-unstyled)):disabled,.sapid-button:where(:not(.sapid-unstyled)):disabled{background:var(--sp-disabled);color:var(--sp-disabled-text);cursor:not-allowed}
+.sapid-number-input-control:where(:not(.sapid-unstyled)){cursor:pointer;transition:background-color .12s,color .12s}
+.sapid-number-input-control:where(:not(.sapid-unstyled)):hover:enabled{background:var(--sp-disabled)!important;color:var(--sp-text)!important}
+.sapid-number-input-control:where(:not(.sapid-unstyled)):focus-visible{outline:2px solid var(--sp-ring);outline-offset:-2px}
+.sapid-number-input-control:where(:not(.sapid-unstyled)):disabled{background:transparent!important;color:var(--sp-disabled-text)!important;cursor:not-allowed}
 .sapid-checkbox:where(:not(.sapid-unstyled)){display:inline-flex;gap:9px;align-items:center;cursor:pointer}.sapid-checkbox:where(:not(.sapid-unstyled)) input{width:var(--sp-check-size,17px);height:var(--sp-check-size,17px);margin:0;accent-color:var(--sp-accent);cursor:inherit}.sapid-checkbox:where(:not(.sapid-unstyled)):has(input:disabled){color:var(--sp-disabled-text);cursor:not-allowed}
 .sapid-checkbox.sapid-size-extra-small{--sp-check-size:14px}.sapid-checkbox.sapid-size-small{--sp-check-size:15px}.sapid-checkbox.sapid-size-large{--sp-check-size:20px}.sapid-checkbox.sapid-size-extra-large{--sp-check-size:22px}
 .sapid-checkbox:where(:not(.sapid-unstyled)) input[aria-invalid=true]{outline:1px solid var(--sp-danger);outline-offset:2px}
@@ -104,6 +108,8 @@
 .sapid-combobox-editor>.sapid-combobox{min-width:0;flex:1}
 :is(.sapid-text-field,.sapid-combobox,.sapid-tags-input,.sapid-pills-input):where(:not(.sapid-unstyled))::placeholder{color:var(--sp-muted);opacity:1}
 @media(prefers-reduced-motion:reduce){.sapid-action-icon,:is(.sapid-combobox,.sapid-tags-input,.sapid-pills-input){transition:none!important}}
+:is(.sapid-slider,.sapid-angle-slider):where(:not(.sapid-unstyled)):focus-visible{outline:1px solid var(--sp-ring);outline-offset:2px}
+:is(.sapid-range-slider-lower,.sapid-range-slider-upper):where(:not(.sapid-unstyled)):focus-visible{outline:none}
 
 /* Host-owned modal layers inherit the resolved palette, including their scrim. */
 .sapid-layer[aria-modal=true]::backdrop{background:var(--sp-backdrop)}

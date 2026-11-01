@@ -404,8 +404,8 @@
       "priority": "P2"
     },
     "P7-01": {
-      "current": "NumberInput：Decimal、locale、clamp、step、草稿与拒绝",
-      "differences": "缺完整千分位/前后缀/字符串数值/hold interval API；不能用 f64 替换当前精确小数，也不导入任意 formatter。",
+      "current": "NumberInput：Decimal、locale、clamp、step、草稿与拒绝、紧凑上下步进器",
+      "differences": "已改进上下步进器的尺寸、分隔线、图标和禁用态；缺完整千分位/前后缀/字符串数值/hold interval API，不能用 f64 替换当前精确小数，也不导入任意 formatter。",
       "priority": "P2"
     },
     "P7-02": {

@@ -33,7 +33,7 @@ pub fn playground(preview: Box<dyn Widget>, controls: Vec<Box<dyn Widget>>) -> B
                             .display(Display::Flex)
                             .flex_direction(FlexDirection::Column)
                             .gap(16.0)
-                            .width(Length::Px(208.0))
+                            .width(Length::Px(240.0))
                             .max_width(Limit::Percent(100.0)),
                     )
                     .fill(controls),
@@ -75,6 +75,126 @@ pub fn checkbox(label: &str, value: Cage<bool>, theme: &Theme) -> Box<dyn Widget
             .label(label.to_owned())
             .checked(value)
             .on_checked_change(move |next| value.revise(|current| *current = next)),
+    )
+}
+
+pub fn switch(label: &str, value: Cage<bool>, theme: &Theme) -> Box<dyn Widget> {
+    Box::new(
+        sapid::switch()
+            .theme(theme.clone())
+            .label(label.to_owned())
+            .checked(value)
+            .on_checked_change(move |next| value.revise(|current| *current = next)),
+    )
+}
+
+pub fn text_field(label: &str, value: Cage<String>, theme: &Theme) -> Box<dyn Widget> {
+    Box::new(
+        sapid::field(format!("control-{label}"))
+            .theme(theme.clone())
+            .label(label.to_owned())
+            .control(move |field| {
+                sapid::text_field()
+                    .field(field)
+                    .placeholder("Enter prop value")
+                    .value(value)
+                    .on_value_change(move |next| value.revise(|current| *current = next))
+            }),
+    )
+}
+
+pub fn size_slider(value: Cage<Option<String>>, theme: &Theme) -> Box<dyn Widget> {
+    let current = value.map(|current| match current.as_deref() {
+        Some("xs") => 0.0,
+        Some("sm") => 1.0,
+        Some("lg") => 3.0,
+        Some("xl") => 4.0,
+        _ => 2.0,
+    });
+    let value_text = value.map(|current| {
+        Some(
+            match current.as_deref() {
+                Some("xs") => "Extra small",
+                Some("sm") => "Small",
+                Some("lg") => "Large",
+                Some("xl") => "Extra large",
+                _ => "Medium",
+            }
+            .to_owned(),
+        )
+    });
+    Box::new(
+        sapid::stack().theme(theme.clone()).gap(8.0).fill((
+            sapid::text()
+                .theme(theme.clone())
+                .class("site-control-label")
+                .content("Size"),
+            sapid::slider("control-size")
+                .theme(theme.clone())
+                .name("Size")
+                .min(0.0)
+                .max(4.0)
+                .step(1.0)
+                .value(current)
+                .value_text(value_text)
+                .on_value_change(move |next| {
+                    value.revise(|current| {
+                        *current = Some(
+                            match next.round() as u8 {
+                                0 => "xs",
+                                1 => "sm",
+                                3 => "lg",
+                                4 => "xl",
+                                _ => "md",
+                            }
+                            .to_owned(),
+                        )
+                    })
+                }),
+        )),
+    )
+}
+
+pub fn radius_slider(value: Cage<f64>, theme: &Theme) -> Box<dyn Widget> {
+    Box::new(
+        sapid::stack().theme(theme.clone()).gap(8.0).fill((
+            sapid::text()
+                .theme(theme.clone())
+                .class("site-control-label")
+                .content("Radius"),
+            sapid::slider("control-radius")
+                .theme(theme.clone())
+                .name("Radius")
+                .min(0.0)
+                .max(12.0)
+                .step(1.0)
+                .value(value)
+                .value_text(value.map(|value| Some(format!("{value} px"))))
+                .on_value_change(move |next| value.revise(|current| *current = next)),
+        )),
+    )
+}
+
+pub fn variant(value: Cage<Option<String>>, theme: &Theme) -> Box<dyn Widget> {
+    let current = value.map(|value| value.as_deref().unwrap_or("default").to_owned());
+    Box::new(
+        sapid::stack().theme(theme.clone()).gap(8.0).fill((
+            sapid::text()
+                .theme(theme.clone())
+                .class("site-control-label")
+                .content("Variant"),
+            sapid::segmented_control("control-variant")
+                .theme(theme.clone())
+                .class("site-variant-control")
+                .name("Variant")
+                .value(current)
+                .segments([
+                    sapid::segment("default").label("Default"),
+                    sapid::segment("filled").label("Filled"),
+                    sapid::segment("unstyled").label("Unstyled"),
+                ])
+                .on_value_change(move |next| value.revise(|current| *current = Some(next))),
+        )),
     )
 }
 

@@ -714,6 +714,8 @@ impl Widget for Slider {
             crate::Size::ExtraLarge => 50.0,
         };
         let horizontal = axis == Orientation::Horizontal;
+        let focused = scope.cage(false);
+        let focus_ring = self.common.theme.focus_ring;
         let base = Style::new()
             .position(Position::Relative)
             .width(Length::Px(if mapping == Mapping::Angle {
@@ -813,6 +815,11 @@ impl Widget for Slider {
             let observers = Observers::new(handlers);
             root = root.on(kind, move |event| observers.emit(owner, event))
         }
+        root = root.on(EventKind::FocusWithin, move |event| {
+            if let Event::FocusWithin { focused: next, .. } = event {
+                focused.revise(|current| *current = next)
+            }
+        });
         root.show_in(scope)?;
         let parent = scope.child_in(reference.try_get()?.ok_or(glory::ui::Error::Gone)?)?;
         if mapping == Mapping::Angle {
@@ -913,7 +920,11 @@ impl Widget for Slider {
                     style.background = Some(preview.as_ref().map_or(thumb_color, Vary::get));
                 }
                 if !unstyled {
-                    style.border_color = Some(fill_color);
+                    style.border_color = Some(if focused.get() {
+                        focus_ring
+                    } else {
+                        fill_color
+                    });
                     style.border_style = Some(glory::style::BorderStyle::Solid);
                     style.border_width = Some(Edges::all(2.0));
                     style.radius = Some(thumb);

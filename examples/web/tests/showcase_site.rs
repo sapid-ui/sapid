@@ -1,4 +1,4 @@
-use glory::render::{Event, NodeId, Props};
+use glory::render::{Event, NodeId, Props, RangeCommand};
 use glory::ui::App;
 use sapid::Theme;
 use sapid_web_example::{showcase, showcase_catalog::ENTRIES};
@@ -207,8 +207,12 @@ fn focused_guides_render_their_own_widget_content() {
         ("P5-05", "Changes saved"),
         ("P5-10", "sapid-skeleton"),
         ("P5-12", "Background sync"),
+        ("P7-01", "Amount"),
         ("P7-02", "Volume"),
+        ("P7-03", "Price range"),
         ("P7-05", "Product rating"),
+        ("P10-01", "No files selected"),
+        ("P10-03", "Copy code"),
         ("P5-08", "File upload"),
         ("P6-01", "Semantic widgets"),
         ("P6-02", "Example pages"),
@@ -223,6 +227,64 @@ fn focused_guides_render_their_own_widget_content() {
             .html;
         assert!(html.contains(expected), "{id} must render {expected:?}");
     }
+}
+
+#[test]
+fn playground_helpers_are_embedded_only_when_the_preview_uses_them() {
+    for (id, expected) in [
+        ("P0-01", false),
+        ("P0-02", true),
+        ("P0-03", true),
+        ("P0-07", false),
+        ("P0-10", true),
+        ("P2-08", false),
+        ("P3-07", false),
+        ("P7-05", true),
+    ] {
+        let entry = sapid_web_example::showcase_catalog::find(id).unwrap();
+        assert_eq!(entry.code.contains("mod controls {"), expected, "{id}");
+    }
+}
+
+#[test]
+fn number_input_size_slider_updates_the_actual_preview() {
+    let entry = sapid_web_example::showcase_catalog::find("P7-01").unwrap();
+    let app = App::memory();
+    app.mount((entry.build)(Theme::blue_light())).unwrap();
+    let size = nodes(&app)
+        .into_iter()
+        .find(|id| {
+            let view = app.tree().node(*id).unwrap().descriptor.view().to_owned();
+            view.name.as_deref() == Some("Size")
+                && view
+                    .semantics
+                    .as_ref()
+                    .is_some_and(|metadata| metadata.slider.is_some())
+        })
+        .expect("size slider");
+    app.dispatch(
+        size,
+        Event::Range {
+            from: size,
+            command: RangeCommand::Maximum,
+        },
+    )
+    .unwrap();
+    app.pump().unwrap();
+    assert!(nodes(&app).into_iter().any(|id| {
+        let classes = &app
+            .tree()
+            .node(id)
+            .unwrap()
+            .descriptor
+            .view()
+            .to_owned()
+            .classes;
+        classes.iter().any(|class| class == "sapid-number-input")
+            && classes
+                .iter()
+                .any(|class| class == "sapid-size-extra-large")
+    }));
 }
 
 #[test]

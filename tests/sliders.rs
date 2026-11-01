@@ -374,3 +374,32 @@ fn commit_callback_acceptance_and_same_value_rewrites_accumulate_keyboard_intent
         assert_eq!(range(&app, id).range.value, 27.);
     }
 }
+
+#[test]
+fn focused_thumb_uses_the_theme_focus_ring() {
+    let app = App::memory();
+    let reference = app.scope().cage(None);
+    let theme = sapid::Theme::blue_light();
+    let ring = theme.focus_ring;
+    app.mount(slider("focus-ring").theme(theme).node_ref(reference))
+        .unwrap();
+    let id = reference.get().unwrap();
+    app.dispatch(id, Event::FocusChanged(true)).unwrap();
+    let tree = app.tree();
+    let thumb = tree
+        .node(id)
+        .unwrap()
+        .children
+        .iter()
+        .find_map(|child| {
+            let node = tree.node(*child).unwrap();
+            node.descriptor
+                .view()
+                .classes
+                .iter()
+                .any(|class| class == "sapid-slider-thumb")
+                .then_some(node)
+        })
+        .expect("slider thumb");
+    assert_eq!(thumb.descriptor.view().style.border_color, Some(ring));
+}

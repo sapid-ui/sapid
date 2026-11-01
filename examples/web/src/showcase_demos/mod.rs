@@ -76,10 +76,6 @@ mod context_menu;
 pub fn context_menu_widget(theme: sapid::Theme) -> Box<dyn Widget> {
     Box::new(context_menu::demo(theme))
 }
-mod copy_button;
-pub fn copy_button_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(copy_button::demo(theme))
-}
 mod core_accordion;
 pub fn core_accordion_widget(theme: sapid::Theme) -> Box<dyn Widget> {
     Box::new(core_accordion::demo(theme))
@@ -172,161 +168,177 @@ mod focus_scope;
 pub fn focus_scope_widget(theme: sapid::Theme) -> Box<dyn Widget> {
     Box::new(focus_scope::demo(theme))
 }
-mod focused_p0_10;
-pub fn focused_p0_10_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(focused_p0_10::demo(theme))
+mod focused_alert;
+pub fn focused_alert_widget(theme: sapid::Theme) -> Box<dyn Widget> {
+    Box::new(focused_alert::demo(theme))
 }
-mod focused_p13_05;
-pub fn focused_p13_05_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(focused_p13_05::demo(theme))
+mod focused_alert_dialog;
+pub fn focused_alert_dialog_widget(theme: sapid::Theme) -> Box<dyn Widget> {
+    Box::new(focused_alert_dialog::demo(theme))
 }
-mod focused_p13_06;
-pub fn focused_p13_06_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(focused_p13_06::demo(theme))
+mod focused_blockquote;
+pub fn focused_blockquote_widget(theme: sapid::Theme) -> Box<dyn Widget> {
+    Box::new(focused_blockquote::demo(theme))
 }
-mod focused_p1_01;
-pub fn focused_p1_01_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(focused_p1_01::demo(theme))
+mod focused_breadcrumbs;
+pub fn focused_breadcrumbs_widget(theme: sapid::Theme) -> Box<dyn Widget> {
+    Box::new(focused_breadcrumbs::demo(theme))
 }
-mod focused_p1_02;
-pub fn focused_p1_02_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(focused_p1_02::demo(theme))
+mod focused_button_group;
+pub fn focused_button_group_widget(theme: sapid::Theme) -> Box<dyn Widget> {
+    Box::new(focused_button_group::demo(theme))
 }
-mod focused_p1_03;
-pub fn focused_p1_03_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(focused_p1_03::demo(theme))
+mod focused_card;
+pub fn focused_card_widget(theme: sapid::Theme) -> Box<dyn Widget> {
+    Box::new(focused_card::demo(theme))
 }
-mod focused_p1_04;
-pub fn focused_p1_04_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(focused_p1_04::demo(theme))
+mod focused_center_container;
+pub fn focused_center_container_widget(theme: sapid::Theme) -> Box<dyn Widget> {
+    Box::new(focused_center_container::demo(theme))
 }
-mod focused_p1_05;
-pub fn focused_p1_05_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(focused_p1_05::demo(theme))
+mod focused_checkbox_group;
+pub fn focused_checkbox_group_widget(theme: sapid::Theme) -> Box<dyn Widget> {
+    Box::new(focused_checkbox_group::demo(theme))
 }
-mod focused_p1_06;
-pub fn focused_p1_06_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(focused_p1_06::demo(theme))
+mod focused_chip_group;
+pub fn focused_chip_group_widget(theme: sapid::Theme) -> Box<dyn Widget> {
+    Box::new(focused_chip_group::demo(theme))
 }
-mod focused_p2_01;
-pub fn focused_p2_01_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(focused_p2_01::demo(theme))
+mod focused_collection;
+pub fn focused_collection_widget(theme: sapid::Theme) -> Box<dyn Widget> {
+    Box::new(focused_collection::demo(theme))
 }
-mod focused_p2_02;
-pub fn focused_p2_02_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(focused_p2_02::demo(theme))
+mod focused_copy_button;
+pub fn focused_copy_button_widget(theme: sapid::Theme) -> Box<dyn Widget> {
+    Box::new(focused_copy_button::demo(theme))
 }
-mod focused_p2_03;
-pub fn focused_p2_03_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(focused_p2_03::demo(theme))
+mod focused_data_list;
+pub fn focused_data_list_widget(theme: sapid::Theme) -> Box<dyn Widget> {
+    Box::new(focused_data_list::demo(theme))
 }
-mod focused_p2_05;
-pub fn focused_p2_05_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(focused_p2_05::demo(theme))
+mod focused_empty_state;
+pub fn focused_empty_state_widget(theme: sapid::Theme) -> Box<dyn Widget> {
+    Box::new(focused_empty_state::demo(theme))
 }
-mod focused_p2_06;
-pub fn focused_p2_06_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(focused_p2_06::demo(theme))
+mod focused_field;
+pub fn focused_field_widget(theme: sapid::Theme) -> Box<dyn Widget> {
+    Box::new(focused_field::demo(theme))
 }
-mod focused_p2_07;
-pub fn focused_p2_07_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(focused_p2_07::demo(theme))
+mod focused_field_error;
+pub fn focused_field_error_widget(theme: sapid::Theme) -> Box<dyn Widget> {
+    Box::new(focused_field_error::demo(theme))
 }
-mod focused_p3_02;
-pub fn focused_p3_02_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(focused_p3_02::demo(theme))
+mod focused_fieldset;
+pub fn focused_fieldset_widget(theme: sapid::Theme) -> Box<dyn Widget> {
+    Box::new(focused_fieldset::demo(theme))
 }
-mod focused_p3_03;
-pub fn focused_p3_03_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(focused_p3_03::demo(theme))
+mod focused_file_button;
+pub fn focused_file_button_widget(theme: sapid::Theme) -> Box<dyn Widget> {
+    Box::new(focused_file_button::demo(theme))
 }
-mod focused_p3_07;
-pub fn focused_p3_07_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(focused_p3_07::demo(theme))
+mod focused_floating_dialog;
+pub fn focused_floating_dialog_widget(theme: sapid::Theme) -> Box<dyn Widget> {
+    Box::new(focused_floating_dialog::demo(theme))
 }
-mod focused_p3_08;
-pub fn focused_p3_08_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(focused_p3_08::demo(theme))
+mod focused_grid;
+pub fn focused_grid_widget(theme: sapid::Theme) -> Box<dyn Widget> {
+    Box::new(focused_grid::demo(theme))
 }
-mod focused_p3_09;
-pub fn focused_p3_09_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(focused_p3_09::demo(theme))
+mod focused_hover_card;
+pub fn focused_hover_card_widget(theme: sapid::Theme) -> Box<dyn Widget> {
+    Box::new(focused_hover_card::demo(theme))
 }
-mod focused_p3_11;
-pub fn focused_p3_11_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(focused_p3_11::demo(theme))
+mod focused_inline_code;
+pub fn focused_inline_code_widget(theme: sapid::Theme) -> Box<dyn Widget> {
+    Box::new(focused_inline_code::demo(theme))
 }
-mod focused_p3_12;
-pub fn focused_p3_12_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(focused_p3_12::demo(theme))
+mod focused_input_group;
+pub fn focused_input_group_widget(theme: sapid::Theme) -> Box<dyn Widget> {
+    Box::new(focused_input_group::demo(theme))
 }
-mod focused_p3_16;
-pub fn focused_p3_16_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(focused_p3_16::demo(theme))
+mod focused_kbd;
+pub fn focused_kbd_widget(theme: sapid::Theme) -> Box<dyn Widget> {
+    Box::new(focused_kbd::demo(theme))
 }
-mod focused_p3_17;
-pub fn focused_p3_17_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(focused_p3_17::demo(theme))
+mod focused_list;
+pub fn focused_list_widget(theme: sapid::Theme) -> Box<dyn Widget> {
+    Box::new(focused_list::demo(theme))
 }
-mod focused_p3_18;
-pub fn focused_p3_18_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(focused_p3_18::demo(theme))
+mod focused_model_selector;
+pub fn focused_model_selector_widget(theme: sapid::Theme) -> Box<dyn Widget> {
+    Box::new(focused_model_selector::demo(theme))
 }
-mod focused_p3_19;
-pub fn focused_p3_19_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(focused_p3_19::demo(theme))
+mod focused_number_formatter;
+pub fn focused_number_formatter_widget(theme: sapid::Theme) -> Box<dyn Widget> {
+    Box::new(focused_number_formatter::demo(theme))
 }
-mod focused_p3_20;
-pub fn focused_p3_20_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(focused_p3_20::demo(theme))
+mod focused_number_input;
+pub fn focused_number_input_widget(theme: sapid::Theme) -> Box<dyn Widget> {
+    Box::new(focused_number_input::demo(theme))
 }
-mod focused_p5_01;
-pub fn focused_p5_01_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(focused_p5_01::demo(theme))
+mod focused_pagination;
+pub fn focused_pagination_widget(theme: sapid::Theme) -> Box<dyn Widget> {
+    Box::new(focused_pagination::demo(theme))
 }
-mod focused_p5_03;
-pub fn focused_p5_03_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(focused_p5_03::demo(theme))
+mod focused_password_input;
+pub fn focused_password_input_widget(theme: sapid::Theme) -> Box<dyn Widget> {
+    Box::new(focused_password_input::demo(theme))
 }
-mod focused_p5_04;
-pub fn focused_p5_04_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(focused_p5_04::demo(theme))
+mod focused_progress;
+pub fn focused_progress_widget(theme: sapid::Theme) -> Box<dyn Widget> {
+    Box::new(focused_progress::demo(theme))
 }
-mod focused_p5_05;
-pub fn focused_p5_05_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(focused_p5_05::demo(theme))
+mod focused_radio_group;
+pub fn focused_radio_group_widget(theme: sapid::Theme) -> Box<dyn Widget> {
+    Box::new(focused_radio_group::demo(theme))
 }
-mod focused_p5_08;
-pub fn focused_p5_08_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(focused_p5_08::demo(theme))
+mod focused_range_slider;
+pub fn focused_range_slider_widget(theme: sapid::Theme) -> Box<dyn Widget> {
+    Box::new(focused_range_slider::demo(theme))
 }
-mod focused_p5_10;
-pub fn focused_p5_10_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(focused_p5_10::demo(theme))
+mod focused_rating;
+pub fn focused_rating_widget(theme: sapid::Theme) -> Box<dyn Widget> {
+    Box::new(focused_rating::demo(theme))
 }
-mod focused_p5_12;
-pub fn focused_p5_12_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(focused_p5_12::demo(theme))
+mod focused_segmented_control;
+pub fn focused_segmented_control_widget(theme: sapid::Theme) -> Box<dyn Widget> {
+    Box::new(focused_segmented_control::demo(theme))
 }
-mod focused_p6_01;
-pub fn focused_p6_01_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(focused_p6_01::demo(theme))
+mod focused_separator;
+pub fn focused_separator_widget(theme: sapid::Theme) -> Box<dyn Widget> {
+    Box::new(focused_separator::demo(theme))
 }
-mod focused_p6_02;
-pub fn focused_p6_02_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(focused_p6_02::demo(theme))
+mod focused_skeleton;
+pub fn focused_skeleton_widget(theme: sapid::Theme) -> Box<dyn Widget> {
+    Box::new(focused_skeleton::demo(theme))
 }
-mod focused_p6_10;
-pub fn focused_p6_10_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(focused_p6_10::demo(theme))
+mod focused_slider;
+pub fn focused_slider_widget(theme: sapid::Theme) -> Box<dyn Widget> {
+    Box::new(focused_slider::demo(theme))
 }
-mod focused_p7_02;
-pub fn focused_p7_02_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(focused_p7_02::demo(theme))
+mod focused_suggestion;
+pub fn focused_suggestion_widget(theme: sapid::Theme) -> Box<dyn Widget> {
+    Box::new(focused_suggestion::demo(theme))
 }
-mod focused_p7_05;
-pub fn focused_p7_05_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(focused_p7_05::demo(theme))
+mod focused_switch;
+pub fn focused_switch_widget(theme: sapid::Theme) -> Box<dyn Widget> {
+    Box::new(focused_switch::demo(theme))
+}
+mod focused_textarea;
+pub fn focused_textarea_widget(theme: sapid::Theme) -> Box<dyn Widget> {
+    Box::new(focused_textarea::demo(theme))
+}
+mod focused_timeline;
+pub fn focused_timeline_widget(theme: sapid::Theme) -> Box<dyn Widget> {
+    Box::new(focused_timeline::demo(theme))
+}
+mod focused_toolbar;
+pub fn focused_toolbar_widget(theme: sapid::Theme) -> Box<dyn Widget> {
+    Box::new(focused_toolbar::demo(theme))
+}
+mod focused_tooltip;
+pub fn focused_tooltip_widget(theme: sapid::Theme) -> Box<dyn Widget> {
+    Box::new(focused_tooltip::demo(theme))
 }
 mod forms;
 pub fn forms_widget(theme: sapid::Theme) -> Box<dyn Widget> {
@@ -412,10 +424,6 @@ mod notifications;
 pub fn notifications_widget(theme: sapid::Theme) -> Box<dyn Widget> {
     Box::new(notifications::demo(theme))
 }
-mod number_input;
-pub fn number_input_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(number_input::demo(theme))
-}
 mod output;
 pub fn output_widget(theme: sapid::Theme) -> Box<dyn Widget> {
     Box::new(output::demo(theme))
@@ -455,10 +463,6 @@ pub fn questionnaire_widget(theme: sapid::Theme) -> Box<dyn Widget> {
 mod range_charts;
 pub fn range_charts_widget(theme: sapid::Theme) -> Box<dyn Widget> {
     Box::new(range_charts::demo(theme))
-}
-mod range_slider;
-pub fn range_slider_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(range_slider::demo(theme))
 }
 mod resource_schedule;
 pub fn resource_schedule_widget(theme: sapid::Theme) -> Box<dyn Widget> {

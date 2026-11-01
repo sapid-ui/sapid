@@ -58,7 +58,7 @@ polymorphic component、任意 Recharts/Tiptap/Embla 插件或全局 provider。
 | [JsonInput](https://mantine.dev/core/json-input/) | JsonInput：有界解析/format、错误、草稿/只读、真实 placeholder | 本轮补 placeholder；autosize/formatOnBlur 等便捷行为仍需定义组合和失焦次序。 | P2 |
 | [MaskInput](https://mantine.dev/core/mask-input/) | MaskInput：有限 mask、raw/display 索引、paste/组合保护 | 不兼容任意第三方 mask 对象、动态 mask 引擎；保留 typed finite schema，并补 display 格式示例。 | 边界 |
 | [NativeSelect](https://mantine.dev/core/native-select/) | NativeSelect：真实 select、分组、多选、成功值 | NativeSelect 的左右 sections 需 InputGroup 组合；Apace select facet 拒绝。不能将浏览器 select 打开状态作为可控 popup。 | P2 |
-| [NumberInput](https://mantine.dev/core/number-input/) | NumberInput：Decimal、locale、clamp、step、草稿与拒绝 | 缺完整千分位/前后缀/字符串数值/hold interval API；不能用 f64 替换当前精确小数，也不导入任意 formatter。 | P2 |
+| [NumberInput](https://mantine.dev/core/number-input/) | NumberInput：Decimal、locale、clamp、step、草稿与拒绝、紧凑上下步进器 | 已改进上下步进器的尺寸、分隔线、图标和禁用态；缺完整千分位/前后缀/字符串数值/hold interval API，不能用 f64 替换当前精确小数，也不导入任意 formatter。 | P2 |
 | [PasswordInput](https://mantine.dev/core/password-input/) | PasswordInput：显隐/组合保护、Field、真实 placeholder | 本轮补 placeholder；显隐自定义图标/部位仍待补。不能重建输入实现；native 密码值投影与 hint 支持是不同承诺。 | P2 |
 | [PinInput](https://mantine.dev/core/pin-input/) | PinInput：长度/字母表、mask、autofill、complete、原子编辑 | 缺一组可单独引用的 input 单元等 UI 细项；现有是共享单 Input 投影，不假装独立多输入。onComplete 已有不能误报。 | P2 |
 | [Radio](https://mantine.dev/core/radio/) | RadioGroup：键盘、方向、单选值、required/表单代理 | 缺 Radio.Card/Indicator 展示子部件、图标与标签位置；可以现有组和 slot 组合，需单独验收点击区域与焦点。 | P2 |

@@ -1,7 +1,10 @@
 # NumberInput
 
 `number_input()` is an actual single-line text input with intrinsic `spinbutton`
-semantics. Its sibling Decrease/Increase controls are real buttons. It shares
+semantics. Its themed Decrease/Increase controls are real named buttons with
+compact up/down glyphs in a divided vertical section. The input and steppers
+share one bordered, rounded surface and its focus state. Disabled, readonly and
+boundary states retain their native activation behavior. It shares
 Glory's ordinary input revisions, selection, composition and Field associations;
 there is no hidden second business value, default HTTP action, serde dependency,
 locale discovery, timer, query or DOM access in the component.
@@ -143,10 +146,11 @@ These references describe the intended semantics; executable evidence is below.
 
 ## Evidence
 
-- `tests/number_inputs.rs`: 15 passed. Exact and same-tick stepping, complete raw
+- `tests/number_inputs.rs`: 17 passed. Exact and same-tick stepping, complete raw
   lexemes/drafts/empty/commit, controlled refusal and callback order, commit-only
   cursor, bounded source and host edit refusal, invalid-domain recovery, Field
-  relations, composition protocol and retirement during a callback.
+  relations, unified surface/stepper geometry and focus, composition protocol and
+  retirement during a callback.
 - `src/number_model.rs`: 6 passed through Cargo, including exact scale/domain,
   strict explicit locales, overflow and million-byte rejection before clone.
 - Glory render Spin model 3 and target tests 3 passed; ordinary Input/Range target

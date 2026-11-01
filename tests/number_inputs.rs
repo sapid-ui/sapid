@@ -1,5 +1,6 @@
 use glory::prelude::*;
 use glory::render::{EventKind, NodeId, Props, RangeCommand, SpinValue};
+use glory::style::{Edges, FlexDirection, Length};
 use sapid::{Decimal, NumberLocale, NumberValue, number_input};
 use std::{cell::RefCell, rc::Rc};
 fn d(v: &str) -> Decimal {
@@ -588,4 +589,77 @@ fn boundary_availability_is_not_a_stale_keyboard_gate_for_same_tick_opposite_int
             .unwrap();
         assert_eq!(text(&app, id), "0.1");
     }
+}
+
+#[test]
+fn themed_controls_are_compact_vertical_steppers_with_stable_accessible_names() {
+    let app = App::memory();
+    let reference = app.scope().cage(None);
+    app.mount(
+        number_input()
+            .name("Amount")
+            .default_value(d("2"))
+            .node_ref(reference),
+    )
+    .unwrap();
+    let tree = app.tree();
+    let input = tree
+        .node(reference.get().unwrap())
+        .unwrap()
+        .descriptor
+        .view();
+    assert_eq!(input.style.border_width, Some(Edges::all(0.)));
+    let mut pending = tree.roots().to_vec();
+    let mut buttons = Vec::new();
+    let mut panel = None;
+    while let Some(id) = pending.pop() {
+        let node = tree.node(id).unwrap();
+        pending.extend(node.children.iter().rev().copied());
+        let view = node.descriptor.view();
+        if matches!(view.props, Props::Button(_)) {
+            buttons.push(view);
+        }
+        if view
+            .classes
+            .iter()
+            .any(|class| class == "sapid-number-input-controls")
+        {
+            panel = Some(view);
+        }
+    }
+    let panel = panel.expect("compact number controls");
+    assert_eq!(panel.style.flex_direction, Some(FlexDirection::Column));
+    assert_eq!(panel.style.width, Some(Length::Px(28.)));
+    assert_eq!(panel.style.border_width.unwrap().left, 1.);
+    assert_eq!(buttons.len(), 2);
+    assert_eq!(buttons[0].name.as_deref(), Some("Increase"));
+    assert_eq!(buttons[1].name.as_deref(), Some("Decrease"));
+    assert!(matches!(&buttons[0].props, Props::Button(button) if button.label == "⌃"));
+    assert!(matches!(&buttons[1].props, Props::Button(button) if button.label == "⌄"));
+    for button in buttons {
+        assert_eq!(button.style.height, Some(Length::Percent(50.)));
+        assert_eq!(button.style.min_height, Some(Length::Px(0.)));
+    }
+}
+
+#[test]
+fn input_and_steppers_share_one_focus_border() {
+    let app = App::memory();
+    let reference = app.scope().cage(None);
+    let theme = sapid::Theme::blue_light();
+    let focus = theme.input_focus;
+    app.mount(
+        number_input()
+            .name("Amount")
+            .theme(theme)
+            .default_value(d("2"))
+            .node_ref(reference),
+    )
+    .unwrap();
+    let id = reference.get().unwrap();
+    app.dispatch(id, Event::FocusChanged(true)).unwrap();
+    let tree = app.tree();
+    let row = tree.node(tree.roots()[0]).unwrap().descriptor.view();
+    assert_eq!(row.style.border_width, Some(Edges::all(1.)));
+    assert_eq!(row.style.border_color, Some(focus));
 }

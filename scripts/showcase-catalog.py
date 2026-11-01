@@ -34,11 +34,61 @@ FOCUSED_GROUPS = {
     "navigation": ["P6-01", "P6-02"],
     "timeline": ["P3-12", "P3-19"],
     "rating": ["P7-05"],
-    "measurement": ["P7-02", "P5-08"],
+    "number_input": ["P7-01"],
+    "measurement": ["P7-02", "P7-03", "P5-08"],
+    "copy_button": ["P10-03"],
+    "file_button": ["P10-01"],
     "toolbar": ["P2-07", "P6-10"],
     "model_suggestions": ["P13-05", "P13-06"],
 }
 FOCUSED = {identity: family for family, identities in FOCUSED_GROUPS.items() for identity in identities}
+FOCUSED_NAMES = {
+    "P0-10": "focused_collection",
+    "P1-01": "focused_field",
+    "P1-02": "focused_field_error",
+    "P1-03": "focused_fieldset",
+    "P1-04": "focused_textarea",
+    "P1-05": "focused_password_input",
+    "P1-06": "focused_input_group",
+    "P2-01": "focused_checkbox_group",
+    "P2-02": "focused_switch",
+    "P2-03": "focused_radio_group",
+    "P2-05": "focused_segmented_control",
+    "P2-06": "focused_chip_group",
+    "P2-07": "focused_button_group",
+    "P3-02": "focused_center_container",
+    "P3-03": "focused_grid",
+    "P3-07": "focused_list",
+    "P3-08": "focused_blockquote",
+    "P3-09": "focused_inline_code",
+    "P3-11": "focused_card",
+    "P3-12": "focused_separator",
+    "P3-16": "focused_kbd",
+    "P3-17": "focused_empty_state",
+    "P3-18": "focused_data_list",
+    "P3-19": "focused_timeline",
+    "P3-20": "focused_number_formatter",
+    "P5-01": "focused_alert_dialog",
+    "P5-03": "focused_tooltip",
+    "P5-04": "focused_hover_card",
+    "P5-05": "focused_alert",
+    "P5-08": "focused_progress",
+    "P5-10": "focused_skeleton",
+    "P5-12": "focused_floating_dialog",
+    "P6-01": "focused_breadcrumbs",
+    "P6-02": "focused_pagination",
+    "P6-10": "focused_toolbar",
+    "P7-01": "focused_number_input",
+    "P7-02": "focused_slider",
+    "P7-03": "focused_range_slider",
+    "P7-05": "focused_rating",
+    "P10-01": "focused_file_button",
+    "P10-03": "focused_copy_button",
+    "P13-05": "focused_model_selector",
+    "P13-06": "focused_suggestion",
+}
+if set(FOCUSED_NAMES) != set(FOCUSED):
+    raise SystemExit("every focused demo requires an explicit semantic module name")
 SPECIAL = {
     "index": ("form", "form_themed", "scope, theme.clone()", True),
     "composites": ("composite_form", "form_themed", "scope, theme.clone()", True),
@@ -339,11 +389,13 @@ def bundle(page):
 
 def focused_bundle(identity, family):
     body = (WEB / f"src/focused_demos/{family}.rs").read_text(encoding="utf-8")
-    controls = (WEB / "src/focused_demos/controls.rs").read_text(encoding="utf-8")
+    controls = ''
+    if 'super::controls' in body:
+        controls = (WEB / "src/focused_demos/controls.rs").read_text(encoding="utf-8")
+        controls = '\n\n#[allow(dead_code, unused_imports)]\nmod controls {\n' + controls + '\n}'
     return formatted('use glory::prelude::*;\n\npub fn demo(theme: sapid::Theme) -> impl Widget {\n    '
                      + f'focused::demo_for("{identity}", theme)\n'
-                     + '}\n\n#[allow(dead_code, unused_imports)]\nmod controls {\n'
-                     + controls + '\n}\n\n#[allow(dead_code, unused_imports)]\nmod focused {\n'
+                     + '}' + controls + '\n\n#[allow(dead_code, unused_imports)]\nmod focused {\n'
                      + body + '\n}\n')
 
 
@@ -359,10 +411,12 @@ for task in tasks:
         key = 'core_' + CORE[identity]
         code = (WEB / f"src/showcase_demos/{key}.rs").read_text(encoding="utf-8")
         code = code.split('\n#[allow(dead_code, unused_imports)]\nmod controls {', 1)[0].rstrip()
-        controls = (WEB / "src/focused_demos/controls.rs").read_text(encoding="utf-8")
-        code = formatted(code + '\n\n#[allow(dead_code, unused_imports)]\nmod controls {\n' + controls + '\n}\n')
+        if 'controls::' in code:
+            controls = (WEB / "src/focused_demos/controls.rs").read_text(encoding="utf-8")
+            code += '\n\n#[allow(dead_code, unused_imports)]\nmod controls {\n' + controls + '\n}\n'
+        code = formatted(code)
     elif identity in FOCUSED:
-        key = 'focused_' + identity.lower().replace('-', '_')
+        key = FOCUSED_NAMES[identity]
         code = focused_bundle(identity, FOCUSED[identity])
     else:
         key = page.replace('-', '_')

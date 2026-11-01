@@ -6,7 +6,7 @@ use crate::number_model::NumberDomain;
 use crate::state::{Control, Dirty, Value};
 use crate::{Decimal, FieldControl, NumberError, NumberLocale, NumberParse, NumberValue};
 use glory::render::{Event, EventKind, Purpose, RangeCommand, Semantics, SpinValue};
-use glory::style::{Display, FlexDirection, Length, Style};
+use glory::style::{Align, BorderStyle, Display, Edges, FlexDirection, Justify, Length, Style};
 use glory::ui::{Result, WeakScope, Widget};
 use glory::{Cage, Scope, Vary};
 use std::{
@@ -483,11 +483,16 @@ impl Widget for NumberInput {
             }
         })?;
         let initial = accepted.try_with(Snapshot::text)?;
-        let base = self
+        let mut base = self
             .common
             .theme
             .control(self.common.size)
             .width(Length::Px(180.));
+        if self.controls && !self.common.unstyled {
+            base.border_width = Some(Edges::all(0.));
+            base.background = Some(glory::style::Color(0, 0, 0, 0));
+            base.radius = Some(0.);
+        }
         let overrides = self.common.style.clone();
         let height = base.min_height.unwrap_or(Length::Px(36.));
         let themed = !self.common.unstyled;
@@ -538,7 +543,48 @@ impl Widget for NumberInput {
             });
         }
         let row_ref = scope.cage(None);
-        glory::ui::view()
+        let focused = scope.cage(false);
+        let integrated = self.controls && !self.common.unstyled;
+        let row_input = self.common.theme.input;
+        let row_disabled = self.common.theme.disabled;
+        let row_border = self.common.theme.border;
+        let input_focus = self.common.theme.input_focus;
+        let row_shape = Style {
+            display: Some(Display::Flex),
+            flex_direction: Some(FlexDirection::Row),
+            gap: Some(0.),
+            padding: Some(Edges::all(0.)),
+            border_width: Some(Edges::all(if integrated { 1. } else { 0. })),
+            border_style: integrated.then_some(BorderStyle::Solid),
+            border_color: integrated.then_some(row_border),
+            background: integrated.then_some(row_input),
+            radius: integrated.then_some(self.common.theme.radius),
+            ..Style::new()
+        };
+        let row_style: Vary<Style> = if integrated {
+            scope
+                .bond(move || {
+                    let current = accepted.get();
+                    let mut style = row_shape.clone();
+                    style.border_color = Some(if current.semantics().invalid {
+                        danger
+                    } else if focused.get() {
+                        input_focus
+                    } else {
+                        row_border
+                    });
+                    style.background = Some(if current.enabled {
+                        row_input
+                    } else {
+                        row_disabled
+                    });
+                    style
+                })
+                .into()
+        } else {
+            row_shape.into()
+        };
+        let mut row = glory::ui::view()
             .field_part(glory::render::FieldPart::Fieldset)
             .semantics(scope.bond(move || {
                 composite::metadata(Semantics {
@@ -548,31 +594,108 @@ impl Widget for NumberInput {
                 })
             }))
             .class("sapid-number-input-row")
-            .style(
-                Style::new()
-                    .display(Display::Flex)
-                    .flex_direction(FlexDirection::Row)
-                    .gap(4.)
-                    .border_width(glory::style::Edges::all(0.))
-                    .padding(glory::style::Edges::all(0.)),
-            )
-            .node_ref(row_ref)
-            .show_in(scope)?;
+            .style(row_style);
+        if self.controls {
+            row = row.on(EventKind::FocusWithin, move |event| {
+                if let Event::FocusWithin { focused: next, .. } = event {
+                    focused.revise(|current| *current = next)
+                }
+            });
+        }
+        row.node_ref(row_ref).show_in(scope)?;
         let container = scope.child_in(row_ref.try_get()?.ok_or(glory::ui::Error::Gone)?)?;
         input.show_in(&container)?;
         let node = reference.try_get()?.ok_or(glory::ui::Error::Gone)?;
         if self.controls {
-            for (label, increase) in [("Decrease", false), ("Increase", true)] {
+            let panel_ref = scope.cage(None);
+            let themed = !self.common.unstyled;
+            let panel_style = Style {
+                display: Some(Display::Flex),
+                flex_direction: Some(FlexDirection::Column),
+                width: Some(Length::Px(28.)),
+                height: Some(height),
+                min_height: Some(height),
+                padding: Some(Edges::all(0.)),
+                border_width: Some(if themed {
+                    Edges {
+                        left: 1.,
+                        ..Edges::all(0.)
+                    }
+                } else {
+                    Edges::all(0.)
+                }),
+                border_style: themed.then_some(BorderStyle::Solid),
+                border_color: themed.then_some(self.common.theme.border),
+                background: Some(glory::style::Color(0, 0, 0, 0)),
+                radius: Some(0.),
+                ..Style::new()
+            };
+            glory::ui::view()
+                .class("sapid-number-input-controls")
+                .style(panel_style)
+                .node_ref(panel_ref)
+                .show_in(&container)?;
+            let controls = scope.child_in(panel_ref.try_get()?.ok_or(glory::ui::Error::Gone)?)?;
+            for (label, increase) in [("Increase", true), ("Decrease", false)] {
                 let s = state.clone();
                 let enabled = scope.bond(move || {
                     accepted.with(|v| {
                         v.writable() && v.domain.increment(v.parse(), increase, false).is_some()
                     })
                 });
+                let muted = self.common.theme.muted;
+                let disabled_text = self.common.theme.disabled_text;
+                let border = self.common.theme.border;
+                let shape = Style {
+                    display: Some(Display::Flex),
+                    width: Some(Length::Percent(100.)),
+                    height: Some(Length::Percent(50.)),
+                    min_height: Some(Length::Px(0.)),
+                    grow: Some(1.),
+                    shrink: Some(1.),
+                    align: Some(Align::Center),
+                    justify: Some(Justify::Center),
+                    padding: Some(Edges::all(0.)),
+                    font_size: Some(11.),
+                    line_height: Some(1.),
+                    border_width: Some(if themed && increase {
+                        Edges {
+                            bottom: 1.,
+                            ..Edges::all(0.)
+                        }
+                    } else {
+                        Edges::all(0.)
+                    }),
+                    border_style: themed.then_some(BorderStyle::Solid),
+                    border_color: themed.then_some(border),
+                    background: Some(glory::style::Color(0, 0, 0, 0)),
+                    radius: Some(0.),
+                    ..Style::new()
+                };
+                let style_enabled = enabled;
+                let styles = scope.bond(move || {
+                    let mut style = shape.clone();
+                    if themed {
+                        style.color = Some(if style_enabled.get() {
+                            muted
+                        } else {
+                            disabled_text
+                        });
+                    }
+                    style
+                });
                 let mut button = crate::button()
-                    .label(label)
+                    .name(label)
+                    .label(if increase { "⌃" } else { "⌄" })
+                    .class(if increase {
+                        "sapid-number-input-control sapid-number-input-increase"
+                    } else {
+                        "sapid-number-input-control sapid-number-input-decrease"
+                    })
                     .theme(self.common.theme.clone())
+                    .variant(crate::ButtonVariant::Subtle)
                     .size(self.common.size)
+                    .style(styles)
                     .enabled(enabled)
                     .on_press(move || {
                         s.report(s.spin(if increase {
@@ -584,8 +707,9 @@ impl Widget for NumberInput {
                 if self.common.unstyled {
                     button = button.unstyled();
                 }
-                button.show_in(&container)?;
+                button.show_in(&controls)?;
             }
+            scope.retain(controls)?;
         }
         scope.retain(container)?;
         let weak = Rc::downgrade(&state);

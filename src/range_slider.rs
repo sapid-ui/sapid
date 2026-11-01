@@ -966,6 +966,8 @@ impl Widget for RangeSlider {
             let index = thumb.index();
             let meta = metadata.clone();
             let id = ids[index].clone();
+            let focused = scope.cage(false);
+            let focus_ring = self.common.theme.focus_ring;
             let mut widget = glory::ui::view()
                 .role(Role::Slider)
                 .node_ref(thumbs[index])
@@ -1033,6 +1035,12 @@ impl Widget for RangeSlider {
                                 left: 0.,
                             });
                         }
+                        if focused.get() && !unstyled {
+                            style.border_width = Some(Edges::all(1.));
+                            style.border_style = Some(glory::style::BorderStyle::Solid);
+                            style.border_color = Some(focus_ring);
+                            style.radius = Some(size / 2.);
+                        }
                         style
                     })
                 }));
@@ -1050,6 +1058,11 @@ impl Widget for RangeSlider {
             widget = widget.on(EventKind::Drag, move |event| {
                 if let Err(error) = dragged.pointer(thumb, event) {
                     dragged.report(error)
+                }
+            });
+            widget = widget.on(EventKind::FocusWithin, move |event| {
+                if let Event::FocusWithin { focused: next, .. } = event {
+                    focused.revise(|current| *current = next)
                 }
             });
             widget.show_in(&parent)?;

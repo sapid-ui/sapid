@@ -38,6 +38,24 @@ addresses shared visual defects and adds small, portable action APIs.
   unrelated form surfaces no longer dominate their layout. The previews include
   useful disabled/readonly controls, real selection counts, icon sizes and variants.
 
+## Follow-up: numeric controls and action demos
+
+- NumberInput now uses compact up/down steppers in a divided vertical section,
+  rather than two full-sized text buttons. The input and steppers share one
+  bordered, rounded surface and its focus state. Its Usage controls follow
+  Mantine's segmented variants, size/radius sliders, text inputs and switches.
+  The real Spin input, accessible names, exact Decimal behavior and disabled
+  boundaries are unchanged.
+- Slider and RangeSlider replace the default black keyboard outline with a
+  theme-colored focus ring; FileButton previews use the accepted `files_ref`
+  metadata output and real file-chooser behavior.
+- NumberInput, RangeSlider, CopyButton and FileButton now have focused Usage
+  previews with meaningful controls instead of leading with acceptance counters,
+  unrelated drafts and test-only action rows.
+- All 149 public preview bodies were captured and inspected as contact sheets.
+  The remaining generated acceptance fixtures still need focused presentation
+  work; catalogue coverage is not treated as visual or API equivalence.
+
 ## Useful remaining API gaps
 
 | Mantine capability | Sapid state / follow-up |

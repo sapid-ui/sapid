@@ -365,3 +365,6 @@ html,body{margin:0;padding:0}
 .sapid-site .site-control-swatch{width:28px;height:28px;min-width:28px;min-height:28px;padding:0;border:1px solid var(--site-border);border-radius:4px;cursor:pointer;outline:2px solid transparent;outline-offset:2px}
 .sapid-site .site-control-swatch.is-active{outline-color:var(--site-fg)}
 .sapid-site .site-control-swatch:focus-visible{outline:2px solid var(--site-ring);outline-offset:2px}
+.sapid-site .site-variant-control,.sapid-site .site-variant-control .sapid-radio-group-items{width:100%}
+.sapid-site .site-variant-control .sapid-radio-group-items{flex-wrap:nowrap}
+.sapid-site .site-variant-control .sapid-segment{flex:1;justify-content:center;padding-inline:8px;white-space:nowrap}
