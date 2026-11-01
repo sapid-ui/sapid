@@ -1,6 +1,6 @@
 use glory::prelude::*;
 use glory::render::{EventKind, NodeId, Props, RangeCommand, SpinValue};
-use glory::style::{Edges, FlexDirection, Length};
+use glory::style::{Edges, FlexDirection, Length, Overflow};
 use sapid::{Decimal, NumberLocale, NumberValue, number_input};
 use std::{cell::RefCell, rc::Rc};
 fn d(v: &str) -> Decimal {
@@ -611,6 +611,7 @@ fn themed_controls_are_compact_vertical_steppers_with_stable_accessible_names() 
     assert_eq!(input.style.border_width, Some(Edges::all(0.)));
     let mut pending = tree.roots().to_vec();
     let mut buttons = Vec::new();
+    let mut chevrons = Vec::new();
     let mut panel = None;
     while let Some(id) = pending.pop() {
         let node = tree.node(id).unwrap();
@@ -626,6 +627,13 @@ fn themed_controls_are_compact_vertical_steppers_with_stable_accessible_names() 
         {
             panel = Some(view);
         }
+        if view
+            .classes
+            .iter()
+            .any(|class| class == "sapid-number-input-chevron")
+        {
+            chevrons.push(view);
+        }
     }
     let panel = panel.expect("compact number controls");
     assert_eq!(panel.style.flex_direction, Some(FlexDirection::Column));
@@ -634,8 +642,16 @@ fn themed_controls_are_compact_vertical_steppers_with_stable_accessible_names() 
     assert_eq!(buttons.len(), 2);
     assert_eq!(buttons[0].name.as_deref(), Some("Increase"));
     assert_eq!(buttons[1].name.as_deref(), Some("Decrease"));
-    assert!(matches!(&buttons[0].props, Props::Button(button) if button.label == "⌃"));
-    assert!(matches!(&buttons[1].props, Props::Button(button) if button.label == "⌄"));
+    assert!(matches!(&buttons[0].props, Props::Button(button) if button.label.is_empty()));
+    assert!(matches!(&buttons[1].props, Props::Button(button) if button.label.is_empty()));
+    assert_eq!(chevrons.len(), 2);
+    for chevron in chevrons {
+        assert_eq!(chevron.style.width, Some(Length::Px(16.)));
+        assert_eq!(chevron.style.height, Some(Length::Px(16.)));
+        assert!(
+            matches!(chevron.props, Props::Graphic(graphic) if graphic.commands.len() == 3 && graphic.alternative.is_none())
+        );
+    }
     for button in buttons {
         assert_eq!(button.style.height, Some(Length::Percent(50.)));
         assert_eq!(button.style.min_height, Some(Length::Px(0.)));
@@ -662,4 +678,6 @@ fn input_and_steppers_share_one_focus_border() {
     let row = tree.node(tree.roots()[0]).unwrap().descriptor.view();
     assert_eq!(row.style.border_width, Some(Edges::all(1.)));
     assert_eq!(row.style.border_color, Some(focus));
+    assert_eq!(row.style.overflow_x, Some(Overflow::Hidden));
+    assert_eq!(row.style.overflow_y, Some(Overflow::Hidden));
 }

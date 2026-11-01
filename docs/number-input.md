@@ -2,7 +2,7 @@
 
 `number_input()` is an actual single-line text input with intrinsic `spinbutton`
 semantics. Its themed Decrease/Increase controls are real named buttons with
-compact up/down glyphs in a divided vertical section. The input and steppers
+compact vector chevrons in a divided vertical section. The input and steppers
 share one bordered, rounded surface and its focus state. Disabled, readonly and
 boundary states retain their native activation behavior. It shares
 Glory's ordinary input revisions, selection, composition and Field associations;

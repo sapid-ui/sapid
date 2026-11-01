@@ -5,8 +5,14 @@ use crate::field::control_metadata;
 use crate::number_model::NumberDomain;
 use crate::state::{Control, Dirty, Value};
 use crate::{Decimal, FieldControl, NumberError, NumberLocale, NumberParse, NumberValue};
-use glory::render::{Event, EventKind, Purpose, RangeCommand, Semantics, SpinValue};
-use glory::style::{Align, BorderStyle, Display, Edges, FlexDirection, Justify, Length, Style};
+use glory::render::{
+    Event, EventKind, GraphicPoint, GraphicProps, GraphicStroke, PathCommand, Purpose,
+    RangeCommand, Semantics, SpinValue, StrokeCap,
+};
+use glory::style::{
+    Align, BorderStyle, Display, Edges, FlexDirection, Justify, Length, Overflow, PointerEvents,
+    Style,
+};
 use glory::ui::{Result, WeakScope, Widget};
 use glory::{Cage, Scope, Vary};
 use std::{
@@ -15,6 +21,26 @@ use std::{
 };
 fn invalid() -> glory::ui::Error {
     glory::render::Error::InvalidProps("invalid bounded number input state").into()
+}
+fn chevron(increase: bool, color: glory::style::Color) -> GraphicProps {
+    let (start, middle, end) = if increase {
+        ((6., 15.), (12., 9.), (18., 15.))
+    } else {
+        ((6., 9.), (12., 15.), (18., 9.))
+    };
+    GraphicProps {
+        commands: vec![
+            PathCommand::Move(GraphicPoint::new(start.0, start.1)),
+            PathCommand::Line(GraphicPoint::new(middle.0, middle.1)),
+            PathCommand::Line(GraphicPoint::new(end.0, end.1)),
+        ],
+        stroke: Some(GraphicStroke {
+            color,
+            width: 1.8,
+            cap: StrokeCap::Round,
+        }),
+        ..Default::default()
+    }
 }
 #[derive(Clone, PartialEq)]
 struct Snapshot {
@@ -559,6 +585,8 @@ impl Widget for NumberInput {
             border_color: integrated.then_some(row_border),
             background: integrated.then_some(row_input),
             radius: integrated.then_some(self.common.theme.radius),
+            overflow_x: integrated.then_some(Overflow::Hidden),
+            overflow_y: integrated.then_some(Overflow::Hidden),
             ..Style::new()
         };
         let row_style: Vary<Style> = if integrated {
@@ -684,9 +712,31 @@ impl Widget for NumberInput {
                     }
                     style
                 });
+                let graphic_enabled = enabled;
+                let drawing = scope.bond(move || {
+                    chevron(
+                        increase,
+                        if graphic_enabled.get() {
+                            muted
+                        } else {
+                            disabled_text
+                        },
+                    )
+                });
                 let mut button = crate::button()
                     .name(label)
-                    .label(if increase { "⌃" } else { "⌄" })
+                    .label("")
+                    .fill(
+                        glory::ui::graphic()
+                            .class("sapid-number-input-chevron")
+                            .drawing(drawing)
+                            .style(
+                                Style::new()
+                                    .width(Length::Px(16.))
+                                    .height(Length::Px(16.))
+                                    .pointer_events(PointerEvents::None),
+                            ),
+                    )
                     .class(if increase {
                         "sapid-number-input-control sapid-number-input-increase"
                     } else {
