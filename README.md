@@ -29,19 +29,22 @@ Glory's optional `view!` syntax, while your application chooses its rendering ho
 - **Documented capabilities.** Each catalog item records implementation scope,
   tests and host boundaries instead of promising uniform platform support.
 
-> **Development preview:** Sapid **0.6.1** and Glory **0.6.1** are unpublished.
-> Rust **1.95+** is required. Keep `sapid`, `glory`, `apace`, `takia` and `wingy`
-> as sibling source repositories. See [development versions](docs/development-versions.md).
+> **Sapid 0.6.1 targets Glory 0.6.1.**
+> Rust **1.95+** is required. For source development, keep `sapid`, `glory`,
+> `apace`, `takia` and `wingy` as sibling repositories. See [development versions](docs/development-versions.md).
 
 ## Start building
 
-From an application directory beside those repositories:
+Add Sapid and Glory to your application:
 
 ```toml
 [dependencies]
-sapid = { path = "../sapid", version = "=0.6.1" }
-glory = { path = "../glory/crates/glory", version = "=0.6.1", default-features = false }
+sapid = { version = "=0.6.1" }
+glory = { version = "=0.6.1", default-features = false }
 ```
+
+For sibling-source development, add `path = "../sapid"` and
+`path = "../glory/crates/glory"` to the respective dependencies.
 
 Select Glory host features such as `web`, `ssr`, `hydrate` or `apace-shell` in
 that application. Sapid leaves rendering hosts, transport, authorization and

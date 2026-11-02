@@ -1,8 +1,8 @@
 # Releases
 
-The 2026-10-30 version bumps are unpublished development versions. Do not publish
-or create release tags for this change. Library, example and benchmark locks are
-local ignored files; generate and validate them without adding them to Git.
+Publish Glory 0.6.1 and its exact engine prerequisites before Sapid 0.6.1.
+Library, example and benchmark locks remain local and ignored; generate and
+validate them without adding them to Git.
 
 
 Push an annotated `v<version>` tag after updating manifests, local resolutions and reviewed `releases/<version>.md` notes.
