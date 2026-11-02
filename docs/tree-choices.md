@@ -51,6 +51,7 @@ claim arbitrary source windowing.
 
 `field(...)`, explicit names, required/readonly/invalid, controlled/default open,
 controlled/default expansion, clear, themes, size and unstyled are supported.
+Clear uses a compact CloseButton beside the trigger rather than a separate full-width action.
 Successful values use real readonly Inputs under a hidden structural View, one
 per current accepted path, with the repeated `form_name` and slash-joined ASCII
 keys. Semantic keys exclude slash, so this encoding is unambiguous. Empty choice

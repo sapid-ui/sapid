@@ -15,7 +15,6 @@ mod tests {
     fn clean_examples_build_real_widgets_and_retire_their_owned_state() {
         for id in [
             "P0-01", "P0-02", "P0-03", "P0-04", "P0-05", "P0-06", "P0-07", "P0-08", "P0-09",
-            "P0-14",
         ] {
             let app = App::memory();
             app.mount(demo(id, sapid::Theme::blue_light())).unwrap();

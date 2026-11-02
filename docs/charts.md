@@ -1,9 +1,10 @@
 # Optional charts
 
-Enable `sapid`'s `charts` feature and import `sapid::charts`. This adds no chart
-library, JavaScript runtime, parser, serde, or host dependency to the production
-graph. Drawing uses Glory's existing finite `GraphicProps`; native and HTML/SVG
-consume the same admitted geometry.
+Enable `sapid`'s `charts` feature and import `sapid::charts`. The feature is
+disabled by default, so ordinary applications do not include chart code or
+`libm`. Enabling it adds no chart library, JavaScript runtime, parser, serde,
+or host dependency to the production graph. Drawing uses Glory's existing finite
+`GraphicProps`; native and HTML/SVG consume the same admitted geometry.
 
 ```rust
 use sapid::charts::*;

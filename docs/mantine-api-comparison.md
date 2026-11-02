@@ -29,7 +29,7 @@ polymorphic component、任意 Recharts/Tiptap/Embla 插件或全局 provider。
 | A2 | P0 | 真实 input/textarea placeholder：Glory 共享语义/HTML/SSR/stream + Sapid 输入族 | 已实现并验收：render/HTML 差分/SSR stream、9 类 Sapid 输入；Apace 明确拒绝并保留成功前缀，未声称原生绘制支持 |
 | A3 | P1 | Button Light / Outline / Subtle 外观，保留 loading/disabled/自定义 Style | 已实现并验收：新增三种外观；四主题 loading/disabled/显式样式与真实浏览器恢复均通过 |
 | A4 | P1 | dropdown 配置、option slot、lineClamp、slider marks、分段 progress、日期 presets、日程统一编辑 | 待后续有限设计；未实现，不承诺整套上游等价 |
-| A5 | P1 | Mantine 9.7.4 展示结构、真实 Rust/Mantine API 参考、Button 多场景与 compact | 展示站提供 Documentation/Props/Styles API；Button 支持五档尺寸、compact、颜色、圆角及独立场景；其他组件保持已验证的有限契约 |
+| A5 | P1 | Mantine 9.7.4 展示结构、真实 Rust/Mantine API 参考、Button 多场景与 compact | 展示站提供 Documentation/Properties/Styles API，181 个官方指南按 Mantine 分类与顺序独立展示；Button 支持五档尺寸、compact、颜色、圆角及独立场景；其他组件保持已验证的有限契约 |
 
 ## 逐组件核对
 
@@ -140,7 +140,7 @@ polymorphic component、任意 Recharts/Tiptap/Embla 插件或全局 provider。
 | [Highlight](https://mantine.dev/core/highlight/) | Code/Mark/Highlight：有限文档部位、查询高亮、转义 | 缺多关键字/重叠匹配/autoContrast 等便捷策略；Code 的高亮语言属于可选 CodeHighlight，不把 plain Code 标为完整语法高亮。 | P2 |
 | [List](https://mantine.dev/core/list/) | List：真实有序/无序列表和条目 | 缺 list icon、withPadding/center 等便捷 API；图标列表需保留原生列表语义，不能用普通 Row 模拟。 | P2 |
 | [Mark](https://mantine.dev/core/mark/) | Code/Mark/Highlight：有限文档部位、查询高亮、转义 | 缺多关键字/重叠匹配/autoContrast 等便捷策略；Code 的高亮语言属于可选 CodeHighlight，不把 plain Code 标为完整语法高亮。 | P2 |
-| [Table](https://mantine.dev/core/table/) | Table：真实表格、span、caption/head/body/foot、stripe/border | 缺 sticky header/captionSide/高亮行/滚动容器的统一配置；sticky 在 native 受限。不要把纯表格当完整 DataTable。 | P2 |
+| [Table](https://mantine.dev/core/table/) | Table：真实表格、span、captionSide/head/body/foot、stripe/hover、独立边框、sticky header、间距、tabular nums、滚动组合与行选择示例 | 已补 sticky/captionSide/spacing/hover/borders/tabular 配置与复杂示例；排序、筛选、列管理和虚拟化仍属 DataTable，native sticky 能力单独验收。 | P2 |
 | [Text](https://mantine.dev/core/text/) | Text/Title/Typography：语义级别、截断、字重/行高、主题 | 缺 lineClamp、多行截断、gradient 和任意 HTML 排版容器；lineClamp 值得扩展 Glory 样式，不能由单行 ellipsis 冒充。 | P1 |
 | [Title](https://mantine.dev/core/title/) | Text/Title/Typography：语义级别、截断、字重/行高、主题 | 缺 lineClamp、多行截断、gradient 和任意 HTML 排版容器；lineClamp 值得扩展 Glory 样式，不能由单行 ellipsis 冒充。 | P1 |
 | [Typography](https://mantine.dev/core/typography/) | Text/Title/Typography：语义级别、截断、字重/行高、主题 | 缺 lineClamp、多行截断、gradient 和任意 HTML 排版容器；lineClamp 值得扩展 Glory 样式，不能由单行 ellipsis 冒充。 | P1 |

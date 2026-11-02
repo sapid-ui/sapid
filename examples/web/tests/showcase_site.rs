@@ -14,9 +14,9 @@ fn nodes(app: &App) -> Vec<NodeId> {
 }
 
 #[test]
-fn catalogue_has_exactly_137_unique_routes_and_real_example_sources() {
+fn catalogue_has_exactly_181_unique_routes_and_real_example_sources() {
     let mut ids = std::collections::BTreeSet::new();
-    assert_eq!(ENTRIES.len(), 137);
+    assert_eq!(ENTRIES.len(), 181);
     for entry in ENTRIES {
         assert!(ids.insert(entry.id), "duplicate {}", entry.id);
         assert!(!entry.name.is_empty() && !entry.description.is_empty());
@@ -45,7 +45,7 @@ fn docs_navigation_is_live_semantic_links_and_mobile_menu_is_rust_state() {
                 .any(|c| c == "site-nav-link")
         })
         .collect();
-    assert_eq!(navigation.len(), 137);
+    assert_eq!(navigation.len(), 181);
     assert!(navigation.iter().all(|id| matches!(
         app.tree().node(*id).unwrap().descriptor.view().props,
         Props::Link(_)
@@ -114,12 +114,12 @@ fn documentation_tab_switches_directly_to_host_support() {
 }
 
 #[test]
-fn props_and_styles_tabs_expose_real_rust_and_mantine_api() {
+fn props_and_styles_tabs_expose_only_real_sapid_rust_api() {
     let app = App::memory();
     app.mount(showcase::site(Theme::blue_light(), "P0-01".into()))
         .unwrap();
     for (label, expected) in [
-        ("Props", "Mantine Button Props"),
+        ("Properties", "Button properties"),
         ("Styles API", "Widget classes"),
     ] {
         let tab = nodes(&app)
@@ -150,7 +150,7 @@ fn representative_ssr_documents_render_in_all_themes_without_frames() {
         Theme::green_light(),
         Theme::green_dark(),
     ] {
-        for id in ["", "P0-01", "P0-02", "P9-01", "P11-01"] {
+        for id in ["", "P0-01", "P0-02", "P9-02", "P11-02"] {
             let html = glory::ssr::snapshot(showcase::site(theme.clone(), id.into()))
                 .unwrap()
                 .html;
@@ -206,31 +206,27 @@ fn every_displayed_source_builds_its_preview_and_fits_the_highlighter() {
 #[test]
 fn focused_guides_render_their_own_widget_content() {
     let cases = [
-        ("P0-10", "Choose a fruit"),
         ("P1-01", "Email address"),
-        ("P1-02", "Work email"),
         ("P1-03", "Personal information"),
         ("P1-04", "Autosizes from three to six lines"),
         ("P1-05", "Account password"),
-        ("P1-06", "Addons and actions"),
-        ("P2-01", "Permissions"),
         ("P2-02", "Notifications"),
         ("P2-03", "Delivery"),
         ("P2-05", "Billing interval"),
         ("P2-06", "Languages"),
-        ("P2-07", "Text alignment"),
         ("P3-02", "Centered content"),
-        ("P3-03", "Grid 1"),
-        ("P3-07", "Getting started"),
+        ("P3-03", "Grid item 1"),
+        ("P3-07", "With icons"),
         ("P3-08", "Sapid design principles"),
-        ("P3-09", "Marked text"),
-        ("P3-11", "Project settings"),
+        ("P3-09", "let answer = 42;"),
+        ("P3-09-highlight", "important"),
+        ("P3-09-mark", "Marked text"),
+        ("P3-11", "Norway Fjord Adventures"),
         ("P3-12", "Account details"),
         ("P3-16", "to open search"),
         ("P3-18", "Project metadata"),
         ("P3-19", "Release progress"),
         ("P3-20", "12.5%"),
-        ("P5-01", "Delete this draft?"),
         ("P5-03", "Save draft"),
         ("P5-04", "About Ada"),
         ("P5-05", "Alert title"),
@@ -240,12 +236,29 @@ fn focused_guides_render_their_own_widget_content() {
         ("P7-02", "Volume"),
         ("P7-03", "Price range"),
         ("P7-05", "Product rating"),
-        ("P10-01", "No files selected"),
+        ("P10-01", "Choose files"),
         ("P10-03", "Copy code"),
         ("P5-08", "File upload"),
         ("P6-01", "Semantic widgets"),
         ("P6-02", "Example pages"),
-        ("P6-10", "Editing tools"),
+        ("P6-10", "Formatting"),
+        ("P11-02", "Area chart"),
+        ("P11-02-barchart", "Bar chart"),
+        ("P11-02-linechart", "Line chart"),
+        ("P11-02-compositechart", "Composite chart"),
+        ("P11-03", "Donut chart"),
+        ("P11-03-piechart", "Pie chart"),
+        ("P11-04", "Candlestick chart"),
+        ("P11-04-scatterchart", "Scatter chart"),
+        ("P11-05", "Funnel chart"),
+        ("P11-05-radarchart", "Radar chart"),
+        ("P11-06", "Heatmap"),
+        ("P11-06-matrixchart", "Matrix chart"),
+        ("P11-06-wafflechart", "Waffle chart"),
+        ("P11-07", "Bars list"),
+        ("P11-07-bulletchart", "Bullet chart"),
+        ("P11-08", "Treemap"),
+        ("P11-08-sankeychart", "Sankey chart"),
     ];
     for (id, expected) in cases {
         let entry = sapid_web_example::showcase_catalog::find(id).unwrap();
@@ -257,13 +270,31 @@ fn focused_guides_render_their_own_widget_content() {
 }
 
 #[test]
+fn chart_guides_do_not_mount_the_shared_acceptance_workbench() {
+    let charts = ENTRIES.iter().filter(|entry| entry.group == "Charts");
+    assert_eq!(charts.clone().count(), 22);
+    for entry in charts {
+        let id = entry.id;
+        let html = glory::ssr::snapshot((entry.build)(Theme::blue_light()))
+            .unwrap()
+            .html;
+        assert!(!html.contains("Accept chart proposals"), "{id}");
+        assert!(!html.contains("Accept plot proposals"), "{id}");
+        assert!(!html.contains("Toggle chart owner"), "{id}");
+        assert!(!html.contains("Toggle plot owner"), "{id}");
+        assert!(!html.contains("chart-mode-Line"), "{id}");
+        assert!(!html.contains("plot-secondary"), "{id}");
+        assert_eq!(html.matches("site-chart-card").count(), 1, "{id}");
+    }
+}
+
+#[test]
 fn playground_helpers_are_embedded_only_when_the_preview_uses_them() {
     for (id, expected) in [
         ("P0-01", false),
         ("P0-02", true),
         ("P0-03", true),
         ("P0-07", false),
-        ("P0-10", true),
         ("P2-08", false),
         ("P3-07", false),
         ("P7-05", true),

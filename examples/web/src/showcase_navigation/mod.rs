@@ -16,8 +16,8 @@ pub const SSR_PAGES: &[(&str, &str)] = &[
     ("P6-08", "splitter"),
     ("P4-08", "multi-select"),
     ("P4-09", "tags"),
-    ("P9-01", "dates"),
-    ("P11-01", "charts"),
+    ("P9-02", "dates"),
+    ("P11-02", "charts"),
 ];
 pub fn routes() -> Routes {
     // The public application is query-routed, including its static SSR aliases.

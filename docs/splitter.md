@@ -51,15 +51,18 @@ editor values and engine identities while resizing. Application CSS can still
 change a child's overflow policy; the pane wrapper clips overflowing content.
 
 Pointer capture belongs to the original handle even when release occurs over a
-sibling. One live geometry request serves a drag; moves waiting for geometry
-coalesce to the latest absolute point. Cancellation and Owner retirement remove
-the request and its captures immediately; late results cannot publish. Each drag
-has a non-wrapping ticket, with no visited-pointer or historical geometry cache.
+sibling. One live geometry request serves a drag; move events only retain the
+latest absolute point and publish at most one proposal per host callback rather
+than once per raw pointer event. Drop publishes immediately when geometry is
+available. Cancellation and Owner retirement remove the request and its captures
+immediately; late results cannot publish. Each drag has a non-wrapping ticket,
+with no visited-pointer or historical geometry cache.
 HTML's typed splitter contract includes `touch-action:none`. Native Finger
 pointer protocol simulation exercises the real engine input path; it does not
 establish physical-device or screen-reader acceptance.
 
-Validation currently includes six Sapid component tests; two native component
+Validation currently includes eight Sapid component tests, including host-callback
+coalescing and immediate Drop commit; two native component
 tests covering four themes, both axes, measured layout conservation, controlled
 requests, disabled behavior and editor identity; three shared render tests; two
 shared native tests covering queued keyboard, mouse/Finger capture/cancel and

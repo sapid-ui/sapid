@@ -13,7 +13,8 @@ accepts `direction`. The gap and direction are mount configuration; reactive
 Style can update any supplied declaration without replacing children. Unstyled
 preserves structural layout while removing Container's cosmetic padding.
 
-Center aligns children on both axes. Container uses a real centered inner box,
+Center aligns children on both axes. `inline(true)` selects `Display::InlineFlex`;
+`inline(false)` restores the default Flex display. Container uses a real centered inner box,
 100% available width, a default 960px cap and 16px horizontal padding.
 `max_width(Limit)` changes the cap; `fluid()` explicitly removes it. The cap
 shrinks with the parent's available width. Space defaults to zero by zero and

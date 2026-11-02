@@ -29,7 +29,7 @@ async (hostPage) => {
 
     await go(p, 'showcase.html?widget=P0-01');
     const routes = await p.locator('.site-nav-link').evaluateAll(elements => elements.map(e => ({href:e.getAttribute('href'),label:e.textContent.trim()})));
-    assert(routes.length === 137 && new Set(routes.map(r => new URL(r.href, base).searchParams.get('widget'))).size === 137, '137 unique canonical navigation links');
+    assert(routes.length === 181 && new Set(routes.map(r => new URL(r.href, base).searchParams.get('widget'))).size === 181, '181 unique canonical navigation links');
     for (const route of routes) {
       const id = new URL(route.href, base).searchParams.get('widget');
       const anchor = p.locator(`.site-nav-link[href="${route.href}"]`);
@@ -41,7 +41,7 @@ async (hostPage) => {
       assert((await p.locator('.site-code').first().textContent()).trim().length > 30, `${id}: readable source`);
       assert(await p.locator('iframe').count() === 0, `${id}: no fixture iframe`);
       reports.push({suite:`showcase-route-${id}`,status:'passed'});
-      console.log(`showcase route ${reports.length - 1}/137 ${id} passed`);
+      console.log(`showcase route ${reports.length - 1}/181 ${id} passed`);
     }
 
     await go(p, 'showcase.html?widget=P0-01');
@@ -53,7 +53,7 @@ async (hostPage) => {
     await p.locator('.site-nav-empty').first().waitFor();
     assert(await p.locator('.site-nav-link').count() === 0, 'empty search state');
     await search.fill('');
-    await p.waitForFunction(() => document.querySelectorAll('.site-nav-link').length === 137);
+    await p.waitForFunction(() => document.querySelectorAll('.site-nav-link').length === 181);
     reports.push({suite:'showcase-live-search',status:'passed'});
 
     const demo = p.locator('.site-demo');
@@ -104,10 +104,11 @@ async (hostPage) => {
     assert(await p.locator('.site-support-row').first().textContent() === 'WebTested', 'Documentation switches directly to readable host capabilities');
     await p.getByRole('button',{name:'Documentation',exact:true}).click();
     await p.locator('.site-demo').waitFor();
-    await p.getByRole('button',{name:'Props',exact:true}).click();
-    await p.getByRole('heading',{name:'Mantine Button Props',exact:true}).waitFor();
-    assert(await p.locator('.site-api-name',{hasText:'autoContrast'}).count() === 1, 'Mantine Props reference is available');
-    assert(await p.locator('.site-api-tokens',{hasText:'left_section'}).count() > 0, 'Rust builder API is available');
+    await p.getByRole('button',{name:'Properties',exact:true}).click();
+    await p.getByRole('heading',{name:'Button properties',exact:true}).waitFor();
+    assert(await p.locator('.site-api-tokens',{hasText:'left_section'}).count() > 0, 'Sapid Rust builder API is available');
+    assert(await p.locator('.site-api-name').count() === 0, 'No upstream React props table is presented as Sapid API');
+    assert(!(await p.locator('.site-doc-content').textContent()).includes('Mantine'), 'Sapid properties do not use upstream product branding');
     await p.getByRole('button',{name:'Styles API',exact:true}).click();
     await p.getByRole('heading',{name:'Widget classes',exact:true}).waitFor();
     assert(await p.locator('.site-api-tokens',{hasText:'sapid-button'}).count() > 0, 'Real widget classes are available');
@@ -166,10 +167,132 @@ async (hostPage) => {
     assert(await p.getByRole('textbox',{name:'Biography',exact:true}).count() === 0, 'Fieldset does not reuse the Textarea example');
     reports.push({suite:'showcase-focused-fields',status:'passed'});
 
+    await go(p, 'showcase.html?widget=P10-06');
+    await p.getByRole('button',{name:'JSON example',exact:true}).click();
+    await p.locator('.site-code-highlight-demo .sapid-code-source').filter({hasText:'"ready"'}).waitFor();
+    await p.locator('.site-demo').getByRole('button',{name:'Copy code',exact:true}).click();
+    await p.getByText('Clipboard status: Written',{exact:true}).waitFor();
+    const copiedCode = await p.evaluate(() => navigator.clipboard.readText());
+    assert(copiedCode.replace(/\r\n/g, '\n') === '{\n  "name": "Sapid",\n  "ready": true,\n  "values": [1, 2, 3]\n}\n', 'CodeHighlight copies the complete accepted JSON source');
+    const codeDemo = p.locator('.site-demo');
+    await codeDemo.getByRole('button',{name:'Collapse code',exact:true}).click();
+    await codeDemo.getByRole('button',{name:'Expand code',exact:true}).waitFor();
+    await codeDemo.getByRole('button',{name:'Expand code',exact:true}).click();
+    await codeDemo.getByRole('button',{name:'Collapse code',exact:true}).waitFor();
+    assert(await p.locator('.site-code-highlight-demo .sapid-code-gutter').count() > 0, 'CodeHighlight renders line numbers');
+    reports.push({suite:'showcase-code-highlight-copy-and-expansion',status:'passed'});
+
+    await go(p, 'showcase.html?widget=P8-01');
+    assert(await p.getByRole('table').count() === 6, 'Table includes six complete scenarios');
+    const stickyHeader = p.locator('.site-sticky-table .sapid-table-cell').first();
+    assert(await stickyHeader.evaluate(e => getComputedStyle(e).position) === 'sticky', 'Table header is actually sticky');
+    await p.getByRole('checkbox',{name:'Select Carbon',exact:true}).check();
+    await p.getByText('Selected: Carbon',{exact:true}).waitFor();
+    await p.getByRole('checkbox',{name:'Select Nitrogen',exact:true}).check();
+    await p.getByText('Selected: Carbon, Nitrogen',{exact:true}).waitFor();
+    await p.getByRole('checkbox',{name:'Select Carbon',exact:true}).uncheck();
+    await p.getByText('Selected: Nitrogen',{exact:true}).waitFor();
+    reports.push({suite:'showcase-table-rich-scenarios-and-selection',status:'passed'});
+
+    await go(p, 'showcase.html?widget=P8-04');
+    assert(await p.getByText('Refuse path selection',{exact:true}).count() === 0, 'TreeSelect is a usage guide, not an engineering workbench');
+    const popupFor = async trigger => p.locator(`#${await trigger.getAttribute('aria-controls')}`);
+    const treeItem = (root,name) => root.getByRole('treeitem',{name,exact:true});
+    const singleTree = p.getByRole('combobox',{name:'Your favorite item',exact:true});
+    const singlePopup = await popupFor(singleTree);
+    assert(!await singlePopup.evaluate(el => el.matches(':popover-open')), 'TreeSelect starts with an anchored, closed popup');
+    assert((await singleTree.boundingBox()).width > 300, 'Compact clear action does not shrink the trigger to its label');
+    await singleTree.click();
+    await treeItem(singlePopup,'Phones').waitFor();
+    await treeItem(singlePopup,'Phones').click();
+    await singleTree.getByText('Phones',{exact:true}).waitFor();
+    await p.getByRole('button',{name:'Clear tree selection',exact:true}).first().click();
+    await singleTree.getByText('Pick value',{exact:true}).waitFor();
+
+    const multipleTree = p.getByRole('combobox',{name:'Your favorite items',exact:true});
+    const multiplePopup = await popupFor(multipleTree);
+    await multipleTree.click();
+    await treeItem(multiplePopup,'Laptops').click();
+    await p.getByRole('button',{name:'Remove laptops',exact:true}).click();
+    await p.getByRole('button',{name:'Remove laptops',exact:true}).waitFor({state:'detached'});
+    assert(await p.getByRole('button',{name:'Remove laptops',exact:true}).count() === 0, 'TreeSelect pills remove one controlled value');
+    await p.getByRole('button',{name:'Remove phones',exact:true}).click();
+    await p.getByRole('button',{name:'Remove phones',exact:true}).waitFor({state:'detached'});
+    assert(await p.getByRole('button',{name:'Remove phones',exact:true}).count() === 0, 'TreeSelect removes the initial pill');
+
+    const cascadeTree = p.getByRole('combobox',{name:'Include categories',exact:true});
+    const cascadePopup = await popupFor(cascadeTree);
+    await cascadeTree.click();
+    await treeItem(cascadePopup,'Electronics').click();
+    await p.waitForFunction(el => el.getAttribute('aria-checked') === 'true', await treeItem(cascadePopup,'Electronics').elementHandle());
+    assert(await treeItem(cascadePopup,'Electronics').getAttribute('aria-checked') === 'true', 'TreeSelect parent is checked after cascading');
+    assert(await treeItem(cascadePopup,'Phones').getAttribute('aria-checked') === 'true' && await treeItem(cascadePopup,'Laptops').getAttribute('aria-checked') === 'true', 'TreeSelect branch selects its enabled leaves');
+    await treeItem(cascadePopup,'Laptops').click();
+    await p.waitForFunction(el => el.getAttribute('aria-checked') === 'mixed', await treeItem(cascadePopup,'Electronics').elementHandle());
+    assert(await treeItem(cascadePopup,'Electronics').getAttribute('aria-checked') === 'mixed', 'TreeSelect parent derives half-checked state');
+    await p.keyboard.press('Escape');
+
+    const treeSearch = p.getByRole('textbox',{name:'Search tree items',exact:true});
+    await treeSearch.fill('no-such-item');
+    await p.getByText('Nothing found',{exact:true}).waitFor();
+    const filteredTree = p.getByRole('combobox',{name:'Filtered items',exact:true});
+    const filteredPopup = await popupFor(filteredTree);
+    await filteredTree.click();
+    assert(await filteredPopup.getByRole('treeitem').count() === 0, 'TreeSelect search has a real empty tree state');
+    await filteredTree.click();
+    await treeSearch.fill('phone');
+    await p.getByText('Nothing found',{exact:true}).waitFor({state:'detached'});
+    assert(await p.getByText('Nothing found',{exact:true}).count() === 0, 'TreeSelect search recovers from empty results');
+    await filteredTree.click();
+    await treeItem(filteredPopup,'Phones').waitFor();
+    assert(await treeItem(filteredPopup,'Electronics').count() === 1 && await treeItem(filteredPopup,'Laptops').count() === 0, 'TreeSelect search preserves ancestors but filters siblings');
+    reports.push({suite:'showcase-tree-select-usage-and-interactions',status:'passed'});
+
+    for (const [id,label] of [['P4-05','Your favorite framework'],['P4-06','Your favorite framework'],['P4-07','Your favorite framework'],['P8-05','Your favorite item']]) {
+      await go(p, `showcase.html?widget=${id}`);
+      assert(await p.getByRole('combobox',{name:label,exact:true}).count() > 0, `${id}: its own usage example is present`);
+      assert(await p.getByText(/Before choices|Before combobox|Proposals:|Toggle path Owner/).count() === 0, `${id}: no engineering acceptance workbench remains`);
+    }
+    reports.push({suite:'showcase-combobox-family-focused-guides',status:'passed'});
+
+    await go(p, 'showcase.html?widget=P6-06');
+    assert(await p.locator('.site-stepper-demo .sapid-stepper-text').evaluateAll(nodes => nodes.every(node => getComputedStyle(node).display === 'flex' && getComputedStyle(node).flexDirection === 'column')), 'Stepper labels and descriptions use independent columns');
+    assert(await p.getByText('Pending',{exact:true}).count() === 0, 'Stepper has no raw pending debug text');
+    await p.getByRole('button',{name:'Back',exact:true}).click();
+    await p.getByRole('button',{name:'Next',exact:true}).click();
+    await p.getByRole('button',{name:'3. Review',exact:true}).click();
+    await p.getByText('Step 3 content: Confirm your details',{exact:true}).waitFor();
+    await p.getByRole('button',{name:'Next',exact:true}).click();
+    await p.getByText('Workflow completed',{exact:true}).waitFor();
+    reports.push({suite:'showcase-stepper-layout-and-workflow',status:'passed'});
+
+    for (const [id,title,cards] of [
+      ['P11-02','Area chart',1],
+      ['P11-02-barchart','Bar chart',1], ['P11-02-linechart','Line chart',1],
+      ['P11-02-compositechart','Composite chart',1], ['P11-03','Donut chart',1],
+      ['P11-03-piechart','Pie chart',1], ['P11-03-radialbarchart','Radial bar chart',1],
+      ['P11-04','Candlestick chart',1], ['P11-04-scatterchart','Scatter chart',1],
+      ['P11-04-bubblechart','Bubble chart',1], ['P11-05','Funnel chart',1],
+      ['P11-05-radarchart','Radar chart',1], ['P11-05-sparkline','Sparkline',1],
+      ['P11-06','Heatmap',1], ['P11-06-matrixchart','Matrix chart',1],
+      ['P11-06-wafflechart','Waffle chart',1], ['P11-07','Bars list',1],
+      ['P11-07-bulletchart','Bullet chart',1], ['P11-07-gaugechart','Gauge chart',1],
+      ['P11-08','Treemap',1], ['P11-08-sunburstchart','Sunburst chart',1],
+      ['P11-08-sankeychart','Sankey chart',1],
+    ]) {
+      await go(p, `showcase.html?widget=${id}`);
+      await p.locator('.site-chart-card').getByRole('heading',{name:title,exact:true}).waitFor();
+      assert(await p.locator('.site-chart-card').count() === cards, `${id} renders its own chart family`);
+      assert(await p.getByText('Accept chart proposals',{exact:true}).count() === 0, `${id} has no cartesian acceptance workbench`);
+      assert(await p.getByText('Accept plot proposals',{exact:true}).count() === 0, `${id} has no plot acceptance workbench`);
+      assert(await p.locator('.chart-mode-Line,.plot-secondary').count() === 0, `${id} has no secondary acceptance charts`);
+    }
+    reports.push({suite:'showcase-dedicated-chart-guides',status:'passed'});
+
     for (const hue of ['blue','green']) for (const scheme of ['light','dark']) for (const name of ['home','button','textfield','dates','charts']) {
       await go(p, `ssr-${name}-${hue}-${scheme}.html`);
       assert(await p.locator(`.sapid-site.site-${scheme}`).count() === 1, `SSR ${name}: adopted theme`);
-      if (name !== 'home') assert(await p.locator('.site-nav-link').count() === 137, `SSR ${name}: full navigation`);
+      if (name !== 'home') assert(await p.locator('.site-nav-link').count() === 181, `SSR ${name}: full navigation`);
       reports.push({suite:`showcase-ssr-${name}-${hue}-${scheme}`,status:'passed'});
     }
     await p.goto(`${base}/ssr-textfield-blue-light.html?manual`);

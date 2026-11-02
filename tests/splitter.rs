@@ -475,3 +475,57 @@ fn cancel_and_owner_retirement_remove_pending_geometry_and_ignore_late_errors() 
     app.pump().unwrap();
     assert_eq!(count.get(), 0);
 }
+
+#[test]
+fn drag_moves_coalesce_per_host_callback_but_drop_commits_immediately() {
+    let (app, wire) = fixture();
+    let changes = Rc::new(RefCell::new(Vec::new()));
+    let commits = Rc::new(RefCell::new(Vec::new()));
+    let changed = changes.clone();
+    let committed = commits.clone();
+    app.mount(
+        splitter("coalesced")
+            .on_value_change(move |value| changed.borrow_mut().push(value))
+            .on_value_commit(move |value| committed.borrow_mut().push(value)),
+    )
+    .unwrap();
+    let handle = class(&app, "sapid-splitter-handle");
+    pointer(&app, handle, DragPhase::Start, 100.0, 100.0);
+    respond(
+        &wire,
+        0,
+        Ok(QueryValue::Bounds(Rect {
+            width: 600.0,
+            height: 300.0,
+            ..Default::default()
+        })),
+    );
+    app.pump().unwrap();
+    changes.borrow_mut().clear();
+    for x in [150.0, 200.0, 250.0, 300.0] {
+        pointer(&app, handle, DragPhase::Move, x, 100.0);
+    }
+    assert_eq!(app.stats().queries, 1);
+    assert!(changes.borrow().is_empty());
+    assert_eq!(value(&app, handle), 50.0);
+    respond(
+        &wire,
+        1,
+        Ok(QueryValue::Bounds(Rect {
+            width: 600.0,
+            height: 300.0,
+            ..Default::default()
+        })),
+    );
+    app.pump().unwrap();
+    assert_eq!(changes.borrow().len(), 1);
+    let latest = changes.borrow()[0];
+    assert!((latest - (50.0 + 200.0 / 594.0 * 100.0)).abs() < 0.0001);
+    pointer(&app, handle, DragPhase::Drop, 350.0, 100.0);
+    app.flush().unwrap();
+    let dropped = 90.0;
+    assert!((value(&app, handle) - dropped).abs() < 0.0001);
+    assert_eq!(changes.borrow().last().copied(), Some(dropped));
+    assert_eq!(commits.borrow().last().copied(), Some(dropped));
+    assert_eq!(app.stats().queries, 0);
+}

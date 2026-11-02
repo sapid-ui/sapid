@@ -516,9 +516,9 @@ pub mod prelude {
         MonthPickerInput, PeriodPickerInput, YearPickerInput, month_picker_input, year_picker_input,
     };
     pub use crate::table::{
-        MAX_TABLE_CELLS, MAX_TABLE_COLUMNS, MAX_TABLE_ROWS, Table, TableCell, TableCellKind,
-        TableRow, TableSection, table, table_body, table_cell, table_foot, table_head,
-        table_header_cell, table_row, table_row_header,
+        MAX_TABLE_CELLS, MAX_TABLE_COLUMNS, MAX_TABLE_ROWS, Table, TableCaptionSide, TableCell,
+        TableCellKind, TableRow, TableSection, TableStripe, table, table_body, table_cell,
+        table_foot, table_head, table_header_cell, table_row, table_row_header,
     };
     pub use crate::table_of_contents::{
         MAX_TOC_HEADINGS, TableOfContents, TocContext, TocDocument, TocEntry, TocHeading,
@@ -723,9 +723,9 @@ pub use table_of_contents::{
 
 mod table;
 pub use table::{
-    MAX_TABLE_CELLS, MAX_TABLE_COLUMNS, MAX_TABLE_ROWS, Table, TableCell, TableCellKind, TableRow,
-    TableSection, table, table_body, table_cell, table_foot, table_head, table_header_cell,
-    table_row, table_row_header,
+    MAX_TABLE_CELLS, MAX_TABLE_COLUMNS, MAX_TABLE_ROWS, Table, TableCaptionSide, TableCell,
+    TableCellKind, TableRow, TableSection, TableStripe, table, table_body, table_cell, table_foot,
+    table_head, table_header_cell, table_row, table_row_header,
 };
 
 mod theme_tokens;

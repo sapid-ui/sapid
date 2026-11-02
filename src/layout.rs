@@ -227,6 +227,16 @@ macro_rules! flex_methods {($($name:ident),+)=>{$(impl $name {
     pub fn wrap(mut self,wrap:FlexWrap)->Self {self.layout.base.flex_wrap=Some(wrap);self}
 })+}}
 flex_methods!(Flex, Stack, Group);
+impl Center {
+    pub fn inline(mut self, inline: bool) -> Self {
+        self.layout.base.display = Some(if inline {
+            Display::InlineFlex
+        } else {
+            Display::Flex
+        });
+        self
+    }
+}
 impl Flex {
     pub fn direction(mut self, direction: FlexDirection) -> Self {
         self.layout.base.flex_direction = Some(direction);

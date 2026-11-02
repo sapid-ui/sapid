@@ -2,7 +2,7 @@
 use crate::appearance::Common;
 use crate::composite;
 use glory::render::{DocumentPart, NodeId, SemanticId, Semantics, TableMetadata};
-use glory::style::{BorderStyle, Edges, Length, Style};
+use glory::style::{BorderStyle, Edges, Length, Position, Style};
 use glory::ui::{Result, Widget};
 use glory::{Cage, Scope, Vary};
 use std::collections::BTreeSet;
@@ -184,22 +184,53 @@ impl TableSection {
         self
     }
 }
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum TableCaptionSide {
+    #[default]
+    Top,
+    Bottom,
+}
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum TableStripe {
+    #[default]
+    None,
+    Odd,
+    Even,
+}
 pub struct Table {
     key: String,
     common: Common,
     caption: Option<Vary<String>>,
+    caption_side: TableCaptionSide,
     sections: Vec<TableSection>,
-    striped: bool,
-    bordered: bool,
+    stripe: TableStripe,
+    highlight_on_hover: bool,
+    horizontal_spacing: f64,
+    vertical_spacing: f64,
+    column_borders: bool,
+    row_borders: bool,
+    table_border: bool,
+    sticky_header: bool,
+    sticky_header_offset: Length,
+    tabular_nums: bool,
 }
 pub fn table(key: impl Into<String>) -> Table {
     Table {
         key: key.into(),
         common: Common::default(),
         caption: None,
+        caption_side: TableCaptionSide::Top,
         sections: Vec::new(),
-        striped: false,
-        bordered: false,
+        stripe: TableStripe::None,
+        highlight_on_hover: false,
+        horizontal_spacing: 12.0,
+        vertical_spacing: 8.0,
+        column_borders: false,
+        row_borders: false,
+        table_border: false,
+        sticky_header: false,
+        sticky_header_offset: Length::Px(0.0),
+        tabular_nums: false,
     }
 }
 impl Table {
@@ -235,11 +266,61 @@ impl Table {
         self
     }
     pub fn striped(mut self, value: bool) -> Self {
-        self.striped = value;
+        self.stripe = if value {
+            TableStripe::Odd
+        } else {
+            TableStripe::None
+        };
+        self
+    }
+    pub fn striped_pattern(mut self, value: TableStripe) -> Self {
+        self.stripe = value;
+        self
+    }
+    pub fn highlight_on_hover(mut self, value: bool) -> Self {
+        self.highlight_on_hover = value;
+        self
+    }
+    pub fn horizontal_spacing(mut self, value: f64) -> Self {
+        self.horizontal_spacing = value;
+        self
+    }
+    pub fn vertical_spacing(mut self, value: f64) -> Self {
+        self.vertical_spacing = value;
         self
     }
     pub fn bordered(mut self, value: bool) -> Self {
-        self.bordered = value;
+        self.table_border = value;
+        self.column_borders = value;
+        self.row_borders = value;
+        self
+    }
+    pub fn with_table_border(mut self, value: bool) -> Self {
+        self.table_border = value;
+        self
+    }
+    pub fn with_column_borders(mut self, value: bool) -> Self {
+        self.column_borders = value;
+        self
+    }
+    pub fn with_row_borders(mut self, value: bool) -> Self {
+        self.row_borders = value;
+        self
+    }
+    pub fn sticky_header(mut self, value: bool) -> Self {
+        self.sticky_header = value;
+        self
+    }
+    pub fn sticky_header_offset(mut self, value: Length) -> Self {
+        self.sticky_header_offset = value;
+        self
+    }
+    pub fn caption_side(mut self, value: TableCaptionSide) -> Self {
+        self.caption_side = value;
+        self
+    }
+    pub fn tabular_nums(mut self, value: bool) -> Self {
+        self.tabular_nums = value;
         self
     }
     pub fn theme(mut self, value: crate::Theme) -> Self {
@@ -289,9 +370,43 @@ struct Header {
     id: SemanticId,
     kind: TableCellKind,
 }
+fn caption_view(
+    id: SemanticId,
+    value: Cage<String>,
+    theme: &crate::Theme,
+    size: crate::Size,
+    unstyled: bool,
+) -> glory::ui::View {
+    let mut style = theme.label(size);
+    style.color = Some(theme.muted);
+    style.padding = Some(Edges::all(8.));
+    if unstyled {
+        style = Style::new()
+    }
+    glory::ui::view()
+        .class("sapid-table-caption")
+        .style(style)
+        .semantics(composite::metadata(Semantics {
+            document_part: Some(DocumentPart::TableCaption),
+            id: Some(id),
+            ..Default::default()
+        }))
+        .fill(glory::ui::text().content(value))
+}
 impl Widget for Table {
     fn build(&mut self, scope: &Scope) -> Result {
         key(&self.key)?;
+        if !self.horizontal_spacing.is_finite()
+            || !self.vertical_spacing.is_finite()
+            || self.horizontal_spacing < 0.0
+            || self.vertical_spacing < 0.0
+        {
+            return Err(invalid("table spacing must be finite and nonnegative"));
+        }
+        Style::new()
+            .top(self.sticky_header_offset)
+            .validate()
+            .map_err(glory::render::Error::InvalidProps)?;
         self.sections.sort_by_key(|s| match s.kind {
             SectionKind::Head => 0,
             SectionKind::Body => 1,
@@ -424,8 +539,27 @@ impl Widget for Table {
         if !self.common.unstyled {
             base.color = Some(self.common.theme.foreground);
             base.background = Some(self.common.theme.surface);
+            if self.table_border {
+                base.border_width = Some(Edges::all(1.));
+                base.border_style = Some(BorderStyle::Solid);
+                base.border_color = Some(self.common.theme.border);
+                base.radius = Some(self.common.theme.radius);
+            }
         }
-        let (classes, style) = self.common.appearance(scope, "sapid-table", base);
+        let class = format!(
+            "sapid-table{}{}",
+            if self.highlight_on_hover {
+                " sapid-table-hover"
+            } else {
+                ""
+            },
+            if self.tabular_nums {
+                " sapid-table-tabular-nums"
+            } else {
+                ""
+            },
+        );
+        let (classes, style) = self.common.appearance(scope, &class, base);
         let mut root_view = glory::ui::view()
             .class(classes)
             .style(style)
@@ -444,23 +578,17 @@ impl Widget for Table {
         }
         root_view.show_in(scope)?;
         let parent = scope.child_in(root.get().ok_or(glory::ui::Error::Gone)?)?;
-        if let Some(caption) = caption {
-            let mut caption_style = self.common.theme.label(self.common.size);
-            caption_style.color = Some(self.common.theme.muted);
-            caption_style.padding = Some(Edges::all(8.));
-            if self.common.unstyled {
-                caption_style = Style::new()
-            }
-            glory::ui::view()
-                .class("sapid-table-caption")
-                .style(caption_style)
-                .semantics(composite::metadata(Semantics {
-                    document_part: Some(DocumentPart::TableCaption),
-                    id: Some(caption_id),
-                    ..Default::default()
-                }))
-                .fill(glory::ui::text().content(caption))
-                .show_in(&parent)?;
+        if self.caption_side == TableCaptionSide::Top
+            && let Some(caption) = caption
+        {
+            caption_view(
+                caption_id.clone(),
+                caption,
+                &self.common.theme,
+                self.common.size,
+                self.common.unstyled,
+            )
+            .show_in(&parent)?;
         }
         row_index = 0;
         for (section_index, (section, plan)) in self.sections.iter_mut().zip(&plans).enumerate() {
@@ -489,7 +617,13 @@ impl Widget for Table {
                     .node_ref
                     .unwrap_or_else(|| group_scope.cage(None));
                 let mut style = Style::new();
-                if self.striped && row_index % 2 == 1 && !row.common.unstyled {
+                let striped = matches!(section.kind, SectionKind::Body)
+                    && match self.stripe {
+                        TableStripe::None => false,
+                        TableStripe::Odd => local_row % 2 == 0,
+                        TableStripe::Even => local_row % 2 == 1,
+                    };
+                if striped && !row.common.unstyled {
                     style.background = Some(row.common.theme.accent_soft)
                 }
                 let (classes, style) =
@@ -520,18 +654,30 @@ impl Widget for Table {
                     );
                     let mut style = cell.common.theme.label(cell.common.size);
                     style.padding = Some(Edges {
-                        top: 8.,
-                        bottom: 8.,
-                        left: 12.,
-                        right: 12.,
+                        top: self.vertical_spacing,
+                        bottom: self.vertical_spacing,
+                        left: self.horizontal_spacing,
+                        right: self.horizontal_spacing,
                     });
                     style.color = Some(cell.common.theme.foreground);
                     if cell.kind != TableCellKind::Data {
                         style.background = Some(cell.common.theme.accent_soft);
                         style.font_weight = Some(700.);
                     }
-                    if self.bordered {
-                        style.border_width = Some(Edges::all(1.));
+                    if self.sticky_header && matches!(section.kind, SectionKind::Head) {
+                        style.position = Some(Position::Sticky);
+                        style.top = Some(self.sticky_header_offset);
+                    }
+                    let mut borders = Edges::all(0.);
+                    if self.column_borders {
+                        borders.left = 1.;
+                        borders.right = 1.;
+                    }
+                    if self.row_borders {
+                        borders.bottom = 1.;
+                    }
+                    if borders != Edges::all(0.) {
+                        style.border_width = Some(borders);
                         style.border_style = Some(BorderStyle::Solid);
                         style.border_color = Some(cell.common.theme.border);
                     }
@@ -576,6 +722,18 @@ impl Widget for Table {
                 row_index += 1;
             }
             parent.retain(group_scope)?;
+        }
+        if self.caption_side == TableCaptionSide::Bottom
+            && let Some(caption) = caption
+        {
+            caption_view(
+                caption_id,
+                caption,
+                &self.common.theme,
+                self.common.size,
+                self.common.unstyled,
+            )
+            .show_in(&parent)?;
         }
         scope.retain(parent)?;
         Ok(())

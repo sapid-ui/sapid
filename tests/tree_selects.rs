@@ -318,6 +318,17 @@ fn readonly_disabled_and_clear_are_independent_from_external_controlled_updates(
     assert_eq!(s.expanded, Some(false));
     assert_eq!(s.combobox, Some(ComboboxKind::Select));
     assert_eq!(s.popup, Some(PopupKind::Tree));
+    assert_eq!(t.node(id).unwrap().descriptor.view().style.grow, Some(1.));
+    let clear = named(&app, "Clear tree selection");
+    assert!(
+        app.tree()
+            .node(clear)
+            .unwrap()
+            .descriptor
+            .view()
+            .classes
+            .contains(&"sapid-close-button".to_owned())
+    );
 }
 #[test]
 fn branch_leaf_policy_and_owner_retirement_do_not_publish_hidden_choices() {

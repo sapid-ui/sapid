@@ -195,6 +195,47 @@ impl Controller {
         );
         Ok(())
     }
+    fn schedule_drag(self: &Rc<Self>) -> Result {
+        if self.pending.get().is_some() {
+            return Ok(());
+        }
+        let (ticket, handle) = {
+            let slot = self.drag.borrow();
+            let Some(drag) = slot.as_ref() else {
+                return Ok(());
+            };
+            (
+                drag.ticket,
+                self.handle.try_get()?.ok_or(glory::ui::Error::Gone)?,
+            )
+        };
+        let scope = self.weak.upgrade().ok_or(glory::ui::Error::Gone)?;
+        let controller = self.clone();
+        let token = scope.request(Query::Bounds(handle), move |result| {
+            if controller.ensure().is_err()
+                || controller.drag.borrow().as_ref().map(|drag| drag.ticket) != Some(ticket)
+            {
+                return;
+            }
+            controller.pending.set(None);
+            let Some(scope) = controller.weak.upgrade() else {
+                return;
+            };
+            let accepted = (|| -> Result {
+                match result? {
+                    QueryValue::Bounds(_) => controller.apply_drag(),
+                    _ => Err(invalid("splitter frame response mismatch")),
+                }
+            })();
+            if let Err(error) = accepted {
+                controller.cancel();
+                scope.report_error(error);
+            }
+        })?;
+        self.pending.set(Some(token));
+        Ok(())
+    }
+
     fn pointer(self: &Rc<Self>, event: Event) -> Result {
         let Event::Drag { phase, x, y, .. } = event else {
             return Ok(());
@@ -283,7 +324,21 @@ impl Controller {
                 drag.phase = phase;
                 drag.pending = true;
             }
-            self.apply_drag()?;
+            if phase == DragPhase::Drop
+                && self
+                    .drag
+                    .borrow()
+                    .as_ref()
+                    .is_some_and(|drag| drag.extent.is_some())
+            {
+                if let Some(token) = self.pending.take() {
+                    let scope = self.weak.upgrade().ok_or(glory::ui::Error::Gone)?;
+                    scope.cancel_request(token)?;
+                }
+                self.apply_drag()?;
+            } else {
+                self.schedule_drag()?;
+            }
         }
         Ok(())
     }

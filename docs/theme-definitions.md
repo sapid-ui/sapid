@@ -71,10 +71,10 @@ contrast checks and the browser's four-mode theme/navigation checks remain in us
   checks and 14 Theme Studio checks. It also compiled the exact clipboard export
   in a separate D-drive project and asserted its seed, base and dark override
   values. Log: `D:/BuildCache/sapid/studio-showcase-final-gate.log`.
-- The fast `theme_audit` gate mounts all 137 compiled demos under both green/dark
+- The fast `theme_audit` gate mounts all 181 compiled demos under both green/dark
   and an arbitrary named custom/light theme. No styled widget retains a foreign
-  theme class (274 mounts). Report: `D:/BuildCache/sapid/theme-default-audit-final.json`.
-- `node scripts/audit-showcase-themes.cjs` additionally visited all 137 actual
+  theme class (362 mounts). Report: `D:/BuildCache/sapid/theme-default-audit-final.json`.
+- `node scripts/audit-showcase-themes.cjs` additionally visited all 181 actual
   browser routes in green/dark. No unintended default blue/light widget or wrong
   page canvas remained. Report: `D:/BuildCache/sapid/dark-theme-audit.json`.
 - The browser flow covers generation, exact/incomplete RGBA editing, inherited

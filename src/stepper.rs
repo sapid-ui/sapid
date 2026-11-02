@@ -260,7 +260,14 @@ impl Widget for Stepper {
                     } else {
                         FlexDirection::Column
                     })
-                    .gap(12.0),
+                    .gap(12.0)
+                    .width(glory::style::Length::Percent(100.0))
+                    .margin(Edges {
+                        top: 0.0,
+                        bottom: 20.0,
+                        left: 0.0,
+                        right: 0.0,
+                    }),
             );
         }
         let callback = Callback::new(self.change.take());
@@ -287,22 +294,21 @@ impl Widget for Stepper {
             });
             let label = step.inner.label.clone();
             let content = scope.bond(move || format!("{}. {}", index + 1, label.get()));
+            let icon = scope.bond(move || match status.get() {
+                StepStatus::Completed => "✓".to_owned(),
+                StepStatus::Error => "!".to_owned(),
+                StepStatus::Pending => (index + 1).to_string(),
+            });
             let description = step.description;
             let optional = step.optional;
             let caption = scope.bond(move || {
-                let status = match status.get() {
-                    StepStatus::Pending => "Pending",
-                    StepStatus::Completed => "Completed",
-                    StepStatus::Error => "Error",
-                };
                 let description = description.get();
-                format!(
-                    "Step {} of {count} · {status}{}{}{}",
-                    index + 1,
-                    if optional { " · Optional" } else { "" },
-                    if description.is_empty() { "" } else { " · " },
-                    description
-                )
+                match (optional, description.is_empty()) {
+                    (true, false) => format!("Optional · {description}"),
+                    (true, true) => "Optional".to_owned(),
+                    (false, false) => description,
+                    (false, true) => String::new(),
+                }
             });
             let own_enabled = step.inner.enabled.clone();
             let enabled = self.common.enabled.clone();
@@ -319,7 +325,8 @@ impl Widget for Stepper {
             let trigger = trigger_id.clone();
             let description = description_id.clone();
             let mut button = glory::ui::button()
-                .label(content)
+                .label(icon)
+                .name(content)
                 .enabled(enabled)
                 .class("sapid-button sapid-stepper-trigger")
                 .semantics(scope.bond(move || {
@@ -339,6 +346,12 @@ impl Widget for Stepper {
                 let size = self.common.size;
                 button = button.style(scope.bond(move || {
                     let mut style = theme.control(size);
+                    style.width = Some(glory::style::Length::Px(36.0));
+                    style.height = Some(glory::style::Length::Px(36.0));
+                    style.min_width = Some(glory::style::Length::Px(36.0));
+                    style.padding = Some(Edges::all(0.0));
+                    style.radius = Some(999.0);
+                    style.shrink = Some(0.0);
                     if status.get() == StepStatus::Error {
                         style.background = Some(theme.danger_soft);
                         style.color = Some(theme.danger);
@@ -391,12 +404,31 @@ impl Widget for Stepper {
                     ..Style::new()
                 }));
             }
-            headers = headers.fill(
-                glory::ui::view()
-                    .role(Role::ListItem)
-                    .class("sapid-stepper-step")
-                    .fill((button, caption)),
-            );
+            let mut label = glory::ui::text()
+                .content(step.inner.label.clone())
+                .class("sapid-stepper-label");
+            let mut text_column = glory::ui::view().class("sapid-stepper-text");
+            let mut step_view = glory::ui::view()
+                .role(Role::ListItem)
+                .class("sapid-stepper-step");
+            if !self.common.unstyled {
+                label = label.style(Style::new().font_weight(600.0));
+                text_column = text_column.style(
+                    Style::new()
+                        .display(Display::Flex)
+                        .flex_direction(FlexDirection::Column)
+                        .gap(2.0)
+                        .min_width(glory::style::Length::Px(0.0)),
+                );
+                step_view = step_view.style(Style {
+                    align: Some(glory::style::Align::Center),
+                    grow: Some(1.0),
+                    ..Style::new().display(Display::Flex).gap(12.0)
+                });
+            }
+            text_column = text_column.fill((label, caption));
+            step_view = step_view.fill((button, text_column));
+            headers = headers.fill(step_view);
             panels = panels.fill(StepPanel {
                 id: panel_id,
                 label: trigger_id,

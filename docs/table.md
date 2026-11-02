@@ -46,10 +46,15 @@ precedence; the shared mapper/native adapter restore caption naming after Name
 Clear without rebuilding content.
 
 Table, rows and cells support theme, size, class, independent Style overrides
-and unstyled presentation. `.striped(true)` shades alternate rows and
-`.bordered(true)` adds cell borders. Defaults use the active blue/green light/dark
-tokens; cells retain genuine table sizing, wrapping and spans. Applications can
-put a wider table inside `ScrollArea` when their columns need horizontal space.
+and unstyled presentation. `.striped(true)` shades odd body rows and
+`.striped_pattern(TableStripe::{Odd,Even,None})` selects the exact policy.
+`.highlight_on_hover(true)` enables row hover feedback. `caption_side` places the
+caption above or below all sections. `horizontal_spacing` and `vertical_spacing`
+set finite, nonnegative cell padding. Independent `with_table_border`,
+`with_column_borders` and `with_row_borders` control the outer, column and row
+rules; legacy `.bordered(true)` enables all three. `sticky_header` and
+`sticky_header_offset` position real header cells. `tabular_nums` aligns numeric
+columns. Applications can put a wider or taller table inside `ScrollArea`.
 
 This finite Table is the structural foundation for DataTable. Sorting, filtering,
 selection, column visibility, pagination and windowed business data belong to
@@ -60,8 +65,9 @@ inside cells retain their native behavior.
 Evidence:
 
 - `src/table/model.rs`: three grid/span/budget tests.
-- `tests/tables.rs`: four component tests for four-theme SSR, associations,
-  sentinel admission before factories, live text/editor identity and cleanup.
+- `tests/tables.rs`: six component tests for four-theme SSR, associations,
+  sentinel admission before factories, live text/editor identity, caption order,
+  sticky/spacing/border/stripe presentation and cleanup.
 - `../glory/crates/render/tests/table.rs`: four independent target/coordinate/
   content/rollback tests. `../glory/crates/html/src/table_tests.rs` compares live
   field lowering and full-shape output, including resets without tag replacement.

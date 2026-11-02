@@ -557,14 +557,14 @@
       },
       "ssr": {
         "state": "tested",
-        "notes": "The Rust showcase builds and adopts representative pages: home, Button, TextField, dates and charts across four theme combinations. This does not claim individual SSR acceptance for all 137 routes; original SSR audit fixtures remain separate.",
+        "notes": "The Rust showcase builds and adopts representative pages: home, Button, TextField, dates and charts across four theme combinations. This does not claim individual SSR acceptance for all 181 routes; original SSR audit fixtures remain separate.",
         "evidence": [
           "inventory:P0-14"
         ]
       },
       "web": {
         "state": "tested",
-        "notes": "The Rust showcase exposes 137 live documentation routes, search, themes, source and real controls. Chromium acceptance clicks every route and checks the Button property panel, code/copy, mobile and adoption. The original static audit gallery remains separate.",
+        "notes": "The Rust showcase exposes 181 live documentation routes, search, themes, source and real controls. Chromium acceptance clicks every route and checks the Button property panel, code/copy, mobile and adoption. The original static audit gallery remains separate.",
         "evidence": [
           "inventory:P0-14"
         ]

@@ -45,9 +45,9 @@
 
 **本地实现：** [../glory/crates/style/src/lib.rs](../../glory/crates/style/src/lib.rs)、[src/layout.rs](../src/layout.rs)、[src/responsive.rs](../src/responsive.rs)
 
-**本地公开入口（同族）：** `align`, `aspect_ratio`, `border_color`, `border_style`, `border_width`, `bottom`, `box_shadow`, `breakpoint`, `breakpoints`, `class`, `container`, `content`, `context_ref`, `direction`, `display`, `field_sizing`, `fill`, `flex_direction`, `flex_wrap`, `fluid`, `font_family`, `font_weight`, `gap`, `grid_column`, `grid_columns`, `grid_row`, `grid_rows`, `height`, `is_finite`, `justify`, `left`, `margin`, `max_height`, `max_width`, `min_height`, `min_width`, `name`, `new`, `node_ref`, `object_fit`, `opacity`, `overflow_x`, `overflow_y`, `padding`, `pending_queries`, `pointer_events`, `position`, `radius`, `resolve`, `responsive_root`, `right`, `scroll_anchor`, `select`, `size`, `style`, `styles`, `text_overflow`, `theme`, `thresholds`, `top`, `unstyled`, `validate`, `white_space`, `width`, `wrap`
+**本地公开入口（同族）：** `align`, `aspect_ratio`, `border_color`, `border_style`, `border_width`, `bottom`, `box_shadow`, `breakpoint`, `breakpoints`, `class`, `container`, `content`, `context_ref`, `direction`, `display`, `field_sizing`, `fill`, `flex_direction`, `flex_wrap`, `fluid`, `font_family`, `font_weight`, `gap`, `grid_column`, `grid_columns`, `grid_row`, `grid_rows`, `height`, `inline`, `is_finite`, `justify`, `left`, `margin`, `max_height`, `max_width`, `min_height`, `min_width`, `name`, `new`, `node_ref`, `object_fit`, `opacity`, `overflow_x`, `overflow_y`, `padding`, `pending_queries`, `pointer_events`, `position`, `radius`, `resolve`, `responsive_root`, `right`, `scroll_anchor`, `select`, `size`, `style`, `styles`, `text_overflow`, `theme`, `thresholds`, `top`, `unstyled`, `validate`, `white_space`, `width`, `wrap`
 
-**需要语义映射的属性候选：** `children`, `inline`
+**需要语义映射的属性候选：** `children`
 
 ### Container — M:Container
 
@@ -59,7 +59,7 @@
 
 **本地实现：** [../glory/crates/style/src/lib.rs](../../glory/crates/style/src/lib.rs)、[src/layout.rs](../src/layout.rs)、[src/responsive.rs](../src/responsive.rs)
 
-**本地公开入口（同族）：** `align`, `aspect_ratio`, `border_color`, `border_style`, `border_width`, `bottom`, `box_shadow`, `breakpoint`, `breakpoints`, `class`, `container`, `content`, `context_ref`, `direction`, `display`, `field_sizing`, `fill`, `flex_direction`, `flex_wrap`, `fluid`, `font_family`, `font_weight`, `gap`, `grid_column`, `grid_columns`, `grid_row`, `grid_rows`, `height`, `is_finite`, `justify`, `left`, `margin`, `max_height`, `max_width`, `min_height`, `min_width`, `name`, `new`, `node_ref`, `object_fit`, `opacity`, `overflow_x`, `overflow_y`, `padding`, `pending_queries`, `pointer_events`, `position`, `radius`, `resolve`, `responsive_root`, `right`, `scroll_anchor`, `select`, `size`, `style`, `styles`, `text_overflow`, `theme`, `thresholds`, `top`, `unstyled`, `validate`, `white_space`, `width`, `wrap`
+**本地公开入口（同族）：** `align`, `aspect_ratio`, `border_color`, `border_style`, `border_width`, `bottom`, `box_shadow`, `breakpoint`, `breakpoints`, `class`, `container`, `content`, `context_ref`, `direction`, `display`, `field_sizing`, `fill`, `flex_direction`, `flex_wrap`, `fluid`, `font_family`, `font_weight`, `gap`, `grid_column`, `grid_columns`, `grid_row`, `grid_rows`, `height`, `inline`, `is_finite`, `justify`, `left`, `margin`, `max_height`, `max_width`, `min_height`, `min_width`, `name`, `new`, `node_ref`, `object_fit`, `opacity`, `overflow_x`, `overflow_y`, `padding`, `pending_queries`, `pointer_events`, `position`, `radius`, `resolve`, `responsive_root`, `right`, `scroll_anchor`, `select`, `size`, `style`, `styles`, `text_overflow`, `theme`, `thresholds`, `top`, `unstyled`, `validate`, `white_space`, `width`, `wrap`
 
 **需要语义映射的属性候选：** `strategy`
 
@@ -73,7 +73,7 @@
 
 **本地实现：** [../glory/crates/style/src/lib.rs](../../glory/crates/style/src/lib.rs)、[src/layout.rs](../src/layout.rs)
 
-**本地公开入口（同族）：** `align`, `aspect_ratio`, `border_color`, `border_style`, `border_width`, `bottom`, `box_shadow`, `class`, `container`, `direction`, `display`, `field_sizing`, `fill`, `flex_direction`, `flex_wrap`, `fluid`, `font_family`, `font_weight`, `gap`, `grid_column`, `grid_columns`, `grid_row`, `grid_rows`, `height`, `is_finite`, `justify`, `left`, `margin`, `max_height`, `max_width`, `min_height`, `min_width`, `name`, `new`, `node_ref`, `object_fit`, `opacity`, `overflow_x`, `overflow_y`, `padding`, `pointer_events`, `position`, `radius`, `right`, `scroll_anchor`, `size`, `style`, `text_overflow`, `theme`, `top`, `unstyled`, `validate`, `white_space`, `width`, `wrap`
+**本地公开入口（同族）：** `align`, `aspect_ratio`, `border_color`, `border_style`, `border_width`, `bottom`, `box_shadow`, `class`, `container`, `direction`, `display`, `field_sizing`, `fill`, `flex_direction`, `flex_wrap`, `fluid`, `font_family`, `font_weight`, `gap`, `grid_column`, `grid_columns`, `grid_row`, `grid_rows`, `height`, `inline`, `is_finite`, `justify`, `left`, `margin`, `max_height`, `max_width`, `min_height`, `min_width`, `name`, `new`, `node_ref`, `object_fit`, `opacity`, `overflow_x`, `overflow_y`, `padding`, `pointer_events`, `position`, `radius`, `right`, `scroll_anchor`, `size`, `style`, `text_overflow`, `theme`, `top`, `unstyled`, `validate`, `white_space`, `width`, `wrap`
 
 **需要语义映射的属性候选：** `columnGap`, `rowGap`
 
@@ -101,7 +101,7 @@
 
 **本地实现：** [../glory/crates/style/src/lib.rs](../../glory/crates/style/src/lib.rs)、[src/layout.rs](../src/layout.rs)
 
-**本地公开入口（同族）：** `align`, `aspect_ratio`, `border_color`, `border_style`, `border_width`, `bottom`, `box_shadow`, `class`, `container`, `direction`, `display`, `field_sizing`, `fill`, `flex_direction`, `flex_wrap`, `fluid`, `font_family`, `font_weight`, `gap`, `grid_column`, `grid_columns`, `grid_row`, `grid_rows`, `height`, `is_finite`, `justify`, `left`, `margin`, `max_height`, `max_width`, `min_height`, `min_width`, `name`, `new`, `node_ref`, `object_fit`, `opacity`, `overflow_x`, `overflow_y`, `padding`, `pointer_events`, `position`, `radius`, `right`, `scroll_anchor`, `size`, `style`, `text_overflow`, `theme`, `top`, `unstyled`, `validate`, `white_space`, `width`, `wrap`
+**本地公开入口（同族）：** `align`, `aspect_ratio`, `border_color`, `border_style`, `border_width`, `bottom`, `box_shadow`, `class`, `container`, `direction`, `display`, `field_sizing`, `fill`, `flex_direction`, `flex_wrap`, `fluid`, `font_family`, `font_weight`, `gap`, `grid_column`, `grid_columns`, `grid_row`, `grid_rows`, `height`, `inline`, `is_finite`, `justify`, `left`, `margin`, `max_height`, `max_width`, `min_height`, `min_width`, `name`, `new`, `node_ref`, `object_fit`, `opacity`, `overflow_x`, `overflow_y`, `padding`, `pointer_events`, `position`, `radius`, `right`, `scroll_anchor`, `size`, `style`, `text_overflow`, `theme`, `top`, `unstyled`, `validate`, `white_space`, `width`, `wrap`
 
 **需要语义映射的属性候选：** `grow`, `preventGrowOverflow`
 
@@ -129,7 +129,7 @@
 
 **本地实现：** [../glory/crates/style/src/lib.rs](../../glory/crates/style/src/lib.rs)、[src/layout.rs](../src/layout.rs)、[src/responsive.rs](../src/responsive.rs)
 
-**本地公开入口（同族）：** `align`, `aspect_ratio`, `border_color`, `border_style`, `border_width`, `bottom`, `box_shadow`, `breakpoint`, `breakpoints`, `class`, `container`, `content`, `context_ref`, `direction`, `display`, `field_sizing`, `fill`, `flex_direction`, `flex_wrap`, `fluid`, `font_family`, `font_weight`, `gap`, `grid_column`, `grid_columns`, `grid_row`, `grid_rows`, `height`, `is_finite`, `justify`, `left`, `margin`, `max_height`, `max_width`, `min_height`, `min_width`, `name`, `new`, `node_ref`, `object_fit`, `opacity`, `overflow_x`, `overflow_y`, `padding`, `pending_queries`, `pointer_events`, `position`, `radius`, `resolve`, `responsive_root`, `right`, `scroll_anchor`, `select`, `size`, `style`, `styles`, `text_overflow`, `theme`, `thresholds`, `top`, `unstyled`, `validate`, `white_space`, `width`, `wrap`
+**本地公开入口（同族）：** `align`, `aspect_ratio`, `border_color`, `border_style`, `border_width`, `bottom`, `box_shadow`, `breakpoint`, `breakpoints`, `class`, `container`, `content`, `context_ref`, `direction`, `display`, `field_sizing`, `fill`, `flex_direction`, `flex_wrap`, `fluid`, `font_family`, `font_weight`, `gap`, `grid_column`, `grid_columns`, `grid_row`, `grid_rows`, `height`, `inline`, `is_finite`, `justify`, `left`, `margin`, `max_height`, `max_width`, `min_height`, `min_width`, `name`, `new`, `node_ref`, `object_fit`, `opacity`, `overflow_x`, `overflow_y`, `padding`, `pending_queries`, `pointer_events`, `position`, `radius`, `resolve`, `responsive_root`, `right`, `scroll_anchor`, `select`, `size`, `style`, `styles`, `text_overflow`, `theme`, `thresholds`, `top`, `unstyled`, `validate`, `white_space`, `width`, `wrap`
 
 **需要语义映射的属性候选：** 无直接拼写候选；仍不推断功能等价。
 
@@ -157,7 +157,7 @@
 
 **本地实现：** [../glory/crates/style/src/lib.rs](../../glory/crates/style/src/lib.rs)、[src/layout.rs](../src/layout.rs)
 
-**本地公开入口（同族）：** `align`, `aspect_ratio`, `border_color`, `border_style`, `border_width`, `bottom`, `box_shadow`, `class`, `container`, `direction`, `display`, `field_sizing`, `fill`, `flex_direction`, `flex_wrap`, `fluid`, `font_family`, `font_weight`, `gap`, `grid_column`, `grid_columns`, `grid_row`, `grid_rows`, `height`, `is_finite`, `justify`, `left`, `margin`, `max_height`, `max_width`, `min_height`, `min_width`, `name`, `new`, `node_ref`, `object_fit`, `opacity`, `overflow_x`, `overflow_y`, `padding`, `pointer_events`, `position`, `radius`, `right`, `scroll_anchor`, `size`, `style`, `text_overflow`, `theme`, `top`, `unstyled`, `validate`, `white_space`, `width`, `wrap`
+**本地公开入口（同族）：** `align`, `aspect_ratio`, `border_color`, `border_style`, `border_width`, `bottom`, `box_shadow`, `class`, `container`, `direction`, `display`, `field_sizing`, `fill`, `flex_direction`, `flex_wrap`, `fluid`, `font_family`, `font_weight`, `gap`, `grid_column`, `grid_columns`, `grid_row`, `grid_rows`, `height`, `inline`, `is_finite`, `justify`, `left`, `margin`, `max_height`, `max_width`, `min_height`, `min_width`, `name`, `new`, `node_ref`, `object_fit`, `opacity`, `overflow_x`, `overflow_y`, `padding`, `pointer_events`, `position`, `radius`, `right`, `scroll_anchor`, `size`, `style`, `text_overflow`, `theme`, `top`, `unstyled`, `validate`, `white_space`, `width`, `wrap`
 
 **需要语义映射的属性候选：** 无直接拼写候选；仍不推断功能等价。
 
@@ -1487,9 +1487,9 @@
 
 **本地实现：** [../glory/crates/render/src/document.rs](../../glory/crates/render/src/document.rs)、[src/table/mod.rs](../src/table/mod.rs)、[src/table/model.rs](../src/table/model.rs)
 
-**本地公开入口（同族）：** `body`, `bordered`, `caption`, `cell`, `cells`, `class`, `column_span`, `content`, `foot`, `head`, `name`, `node_ref`, `row`, `row_span`, `rows`, `size`, `striped`, `style`, `table`, `table_body`, `table_cell`, `table_foot`, `table_head`, `table_header_cell`, `table_row`, `table_row_header`, `text`, `theme`, `unstyled`
+**本地公开入口（同族）：** `body`, `bordered`, `caption`, `caption_side`, `cell`, `cells`, `class`, `column_span`, `content`, `foot`, `head`, `highlight_on_hover`, `horizontal_spacing`, `name`, `node_ref`, `row`, `row_span`, `rows`, `size`, `sticky_header`, `sticky_header_offset`, `striped`, `striped_pattern`, `style`, `table`, `table_body`, `table_cell`, `table_foot`, `table_head`, `table_header_cell`, `table_row`, `table_row_header`, `tabular_nums`, `text`, `theme`, `unstyled`, `vertical_spacing`, `with_column_borders`, `with_row_borders`, `with_table_border`
 
-**需要语义映射的属性候选：** `autoContrast`, `borderColor`, `captionSide`, `color`, `data`, `depthOffset`, `getControlProps`, `highlightOnHover`, `highlightOnHoverColor`, `horizontalSpacing`, `initialData`, `layout`, `minDepthToOffset`, `radius`, `reinitializeRef`, `scrollSpyOptions`, `stickyHeader`, `stickyHeaderOffset`, `stripedColor`, `tabularNums`, `verticalSpacing`, `withColumnBorders`, `withRowBorders`, `withTableBorder`
+**需要语义映射的属性候选：** `autoContrast`, `borderColor`, `color`, `data`, `depthOffset`, `getControlProps`, `highlightOnHoverColor`, `initialData`, `layout`, `minDepthToOffset`, `radius`, `reinitializeRef`, `scrollSpyOptions`, `stripedColor`
 
 ### Text — M:Text
 
@@ -1543,7 +1543,7 @@
 
 **本地实现：** [../glory/crates/style/src/lib.rs](../../glory/crates/style/src/lib.rs)、[src/layout.rs](../src/layout.rs)
 
-**本地公开入口（同族）：** `align`, `aspect_ratio`, `border_color`, `border_style`, `border_width`, `bottom`, `box_shadow`, `class`, `container`, `direction`, `display`, `field_sizing`, `fill`, `flex_direction`, `flex_wrap`, `fluid`, `font_family`, `font_weight`, `gap`, `grid_column`, `grid_columns`, `grid_row`, `grid_rows`, `height`, `is_finite`, `justify`, `left`, `margin`, `max_height`, `max_width`, `min_height`, `min_width`, `name`, `new`, `node_ref`, `object_fit`, `opacity`, `overflow_x`, `overflow_y`, `padding`, `pointer_events`, `position`, `radius`, `right`, `scroll_anchor`, `size`, `style`, `text_overflow`, `theme`, `top`, `unstyled`, `validate`, `white_space`, `width`, `wrap`
+**本地公开入口（同族）：** `align`, `aspect_ratio`, `border_color`, `border_style`, `border_width`, `bottom`, `box_shadow`, `class`, `container`, `direction`, `display`, `field_sizing`, `fill`, `flex_direction`, `flex_wrap`, `fluid`, `font_family`, `font_weight`, `gap`, `grid_column`, `grid_columns`, `grid_row`, `grid_rows`, `height`, `inline`, `is_finite`, `justify`, `left`, `margin`, `max_height`, `max_width`, `min_height`, `min_width`, `name`, `new`, `node_ref`, `object_fit`, `opacity`, `overflow_x`, `overflow_y`, `padding`, `pointer_events`, `position`, `radius`, `right`, `scroll_anchor`, `size`, `style`, `text_overflow`, `theme`, `top`, `unstyled`, `validate`, `white_space`, `width`, `wrap`
 
 **需要语义映射的属性候选：** 无直接拼写候选；仍不推断功能等价。
 

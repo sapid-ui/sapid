@@ -516,37 +516,18 @@ fn support(entry: &'static Entry, theme: &Theme, id: &str) -> impl Widget {
 
 fn api_props(entry: &'static Entry, theme: Theme) -> impl Widget {
     let api = crate::showcase_api::find(entry.id).expect("catalogued API metadata");
-    let mut children: Vec<Box<dyn Widget>> = vec![
-        Box::new(section_title("builder-api", "Sapid builder API")),
-        Box::new(text().class("site-doc-note").content("These public Rust builders are extracted from the same implementation sources used by this guide.")),
-        Box::new(view().class("site-api-tokens").fill(api.builders.iter().map(|name| sapid::code().theme(theme.clone()).content(*name)).collect::<Vec<_>>())),
-    ];
-    for upstream in api.upstream {
-        children.push(Box::new(
-            text()
-                .kind(TextKind::Heading(2))
-                .class("site-section-title")
-                .content(format!("Mantine {} Props", upstream.name)),
-        ));
-        children.push(Box::new(text().class("site-doc-note").content("Upstream React properties are listed for comparison; their presence here does not claim a Rust equivalent.")));
-        children.push(Box::new(link(
-            "Open Mantine reference ↗",
-            upstream.url,
-            "site-inline-link",
-        )));
-        children.push(Box::new(
-            view()
-                .class("site-api-row site-api-header")
-                .fill((text().content("Name"), text().content("Type"))),
-        ));
-        for prop in upstream.props {
-            children.push(Box::new(view().class("site-api-row").fill((
-                text().class("site-api-name").content(prop.name),
-                text().class("site-api-type").content(prop.kind),
-            ))));
-        }
-    }
-    view().class("site-doc-content").fill(children)
+    view()
+        .class("site-doc-content")
+        .fill((
+            section_title("builder-api", &format!("{} properties", label(entry))),
+            text().class("site-doc-note").content("Sapid builders and their parameters are the component's properties. These public Rust signatures come from the implementation used by this guide."),
+            when(!api.signatures.is_empty(), move || {
+                view().class("site-api-tokens").fill(api.signatures.iter().map(|signature| sapid::code().theme(theme.clone()).content(*signature)).collect::<Vec<_>>())
+            }),
+            when(api.signatures.is_empty(), || {
+                text().class("site-doc-note").content("This guide uses composition and shared builder properties rather than widget-specific parameters.")
+            }),
+        ))
 }
 
 fn api_styles(entry: &'static Entry, theme: Theme) -> impl Widget {
@@ -563,9 +544,6 @@ fn api_styles(entry: &'static Entry, theme: Theme) -> impl Widget {
         text().kind(TextKind::Heading(2)).class("site-section-title").content("Widget classes"),
         text().class("site-doc-note").content("These classes occur in the widget implementation and can be targeted by the application stylesheet."),
         view().class("site-api-tokens").fill(api.classes.iter().map(|name| sapid::code().theme(theme.clone()).content(*name)).collect::<Vec<_>>()),
-        when(!api.upstream.is_empty(), move || {
-            view().fill(api.upstream.iter().map(|upstream| link(format!("Mantine {} Styles API ↗", upstream.name), upstream.url, "site-inline-link")).collect::<Vec<_>>())
-        }),
     ))
 }
 
@@ -574,7 +552,7 @@ fn documentation(entry: &'static Entry, theme: Theme, tab: Cage<u8>) -> impl Wid
         let mut tabs = Vec::new();
         for (index, label) in [
             (0, "Documentation"),
-            (1, "Props"),
+            (1, "Properties"),
             (2, "Styles API"),
             (3, "Source"),
             (4, "Capabilities"),
@@ -790,7 +768,7 @@ pub fn site_with_state(
                                     route("theme-studio", &theme),
                                     "site-nav-link",
                                 ),
-                                link("Charts", route("P11-01", &theme), "site-nav-link"),
+                                link("Charts", route("P11-02", &theme), "site-nav-link"),
                                 link("Glory", "https://glory.taidge.org/", "site-nav-link"),
                             ))
                     })) as Box<dyn Widget>

@@ -459,8 +459,8 @@
       "priority": "P2"
     },
     "P8-01": {
-      "current": "Table：真实表格、span、caption/head/body/foot、stripe/border",
-      "differences": "缺 sticky header/captionSide/高亮行/滚动容器的统一配置；sticky 在 native 受限。不要把纯表格当完整 DataTable。",
+      "current": "Table：真实表格、span、captionSide/head/body/foot、stripe/hover、独立边框、sticky header、间距、tabular nums、滚动组合与行选择示例",
+      "differences": "已补 sticky/captionSide/spacing/hover/borders/tabular 配置与复杂示例；排序、筛选、列管理和虚拟化仍属 DataTable，native sticky 能力单独验收。",
       "priority": "P2"
     },
     "P8-03": {
@@ -648,7 +648,7 @@
       "id": "A5",
       "priority": "P1",
       "work": "Mantine 9.7.4 展示结构、真实 Rust/Mantine API 参考、Button 多场景与 compact",
-      "status": "展示站提供 Documentation/Props/Styles API；Button 支持五档尺寸、compact、颜色、圆角及独立场景；其他组件保持已验证的有限契约"
+      "status": "展示站提供 Documentation/Properties/Styles API，181 个官方指南按 Mantine 分类与顺序独立展示；Button 支持五档尺寸、compact、颜色、圆角及独立场景；其他组件保持已验证的有限契约"
     }
   ],
   "verification": [

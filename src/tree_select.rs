@@ -449,7 +449,11 @@ impl Widget for TreeSelect {
         });
         let root = scope.create(glory::render::Descriptor::new(Props::Group))?;
         let content = scope.child_in(root)?;
-        let base = self.common.theme.control(self.common.size);
+        let base = Style {
+            grow: Some(1.),
+            min_width: Some(Length::Px(0.)),
+            ..self.common.theme.control(self.common.size)
+        };
         let mut trigger = configure!(
             self.common,
             glory::ui::button(),
@@ -498,7 +502,6 @@ impl Widget for TreeSelect {
             let owner = scope.id();
             trigger = trigger.on(kind, move |event| observers.emit(owner, event));
         }
-        trigger.show_in(&content)?;
         let hidden = visible.clone();
         let s = state.clone();
         let focus_state = state.clone();
@@ -589,18 +592,31 @@ impl Widget for TreeSelect {
         let s = state.clone();
         tree.on(EventKind::Dismiss, move |_| s.report(s.open(false)))
             .show_in(&content)?;
+        let mut controls: Vec<Box<dyn Widget>> = vec![Box::new(trigger)];
         if self.clearable {
             let s = state.clone();
             let editable = state.editable.clone();
-            crate::button()
-                .theme(self.common.theme.clone())
-                .label("Clear tree selection")
-                .enabled(
-                    scope.bond(move || editable.get() && !accepted.with(|a| a.values.is_empty())),
-                )
-                .on_press(move || s.report(s.clear()))
-                .show_in(&content)?;
+            controls.push(Box::new(
+                crate::close_button()
+                    .theme(self.common.theme.clone())
+                    .size(self.common.size)
+                    .name("Clear tree selection")
+                    .enabled(
+                        scope.bond(move || {
+                            editable.get() && !accepted.with(|a| a.values.is_empty())
+                        }),
+                    )
+                    .on_press(move || s.report(s.clear())),
+            ));
         }
+        glory::ui::view()
+            .class("sapid-tree-select-control")
+            .style(Style {
+                align: Some(glory::style::Align::Center),
+                ..Style::new().display(glory::style::Display::Flex).gap(4.)
+            })
+            .fill(controls)
+            .show_in(&content)?;
         // Only current accepted values are successful. Real readonly Inputs
         // live under a hidden semantic View; no programmatic file/DOM injection.
         let form_name = composite::form_name(scope, &self.form_name)?;
