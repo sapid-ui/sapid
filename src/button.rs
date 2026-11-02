@@ -20,6 +20,7 @@ pub struct Button {
     inner: Option<glory::ui::Button>,
     common: Common,
     variant: ButtonVariant,
+    compact: Vary<bool>,
     loading: Vary<bool>,
     toolbar: Option<Box<dyn ToolbarHooks>>,
     label: Vary<String>,
@@ -53,6 +54,7 @@ pub fn button() -> Button {
         inner: Some(glory::ui::button()),
         common: Common::default(),
         variant: ButtonVariant::default(),
+        compact: false.into(),
         loading: false.into(),
         toolbar: None,
         label: "".into(),
@@ -143,6 +145,11 @@ impl Button {
         self
     }
 
+    pub fn compact(mut self, compact: impl Into<Vary<bool>>) -> Self {
+        self.compact = compact.into();
+        self
+    }
+
     /// Loading disables native activation. The application supplies any loading
     /// label/status content; no timer, spinner, or live announcement is implied.
     pub fn loading(mut self, value: impl Into<Vary<bool>>) -> Self {
@@ -198,6 +205,7 @@ impl Widget for Button {
                 .label(self.label.clone())
                 .fill(self.body.take().unwrap_or_else(|| ().into_children()));
         }
+        let control = self.common.theme.tokens.control(self.common.size);
         let mut base = self.common.theme.control(self.common.size);
         let class = match self.variant {
             ButtonVariant::Primary => {
@@ -247,12 +255,24 @@ impl Widget for Button {
         let style_enabled = enabled.clone();
         let theme = self.common.theme.clone();
         let unstyled = self.common.unstyled;
+        let compact = self.compact.clone();
+        let compact_reactive = compact.is_reactive();
         let state_style = move || {
             let mut base = if unstyled {
                 glory::style::Style::new()
             } else {
                 base.clone()
             };
+            if !unstyled && compact.get() {
+                base.min_height = Some(glory::style::Length::Px(
+                    (control.min_height - 8.0).max(0.0),
+                ));
+                base.padding = base.padding.map(|mut padding| {
+                    padding.top = control.padding_y / 2.0;
+                    padding.bottom = control.padding_y / 2.0;
+                    padding
+                });
+            }
             if !unstyled && !style_enabled.get() {
                 base.background = Some(theme.disabled);
                 base.color = Some(theme.disabled_text);
@@ -260,11 +280,12 @@ impl Widget for Button {
             }
             crate::appearance::merge(base, own_style.get())
         };
-        self.common.style = if enabled.is_reactive() || self.common.style.is_reactive() {
-            scope.bond(state_style).into()
-        } else {
-            state_style().into()
-        };
+        self.common.style =
+            if enabled.is_reactive() || compact_reactive || self.common.style.is_reactive() {
+                scope.bond(state_style).into()
+            } else {
+                state_style().into()
+            };
         let mut inner = configure!(self.common, inner, scope, class, glory::style::Style::new());
         inner = inner.enabled(enabled.clone());
         let loading = self.loading.clone();

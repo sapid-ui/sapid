@@ -661,7 +661,7 @@
 
 **本地实现：** [src/button.rs](../src/button.rs)、[src/theme/mod.rs](../src/theme/mod.rs)
 
-**本地公开入口（同族）：** `blue_dark`, `blue_light`, `button`, `class`, `dark`, `enabled`, `fill`, `focus`, `from_default`, `green_dark`, `green_light`, `label`, `left_section`, `light`, `loading`, `name`, `new`, `node_ref`, `on`, `on_press`, `palette`, `right_section`, `size`, `spacing`, `style`, `stylesheet`, `theme`, `typography`, `unstyled`, `validate`, `variant`, `with_tokens`
+**本地公开入口（同族）：** `blue_dark`, `blue_light`, `button`, `class`, `compact`, `dark`, `enabled`, `fill`, `focus`, `from_default`, `green_dark`, `green_light`, `label`, `left_section`, `light`, `loading`, `name`, `new`, `node_ref`, `on`, `on_press`, `palette`, `right_section`, `size`, `spacing`, `style`, `stylesheet`, `theme`, `typography`, `unstyled`, `validate`, `variant`, `with_tokens`
 
 **需要语义映射的属性候选：** `autoContrast`, `borderWidth`, `children`, `color`, `disabled`, `fullWidth`, `gradient`, `justify`, `loaderProps`, `orientation`, `radius`
 
@@ -731,7 +731,7 @@
 
 **本地实现：** [src/button.rs](../src/button.rs)、[src/theme/mod.rs](../src/theme/mod.rs)
 
-**本地公开入口（同族）：** `blue_dark`, `blue_light`, `button`, `class`, `dark`, `enabled`, `fill`, `focus`, `from_default`, `green_dark`, `green_light`, `label`, `left_section`, `light`, `loading`, `name`, `new`, `node_ref`, `on`, `on_press`, `palette`, `right_section`, `size`, `spacing`, `style`, `stylesheet`, `theme`, `typography`, `unstyled`, `validate`, `variant`, `with_tokens`
+**本地公开入口（同族）：** `blue_dark`, `blue_light`, `button`, `class`, `compact`, `dark`, `enabled`, `fill`, `focus`, `from_default`, `green_dark`, `green_light`, `label`, `left_section`, `light`, `loading`, `name`, `new`, `node_ref`, `on`, `on_press`, `palette`, `right_section`, `size`, `spacing`, `style`, `stylesheet`, `theme`, `typography`, `unstyled`, `validate`, `variant`, `with_tokens`
 
 **需要语义映射的属性候选：** 无直接拼写候选；仍不推断功能等价。
 

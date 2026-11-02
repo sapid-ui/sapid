@@ -16,7 +16,7 @@ files = ["glory/apace-files", "dep:wingy"]
 clipboard = ["glory/apace-clipboard"]
 
 [dependencies]
-sapid = { path = "../..", features = ["json", "code", "dates", "charts", "chat"] }
+sapid = { path = "../..", features = ["json", "code", "dates", "charts", "files"] }
 glory = { path = "../../../glory/crates/glory", default-features = false, features = ["html", "dsl", "apace-accesskit", "apace-raster"] }
 apace-traits = { path = "../../../apace/packages/apace-traits", version = "=0.3.0", default-features = false }
 apace-dom = { path = "../../../apace/packages/apace-dom", version = "=0.3.0", default-features = false }

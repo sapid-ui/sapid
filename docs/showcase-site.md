@@ -144,16 +144,16 @@ SVG 宽高均为 256；顶栏桌面显示 36 × 36，手机显示 32 × 32，保
 - [TextField](http://127.0.0.1:8795/showcase.html?widget=P0-02)
 - [Button 深色主题](http://127.0.0.1:8795/showcase.html?widget=P0-01&scheme=dark)
 
-149 个指南对应路线图的 149 个工作项，并不表示 149 个互不重复的底层控件。
-14 个核心示例在 `src/showcase_demos/core_*.rs` 中直接编写；16 个聚焦示例族位于
-`src/focused_demos/`，为 43 个指南生成独立模块，避免把整份共享验收夹具当作组件首屏。
+137 个指南对应路线图的 137 个工作项，并不表示 137 个互不重复的底层控件。
+14 个核心示例在 `src/showcase_demos/core_*.rs` 中直接编写；15 个聚焦示例族位于
+`src/focused_demos/`，为 44 个指南生成独立模块，避免把整份共享验收夹具当作组件首屏。
 聚焦模块使用 `focused_<widget>.rs` 语义命名，例如 `focused_rating.rs`；`P7-05` 等编号仅用于清单和路由。
-其余 86 个示例族由 `showcase-catalog.py` 从实际夹具生成；共 142 个实现模块供 149 个指南使用。
+其余 73 个示例族由 `showcase-catalog.py` 从实际夹具生成；共 131 个实现模块供 137 个指南使用。
 目录的 `build` 指向这些模块的 `demo(theme)`，`code` 通过 `include_str!` 读取同一个文件。
 因此 Source、Copy 与预览使用完全相同的已编译源码，包含状态、导入和所需辅助模块，
 调节器辅助代码仅在示例实际引用时嵌入，未使用的页面不携带重复的 `controls` 模块。
 没有依赖展示站私有 `crate::…` 的片段。生成器 `--check` 验证同步；Rust 测试逐一挂载
-149 个指南、检查高亮预算和卸载后的节点/任务清理。
+137 个指南、检查高亮预算和卸载后的节点/任务清理。
 
 生成器固定读取仓库的 `rustfmt.toml`，目录文件和示例模块使用同一格式流程。
 修改格式配置或夹具后运行 `python scripts/showcase-catalog.py`，再执行 `--check` 和
@@ -169,17 +169,22 @@ Web 页面最终由 Glory 的 HTML/DOM 适配器输出，WASM 由 wasm-bindgen �
 元数据在 Rust 的 `start_showcase` 中读取。页面本体、交互和示例没有 JS UI 构建器。
 旧的 `showcase.js`、`gallery.js` 和各手写 HTML 属于 8794 验收夹具，新展示站不加载它们。
 
-Button 页的 Variant、Size、Disabled、Loading 控件驱动实际同一个 Button 节点；
+Button 页的 Variant、Color、Size、Radius、Compact、Disabled、Loading 控件驱动实际 Button；
+独立场景覆盖 full width、左右插槽、插槽分布、compact、disabled、loading 和 Button.Group。
 按钮激活计数和禁用行为由 Cage 及 Sapid 控件处理。搜索按名称、类别和工作项 ID 过滤，
 结果为实际语义链接。手机导航通过 Rust 状态打开和关闭。
+所有指南提供 Mantine 式 Documentation、Props、Styles API、Source、Capabilities 页签；
+Props 同时列出真实 Rust builder 和明确标注的上游参考，Styles API 列出实现中的实际类名。
 
 ## 实现与证据
 
 - 页面与状态：[showcase.rs](../examples/web/src/showcase.rs)。
 - 首页：[showcase_home.rs](../examples/web/src/showcase_home.rs)。
 - 实际控件示例：[showcase_examples.rs](../examples/web/src/showcase_examples.rs)。
-- 149 项目录：[生成器](../scripts/showcase-catalog.py)读取 canonical inventory 和能力账本，
+- 137 项目录：[生成器](../scripts/showcase-catalog.py)读取 canonical inventory 和能力账本，
   `--check` 检测目录漂移；[生成结果](../examples/web/src/showcase_catalog.rs)保留真实支持范围。
+  分组与 Mantine 对齐并包含 Miscellaneous；[API 元数据](../examples/web/src/showcase_api.rs)
+  同时从实际 Rust 实现和 Mantine 9.7.4 审计快照生成。
 - 页面样式：[site.css](../examples/web/site.css)，只由此展示站加载。
 - Web 挂载与 SSR：[showcase_host](../examples/web/src/showcase_host/mod.rs)、
   [showcase_ssr.rs](../examples/web/src/bin/showcase_ssr.rs)。
@@ -188,9 +193,9 @@ Button 页的 Variant、Size、Disabled、Loading 控件驱动实际同一个 Bu
   [运行器](../scripts/showcase-browser.cjs)。
 
 构建门禁包括 8 项 focused Rust 测试、host 全 target 严格 Clippy、wasm32 严格 Clippy、
-WASM 构建，以及 5 个代表页面乘 4 个主题组合的 20 个 SSR/adoption 页面。
-149 个指南均通过 CSR 路由提供；20 个代表 SSR 页面不代表已经逐一验收 149 个 SSR 页面。
-站点的完整浏览器验收逐一点击 149 个侧栏链接，并检查实际演示、搜索、Button 参数与节点身份、
+WASM 构建，以及 12 个代表页面乘 4 个主题组合的 48 个 SSR/adoption 页面。
+137 个指南均通过 CSR 路由提供；48 个代表 SSR 页面不代表已经逐一验收 137 个 SSR 页面。
+站点的完整浏览器验收逐一点击 137 个侧栏链接，并检查实际演示、搜索、Button 参数与节点身份、
 代码展开/收起、完整复制、Source 页、主题、TextField、手机菜单、SSR 及采用前的编辑/选择区。
 
 最终运行结果、产物哈希和截图见下方记录。原有widget的全量能力验收继续保存在

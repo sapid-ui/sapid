@@ -29,7 +29,7 @@ async (hostPage) => {
 
     await go(p, 'showcase.html?widget=P0-01');
     const routes = await p.locator('.site-nav-link').evaluateAll(elements => elements.map(e => ({href:e.getAttribute('href'),label:e.textContent.trim()})));
-    assert(routes.length === 149 && new Set(routes.map(r => new URL(r.href, base).searchParams.get('widget'))).size === 149, '149 unique canonical navigation links');
+    assert(routes.length === 137 && new Set(routes.map(r => new URL(r.href, base).searchParams.get('widget'))).size === 137, '137 unique canonical navigation links');
     for (const route of routes) {
       const id = new URL(route.href, base).searchParams.get('widget');
       const anchor = p.locator(`.site-nav-link[href="${route.href}"]`);
@@ -41,7 +41,7 @@ async (hostPage) => {
       assert((await p.locator('.site-code').first().textContent()).trim().length > 30, `${id}: readable source`);
       assert(await p.locator('iframe').count() === 0, `${id}: no fixture iframe`);
       reports.push({suite:`showcase-route-${id}`,status:'passed'});
-      console.log(`showcase route ${reports.length - 1}/149 ${id} passed`);
+      console.log(`showcase route ${reports.length - 1}/137 ${id} passed`);
     }
 
     await go(p, 'showcase.html?widget=P0-01');
@@ -53,7 +53,7 @@ async (hostPage) => {
     await p.locator('.site-nav-empty').first().waitFor();
     assert(await p.locator('.site-nav-link').count() === 0, 'empty search state');
     await search.fill('');
-    await p.waitForFunction(() => document.querySelectorAll('.site-nav-link').length === 149);
+    await p.waitForFunction(() => document.querySelectorAll('.site-nav-link').length === 137);
     reports.push({suite:'showcase-live-search',status:'passed'});
 
     const demo = p.locator('.site-demo');
@@ -102,6 +102,15 @@ async (hostPage) => {
     await p.getByRole('button',{name:'Capabilities',exact:true}).click();
     await p.getByRole('heading',{name:'Host support',exact:true}).waitFor();
     assert(await p.locator('.site-support-row').first().textContent() === 'WebTested', 'Documentation switches directly to readable host capabilities');
+    await p.getByRole('button',{name:'Documentation',exact:true}).click();
+    await p.locator('.site-demo').waitFor();
+    await p.getByRole('button',{name:'Props',exact:true}).click();
+    await p.getByRole('heading',{name:'Mantine Button Props',exact:true}).waitFor();
+    assert(await p.locator('.site-api-name',{hasText:'autoContrast'}).count() === 1, 'Mantine Props reference is available');
+    assert(await p.locator('.site-api-tokens',{hasText:'left_section'}).count() > 0, 'Rust builder API is available');
+    await p.getByRole('button',{name:'Styles API',exact:true}).click();
+    await p.getByRole('heading',{name:'Widget classes',exact:true}).waitFor();
+    assert(await p.locator('.site-api-tokens',{hasText:'sapid-button'}).count() > 0, 'Real widget classes are available');
     await p.getByRole('button',{name:'Documentation',exact:true}).click();
     await p.locator('.site-demo').waitFor();
     await shot(p, 'button-light');
@@ -157,10 +166,10 @@ async (hostPage) => {
     assert(await p.getByRole('textbox',{name:'Biography',exact:true}).count() === 0, 'Fieldset does not reuse the Textarea example');
     reports.push({suite:'showcase-focused-fields',status:'passed'});
 
-    for (const hue of ['blue','green']) for (const scheme of ['light','dark']) for (const name of ['home','button','textfield','dates','chat']) {
+    for (const hue of ['blue','green']) for (const scheme of ['light','dark']) for (const name of ['home','button','textfield','dates','charts']) {
       await go(p, `ssr-${name}-${hue}-${scheme}.html`);
       assert(await p.locator(`.sapid-site.site-${scheme}`).count() === 1, `SSR ${name}: adopted theme`);
-      if (name !== 'home') assert(await p.locator('.site-nav-link').count() === 149, `SSR ${name}: full navigation`);
+      if (name !== 'home') assert(await p.locator('.site-nav-link').count() === 137, `SSR ${name}: full navigation`);
       reports.push({suite:`showcase-ssr-${name}-${hue}-${scheme}`,status:'passed'});
     }
     await p.goto(`${base}/ssr-textfield-blue-light.html?manual`);

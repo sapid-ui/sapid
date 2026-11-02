@@ -40,10 +40,6 @@ mod choice_extras;
 pub fn choice_extras_widget(theme: sapid::Theme) -> Box<dyn Widget> {
     Box::new(choice_extras::demo(theme))
 }
-mod citations;
-pub fn citations_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(citations::demo(theme))
-}
 mod code;
 pub fn code_widget(theme: sapid::Theme) -> Box<dyn Widget> {
     Box::new(code::demo(theme))
@@ -67,10 +63,6 @@ pub fn combobox_widget(theme: sapid::Theme) -> Box<dyn Widget> {
 mod command;
 pub fn command_widget(theme: sapid::Theme) -> Box<dyn Widget> {
     Box::new(command::demo(theme))
-}
-mod confirmation;
-pub fn confirmation_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(confirmation::demo(theme))
 }
 mod context_menu;
 pub fn context_menu_widget(theme: sapid::Theme) -> Box<dyn Widget> {
@@ -268,10 +260,6 @@ mod focused_list;
 pub fn focused_list_widget(theme: sapid::Theme) -> Box<dyn Widget> {
     Box::new(focused_list::demo(theme))
 }
-mod focused_model_selector;
-pub fn focused_model_selector_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(focused_model_selector::demo(theme))
-}
 mod focused_number_formatter;
 pub fn focused_number_formatter_widget(theme: sapid::Theme) -> Box<dyn Widget> {
     Box::new(focused_number_formatter::demo(theme))
@@ -327,10 +315,6 @@ pub fn focused_slider_widget(theme: sapid::Theme) -> Box<dyn Widget> {
 mod focused_splitter;
 pub fn focused_splitter_widget(theme: sapid::Theme) -> Box<dyn Widget> {
     Box::new(focused_splitter::demo(theme))
-}
-mod focused_suggestion;
-pub fn focused_suggestion_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(focused_suggestion::demo(theme))
 }
 mod focused_switch;
 pub fn focused_switch_widget(theme: sapid::Theme) -> Box<dyn Widget> {
@@ -404,14 +388,6 @@ mod menubar;
 pub fn menubar_widget(theme: sapid::Theme) -> Box<dyn Widget> {
     Box::new(menubar::demo(theme))
 }
-mod message_scroller;
-pub fn message_scroller_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(message_scroller::demo(theme))
-}
-mod messages;
-pub fn messages_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(messages::demo(theme))
-}
 mod modals;
 pub fn modals_widget(theme: sapid::Theme) -> Box<dyn Widget> {
     Box::new(modals::demo(theme))
@@ -432,10 +408,6 @@ mod notifications;
 pub fn notifications_widget(theme: sapid::Theme) -> Box<dyn Widget> {
     Box::new(notifications::demo(theme))
 }
-mod output;
-pub fn output_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(output::demo(theme))
-}
 mod overflow_list;
 pub fn overflow_list_widget(theme: sapid::Theme) -> Box<dyn Widget> {
     Box::new(overflow_list::demo(theme))
@@ -455,18 +427,6 @@ pub fn point_charts_widget(theme: sapid::Theme) -> Box<dyn Widget> {
 mod polar_charts;
 pub fn polar_charts_widget(theme: sapid::Theme) -> Box<dyn Widget> {
     Box::new(polar_charts::demo(theme))
-}
-mod prompt;
-pub fn prompt_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(prompt::demo(theme))
-}
-mod public_explanations;
-pub fn public_explanations_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(public_explanations::demo(theme))
-}
-mod questionnaire;
-pub fn questionnaire_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(questionnaire::demo(theme))
 }
 mod range_charts;
 pub fn range_charts_widget(theme: sapid::Theme) -> Box<dyn Widget> {
@@ -528,10 +488,6 @@ mod table_of_contents;
 pub fn table_of_contents_widget(theme: sapid::Theme) -> Box<dyn Widget> {
     Box::new(table_of_contents::demo(theme))
 }
-mod tasks;
-pub fn tasks_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(tasks::demo(theme))
-}
 mod text_motion;
 pub fn text_motion_widget(theme: sapid::Theme) -> Box<dyn Widget> {
     Box::new(text_motion::demo(theme))
@@ -551,10 +507,6 @@ pub fn toggles_widget(theme: sapid::Theme) -> Box<dyn Widget> {
 mod tour;
 pub fn tour_widget(theme: sapid::Theme) -> Box<dyn Widget> {
     Box::new(tour::demo(theme))
-}
-mod trace;
-pub fn trace_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(trace::demo(theme))
 }
 mod tree;
 pub fn tree_widget(theme: sapid::Theme) -> Box<dyn Widget> {

@@ -68,10 +68,10 @@ fn sidebar(
             "Overlays",
             "Data display",
             "Typography",
+            "Miscellaneous",
             "Charts",
             "Dates",
             "Extensions",
-            "Chat",
         ];
         let mut children: Vec<Box<dyn Widget>> = Vec::new();
         children.push(Box::new(
@@ -514,10 +514,71 @@ fn support(entry: &'static Entry, theme: &Theme, id: &str) -> impl Widget {
     ))
 }
 
+fn api_props(entry: &'static Entry, theme: Theme) -> impl Widget {
+    let api = crate::showcase_api::find(entry.id).expect("catalogued API metadata");
+    let mut children: Vec<Box<dyn Widget>> = vec![
+        Box::new(section_title("builder-api", "Sapid builder API")),
+        Box::new(text().class("site-doc-note").content("These public Rust builders are extracted from the same implementation sources used by this guide.")),
+        Box::new(view().class("site-api-tokens").fill(api.builders.iter().map(|name| sapid::code().theme(theme.clone()).content(*name)).collect::<Vec<_>>())),
+    ];
+    for upstream in api.upstream {
+        children.push(Box::new(
+            text()
+                .kind(TextKind::Heading(2))
+                .class("site-section-title")
+                .content(format!("Mantine {} Props", upstream.name)),
+        ));
+        children.push(Box::new(text().class("site-doc-note").content("Upstream React properties are listed for comparison; their presence here does not claim a Rust equivalent.")));
+        children.push(Box::new(link(
+            "Open Mantine reference ↗",
+            upstream.url,
+            "site-inline-link",
+        )));
+        children.push(Box::new(
+            view()
+                .class("site-api-row site-api-header")
+                .fill((text().content("Name"), text().content("Type"))),
+        ));
+        for prop in upstream.props {
+            children.push(Box::new(view().class("site-api-row").fill((
+                text().class("site-api-name").content(prop.name),
+                text().class("site-api-type").content(prop.kind),
+            ))));
+        }
+    }
+    view().class("site-doc-content").fill(children)
+}
+
+fn api_styles(entry: &'static Entry, theme: Theme) -> impl Widget {
+    let api = crate::showcase_api::find(entry.id).expect("catalogued API metadata");
+    let common = ["class", "style", "styles", "theme", "size", "unstyled"];
+    let common = common
+        .into_iter()
+        .filter(|name| api.builders.contains(name))
+        .collect::<Vec<_>>();
+    view().class("site-doc-content").fill((
+        section_title("styles-api", "Styles API"),
+        text().class("site-doc-note").content("Compose typed Style declarations and theme tokens. Explicit styles preserve widget classes and unspecified declarations."),
+        view().class("site-api-tokens").fill(common.into_iter().map(|name| sapid::code().theme(theme.clone()).content(name)).collect::<Vec<_>>()),
+        text().kind(TextKind::Heading(2)).class("site-section-title").content("Widget classes"),
+        text().class("site-doc-note").content("These classes occur in the widget implementation and can be targeted by the application stylesheet."),
+        view().class("site-api-tokens").fill(api.classes.iter().map(|name| sapid::code().theme(theme.clone()).content(*name)).collect::<Vec<_>>()),
+        when(!api.upstream.is_empty(), move || {
+            view().fill(api.upstream.iter().map(|upstream| link(format!("Mantine {} Styles API ↗", upstream.name), upstream.url, "site-inline-link")).collect::<Vec<_>>())
+        }),
+    ))
+}
+
 fn documentation(entry: &'static Entry, theme: Theme, tab: Cage<u8>) -> impl Widget {
     widget(move |scope| {
         let mut tabs = Vec::new();
-        for (index, label) in [(0, "Documentation"), (1, "Source"), (2, "Capabilities")] {
+        for (index, label) in [
+            (0, "Documentation"),
+            (1, "Props"),
+            (2, "Styles API"),
+            (3, "Source"),
+            (4, "Capabilities"),
+        ] {
             let class = scope.bond(move || {
                 if tab.get() == index {
                     "site-tab is-active".to_owned()
@@ -534,9 +595,13 @@ fn documentation(entry: &'static Entry, theme: Theme, tab: Cage<u8>) -> impl Wid
             );
         }
         let usage = scope.bond(move || tab.get() == 0);
-        let code = scope.bond(move || tab.get() == 1);
-        let capabilities = scope.bond(move || tab.get() == 2);
+        let props = scope.bond(move || tab.get() == 1);
+        let styles = scope.bond(move || tab.get() == 2);
+        let code = scope.bond(move || tab.get() == 3);
+        let capabilities = scope.bond(move || tab.get() == 4);
         let demo_theme = theme.clone();
+        let props_theme = theme.clone();
+        let styles_theme = theme.clone();
         let code_theme = theme.clone();
         let caps_theme = theme.clone();
         view().role(Role::Main).class("site-doc-main").fill((
@@ -544,7 +609,7 @@ fn documentation(entry: &'static Entry, theme: Theme, tab: Cage<u8>) -> impl Wid
             text().kind(TextKind::Heading(1)).class("site-title").content(label(entry)),
             text().class("site-lead").content(entry.description),
             view().class("site-doc-meta").fill((
-                text().content("Source"), sapid::button().unstyled().class("site-inline-link").label("View source code").on_press(move || tab.revise(|value| *value = 1)),
+                text().content("Source"), sapid::button().unstyled().class("site-inline-link").label("View source code").on_press(move || tab.revise(|value| *value = 3)),
                 text().content("Package"), text().content("sapid"),
                 text().content("Built with"), text().content("Glory · handwritten Rust builders"),
             )),
@@ -562,6 +627,8 @@ fn documentation(entry: &'static Entry, theme: Theme, tab: Cage<u8>) -> impl Wid
                     support(entry, &demo_theme, "support"),
                 ))
             }),
+            when(props, move || api_props(entry, props_theme.clone())),
+            when(styles, move || api_styles(entry, styles_theme.clone())),
             when(code, move || view().class("site-doc-content").fill((section_title("source", "Rust source"), source(entry, code_theme.clone(), true)))),
             when(capabilities, move || view().class("site-doc-content").fill(support(entry, &caps_theme, "capabilities-support"))),
             view().role(Role::ContentInfo).class("site-footer").fill((
@@ -724,7 +791,6 @@ pub fn site_with_state(
                                     "site-nav-link",
                                 ),
                                 link("Charts", route("P11-01", &theme), "site-nav-link"),
-                                link("Chat", route("P13-01", &theme), "site-nav-link"),
                                 link("Glory", "https://glory.taidge.org/", "site-nav-link"),
                             ))
                     })) as Box<dyn Widget>

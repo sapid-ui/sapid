@@ -69,5 +69,5 @@ node scripts/showcase-acceptance.cjs --directory "$buildRoot/showcase" --output 
 
 Publish only that build's `showcase` directory. Query-based guide and theme URLs
 are supported by `showcase.html`; representative `ssr-*.html` documents exercise
-adoption and do not imply server rendering for all 149 guides. DNS and TLS must
+adoption and do not imply server rendering for all 137 guides. DNS and TLS must
 be active before the custom domain is considered ready.

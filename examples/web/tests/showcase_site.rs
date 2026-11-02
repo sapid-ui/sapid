@@ -14,9 +14,9 @@ fn nodes(app: &App) -> Vec<NodeId> {
 }
 
 #[test]
-fn catalogue_has_exactly_149_unique_routes_and_real_example_sources() {
+fn catalogue_has_exactly_137_unique_routes_and_real_example_sources() {
     let mut ids = std::collections::BTreeSet::new();
-    assert_eq!(ENTRIES.len(), 149);
+    assert_eq!(ENTRIES.len(), 137);
     for entry in ENTRIES {
         assert!(ids.insert(entry.id), "duplicate {}", entry.id);
         assert!(!entry.name.is_empty() && !entry.description.is_empty());
@@ -45,7 +45,7 @@ fn docs_navigation_is_live_semantic_links_and_mobile_menu_is_rust_state() {
                 .any(|c| c == "site-nav-link")
         })
         .collect();
-    assert_eq!(navigation.len(), 149);
+    assert_eq!(navigation.len(), 137);
     assert!(navigation.iter().all(|id| matches!(
         app.tree().node(*id).unwrap().descriptor.view().props,
         Props::Link(_)
@@ -114,6 +114,35 @@ fn documentation_tab_switches_directly_to_host_support() {
 }
 
 #[test]
+fn props_and_styles_tabs_expose_real_rust_and_mantine_api() {
+    let app = App::memory();
+    app.mount(showcase::site(Theme::blue_light(), "P0-01".into()))
+        .unwrap();
+    for (label, expected) in [
+        ("Props", "Mantine Button Props"),
+        ("Styles API", "Widget classes"),
+    ] {
+        let tab = nodes(&app)
+            .into_iter()
+            .find(|id| {
+                matches!(
+                    app.tree().node(*id).unwrap().descriptor.view().props,
+                    Props::Button(button) if button.label == label
+                )
+            })
+            .unwrap();
+        app.dispatch(tab, Event::Activate).unwrap();
+        app.flush().unwrap();
+        assert!(nodes(&app).into_iter().any(|id| {
+            matches!(
+                app.tree().node(id).unwrap().descriptor.view().props,
+                Props::Text(text) if text.content == expected
+            )
+        }));
+    }
+}
+
+#[test]
 fn representative_ssr_documents_render_in_all_themes_without_frames() {
     for theme in [
         Theme::blue_light(),
@@ -121,7 +150,7 @@ fn representative_ssr_documents_render_in_all_themes_without_frames() {
         Theme::green_light(),
         Theme::green_dark(),
     ] {
-        for id in ["", "P0-01", "P0-02", "P9-01", "P13-01"] {
+        for id in ["", "P0-01", "P0-02", "P9-01", "P11-01"] {
             let html = glory::ssr::snapshot(showcase::site(theme.clone(), id.into()))
                 .unwrap()
                 .html;
@@ -217,8 +246,6 @@ fn focused_guides_render_their_own_widget_content() {
         ("P6-01", "Semantic widgets"),
         ("P6-02", "Example pages"),
         ("P6-10", "Editing tools"),
-        ("P13-05", "application-provided model catalogue"),
-        ("P13-06", "Suggested actions"),
     ];
     for (id, expected) in cases {
         let entry = sapid_web_example::showcase_catalog::find(id).unwrap();

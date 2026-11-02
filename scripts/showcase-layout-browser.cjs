@@ -108,7 +108,7 @@ const output = 'D:/BuildCache/sapid';
       report.reports.push({ suite: `splitter-${mode}`, status: 'passed', checks: 'rename, controlled sizes, actual drag, arrows/bounds, live orientation identity, disable, collapse/restore and nested panes' });
 
       await open('P6-07', 'scroll-area', theme, scheme, hydrate);
-      const group = page.locator('.site-nav-group').filter({ has: page.getByText('Extensions', { exact: true }) });
+      const group = page.locator('.site-nav-group').filter({ has: page.getByText('Miscellaneous', { exact: true }) });
       assert.equal(await group.getByRole('link', { name: 'ScrollArea', exact: true }).count(), 1);
       assert.equal(await page.locator('.site-nav-group').filter({ has: page.getByText('Layout', { exact: true }) }).getByRole('link', { name: 'ScrollArea', exact: true }).count(), 0);
       const viewport = page.locator('.site-scroll-preview');

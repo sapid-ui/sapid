@@ -12,6 +12,6 @@ fn column() -> glory::ui::View {
 pub fn demo(theme: sapid::Theme) -> impl Widget {
     column().fill((
         sapid::title(3).theme(theme.clone()).content("A complete widget catalogue"),
-        sapid::text().theme(theme).content(format!("Explore {} documented work items from the navigation. Each preview is a real Glory Widget.", 149usize)),
+        sapid::text().theme(theme).content(format!("Explore {} documented work items from the navigation. Each preview is a real Glory Widget.", 137usize)),
     ))
 }

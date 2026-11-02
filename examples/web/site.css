@@ -135,9 +135,10 @@ html,body{margin:0;min-width:0;min-height:100%;width:100%}#app{min-height:100dvh
 .sapid-site .site-doc-meta>div{display:flex;gap:14px;align-items:baseline}
 .sapid-site .site-doc-meta a{color:var(--site-accent);overflow-wrap:anywhere}
 .sapid-site .site-doc-meta a:hover{text-decoration:underline}
-.sapid-site .site-doc-tabs{display:flex;align-items:center;gap:25px;border-bottom:1px solid var(--site-border);margin-bottom:30px}
-.sapid-site .site-tab{padding:10px 1px;font-size:12px;font-weight:650;color:var(--site-muted);border:0;background:none;border-bottom:2px solid transparent;cursor:pointer;border-radius:0}
-.sapid-site .site-tab.is-active{color:var(--site-accent);border-bottom-color:var(--site-accent)}
+.sapid-site .site-doc-tabs{display:flex;align-items:center;gap:8px;margin-bottom:30px;overflow-x:auto}
+.sapid-site .site-tab{padding:10px 14px;font-size:12px;font-weight:650;color:var(--site-muted);border:1px solid var(--site-border);background:var(--site-card);cursor:pointer;border-radius:6px;flex-shrink:0}
+.sapid-site .site-tab:hover{color:var(--site-fg);background:var(--site-soft)}
+.sapid-site .site-tab.is-active{color:var(--site-bg);background:var(--site-fg);border-color:var(--site-fg)}
 .sapid-site .site-section-title{font-size:24px;font-weight:730;letter-spacing:-.5px;line-height:1.3;margin:29px 0 15px;scroll-margin-top:85px}
 .sapid-site .site-doc-main>p{font-size:14px;line-height:1.85;color:var(--site-muted);margin-bottom:18px}
 .sapid-site .site-preview{border:1px solid var(--site-border);background:var(--site-card);border-radius:7px;overflow:hidden;min-width:0;margin-bottom:22px}
@@ -149,6 +150,16 @@ html,body{margin:0;min-width:0;min-height:100%;width:100%}#app{min-height:100dvh
 .sapid-site .site-code pre{margin:0;padding:18px;tab-size:4;font:12px/1.8 "Cascadia Code",Consolas,monospace;white-space:pre;overflow-x:auto}
 .sapid-site .site-code code{font-family:"Cascadia Code",Consolas,monospace}
 .sapid-site .site-doc-note{color:var(--site-muted);font-size:14px;line-height:1.85;margin:0 0 20px;overflow-wrap:anywhere}
+.sapid-site .site-api-tokens{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 26px}
+.sapid-site .site-api-tokens>.sapid-code{background:var(--site-soft);border:1px solid var(--site-border);border-radius:4px;padding:3px 7px;font-size:11px}
+.sapid-site .site-api-row{display:grid;grid-template-columns:minmax(130px,1fr) minmax(0,3fr);gap:20px;padding:9px 4px;border-bottom:1px solid var(--site-border);font-size:12px;line-height:1.65}
+.sapid-site .site-api-header{color:var(--site-muted);font-weight:650}
+.sapid-site .site-api-name{font-family:"Cascadia Code",Consolas,monospace;color:var(--site-accent)}
+.sapid-site .site-api-type{color:var(--site-muted);overflow-wrap:anywhere}
+.sapid-site .site-button-examples{display:flex;flex-direction:column;gap:28px}
+.sapid-site .site-button-scenario{display:flex;flex-direction:column;gap:14px;padding-top:22px;border-top:1px solid var(--site-border)}
+.sapid-site .site-button-scenario>.sapid-title{font-size:19px}
+.sapid-site .site-button-scenario-content{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
 .sapid-site .site-support{margin:20px 0;color:var(--site-muted);font-size:12px;line-height:1.85;overflow-wrap:anywhere}
 .sapid-site .site-support .site-doc-note{font-size:13px;margin-bottom:16px}
 .sapid-site .site-support-row+.site-doc-note{margin-top:16px}

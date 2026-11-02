@@ -107,7 +107,7 @@ shared browser/SSR/native examples.
 
 ## Find your widgets
 
-The inventory covers **268 upstream entries across 149 work items**. Completion
+The inventory covers **242 upstream entries across 137 work items**. Completion
 records a finite implementation; it does not imply full Mantine/shadcn API parity
 or support on every host.
 
@@ -118,10 +118,10 @@ or support on every host.
 | Navigation and layers | Tabs, menus, dialogs, drawers, sidebars and app shells | [Tabs](docs/tabs.md) · [Layers](docs/widget-guide.md#dialog-drawer-and-popover) · [AppShell](docs/sidebar-app-shell.md) |
 | Dates and schedules | Date/time inputs, calendars and resource scheduling | [Dates](docs/date-picker.md) · [Schedules](docs/schedule.md) |
 | Data and media | Charts, JSON/code views, files and a finite rich document editor | [Charts](docs/charts.md) · [Files](docs/files.md) · [Editor](docs/rich-editor.md) |
-| Application workflows | Messages, prompts, questionnaires, tasks and public traces | [Chat](docs/chat-traces.md) · [Prompts](docs/prompt-input.md) · [Tasks](docs/tasks.md) |
 
 Browse the [showcase](https://sapid.taidge.org/) for widget guides, live Rust
-examples, source panels, search, theme controls and the Button playground.
+examples, Props and Styles API references, source panels, search, theme controls
+and Mantine-style component scenarios.
 The [catalog](docs/widgets-roadmap.md), [capability ledger](docs/widget-capabilities.md)
 and [API comparison](docs/mantine-api-comparison.md) provide the implementation
 and compatibility details.
@@ -138,7 +138,6 @@ Default features are empty. Specialized families are opt-in:
 | `charts` | Charts, bounded sampling and portable `libm` geometry |
 | `files` | File controls with explicit permissions and budgets |
 | `editor` | Finite rich documents and Web editing; native editing is rejected |
-| `chat` | Application-supplied messages, prompts, questionnaires, plans and traces; includes `files` |
 
 ## Make it yours
 

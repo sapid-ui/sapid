@@ -1,6 +1,6 @@
 # Mantine 全组件 API 与功能差异核实
 
-核实日期：2026-10-25；官方文档版本：9.7.3。
+核实日期：2026-10-25；官方文档版本：9.7.4。
 逐项覆盖 **181 个 Mantine 条目**：121 Core、15 Dates、22 Charts、13 Schedule、8 官方扩展、2 Code。
 官方来源：[Core 目录](https://mantine.dev/core/package/)、[官方扩展](https://mantine.dev/x/extensions/)、
 [完整文档（包含功能示例和 Props 表）](https://mantine.dev/llms-full.txt)。
@@ -29,6 +29,7 @@ polymorphic component、任意 Recharts/Tiptap/Embla 插件或全局 provider。
 | A2 | P0 | 真实 input/textarea placeholder：Glory 共享语义/HTML/SSR/stream + Sapid 输入族 | 已实现并验收：render/HTML 差分/SSR stream、9 类 Sapid 输入；Apace 明确拒绝并保留成功前缀，未声称原生绘制支持 |
 | A3 | P1 | Button Light / Outline / Subtle 外观，保留 loading/disabled/自定义 Style | 已实现并验收：新增三种外观；四主题 loading/disabled/显式样式与真实浏览器恢复均通过 |
 | A4 | P1 | dropdown 配置、option slot、lineClamp、slider marks、分段 progress、日期 presets、日程统一编辑 | 待后续有限设计；未实现，不承诺整套上游等价 |
+| A5 | P1 | Mantine 9.7.4 展示结构、真实 Rust/Mantine API 参考、Button 多场景与 compact | 展示站提供 Documentation/Props/Styles API；Button 支持五档尺寸、compact、颜色、圆角及独立场景；其他组件保持已验证的有限契约 |
 
 ## 逐组件核对
 
@@ -80,12 +81,12 @@ polymorphic component、任意 Recharts/Tiptap/Embla 插件或全局 provider。
 | [TagsInput](https://mantine.dev/core/tags-input/) | TagsInput/PillsInput：原子 state、重复/分隔/粘贴/移除、max_tags、placeholder | 本轮补 placeholder；clearable、建议、onBlur add 和 reorder 仍缺。max_tags 已有，不能误报 maxTags 缺失。 | P1 |
 | [TreeSelect](https://mantine.dev/core/tree-select/) | TreeSelect：路径身份、multiple/半选/叶策略、受控 | 缺纯文本搜索、hidePicked、完整 renderValue/下拉配置；先共用 Combobox 搜索模型，再扩展树过滤，native 仍拒绝组合 facet。 | P1 |
 | [ActionIcon](https://mantine.dev/core/action-icon/) | ActionIcon/CloseButton：五种 variant、尺寸、自定义 icon、禁用 | 上一轮已补主要外观与 close icon；loading/custom-loader 仍缺。任意 component、gradient 和全局 variant registry 不移植。 | P2 |
-| [Button](https://mantine.dev/core/button/) | Button：六种外观、受控禁用/loading、图文插槽和按钮组 | 本轮补 Light/Outline/Subtle；gradient/任意 variant resolver 不移植。fullWidth/justify 可用 Style，loading 自定义显示仍可后续完善。 | P2 |
+| [Button](https://mantine.dev/core/button/) | Button：六种外观、五档尺寸与 compact、受控禁用/loading、图文插槽和按钮组 | 已补 Light/Outline/Subtle 与 compact；展示页覆盖 fullWidth/justify、颜色、圆角和独立场景。gradient/任意 variant resolver 不移植，loading 自定义显示仍可后续完善。 | P2 |
 | [CloseButton](https://mantine.dev/core/close-button/) | ActionIcon/CloseButton：五种 variant、尺寸、自定义 icon、禁用 | 上一轮已补主要外观与 close icon；loading/custom-loader 仍缺。任意 component、gradient 和全局 variant registry 不移植。 | P2 |
 | [CopyButton](https://mantine.dev/core/copy-button/) | CopyButton：真实 Clipboard action、结果/feedback/labels | 不把未授权环境/SSR当复制成功；任意 render-prop 可由 Widget 组合替代，多个复制控件的状态仍分开。 | 边界 |
 | [FileButton](https://mantine.dev/core/file-button/) | FileInput/FileButton：共享 File 协议、Picker、控制器/结果 | 缺目录、多种 value renderer 等完整 Mantine props 组合需依共享配置判断；native picker facet 仍拒绝，不能把 Web 文件测试当本地OS支持。 | P2 |
 | [Toggle](https://mantine.dev/core/toggle/) | Toggle/ToggleGroup：单/多选、pressed、方向、键盘 | 缺完整外观/图标位置配置。Mantine Toggle 与 checkbox 语义不等同；使用真正 pressed Button，不用 Check 伪装。 | P2 |
-| [UnstyledButton](https://mantine.dev/core/unstyled-button/) | Button：六种外观、受控禁用/loading、图文插槽和按钮组 | 本轮补 Light/Outline/Subtle；gradient/任意 variant resolver 不移植。fullWidth/justify 可用 Style，loading 自定义显示仍可后续完善。 | P2 |
+| [UnstyledButton](https://mantine.dev/core/unstyled-button/) | Button：六种外观、五档尺寸与 compact、受控禁用/loading、图文插槽和按钮组 | 已补 Light/Outline/Subtle 与 compact；展示页覆盖 fullWidth/justify、颜色、圆角和独立场景。gradient/任意 variant resolver 不移植，loading 自定义显示仍可后续完善。 | P2 |
 | [Anchor](https://mantine.dev/core/anchor/) | Anchor：真实 href、current、宿主导航和目标上下文 | 缺 underline 策略便捷 API；Style/CSS 可组合。new context 原生明确拒绝，非路由/下载协议不隐式加入。 | P2 |
 | [Breadcrumbs](https://mantine.dev/core/breadcrumbs/) | Breadcrumbs：真实 links/current、有限条目 | 缺自定义 separator/图标 slot 等便捷 API；自动折叠应复用 OverflowList，不把静态省略符当可导航隐藏内容。 | P2 |
 | [Burger](https://mantine.dev/core/burger/) | Burger：展开、名称、controls、有限动画和时长 | 缺自定义线粗/颜色便捷参数；typed Style 已可覆盖颜色。真实展开与动画状态已独立，不需要复制 DOM click 驱动。 | P2 |
@@ -228,8 +229,8 @@ polymorphic component、任意 Recharts/Tiptap/Embla 插件或全局 provider。
 - 展示站 host/wasm32 严格 Clippy、19 项 Rust 检查、WASM 与 36 个代表性 SSR 文档通过。日志：`mantine-showcase-final.log`；最终资产 `assets-aec435696a9fb3e4493f`。
 - Chromium 148.0.7778.96：350 组检查、errors=[]。包含新增 48 组 API 专项、64 组样式、182 组既有站点检查（含全部 149 路由）、16 组 Theme Studio、32 组当前配色顺序检查、8 组导航检查。报告均在 `D:/BuildCache/sapid/*-browser.json`。
 - 新增浏览器专项同时验证真实 Input 的 value setter 未在 hint 更新时调用、节点/UTF-16 选区/预编辑保留，四主题、1440/360px、CSR/真实 SSR 接管均通过。CDP IME 是协议证据，不等于 OS IME 或读屏语音验收。
-- 本轮状态仅将 A1–A3 标为完成；A4 与逐项差异表中的其他缺口仍保留为未实现/待设计，没有把目录覆盖写成 API 全兼容。
+- A5 已完成 Mantine 9.7.4 展示结构、真实 API 参考和 Button 多场景/compact；A4 与逐项差异表中的其他缺口仍保留为未实现/待设计，没有把目录覆盖写成 API 全兼容。
 
 复现：`python scripts/mantine-api-audit.py`；离线检查：`python scripts/mantine-api-audit.py --check`。
 上游事实仅在显式 `--refresh` 时更新；完整文档缓存在 D 盘，仓库只保存属性/章节事实和 SHA256，未复制第三方实现。
-文档快照 SHA256：`aea0899df7df45c238b4d7ce7773580784ca7242b7a1a650abf06d8d276e69c4`。
+文档快照 SHA256：`f8deb873cd919202efed530cd243b7e4474bc8d1621a2899ec2b03b58c9c4d8a`。

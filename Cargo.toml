@@ -12,7 +12,6 @@ repository = "https://github.com/sapid-ui/sapid"
 [features]
 default = []
 charts = ["dep:libm"]
-chat = ["files"]
 code = []
 files = []
 editor = []

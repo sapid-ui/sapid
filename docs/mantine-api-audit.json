@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "review_date": "2026-10-25",
-  "mantine_docs_version": "9.7.3",
+  "mantine_docs_version": "9.7.4",
   "source": "https://mantine.dev/llms-full.txt",
-  "sha256": "aea0899df7df45c238b4d7ce7773580784ca7242b7a1a650abf06d8d276e69c4",
+  "sha256": "f8deb873cd919202efed530cd243b7e4474bc8d1621a2899ec2b03b58c9c4d8a",
   "entries": [
     {
       "id": "M:AppShell",
@@ -2053,7 +2053,7 @@
         "With use-form",
         "Mask pattern syntax"
       ],
-      "document_sha256": "a91ffee9b6659ab8513ede3ccfc121a9eb402d654cff81881f722724c7eeba93"
+      "document_sha256": "be74e99f1991a415204e04357ef8c80dcb5c60e821bef79f7d80647c9316b1e0"
     },
     {
       "id": "M:NativeSelect",
@@ -3283,7 +3283,7 @@
         "Transitions",
         "Accessibility and usability"
       ],
-      "document_sha256": "9bfb4398866135cf9ea8e8206ee2486ae562349371a585187662bdd97ba608ff"
+      "document_sha256": "bea7821999dda5f5ddc322c0d176ca10eb4514eee312c9293bf2129354b0dd66"
     },
     {
       "id": "M:Slider",
@@ -17367,7 +17367,7 @@
         "Brush props",
         "ChartBrush component"
       ],
-      "document_sha256": "c5deac9eb480e4f39a64eea4aa017c47256d1add25d3f28807987bae688cae8f"
+      "document_sha256": "f2b856188c7757725292076134507481cc2c5ad5d0c78d405536043857d48c81"
     },
     {
       "id": "C:BarChart",
@@ -17592,7 +17592,7 @@
         "Bar overlays",
         "Brush"
       ],
-      "document_sha256": "056d9e697d91c91fc05256c30ed447c9f5a4087ec2ed3261c086839ac34003d3"
+      "document_sha256": "2cf525000801557a2509d93a5b4d6c9d013e207ec238e33a151437b049b4a11f"
     },
     {
       "id": "C:LineChart",
@@ -17818,7 +17818,7 @@
         "Reference dots",
         "Brush"
       ],
-      "document_sha256": "2464ccdb037147d7e00b7f669e2cc2ec7d5849d52d47f67fa78fb2be37713c57"
+      "document_sha256": "5ea474817eb6321c981ff6e02a7d298125423ea570bc350efc1306296528d478"
     },
     {
       "id": "C:CompositeChart",
@@ -18045,7 +18045,7 @@
         "Reference dots",
         "Brush"
       ],
-      "document_sha256": "48700283ac715ca9fe7f560deac423fec76ebc1d17327d4e4666c6f6bb5d60ac"
+      "document_sha256": "6c3b0cf698851c717a982702eec78cfc027046d39e9c485e269dd656474c8116"
     },
     {
       "id": "C:CandlestickChart",
@@ -18319,7 +18319,7 @@
         "Start and end angle",
         "Segments stroke"
       ],
-      "document_sha256": "27e9b63a17fada1d83e67444d35ba78262f0b485419e9b631b4cbaa202163a72"
+      "document_sha256": "da691c0af22e250d5223271092686c99049fd1d7ed777e902b3af4325ffcc370"
     },
     {
       "id": "C:PieChart",
@@ -18439,7 +18439,7 @@
         "Start and end angle",
         "Segments stroke"
       ],
-      "document_sha256": "e8ffcfb775ee2330d0d546f25e12e05d6f8942219daf1baa8169e4a48a90bfba"
+      "document_sha256": "04f5289722999ae349a3361da7de80f9636f62be9fb10cd977a82bda4fbda26b"
     },
     {
       "id": "C:FunnelChart",
@@ -18534,7 +18534,7 @@
         "Without tooltip",
         "Segments stroke"
       ],
-      "document_sha256": "2314a9041a21d771040c4c463a2db03b61df7490dcf3460abe5555986415aa4c"
+      "document_sha256": "728f0f4fa707e1c622b8b793995162285cc78e4c902a862e1feb88ea5b409294"
     },
     {
       "id": "C:RadarChart",
@@ -18814,7 +18814,7 @@
         "Reference areas",
         "Reference dots"
       ],
-      "document_sha256": "eafdaf19097b49fd237ab6d95d690ff7f8426eeeec87d3c26a7527195602ee63"
+      "document_sha256": "417c9ad1635b93071c91d8eb074c227a370ea1103a8cc28bee456f107301f3a7"
     },
     {
       "id": "C:BubbleChart",
@@ -21694,7 +21694,7 @@
         "Why is the Text component not automatically imported?",
         "How can I import the Text component with VSCode?"
       ],
-      "document_sha256": "e7244afa47fac0483f042020a0fd990e06bc9f8c02afbc152d5c431fe84d4ffc"
+      "document_sha256": "c7e5cdb9d590e6baa974a01aaa46cf65b2c648733b0279d52b9868b6804aa4bc"
     },
     {
       "id": "T:MobileMonthView",
@@ -23385,7 +23385,7 @@
         "Sizes with static CSS variables",
         "X COMPONENTS AND FEATURES"
       ],
-      "document_sha256": "12d15edcae1dbef592cefe27e40db151a8bb9e4247668ce800cec6d57adb7e74"
+      "document_sha256": "cf1ed8d769b5312e419dd1babb837991f858625e95b923b974e54c2633fe97c2"
     },
     {
       "id": "X:Notifications system",

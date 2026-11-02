@@ -428,8 +428,6 @@ pub use typography::{
 pub use visually_hidden::{MAX_VISUALLY_HIDDEN_BYTES, VisuallyHidden, visually_hidden};
 
 pub mod prelude {
-    #[cfg(feature = "chat")]
-    pub use crate::chat::*;
     #[cfg(feature = "dates")]
     pub use crate::date_time_model::*;
     #[cfg(feature = "dates")]
@@ -743,11 +741,6 @@ mod responsive;
 pub use responsive::{
     Breakpoint, Breakpoints, ResponsiveContext, ResponsiveRoot, ResponsiveValues, responsive_root,
 };
-
-#[cfg(feature = "chat")]
-pub mod chat;
-#[cfg(feature = "chat")]
-pub use chat::*;
 
 #[cfg(feature = "files")]
 pub mod files;

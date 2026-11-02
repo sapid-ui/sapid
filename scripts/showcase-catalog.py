@@ -16,8 +16,8 @@ inventory = json.loads((ROOT / "docs/widget-inventory.json").read_text(encoding=
 ledger = json.loads((ROOT / "docs/capability-matrix.json").read_text(encoding="utf-8"))
 tasks = inventory["tasks"]
 records = {entry["id"]: entry for entry in ledger["tasks"]}
-if len(tasks) != 149 or len(records) != 149 or {t["id"] for t in tasks} != set(records):
-    raise SystemExit("catalogue requires all 149 canonical tasks and explicit ledger entries")
+if len(tasks) != 137 or len(records) != 137 or {t["id"] for t in tasks} != set(records):
+    raise SystemExit("catalogue requires all 137 canonical tasks and explicit ledger entries")
 
 EXTRA_PAGES = {"P0-08": "drawer", "P2-09": "actions", "P10-07": "json-viewer"}
 CORE = {f"P0-{i:02}": name for i, name in enumerate([
@@ -40,7 +40,6 @@ FOCUSED_GROUPS = {
     "copy_button": ["P10-03"],
     "file_button": ["P10-01"],
     "toolbar": ["P2-07", "P6-10"],
-    "model_suggestions": ["P13-05", "P13-06"],
 }
 FOCUSED = {identity: family for family, identities in FOCUSED_GROUPS.items() for identity in identities}
 FOCUSED_NAMES = {
@@ -88,8 +87,6 @@ FOCUSED_NAMES = {
     "P7-05": "focused_rating",
     "P10-01": "focused_file_button",
     "P10-03": "focused_copy_button",
-    "P13-05": "focused_model_selector",
-    "P13-06": "focused_suggestion",
 }
 if set(FOCUSED_NAMES) != set(FOCUSED):
     raise SystemExit("every focused demo requires an explicit semantic module name")
@@ -101,10 +98,6 @@ SPECIAL = {
     "json-viewer": ("json_tree_example", "json_tree_example", "theme", False),
     "tree-select": ("tree_choices_form", "tree_choices_form", "theme, false", False),
     "cascader": ("tree_choices_form", "tree_choices_form", "theme, true", False),
-    "trace": ("trace_form", "form", "scope, theme.clone(), false", True),
-    "stack-trace": ("trace_form", "form", "scope, theme.clone(), true", True),
-    "public-explanations": ("chat_evidence_form", "chat_evidence_form", "theme, false", False),
-    "citations": ("chat_evidence_form", "chat_evidence_form", "theme, true", False),
 }
 for index, page in enumerate(["polar-charts", "point-charts", "shape-charts", "matrix-charts", "range-charts", "hierarchy-charts"]):
     SPECIAL[page] = ("plots_form", "plots_form", f"theme, {index}", False)
@@ -274,20 +267,6 @@ LEADS = {
         "Read upcoming events as a chronological agenda.",
         "Compare availability and events across multiple resources.",
     ],
-    "P13": [
-        "Present conversation messages with bubbles, markers and supporting metadata.",
-        "Browse long conversations while preserving the reader's position.",
-        "Compose a message with suggestions, attachments and explicit send actions.",
-        "Guide users through typed questions with step-by-step validation.",
-        "Choose from an application-provided catalogue of models and providers.",
-        "Offer contextual suggestions that users can explicitly choose.",
-        "Request confirmation at a checkpoint before an application action continues.",
-        "Present plans, tasks and queues with explicit application-owned status.",
-        "Show application-published reasoning summaries and completed steps.",
-        "Attach source links, context and inline citations to displayed content.",
-        "Inspect public execution traces, tool results and stack information.",
-        "Read windowed terminal output and structured test results.",
-    ],
 }
 DESCRIPTIONS = {
     f"{phase}-{number:02}": description
@@ -300,18 +279,28 @@ if set(DESCRIPTIONS) != set(records):
 def group(task):
     phase, number = task["id"].split("-")
     n = int(number)
+    overrides = {
+        "P0-04": "Miscellaneous", "P0-11": "Miscellaneous", "P0-13": "Miscellaneous",
+        "P3-06": "Navigation", "P3-12": "Miscellaneous",
+        "P6-07": "Miscellaneous", "P6-10": "Miscellaneous", "P6-12": "Data display",
+        "P6-13": "Overlays", "P6-14": "Miscellaneous", "P7-06": "Data display",
+        "P8-03": "Navigation", "P10-01": "Inputs", "P10-03": "Buttons",
+    }
+    if task["id"] in overrides:
+        return overrides[task["id"]]
     if phase == "P0":
-        return {1: "Buttons", 2: "Inputs", 3: "Inputs", 4: "Data display", 5: "Data display", 6: "Navigation", 7: "Overlays", 8: "Overlays", 9: "Overlays", 10: "Navigation", 11: "Overlays", 12: "Extensions", 13: "Typography", 14: "Extensions"}[n]
+        return {1: "Buttons", 2: "Inputs", 3: "Inputs", 5: "Data display", 6: "Navigation", 7: "Overlays", 8: "Overlays", 9: "Overlays", 10: "Navigation", 12: "Extensions", 14: "Extensions"}[n]
     if phase == "P1": return "Inputs"
     if phase == "P2": return "Buttons" if n in (4, 7, 8, 9) else "Inputs"
     if phase == "P3":
-        return "Layout" if n <= 4 else "Typography" if n in (5, 6, 7, 8, 9, 16) else "Data display"
+        return "Layout" if n <= 4 else "Typography" if n in (5, 7, 8, 9, 16) else "Data display"
     if phase == "P4": return "Combobox" if 4 <= n <= 9 else "Navigation"
     if phase == "P5": return "Overlays" if n in (1, 2, 3, 4, 12, 13, 14, 15) else "Feedback"
-    if phase == "P6": return "Extensions" if n == 7 else "Layout" if n in (8, 9) else "Navigation"
+    if phase == "P6": return "Layout" if n in (8, 9) else "Navigation"
     if phase == "P7": return "Inputs"
     if phase == "P8": return "Combobox" if n in (4, 5) else "Data display"
-    return {"P9": "Dates", "P10": "Extensions", "P11": "Charts", "P12": "Dates", "P13": "Chat"}[phase]
+    if phase == "P10": return "Extensions"
+    return {"P9": "Dates", "P11": "Charts", "P12": "Dates"}[phase]
 
 
 def target(page):
@@ -403,6 +392,102 @@ def focused_bundle(identity, family):
                      + body + '\n}\n')
 
 
+MANTINE_FACTS = json.loads((ROOT / "docs/mantine-api-audit.json").read_text(encoding="utf-8"))
+
+
+def api_sources(task):
+    paths = []
+    for value in task["evidence"]["implementation"]:
+        path = value.split(" (")[0]
+        if path.endswith(".rs") and (ROOT / path).is_file() and not path.startswith("examples/"):
+            paths.append(path)
+    return sorted(set(paths))
+
+
+def api_surface(task):
+    builders, classes = set(), set()
+    for path in api_sources(task):
+        text = (ROOT / path).read_text(encoding="utf-8")
+        builders.update(match[1] or match[2] for match in re.finditer(r"pub fn ([a-z_0-9]+)|forward!\((\w+)", text))
+        classes.update(re.findall(r"\b(sapid-[a-z0-9-]+)", text))
+        for macro, relative in [("common_methods!", "src/appearance.rs"), ("text_input_methods!", "src/text_input.rs")]:
+            if macro in text:
+                support = (ROOT / relative).read_text(encoding="utf-8")
+                start = support.find("macro_rules! " + macro[:-1])
+                builders.update(re.findall(r"pub fn ([a-z_0-9]+)", support[start:]))
+    return sorted(builders), sorted(classes)
+
+
+def api_entry(task):
+    builders, classes = api_surface(task)
+    upstream = []
+    for item in MANTINE_FACTS["entries"]:
+        if item["task"] != task["id"]:
+            continue
+        props = ", ".join(
+            f"Prop {{ name: {literal(name)}, kind: {literal(' | '.join(item['prop_types'][name]))} }}"
+            for name in item["props"]
+        )
+        sections = ", ".join(literal(section) for section in item["sections"])
+        upstream.append(
+            f"Upstream {{ name: {literal(item['name'])}, url: {literal(item['url'])}, "
+            f"sections: &[{sections}], props: &[{props}] }}"
+        )
+    builder_values = ", ".join(literal(value) for value in builders)
+    class_values = ", ".join(literal(value) for value in classes)
+    return (
+        f"    ApiEntry {{ id: {literal(task['id'])}, builders: &[{builder_values}], "
+        f"classes: &[{class_values}], upstream: &[{', '.join(upstream)}] }},"
+    )
+
+
+def api_catalog(tasks):
+    body = "\n".join(api_entry(task) for task in tasks)
+    return """//! Generated Rust and Mantine API metadata; edit sources and run showcase-catalog.py.
+#[derive(Clone, Copy, Debug)]
+pub struct Prop {
+    pub name: &'static str,
+    pub kind: &'static str,
+}
+#[derive(Clone, Copy, Debug)]
+pub struct Upstream {
+    pub name: &'static str,
+    pub url: &'static str,
+    pub sections: &'static [&'static str],
+    pub props: &'static [Prop],
+}
+#[derive(Clone, Copy, Debug)]
+pub struct ApiEntry {
+    pub id: &'static str,
+    pub builders: &'static [&'static str],
+    pub classes: &'static [&'static str],
+    pub upstream: &'static [Upstream],
+}
+#[rustfmt::skip]
+pub const ENTRIES: &[ApiEntry] = &[
+""" + body + """
+];
+
+pub fn find(id: &str) -> Option<&'static ApiEntry> {
+    ENTRIES.iter().find(|entry| entry.id == id)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn button_has_real_local_and_upstream_api() {
+        let entry = find("P0-01").unwrap();
+        assert!(entry.builders.contains(&"button"));
+        assert!(entry.builders.contains(&"left_section"));
+        assert!(entry.classes.contains(&"sapid-button"));
+        assert!(entry.upstream.iter().any(|item| item.name == "Button" && !item.props.is_empty()));
+        assert!(find("unknown").is_none());
+    }
+}
+"""
+
+
 pages = {}
 entries = []
 outputs = {}
@@ -468,7 +553,7 @@ mod tests {
 
     #[test]
     fn catalogue_covers_every_work_item_once_with_real_rust_examples() {
-        assert_eq!(ENTRIES.len(), 149);
+        assert_eq!(ENTRIES.len(), 137);
         for (index, entry) in ENTRIES.iter().enumerate() {
             assert!(ENTRIES[..index].iter().all(|other| other.id != entry.id));
             assert_eq!(find(entry.id).unwrap().name, entry.name);
@@ -489,6 +574,7 @@ for key in sorted(modules):
     registry += f"pub fn {key}_widget(theme: sapid::Theme) -> Box<dyn Widget> {{ Box::new({key}::demo(theme)) }}\n"
 outputs[WEB / "src/showcase_demos/mod.rs"] = formatted(registry)
 outputs[CATALOG] = formatted(catalog)
+outputs[WEB / "src/showcase_api.rs"] = formatted(api_catalog(tasks))
 stale = []
 for path, content in outputs.items():
     if args.check:

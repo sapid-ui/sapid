@@ -2,8 +2,8 @@
   "schema_version": 1,
   "tasks": {
     "P0-01": {
-      "current": "Button：六种外观、受控禁用/loading、图文插槽和按钮组",
-      "differences": "本轮补 Light/Outline/Subtle；gradient/任意 variant resolver 不移植。fullWidth/justify 可用 Style，loading 自定义显示仍可后续完善。",
+      "current": "Button：六种外观、五档尺寸与 compact、受控禁用/loading、图文插槽和按钮组",
+      "differences": "已补 Light/Outline/Subtle 与 compact；展示页覆盖 fullWidth/justify、颜色、圆角和独立场景。gradient/任意 variant resolver 不移植，loading 自定义显示仍可后续完善。",
       "priority": "P2"
     },
     "P0-02": {
@@ -643,6 +643,12 @@
       "priority": "P1",
       "work": "dropdown 配置、option slot、lineClamp、slider marks、分段 progress、日期 presets、日程统一编辑",
       "status": "待后续有限设计；未实现，不承诺整套上游等价"
+    },
+    {
+      "id": "A5",
+      "priority": "P1",
+      "work": "Mantine 9.7.4 展示结构、真实 Rust/Mantine API 参考、Button 多场景与 compact",
+      "status": "展示站提供 Documentation/Props/Styles API；Button 支持五档尺寸、compact、颜色、圆角及独立场景；其他组件保持已验证的有限契约"
     }
   ],
   "verification": [
@@ -654,6 +660,6 @@
     "- 展示站 host/wasm32 严格 Clippy、19 项 Rust 检查、WASM 与 36 个代表性 SSR 文档通过。日志：`mantine-showcase-final.log`；最终资产 `assets-aec435696a9fb3e4493f`。",
     "- Chromium 148.0.7778.96：350 组检查、errors=[]。包含新增 48 组 API 专项、64 组样式、182 组既有站点检查（含全部 149 路由）、16 组 Theme Studio、32 组当前配色顺序检查、8 组导航检查。报告均在 `D:/BuildCache/sapid/*-browser.json`。",
     "- 新增浏览器专项同时验证真实 Input 的 value setter 未在 hint 更新时调用、节点/UTF-16 选区/预编辑保留，四主题、1440/360px、CSR/真实 SSR 接管均通过。CDP IME 是协议证据，不等于 OS IME 或读屏语音验收。",
-    "- 本轮状态仅将 A1–A3 标为完成；A4 与逐项差异表中的其他缺口仍保留为未实现/待设计，没有把目录覆盖写成 API 全兼容。"
+    "- A5 已完成 Mantine 9.7.4 展示结构、真实 API 参考和 Button 多场景/compact；A4 与逐项差异表中的其他缺口仍保留为未实现/待设计，没有把目录覆盖写成 API 全兼容。"
   ]
 }

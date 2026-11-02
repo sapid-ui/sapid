@@ -5,7 +5,7 @@ async(hostPage,baseURL='http://127.0.0.1:8794')=>{
     const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));page.on('console',e=>{if(e.type()==='error')errors.push(e.text())});
     for(const hue of ['blue','green'])for(const scheme of ['light','dark'])for(const render of ['csr','hydrate']){
       await page.goto(`${baseURL}/gallery.html?theme=${hue}&scheme=${scheme}#P4-04`);await page.waitForFunction(()=>window.galleryReady===true);
-      assert(await page.locator('tbody tr').count()===149,'gallery covers all canonical work IDs exactly once');
+      assert(await page.locator('tbody tr').count()===137,'gallery covers all canonical work IDs exactly once');
       await page.locator('#gallery-render').selectOption(render);
       await page.waitForFunction(()=>{const frame=document.querySelector('#gallery-preview');return frame.getAttribute('aria-busy')==='false'&&frame.contentWindow?.ready===true&&frame.contentWindow.location.href===frame.src});
       const preview=page.frameLocator('#gallery-preview'),select=preview.getByRole('combobox',{name:'Subscription plan',exact:true});await select.waitFor();
