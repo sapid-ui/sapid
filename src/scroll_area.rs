@@ -1,17 +1,19 @@
 //! Native scrolling viewports with bounded, ordered application intents.
 use crate::appearance::{Common, configure, merge, observe};
 use crate::composite::{self, Callback};
+use crate::state::{DelayFactory, OwnerDelay};
 use glory::render::{
     Action, Event, EventKind, FocusMode, NodeId, Orientation, Query, QueryValue, ScrollAxes,
     ScrollCommand, ScrollMetrics, ScrollMovement, Semantics,
 };
-use glory::style::{Length, Overflow, Style};
+use glory::style::{Edges, Length, Overflow, Style};
 use glory::ui::{Result, WeakScope, Widget};
 use glory::{Bond, Cage, Scope, Vary};
 use std::{
     cell::{Cell, RefCell},
     collections::VecDeque,
     rc::Rc,
+    time::Duration,
 };
 
 pub const MAX_PENDING_SCROLL_INTENTS: usize = 128;
@@ -20,12 +22,78 @@ pub enum Scrollbars {
     #[default]
     Auto,
     Always,
+    Hover,
+    Scroll,
+    Never,
+}
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum ScrollbarOffset {
+    #[default]
+    None,
+    Both,
+    Horizontal,
+    Vertical,
+    Present,
+}
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum OverscrollBehavior {
+    #[default]
+    Auto,
+    Contain,
+    None,
+}
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct PresentationSettings {
+    bars: Scrollbars,
+    size: f64,
+    offset: ScrollbarOffset,
+    overscroll: OverscrollBehavior,
+    hide_delay: Duration,
+}
+type ScrollDelay = Rc<dyn Fn(Duration) -> glory::core::LocalFuture>;
+struct Presentation {
+    settings: Cage<PresentationSettings>,
+    visible: Cage<bool>,
+    hovered: Cage<bool>,
+    pending: Rc<OwnerDelay>,
+    delay: Option<ScrollDelay>,
+}
+impl Presentation {
+    fn activity(self: &Rc<Self>, scope: &Scope, hover: Option<bool>) -> Result {
+        if let Some(hover) = hover {
+            self.hovered.try_revise(|value| *value = hover)?;
+        }
+        let settings = self.settings.try_get()?;
+        if !matches!(settings.bars, Scrollbars::Hover | Scrollbars::Scroll) {
+            return Ok(());
+        }
+        if settings.bars == Scrollbars::Hover && self.hovered.try_get()? {
+            self.pending.cancel();
+            self.visible.try_revise(|value| *value = true)?;
+            return Ok(());
+        }
+        if settings.bars == Scrollbars::Scroll && hover.is_some() {
+            return Ok(());
+        }
+        self.visible.try_revise(|value| *value = true)?;
+        let duration = settings.hide_delay;
+        let factory: Option<DelayFactory> = self.delay.as_ref().map(|delay| {
+            let delay = delay.clone();
+            Rc::new(move || delay(duration)) as DelayFactory
+        });
+        let visible = self.visible;
+        self.pending.run(scope, factory.as_ref(), move || {
+            visible.try_revise(|value| *value = false)?;
+            Ok(())
+        })
+    }
 }
 #[derive(Clone, Copy, Debug)]
 enum Intent {
     Command(ScrollCommand),
     To(f64, f64),
     By(f64, f64),
+    Fraction(f64, f64),
 }
 fn invalid(message: &'static str) -> glory::ui::Error {
     glory::render::Error::InvalidProps(message).into()
@@ -34,6 +102,7 @@ fn position(
     metrics: ScrollMetrics,
     intents: &mut VecDeque<Intent>,
     step: f64,
+    axes: ScrollAxes,
 ) -> Result<(f64, f64)> {
     let mut x = metrics.x;
     let mut y = metrics.y;
@@ -50,14 +119,36 @@ fn position(
     while let Some(intent) = intents.pop_front() {
         match intent {
             Intent::To(next_x, next_y) => {
+                if next_x != 0.0 && !axes.allows(Orientation::Horizontal)
+                    || next_y != 0.0 && !axes.allows(Orientation::Vertical)
+                {
+                    return Err(invalid("pending scroll destination uses an excluded axis"));
+                }
                 x = next_x.clamp(0.0, max_x);
                 y = next_y.clamp(0.0, max_y);
             }
             Intent::By(dx, dy) => {
+                if dx != 0.0 && !axes.allows(Orientation::Horizontal)
+                    || dy != 0.0 && !axes.allows(Orientation::Vertical)
+                {
+                    return Err(invalid("pending scroll delta uses an excluded axis"));
+                }
                 x = (x + dx).clamp(0.0, max_x);
                 y = (y + dy).clamp(0.0, max_y);
             }
+            Intent::Fraction(next_x, next_y) => {
+                if next_x != 0.0 && !axes.allows(Orientation::Horizontal)
+                    || next_y != 0.0 && !axes.allows(Orientation::Vertical)
+                {
+                    return Err(invalid("pending scroll fraction uses an excluded axis"));
+                }
+                x = next_x * max_x;
+                y = next_y * max_y;
+            }
             Intent::Command(command) => {
+                if !axes.allows(command.axis) {
+                    return Err(invalid("pending scroll command uses an excluded axis"));
+                }
                 let (value, max, page) = match command.axis {
                     Orientation::Horizontal => (&mut x, max_x, metrics.viewport_width),
                     Orientation::Vertical => (&mut y, max_y, metrics.viewport_height),
@@ -82,7 +173,7 @@ struct Controller {
     live: Cell<bool>,
     viewport: Cage<Option<NodeId>>,
     metrics: Cage<Option<ScrollMetrics>>,
-    axes: ScrollAxes,
+    axes: Vary<ScrollAxes>,
     step: f64,
     queue: RefCell<VecDeque<Intent>>,
     requesting: Cell<bool>,
@@ -146,7 +237,7 @@ impl Controller {
                 if intents.is_empty() {
                     return Ok(());
                 }
-                let (x, y) = position(metrics, &mut intents, self.step)?;
+                let (x, y) = position(metrics, &mut intents, self.step, self.axes.try_get()?)?;
                 let node = self.viewport.try_get()?.ok_or(glory::ui::Error::Gone)?;
                 scope.action(Action::ScrollTo { node, x, y })
             })();
@@ -171,6 +262,24 @@ pub struct ScrollHandle {
     metrics: Bond<Option<ScrollMetrics>>,
 }
 impl ScrollHandle {
+    /// Resolve a fractional destination against actual extents at the request barrier.
+    pub fn scroll_to_fraction(&self, x: f64, y: f64) -> Result {
+        self.inner.ensure()?;
+        if !x.is_finite()
+            || !y.is_finite()
+            || !(0.0..=1.0).contains(&x)
+            || !(0.0..=1.0).contains(&y)
+        {
+            return Err(invalid("scroll fractions must be finite within 0..=1"));
+        }
+        let axes = self.inner.axes.try_get()?;
+        if x != 0.0 && !axes.allows(Orientation::Horizontal)
+            || y != 0.0 && !axes.allows(Orientation::Vertical)
+        {
+            return Err(invalid("scroll fraction uses an excluded axis"));
+        }
+        self.inner.enqueue(Intent::Fraction(x, y))
+    }
     pub fn metrics(&self) -> Bond<Option<ScrollMetrics>> {
         self.metrics
     }
@@ -179,7 +288,7 @@ impl ScrollHandle {
     }
     pub fn command(&self, command: ScrollCommand) -> Result {
         self.inner.ensure()?;
-        if !self.inner.axes.allows(command.axis) {
+        if !self.inner.axes.try_get()?.allows(command.axis) {
             return Err(invalid("scroll command uses an excluded axis"));
         }
         self.inner.enqueue(Intent::Command(command))
@@ -189,8 +298,8 @@ impl ScrollHandle {
         if !x.is_finite() || !y.is_finite() || x < 0.0 || y < 0.0 {
             return Err(invalid("scroll position must be finite and nonnegative"));
         }
-        if x != 0.0 && !self.inner.axes.allows(Orientation::Horizontal)
-            || y != 0.0 && !self.inner.axes.allows(Orientation::Vertical)
+        if x != 0.0 && !self.inner.axes.try_get()?.allows(Orientation::Horizontal)
+            || y != 0.0 && !self.inner.axes.try_get()?.allows(Orientation::Vertical)
         {
             return Err(invalid("scroll position uses an excluded axis"));
         }
@@ -201,8 +310,8 @@ impl ScrollHandle {
         if !x.is_finite() || !y.is_finite() {
             return Err(invalid("scroll delta must be finite"));
         }
-        if x != 0.0 && !self.inner.axes.allows(Orientation::Horizontal)
-            || y != 0.0 && !self.inner.axes.allows(Orientation::Vertical)
+        if x != 0.0 && !self.inner.axes.try_get()?.allows(Orientation::Horizontal)
+            || y != 0.0 && !self.inner.axes.try_get()?.allows(Orientation::Vertical)
         {
             return Err(invalid("scroll delta uses an excluded axis"));
         }
@@ -221,8 +330,13 @@ type ScrollChange = Box<dyn FnMut((f64, f64))>;
 pub struct ScrollArea {
     common: Common,
     key: String,
-    axes: ScrollAxes,
-    scrollbars: Scrollbars,
+    axes: Vary<ScrollAxes>,
+    scrollbars: Vary<Scrollbars>,
+    scrollbar_size: Vary<f64>,
+    offset_scrollbars: Vary<ScrollbarOffset>,
+    overscroll: Vary<OverscrollBehavior>,
+    hide_delay: Vary<Duration>,
+    delay: Option<ScrollDelay>,
     keyboard: bool,
     step: f64,
     content: Option<Factory>,
@@ -235,8 +349,13 @@ pub fn scroll_area(key: impl Into<String>) -> ScrollArea {
     ScrollArea {
         common: Common::default(),
         key: key.into(),
-        axes: ScrollAxes::Vertical,
-        scrollbars: Scrollbars::Auto,
+        axes: ScrollAxes::Vertical.into(),
+        scrollbars: Scrollbars::Auto.into(),
+        scrollbar_size: 12.0.into(),
+        offset_scrollbars: ScrollbarOffset::None.into(),
+        overscroll: OverscrollBehavior::Auto.into(),
+        hide_delay: Duration::from_millis(500).into(),
+        delay: None,
         keyboard: true,
         step: 40.0,
         content: None,
@@ -288,12 +407,36 @@ macro_rules! methods {
 }
 impl ScrollArea {
     methods!();
-    pub fn axes(mut self, value: ScrollAxes) -> Self {
-        self.axes = value;
+    pub fn axes(mut self, value: impl Into<Vary<ScrollAxes>>) -> Self {
+        self.axes = value.into();
         self
     }
-    pub fn scrollbars(mut self, value: Scrollbars) -> Self {
-        self.scrollbars = value;
+    pub fn scrollbars(mut self, value: impl Into<Vary<Scrollbars>>) -> Self {
+        self.scrollbars = value.into();
+        self
+    }
+    pub fn scrollbar_size(mut self, value: impl Into<Vary<f64>>) -> Self {
+        self.scrollbar_size = value.into();
+        self
+    }
+    pub fn offset_scrollbars(mut self, value: impl Into<Vary<ScrollbarOffset>>) -> Self {
+        self.offset_scrollbars = value.into();
+        self
+    }
+    pub fn overscroll_behavior(mut self, value: impl Into<Vary<OverscrollBehavior>>) -> Self {
+        self.overscroll = value.into();
+        self
+    }
+    pub fn scroll_hide_delay(mut self, value: impl Into<Vary<Duration>>) -> Self {
+        self.hide_delay = value.into();
+        self
+    }
+    /// Explicit host timer; no browser, clock or global executor is installed by the widget.
+    pub fn delay<F: std::future::Future<Output = ()> + 'static>(
+        mut self,
+        factory: impl Fn(Duration) -> F + 'static,
+    ) -> Self {
+        self.delay = Some(Rc::new(move |duration| Box::pin(factory(duration))));
         self
     }
     pub fn keyboard(mut self, value: bool) -> Self {
@@ -339,7 +482,7 @@ impl ScrollArea {
             live: Cell::new(true),
             viewport: self.common.node_ref.unwrap_or_else(|| scope.cage(None)),
             metrics,
-            axes: self.axes,
+            axes: self.axes.clone(),
             step: self.step,
             queue: RefCell::new(VecDeque::new()),
             requesting: Cell::new(false),
@@ -355,23 +498,61 @@ impl ScrollArea {
     fn mount_view(&mut self, scope: &Scope, handle: ScrollHandle) -> Result {
         let owner = scope.id();
         let reference = handle.inner.viewport;
-        let overflow = match self.scrollbars {
-            Scrollbars::Auto => Overflow::Auto,
-            Scrollbars::Always => Overflow::Scroll,
-        };
+        let bars = self.scrollbars.clone();
+        let size = self.scrollbar_size.clone();
+        let offset = self.offset_scrollbars.clone();
+        let overscroll = self.overscroll.clone();
+        let hide_delay = self.hide_delay.clone();
+        let timed = self.delay.is_some();
+        let raw: Vary<PresentationSettings> = scope
+            .bond(move || PresentationSettings {
+                bars: bars.get(),
+                size: size.get(),
+                offset: offset.get(),
+                overscroll: overscroll.get(),
+                hide_delay: hide_delay.get(),
+            })
+            .into();
+        let settings = composite::validated(scope, &raw, move |value| {
+            if !value.size.is_finite()
+                || !(1.0..=32.0).contains(&value.size)
+                || value.size.fract() != 0.0
+                || value.hide_delay > Duration::from_secs(10)
+            {
+                return Err(invalid(
+                    "scrollbar size must be an integer in 1..=32 and hide delay at most 10 seconds",
+                ));
+            }
+            if !timed
+                && !value.hide_delay.is_zero()
+                && matches!(value.bars, Scrollbars::Hover | Scrollbars::Scroll)
+            {
+                return Err(invalid(
+                    "hover/scroll scrollbar delays require an explicit host timer",
+                ));
+            }
+            Ok(())
+        })?;
+        let presentation = Rc::new(Presentation {
+            settings,
+            visible: scope.cage(false),
+            hovered: scope.cage(false),
+            pending: OwnerDelay::new(scope)?,
+            delay: self.delay.take(),
+        });
+        let visible = presentation.visible;
+        let hovered = presentation.hovered;
+        let original = self.common.class.clone();
+        self.common.class = scope.bond(move || {
+            let value = settings.get();
+            let behavior = match value.bars { Scrollbars::Auto => "auto", Scrollbars::Always => "always", Scrollbars::Hover => "hover", Scrollbars::Scroll => "scroll", Scrollbars::Never => "never" };
+            let overscroll = match value.overscroll { OverscrollBehavior::Auto => "auto", OverscrollBehavior::Contain => "contain", OverscrollBehavior::None => "none" };
+            format!("{} sapid-scroll-{behavior} sapid-scroll-size-{} sapid-overscroll-{overscroll}{}", original.get(), value.size as u8, if visible.get() || value.bars == Scrollbars::Hover && hovered.get() { " is-scrolling" } else { "" })
+        }).into();
+        let axes = self.axes.clone();
         let mut structural = Style::new()
             .width(Length::Percent(100.0))
-            .height(Length::Px(240.0))
-            .overflow_x(if self.axes.allows(Orientation::Horizontal) {
-                overflow
-            } else {
-                Overflow::Hidden
-            })
-            .overflow_y(if self.axes.allows(Orientation::Vertical) {
-                overflow
-            } else {
-                Overflow::Hidden
-            });
+            .height(Length::Px(240.0));
         if !self.common.unstyled {
             structural.color = Some(self.common.theme.foreground);
             structural.background = Some(self.common.theme.surface);
@@ -384,18 +565,66 @@ impl ScrollArea {
             "sapid-scroll-area",
             Style::new()
         )
-        .style(scope.bond(move || merge(structural.clone(), custom.get())))
+        .style(scope.bond(move || {
+            let mut style = structural.clone();
+            let overflow = if settings.get().bars == Scrollbars::Always {
+                Overflow::Scroll
+            } else {
+                Overflow::Auto
+            };
+            style.overflow_x = Some(if axes.get().allows(Orientation::Horizontal) {
+                overflow
+            } else {
+                Overflow::Hidden
+            });
+            style.overflow_y = Some(if axes.get().allows(Orientation::Vertical) {
+                overflow
+            } else {
+                Overflow::Hidden
+            });
+            merge(style, custom.get())
+        }))
         .focus(if self.keyboard {
             FocusMode::TabStop
         } else {
             FocusMode::Programmatic
         })
         .node_ref(reference)
-        .semantics(composite::metadata(Semantics {
-            id: Some(composite::id("scroll", &self.key, "viewport", "viewport")?),
-            scroll_keyboard: self.keyboard.then_some(self.axes),
-            ..Default::default()
-        }));
+        .semantics({
+            let id = composite::id("scroll", &self.key, "viewport", "viewport")?;
+            let axes = self.axes.clone();
+            let keyboard = self.keyboard;
+            scope.bond(move || {
+                composite::metadata(Semantics {
+                    id: Some(id.clone()),
+                    scroll_keyboard: keyboard.then(|| axes.get()),
+                    ..Default::default()
+                })
+            })
+        });
+        if self.scrollbars.is_reactive()
+            || self.scrollbars.try_get()? == Scrollbars::Hover
+            || self.common.handlers.contains_key(&EventKind::PointerWithin)
+        {
+            let pointer_presentation = presentation.clone();
+            let weak = scope.downgrade();
+            let mut pointer_observers = self
+                .common
+                .handlers
+                .remove(&EventKind::PointerWithin)
+                .unwrap_or_default();
+            viewport = viewport.on(EventKind::PointerWithin, move |event| {
+                if let Some(scope) = weak.upgrade() {
+                    if let Event::PointerWithin { phase, .. } = event
+                        && let Err(error) = pointer_presentation
+                            .activity(&scope, Some(phase != glory::render::PointerPhase::Leave))
+                    {
+                        scope.report_error(error);
+                    }
+                    observe(&mut pointer_observers, owner, event);
+                }
+            });
+        }
         if self.keyboard {
             let handle = handle.clone();
             let weak = scope.downgrade();
@@ -423,10 +652,18 @@ impl ScrollArea {
             let weak = scope.downgrade();
             let callback = callback.clone();
             let mut generic = self.common.handlers.remove(&kind).unwrap_or_default();
+            let presentation = presentation.clone();
             viewport = viewport.on(kind, move |event| {
                 let Some(scope) = weak.upgrade() else { return };
                 if let Event::Scroll { x, y, .. } = event {
+                    if let Err(error) = presentation.activity(&scope, None) {
+                        scope.report_error(error);
+                        return;
+                    }
                     callback.emit(owner, (x, y));
+                    if !owner.is_alive() {
+                        return;
+                    }
                 }
                 if let Err(error) = handle.refresh() {
                     scope.report_error(error);
@@ -441,17 +678,44 @@ impl ScrollArea {
         viewport.show_in(scope)?;
         let parent = scope.child_in(reference.try_get()?.ok_or(glory::ui::Error::Gone)?)?;
         let handle_resize = handle.clone();
+        let metrics = handle.metrics();
+        let axes = self.axes.clone();
         let weak = scope.downgrade();
-        let mut content =
-            glory::ui::view()
-                .class("sapid-scroll-content")
-                .on(EventKind::Resize, move |_| {
-                    if let Err(error) = handle_resize.refresh()
-                        && let Some(scope) = weak.upgrade()
-                    {
-                        scope.report_error(error);
-                    }
-                });
+        let mut content = glory::ui::view()
+            .class("sapid-scroll-content")
+            .style(scope.bond(move || {
+                let value = settings.get();
+                let present = metrics.get();
+                let horizontal = axes.get().allows(Orientation::Horizontal)
+                    && match value.offset {
+                        ScrollbarOffset::Both | ScrollbarOffset::Horizontal => true,
+                        ScrollbarOffset::Present => {
+                            present.is_some_and(|m| m.content_width > m.viewport_width)
+                        }
+                        _ => false,
+                    };
+                let vertical = axes.get().allows(Orientation::Vertical)
+                    && match value.offset {
+                        ScrollbarOffset::Both | ScrollbarOffset::Vertical => true,
+                        ScrollbarOffset::Present => {
+                            present.is_some_and(|m| m.content_height > m.viewport_height)
+                        }
+                        _ => false,
+                    };
+                Style::new().padding(Edges {
+                    top: 0.0,
+                    left: 0.0,
+                    right: if vertical { value.size } else { 0.0 },
+                    bottom: if horizontal { value.size } else { 0.0 },
+                })
+            }))
+            .on(EventKind::Resize, move |_| {
+                if let Err(error) = handle_resize.refresh()
+                    && let Some(scope) = weak.upgrade()
+                {
+                    scope.report_error(error);
+                }
+            });
         if let Some(reference) = self.content_ref {
             content = content.node_ref(reference);
         }
@@ -497,7 +761,8 @@ impl Scroller {
         self.area.axes = match self.axis {
             Orientation::Horizontal => ScrollAxes::Horizontal,
             Orientation::Vertical => ScrollAxes::Vertical,
-        };
+        }
+        .into();
         self
     }
     pub fn axis(mut self, value: Orientation) -> Self {
@@ -505,7 +770,8 @@ impl Scroller {
         self.area.axes = match value {
             Orientation::Horizontal => ScrollAxes::Horizontal,
             Orientation::Vertical => ScrollAxes::Vertical,
-        };
+        }
+        .into();
         self
     }
     pub fn content<W: Widget>(mut self, factory: impl FnMut(ScrollContext) -> W + 'static) -> Self {
@@ -572,7 +838,10 @@ mod tests {
             ..Default::default()
         };
         let mut queue = VecDeque::from([Intent::By(0.0, -100.0), Intent::By(0.0, 50.0)]);
-        assert_eq!(position(metrics, &mut queue, 40.0).unwrap(), (0.0, 50.0));
+        assert_eq!(
+            position(metrics, &mut queue, 40.0, ScrollAxes::Both).unwrap(),
+            (0.0, 50.0)
+        );
         let mut queue = VecDeque::from([
             Intent::To(0.0, 900.0),
             Intent::By(0.0, -40.0),
@@ -581,7 +850,10 @@ mod tests {
                 movement: ScrollMovement::PageNegative,
             }),
         ]);
-        assert_eq!(position(metrics, &mut queue, 40.0).unwrap(), (0.0, 260.0));
+        assert_eq!(
+            position(metrics, &mut queue, 40.0, ScrollAxes::Both).unwrap(),
+            (0.0, 260.0)
+        );
         assert!(queue.is_empty());
     }
 }

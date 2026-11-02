@@ -291,7 +291,7 @@ pub use actions::{
     button_group, close_button,
 };
 pub use affix::*;
-pub use alert::{Alert, AlertSeverity, Announcement, MAX_ALERT_TEXT_BYTES, alert};
+pub use alert::{Alert, AlertSeverity, AlertVariant, Announcement, MAX_ALERT_TEXT_BYTES, alert};
 pub use anchor::{Anchor, AnchorRequest, anchor};
 pub use app_shell::*;
 pub use autocomplete::{Autocomplete, autocomplete, autocomplete_option};
@@ -638,8 +638,8 @@ pub mod prelude {
         Select, confirmation_request, modal_request, modals_manager, select,
     };
     pub use crate::{
-        MAX_PENDING_SCROLL_INTENTS, ScrollArea, ScrollContext, ScrollHandle, Scrollbars, Scroller,
-        scroll_area, scroller,
+        MAX_PENDING_SCROLL_INTENTS, OverscrollBehavior, ScrollArea, ScrollContext, ScrollHandle,
+        ScrollbarOffset, Scrollbars, Scroller, scroll_area, scroller,
     };
     pub use crate::{
         MAX_PORTAL_TARGETS, MAX_PORTALS, Portal, PortalContext, PortalTarget, portal,

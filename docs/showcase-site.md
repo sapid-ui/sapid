@@ -6,18 +6,22 @@
 RouteViews 挂载现有页面 Widget；组件、主题、编辑记录等 query 解码在共享 Rust 模块中。
 `Page` 保存解析后的主题展示模型，编辑工作区仍归应用根 Scope 所有，不保存第二套历史游标。
 
+同主题的 widget 文档之间切换仅替换正文、顶栏目标与页面操作，保留侧栏、导航项和滚动容器。
+当前项的 class/`aria-current` 直接订阅当前路由；前进/后退沿用同一容器，不靠重建后的滚动补偿。
+主题或页面类型变化仍显式退休旧 shell，旧 shell 不再构建目标页面。
+
 BrowserHistory 管理 EntryKey、popstate/hashchange、window 滚动和 fragment；应用仅处理组件切换
 的置顶策略及横向调色板位置。应用只使用新 routing 的历史状态，不迁移旧格式。
 SSR 别名与 query 使用同一解码器，静态文档携带 routing
 bootstrap，先接管实际 SSR 页面，再处理 WASM 加载期间变化的地址。
 
 新增 `examples/web/tests/showcase_routing.rs` 和 `scripts/showcase-routing-browser.cjs`，并接入
-`check-showcase.ps1` 的测试/浏览器流程；它们覆盖编码、36 个 SSR 别名、历史身份、页内导航、
+`check-showcase.ps1` 的测试/浏览器流程；它们覆盖编码、48 个 SSR 别名、历史身份、页内导航、
 默认参数及未知 query 保留、加载期间 URL 改变。生产构建依赖固定到包含新 routing 的 Glory 合并提交。
 
 标签、图标动作和选择输入的视觉修复与 Mantine API 对照见
 [样式复核](showcase-style-review.md)。共享修复位于 Sapid 本身；新增专项浏览器
-矩阵覆盖四主题、桌面/手机及 CSR/SSR 接管。展示站现生成 36 个代表性 SSR 页面。
+矩阵覆盖四主题、桌面/手机及 CSR/SSR 接管。展示站现生成 48 个代表性 SSR 页面。
 
 项目源码：[sapid-ui/sapid](https://github.com/sapid-ui/sapid)。顶栏 GitHub 与首页源码入口均指向此仓库。
 
@@ -32,6 +36,31 @@ bootstrap，先接管实际 SSR 页面，再处理 WASM 加载期间变化的地
 站内链接通过 Sapid Anchor 的语义导航请求交给 Rust 路由，使用 History API 更新 URL。
 指南、搜索结果、配色和明暗切换不再重载文档或重新初始化 WASM；浏览器前进/后退与页内锚点仍然有效。
 主题仍是 widget 的挂载配置，因此主题切换会重建相应视图；一个应用级调色工作区保留草稿、编辑层、颜色检查器和预览值。
+
+Alert 的布局对照 [Mantine Alert](https://mantine.dev/core/alert/)：左侧可选图标、标题/正文与右上角具名关闭动作。
+共享 `AlertVariant::{Light,Filled,Outline,Transparent}`、`color` 和 `icon` 配置由 Rust 实现；
+右侧控制器连接 Variant、Color、Radius、With close button、Title、Children，关闭后可用 Show alert 恢复。
+Overlay 示例内的加载操作会先关闭区域弹窗，再设置加载区域的 inert，避免禁用弹窗本身而锁住整个页面。
+`scripts/showcase-feedback-browser.cjs` 已接入展示站浏览器门禁，复测上述操作、侧栏身份/滚动位置、历史导航和手机宽度。
+2026-11-02 的 Chromium 148 实测 9/9、errors=[]，四主题截图与
+`showcase-feedback-browser.json` 位于 `D:/BuildCache/sapid`。Sapid 默认/全 feature 测试与严格 Clippy、
+展示站 12 项测试/3 项路由测试及 host/wasm32 Clippy 通过；额外 Glory 全量门禁受其已有锁文件需更新阻止，未改动该锁。
+
+AspectRatio、Splitter、ScrollArea 使用独立的 `focused_demos/layout_controls.rs`，
+不再把 Grid 或工程事件计数 fixture 当作使用示例。Resizable 的站内名称统一为 Splitter；
+ScrollArea/Scroller 分类移至 Extensions。比例页展示真实图片和 flex 场景；Splitter 展示
+受控尺寸、键盘/拖拽、保留身份的方向切换、关闭/恢复和嵌套布局；ScrollArea 提供五种
+滚动条显示策略、大小/偏移/延迟、双轴、overscroll 和精确顶部/中间/底部定位。
+参数更新保留滚动容器和编辑器。三页均有四主题 SSR 文档，专项浏览器门禁为
+`scripts/showcase-layout-browser.cjs`。现有两 pane 和宿主滚动边界仍在组件文档中明确记录，
+不把工程 fixture 或编译成功当作完整上游 API/原生输入等价证明。
+
+2026-11-02 的布局页验收覆盖四主题 × CSR/SSR 水合 × 三组件，共 24 组，
+Chromium 148 错误日志为空；同时复测 Alert/Overlay/侧栏保留的 9 组流程。
+三个组件的 26 项模型集成测试、134 项库单元测试、5 项现有原生布局回归、
+展示站 12 项测试/3 项路由测试及库/host/wasm32 严格 Clippy 通过。
+浏览器报告为 `D:/BuildCache/sapid/showcase-layout-browser.json`，
+原生日志为 `D:/BuildCache/sapid/layout-native-tests.log`。
 
 ## 站点标识
 

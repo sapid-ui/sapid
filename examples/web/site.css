@@ -283,7 +283,10 @@ html,body{margin:0;padding:0}
 .sapid-site .site-playground-preview>.sapid-text{font-size:12px!important;color:var(--site-muted)!important}
 .sapid-site .site-playground-controls{flex-shrink:0;border-left:1px solid var(--site-border);padding:8px 0 8px 24px;align-self:stretch}
 .sapid-site .site-playground-controls .sapid-field{width:100%;min-width:0}
+.sapid-site .site-button-playground:has(.sapid-alert)>.site-playground-preview{width:0;flex-basis:0}
 .sapid-site .site-playground-controls select{width:100%;max-width:100%}
+.sapid-site .site-playground-controls .sapid-slider{width:100%!important;min-width:0!important}
+.sapid-site .site-playground-controls .site-control-label{font-size:12px!important;font-weight:600!important}
 .sapid-site .site-playground-controls .sapid-field-label{font-size:12px!important;font-weight:600!important}
 .sapid-site .site-playground-button{max-width:100%;white-space:normal}
 @media(max-width:600px){.sapid-site .site-playground-preview{min-height:190px;width:100%;min-width:0!important;padding:25px 10px}.sapid-site .site-playground-controls{width:100%!important;border-left:0;border-top:1px solid var(--site-border);padding:22px 0 2px}.sapid-site .site-button-playground{gap:0!important}}
@@ -368,3 +371,11 @@ html,body{margin:0;padding:0}
 .sapid-site .site-variant-control,.sapid-site .site-variant-control .sapid-radio-group-items{width:100%}
 .sapid-site .site-variant-control .sapid-radio-group-items{flex-wrap:nowrap}
 .sapid-site .site-variant-control .sapid-segment{flex:1;justify-content:center;padding-inline:8px;white-space:nowrap}
+
+.sapid-site .site-layout-playground .site-playground-preview{width:0;flex-basis:0}
+.sapid-site .site-layout-playground .site-playground-controls{width:250px!important;padding-right:10px}
+.sapid-site .site-demo-heading{font-size:18px!important;font-weight:650!important}
+.sapid-site .site-splitter-pane{padding:14px;text-align:center;font-size:14px;font-weight:500}
+.sapid-site .site-splitter-preview .sapid-splitter-handle{background:var(--site-bg)!important}
+.sapid-site .site-scroll-position,.sapid-site .site-splitter-sizes{font-size:13px!important;color:var(--site-muted)!important}
+@media(max-width:600px){.sapid-site .site-layout-playground .site-playground-preview,.sapid-site .site-layout-playground .site-playground-controls{width:100%!important}.sapid-site .site-layout-playground .site-playground-preview{min-width:0!important}}

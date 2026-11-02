@@ -1,7 +1,10 @@
-# Resizable / Splitter
+# Splitter
 
 `splitter(key)` owns two stable panes and one focusable separator. A horizontal
 layout uses a vertical separator line; a vertical layout uses a horizontal line.
+`.axis(Vary<Orientation>)` changes the live direction without rebuilding panes.
+Changing direction retires the current drag query and rejects its late result;
+an old-axis pointer command cannot commit a new-axis size.
 The line carries finite `aria-valuemin`, `aria-valuemax`, `aria-valuenow`, and
 `aria-controls`. Plain `Separator` remains passive.
 

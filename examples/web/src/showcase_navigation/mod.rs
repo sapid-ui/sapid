@@ -11,6 +11,9 @@ pub const SSR_PAGES: &[(&str, &str)] = &[
     ("P0-02", "textfield"),
     ("P2-08", "actions"),
     ("P3-10", "pills"),
+    ("P3-04", "aspect-ratio"),
+    ("P6-07", "scroll-area"),
+    ("P6-08", "splitter"),
     ("P4-08", "multi-select"),
     ("P4-09", "tags"),
     ("P9-01", "dates"),
@@ -131,6 +134,7 @@ pub struct Page {
     pub initial: ThemeRecord,
     pub notice: String,
     pub revision: u64,
+    pub shell_revision: u64,
 }
 impl Page {
     pub fn builtin(theme: Theme, widget: String) -> Self {
@@ -144,6 +148,7 @@ impl Page {
             theme,
             notice: String::new(),
             revision: 0,
+            shell_revision: 0,
         }
     }
 }
@@ -171,7 +176,7 @@ impl State {
 }
 pub fn app(state: State) -> impl Widget {
     widget(move |scope| {
-        let revisions = scope.bond(move || vec![state.page.with(|p| p.revision)]);
+        let revisions = scope.bond(move || vec![state.page.with(|p| p.shell_revision)]);
         scope.effect(move || {
             let page = state.page.get();
             if let Err(error) = crate::showcase_host::present(&page, state.page) {
@@ -196,6 +201,7 @@ pub fn app(state: State) -> impl Widget {
                     page.route.return_to,
                     state.notice,
                     state.editor,
+                    state.page,
                 )
             })
             .show_in(scope)

@@ -1,6 +1,23 @@
 # ScrollArea and Scroller
 
-`scroll_area(key)` creates a real focusable scrolling View with one stable content wrapper. The default axis is vertical, keyboard step is 40 logical pixels, viewport height is 240 pixels, and width is 100%. Explicit styles can override dimensions. `Scrollbars::{Auto, Always}` use the host's real `overflow:auto` and `overflow:scroll` policies. Scrollbars retain their browser/platform appearance; this API does not simulate a draggable custom thumb or hide native scrollbars through untyped CSS.
+`scroll_area(key)` creates a real focusable scrolling View with one stable content wrapper. The default axis is vertical, keyboard step is 40 logical pixels, viewport height is 240 pixels, and width is 100%. Explicit styles can override dimensions. `Scrollbars::{Auto, Always, Hover, Scroll, Never}` select presentation without replacing the viewport. The installed Sapid stylesheet skins the browser's real scrollbars; thumb dragging, touch scrolling, selection and accessibility remain host-owned.
+
+Axes, scrollbar type, `scrollbar_size` (integer 1–32px), `offset_scrollbars`
+(`ScrollbarOffset::{None,Both,Horizontal,Vertical,Present}`), and
+`overscroll_behavior` (`OverscrollBehavior::{Auto,Contain,None}`) accept Vary.
+Changes preserve the viewport, content factory, child Owners and editor identities.
+`Present` uses actual overflow observations. Browser overscroll behavior and
+scrollbar presentation are stylesheet capabilities; native shells retain their
+own scrolling implementation and do not inherit a new platform appearance promise.
+
+Hover and Scroll with a nonzero `scroll_hide_delay` require an explicit
+`.delay(|duration| host_future)` timer factory. The default delay is 500ms and the
+maximum is 10s. One OwnerDelay is cancelled/replaced on activity; old completions
+and retirement cannot resurrect presentation. The widget installs no clock or I/O
+service. Native/SSR callers can keep Auto/Always/Never without providing a timer.
+Chrome uses the requested scrollbar pixels; engines without WebKit scrollbar
+selectors use their supported thin scrollbar appearance. Never keeps wheel,
+touch, keyboard and programmatic scrolling available while hiding the scrollbar.
 
 ```rust
 use sapid::scroll_area;
@@ -18,6 +35,11 @@ scroll_area("documents")
 The content factory runs once. Viewport/content refs, descendant input identities, selection, and child Owners remain stable while scrolling. The component does not enumerate an application collection or virtualize its data. Use Glory's windowed list for large dynamic collections; message anchoring and bottom-follow policy belong to the later MessageScroller task.
 
 ## Observations and requests
+
+`scroll_to_fraction(x, y)` accepts fractions in `0..=1` and resolves them against
+actual content/viewport extents at its query barrier. It shares the same bounded
+FIFO with absolute, relative and keyboard requests. A later axis change is
+rechecked before publishing a pending destination.
 
 `ScrollHandle::metrics()` returns a read-only Bond of the most recent actual `ScrollMetrics`, initially None. The shared query records offset x/y, viewport width/height, and content width/height at one accepted watermark. All six values must be finite; dimensions must be nonnegative. Content may be smaller than the viewport. Negative RTL/elastic offsets remain intact in observations. Browser reads use actual `scrollLeft/Top`, `clientWidth/Height`, and `scrollWidth/Height`. Apace reads its resolved engine's corresponding client/content extent methods. No content-wrapper measurement is substituted for the host's complete overflow range.
 
@@ -43,5 +65,5 @@ SSR records finite markup and event interests, returns asynchronous Unsupported 
 - Shared UI: a dedicated query test covers Owner cancellation, invalid result kinds/NaN, accepted query watermarks after later commits, and duplicate replies.
 - Shared HTML differential oracle covers all three keyboard axes and resets; synchronous SSR and stream conformance cover the new query and event target rules.
 - Shared Apace: actual client/content/offset query test and actual queued viewport-only keyboard/nested-editor test pass.
-- Sapid: 4 integration tests and one ordered-clamping unit test pass; native 2 tests cover four themes with actual geometry, ordered assignments, descendant editor identity, real Scroller buttons, and disabled end boundaries.
+- Sapid: 8 integration tests and one ordered-clamping unit test pass, including fractional destinations, live presentation/axes, timer retirement, invalid-setting recovery, and configuration updates without reentrant physical queries; native 2 tests cover four themes with actual geometry, ordered assignments, descendant editor identity, real Scroller buttons, and disabled end boundaries.
 - `examples/web/scroll-area-acceptance.js`: 9 passing suites on Chromium 148.0.7778.96 against unified Web6, including the final four-theme fixture. Real CSR/hydration checks cover actual metrics and page boundaries, Arrow/Page/Home/End, FIFO edge behavior, nested wheel/keyboard targeting, native descendant editing, actual Scroller buttons, input identity/drafts, callback order, dirty hydration scroll/selection retention, and Owner teardown. Results are saved at `D:/BuildCache/sapid/scroll-area-browser.json`, `scroll-area-browser.log`, and `scroll-area-*.png`; dark and light screenshots were visually inspected.

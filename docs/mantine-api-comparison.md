@@ -35,7 +35,7 @@ polymorphic component、任意 Recharts/Tiptap/Embla 插件或全局 provider。
 | Mantine / 官方文档 | Sapid 现有对应 | 经核实的差异与借鉴决策 | 优先级 |
 | --- | --- | --- | --- |
 | [AppShell](https://mantine.dev/core/app-shell/) | AppShell：header/sidebar/footer、breakpoint、drawer/rail | 不是所有 Mantine aside/section/offset/hiddenFrom 组合；需补区域配置与独立滚动证据，不能 CSS 编译通过即视为所有布局成立。 | P2 |
-| [AspectRatio](https://mantine.dev/core/aspect-ratio/) | AspectRatio：有限宽高比、嵌套布局 | polymorphic 根元素不移植；媒体裁切/替换内容由 Image fit 负责，不把 ratio 当全套图像组件。 | 边界 |
+| [AspectRatio](https://mantine.dev/core/aspect-ratio/) | AspectRatio：反应比例、独立媒体框、居中绝对内容和尺寸约束 | polymorphic 根元素不移植；媒体裁切/替换内容由 Image fit 负责，不把 ratio 当全套图像组件。 | 边界 |
 | [Center](https://mantine.dev/core/center/) | Center/Container/Space：居中、fluid/max_width、响应式阈值 | Mantine 命名容器尺寸和 strategy 不是逐项兼容；已能 typed Style 组合，优先补文档示例而非同义参数。 | P2 |
 | [Container](https://mantine.dev/core/container/) | Center/Container/Space：居中、fluid/max_width、响应式阈值 | Mantine 命名容器尺寸和 strategy 不是逐项兼容；已能 typed Style 组合，优先补文档示例而非同义参数。 | P2 |
 | [Flex](https://mantine.dev/core/flex/) | Box/Flex/Stack/Group：布局、gap、对齐、换行、宽高 | Group grow/preventGrowOverflow 的便捷策略尚缺；响应式值通过 ResponsiveRoot 显式组合。Box 的任意 component/ref API 不移植。 | P2 |
@@ -43,7 +43,7 @@ polymorphic component、任意 Recharts/Tiptap/Embla 插件或全局 provider。
 | [Group](https://mantine.dev/core/group/) | Box/Flex/Stack/Group：布局、gap、对齐、换行、宽高 | Group grow/preventGrowOverflow 的便捷策略尚缺；响应式值通过 ResponsiveRoot 显式组合。Box 的任意 component/ref API 不移植。 | P2 |
 | [SimpleGrid](https://mantine.dev/core/simple-grid/) | Grid/SimpleGrid：有限轨道、span/offset、响应式测量 | 与 Mantine 的 12 列/自动填充/容器查询模型不同；auto-fit/minColWidth 等策略需新增有限布局算法，不能仅重命名 columns。 | P2 |
 | [Space](https://mantine.dev/core/space/) | Center/Container/Space：居中、fluid/max_width、响应式阈值 | Mantine 命名容器尺寸和 strategy 不是逐项兼容；已能 typed Style 组合，优先补文档示例而非同义参数。 | P2 |
-| [Splitter](https://mantine.dev/core/splitter/) | Splitter：两面板、范围/step、commit、引用 | 不支持任意多 pane 树、collapsed/expand API、复杂 snap；需有界 panel model 与共享 drag/keyboard 协议后再增加。 | P2 |
+| [Splitter](https://mantine.dev/core/splitter/) | Splitter：保留两面板、反应横纵方向、范围/step、commit、引用和受控折叠/恢复 | 不支持任意多 pane 树、collapsed/expand API、复杂 snap；需有界 panel model 与共享 drag/keyboard 协议后再增加。 | P2 |
 | [Stack](https://mantine.dev/core/stack/) | Box/Flex/Stack/Group：布局、gap、对齐、换行、宽高 | Group grow/preventGrowOverflow 的便捷策略尚缺；响应式值通过 ResponsiveRoot 显式组合。Box 的任意 component/ref API 不移植。 | P2 |
 | [AlphaSlider](https://mantine.dev/core/alpha-slider/) | HueSlider/AlphaSlider：有限颜色范围、键盘/commit | 缺 onScrubStart/End 便捷回调和任意 root props；可在通用 drag 会话语义上增加，不能以值改变猜测手势边界。 | P2 |
 | [AngleSlider](https://mantine.dev/core/angle-slider/) | AngleSlider：圆周映射、键盘、有限值 | 缺 marks/自定义 label/自动 snap；保持角度域和端点策略显式，复用共享 Slider 的能力而非复制输入驱动。 | P2 |
@@ -150,8 +150,8 @@ polymorphic component、任意 Recharts/Tiptap/Embla 插件或全局 provider。
 | [Marquee](https://mantine.dev/core/marquee/) | Marquee/RollingNumber：有限 translation、暂停、格式化 | 缺 hover/reduced-motion 组合和完整 glyph 翻滚动画；数值文本过渡不是完整逐字符动画，需如实区分。 | P2 |
 | [Paper](https://mantine.dev/core/paper/) | Card/Paper：header/body/footer、border、有限阴影 | Card.Section 的负边距和继承 padding 规则不是任意容器已有；优先明确 section 边界。颜色/圆角已可 Style 覆盖。 | P2 |
 | [Portal](https://mantine.dev/core/portal/) | Portal/FocusScope：显式目标、失效回调、焦点范围与生命周期 | 不采用任意 DOM selector、ref 和 React child-clone API。FocusTrap 对应 FocusScope；任意 transition 样式注册仍待设计。 | P2 |
-| [ScrollArea](https://mantine.dev/core/scroll-area/) | ScrollArea/Scroller：真实 scroll/query、轴、keyboard 和 metrics | 缺完整自绘滚动条/scrollHideDelay/overscroll 策略；浏览器/原生 scrollbar 外观本就不同，不应伪造滚动数据。 | P2 |
-| [Scroller](https://mantine.dev/core/scroller/) | ScrollArea/Scroller：真实 scroll/query、轴、keyboard 和 metrics | 缺完整自绘滚动条/scrollHideDelay/overscroll 策略；浏览器/原生 scrollbar 外观本就不同，不应伪造滚动数据。 | P2 |
+| [ScrollArea](https://mantine.dev/core/scroll-area/) | ScrollArea/Scroller：真实 scroll/query、反应轴、五种滚动条类型、尺寸/偏移/隐藏延迟、overscroll 样式和按实际范围定位 | 保留宿主真实滚动条与原生滚动/AX；浏览器样式由 Sapid CSS 提供，不引入 Radix DOM/第二套拖拽控制器。Hover/Scroll 非零延迟需显式宿主 timer；非 WebKit 引擎使用 thin 尺寸回退，原生平台外观仍独立验收。 | P2 |
+| [Scroller](https://mantine.dev/core/scroller/) | ScrollArea/Scroller：真实 scroll/query、反应轴、五种滚动条类型、尺寸/偏移/隐藏延迟、overscroll 样式和按实际范围定位 | 保留宿主真实滚动条与原生滚动/AX；浏览器样式由 Sapid CSS 提供，不引入 Radix DOM/第二套拖拽控制器。Hover/Scroll 非零延迟需显式宿主 timer；非 WebKit 引擎使用 thin 尺寸回退，原生平台外观仍独立验收。 | P2 |
 | [Toolbar](https://mantine.dev/core/toolbar/) | Toolbar/ActionBar：有界组、roving、selected_count/clear | Mantine ActionBar placement/transition/portal 配置不同；不得把横排 Toolbar 当完整底部浮条。可用 shared Layer 进一步补齐。 | P2 |
 | [Transition](https://mantine.dev/core/transition/) | Theme/locale/direction/motion：app-local 主题与 typed Style | 不移植全局 MantineProvider/React hooks 或默认浏览器 locale；保留显式 app/request 边界。默认 props registry/任意样式 resolver 暂不采纳。 | 边界 |
 | [VisuallyHidden](https://mantine.dev/core/visually-hidden/) | VisuallyHidden：语义文字、固定隐藏样式和引用 | 不支持 polymorphic component；可访问名称/描述与真正视觉隐藏保留，不应通过 display:none 替代。 | 边界 |

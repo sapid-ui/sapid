@@ -97,11 +97,26 @@ fn resolve(mut route: Route) -> Result<(Page, ThemeStore), String> {
             initial,
             notice,
             revision: 0,
+            shell_revision: 0,
         },
         store,
     ))
 }
 fn publish(state: State, mut page: Page, store: ThemeStore) -> Result<(), String> {
+    page.shell_revision = state
+        .page
+        .with(|old| {
+            let document = |route: &Route| crate::showcase_catalog::find(&route.widget).is_some();
+            if old.theme == page.theme
+                && ((document(&old.route) && document(&page.route))
+                    || (old.route.same_view(&page.route) && old.initial == page.initial))
+            {
+                Some(old.shell_revision)
+            } else {
+                old.shell_revision.checked_add(1)
+            }
+        })
+        .ok_or("Navigation shell revision exhausted")?;
     page.revision = state
         .page
         .with(|old| {

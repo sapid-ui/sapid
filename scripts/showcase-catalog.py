@@ -24,6 +24,7 @@ CORE = {f"P0-{i:02}": name for i, name in enumerate([
     "button", "text_field", "checkbox", "collapsible", "accordion", "tabs", "dialog", "drawer", "popover"
 ], 1)} | {"P0-14": "catalogue", "P2-08": "icon_actions", "P3-10": "pills", "P4-08": "multi_select", "P4-09": "tags"}
 FOCUSED_GROUPS = {
+    "layout_controls": ["P3-04", "P6-07", "P6-08"],
     "fields": ["P1-01", "P1-02", "P1-03", "P1-04", "P1-05", "P1-06"],
     "choices": ["P0-10", "P2-01", "P2-02", "P2-03", "P2-05", "P2-06"],
     "responsive": ["P3-02", "P3-03"],
@@ -43,6 +44,9 @@ FOCUSED_GROUPS = {
 }
 FOCUSED = {identity: family for family, identities in FOCUSED_GROUPS.items() for identity in identities}
 FOCUSED_NAMES = {
+    "P3-04": "focused_aspect_ratio",
+    "P6-07": "focused_scroll_area",
+    "P6-08": "focused_splitter",
     "P0-10": "focused_collection",
     "P1-01": "focused_field",
     "P1-02": "focused_field_error",
@@ -304,7 +308,7 @@ def group(task):
         return "Layout" if n <= 4 else "Typography" if n in (5, 6, 7, 8, 9, 16) else "Data display"
     if phase == "P4": return "Combobox" if 4 <= n <= 9 else "Navigation"
     if phase == "P5": return "Overlays" if n in (1, 2, 3, 4, 12, 13, 14, 15) else "Feedback"
-    if phase == "P6": return "Layout" if n in (7, 8, 9) else "Navigation"
+    if phase == "P6": return "Extensions" if n == 7 else "Layout" if n in (8, 9) else "Navigation"
     if phase == "P7": return "Inputs"
     if phase == "P8": return "Combobox" if n in (4, 5) else "Data display"
     return {"P9": "Dates", "P10": "Extensions", "P11": "Charts", "P12": "Dates", "P13": "Chat"}[phase]

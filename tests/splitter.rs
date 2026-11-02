@@ -110,6 +110,78 @@ fn respond(wire: &RefCell<Wire>, index: usize, result: std::result::Result<Query
         result,
     });
 }
+
+#[test]
+fn live_orientation_keeps_panes_and_cancels_the_previous_axis_geometry() {
+    use glory::render::Orientation;
+    use glory::style::{FlexDirection, Length};
+    let (app, wire) = fixture();
+    let axis = app.scope().cage(Orientation::Horizontal);
+    let first = app.scope().cage(None);
+    let second = app.scope().cage(None);
+    let handle = app.scope().cage(None);
+    app.mount(
+        splitter("direction")
+            .axis(axis)
+            .first_ref(first)
+            .second_ref(second)
+            .handle_ref(handle)
+            .first(|| glory::ui::input().name("First draft").value("Keep me"))
+            .second(|| glory::ui::text().content("Preview")),
+    )
+    .unwrap();
+    let identities = (first.get(), second.get(), handle.get());
+    let separator = handle.get().unwrap();
+    pointer(&app, separator, DragPhase::Start, 100.0, 100.0);
+    assert_eq!(app.stats().queries, 1);
+    axis.revise(|axis| *axis = Orientation::Vertical);
+    app.flush().unwrap();
+    assert_eq!(app.stats().queries, 0);
+    respond(
+        &wire,
+        0,
+        Ok(QueryValue::Bounds(Rect {
+            x: 0.0,
+            y: 0.0,
+            width: 600.0,
+            height: 300.0,
+        })),
+    );
+    app.pump().unwrap();
+    pointer(&app, separator, DragPhase::Drop, 550.0, 290.0);
+    assert_eq!(value(&app, separator), 50.0);
+    assert_eq!((first.get(), second.get(), handle.get()), identities);
+    let tree = app.tree();
+    assert_eq!(
+        tree.node(class(&app, "sapid-splitter-frame"))
+            .unwrap()
+            .descriptor
+            .view()
+            .style
+            .flex_direction,
+        Some(FlexDirection::Column)
+    );
+    assert_eq!(
+        tree.node(first.get().unwrap())
+            .unwrap()
+            .descriptor
+            .view()
+            .style
+            .width,
+        Some(Length::Percent(100.0))
+    );
+    assert_eq!(
+        tree.node(separator)
+            .unwrap()
+            .descriptor
+            .view()
+            .semantics
+            .as_ref()
+            .unwrap()
+            .separator_axis,
+        Some(Orientation::Horizontal)
+    );
+}
 #[test]
 fn local_same_tick_keys_accumulate_and_typed_callbacks_precede_generic_observers() {
     let (app, wire) = fixture();

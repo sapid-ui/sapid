@@ -52,7 +52,11 @@ fn matching(entry: &Entry, query: &str) -> bool {
             .contains(&query)
 }
 
-fn sidebar(query: Cage<String>, selected: &'static str, theme: Theme) -> impl Widget {
+fn sidebar(
+    query: Cage<String>,
+    page: Cage<crate::showcase_navigation::Page>,
+    theme: Theme,
+) -> impl Widget {
     widget(move |scope| {
         let groups = [
             "Layout",
@@ -100,20 +104,17 @@ fn sidebar(query: Cage<String>, selected: &'static str, theme: Theme) -> impl Wi
                             each(items).key(|id| *id).children(move |entry| {
                                 let id = entry.value;
                                 let entry = find(id.get()).expect("catalogued navigation entry");
-                                link(
-                                    label(entry),
-                                    route(entry.id, &theme),
-                                    if entry.id == selected {
-                                        "site-nav-link is-active"
-                                    } else {
-                                        "site-nav-link"
-                                    },
-                                )
-                                .current(if entry.id == selected {
-                                    Some(Current::Page)
-                                } else {
-                                    None
-                                })
+                                link(label(entry), route(entry.id, &theme), "site-nav-link")
+                                    .class(page.map(move |page| {
+                                        if page.route.widget == entry.id {
+                                            "site-nav-link is-active".to_owned()
+                                        } else {
+                                            "site-nav-link".to_owned()
+                                        }
+                                    }))
+                                    .current(page.map(move |page| {
+                                        (page.route.widget == entry.id).then_some(Current::Page)
+                                    }))
                             }),
                         ))
                         .show_in(scope)
@@ -596,11 +597,30 @@ pub fn site_with_state(
     return_to: String,
     notice: Cage<String>,
     editor: crate::theme_studio::EditorState,
+    page: Cage<crate::showcase_navigation::Page>,
 ) -> impl Widget {
     widget(move |scope| {
         let query = scope.cage(String::new());
         let menu = scope.cage(false);
         let tab = scope.cage(0u8);
+        let shell_revision = page.with(|page| page.shell_revision);
+        let revisions = scope.bond(move || {
+            page.with(|page| {
+                // A departing shell must not build a destination view while its
+                // outer Each is still retiring the previous Owner.
+                if page.shell_revision == shell_revision {
+                    vec![page.revision]
+                } else {
+                    Vec::new()
+                }
+            })
+        });
+        scope.effect(move || {
+            page.with(|page| page.revision);
+            tab.revise(|value| *value = 0);
+            query.revise(|value| value.clear());
+            menu.revise(|value| *value = false);
+        });
         let contents = scope.bond(move || tab.get() == 0);
         let root_scheme = if theme.scheme == ColorScheme::Dark {
             "site-dark"
@@ -624,10 +644,18 @@ pub fn site_with_state(
             ))
         } else if selection.is_empty() {
             Box::new(crate::showcase_home::home(theme.clone()))
-        } else if let Some(entry) = selected {
+        } else if selected.is_some() {
             Box::new(view().class("site-doc-layout").fill((
-                sidebar(query, entry.id, theme.clone()),
-                documentation(entry, theme.clone(), tab),
+                sidebar(query, page, theme.clone()),
+                each(revisions).key(|revision| *revision).children({
+                    let theme = theme.clone();
+                    move |_| {
+                        let entry = page
+                            .with(|page| find(&page.route.widget))
+                            .expect("document route");
+                        documentation(entry, theme.clone(), tab)
+                    }
+                }),
                 when(contents, || {
                     view()
                         .role(Role::Navigation)
@@ -656,19 +684,31 @@ pub fn site_with_state(
         view()
             .class(class)
             .fill((
-                header(
-                    query,
-                    menu,
-                    if selection == "theme-studio" {
-                        "theme-studio".to_owned()
-                    } else {
-                        selected.map_or("", |entry| entry.id).to_owned()
-                    },
-                    theme.clone(),
-                    catalog,
-                ),
+                each(revisions).key(|revision| *revision).children({
+                    let theme = theme.clone();
+                    move |_| {
+                        header(
+                            query,
+                            menu,
+                            page.with(|page| page.route.widget.clone()),
+                            theme.clone(),
+                            catalog,
+                        )
+                    }
+                }),
                 text().class("site-host-notice").content(notice),
-                saved_actions(theme.clone(), selection.clone(), catalog, notice, editor),
+                each(revisions).key(|revision| *revision).children({
+                    let theme = theme.clone();
+                    move |_| {
+                        saved_actions(
+                            theme.clone(),
+                            page.with(|page| page.route.widget.clone()),
+                            catalog,
+                            notice,
+                            editor,
+                        )
+                    }
+                }),
                 if selection.is_empty() || selection == "theme-studio" {
                     let theme = theme.clone();
                     Box::new(when(menu, move || {

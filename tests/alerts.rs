@@ -222,3 +222,49 @@ fn explicit_styles_names_and_owner_retirement_preserve_the_common_contract() {
     assert_eq!(dropped.get(), 1);
     assert!(app.tree().is_empty());
 }
+
+#[test]
+fn variants_keep_message_relations_and_compact_close_action() {
+    use glory::style::{Color, Edges};
+    use sapid::AlertVariant;
+    for variant in [
+        AlertVariant::Light,
+        AlertVariant::Filled,
+        AlertVariant::Outline,
+        AlertVariant::Transparent,
+    ] {
+        let app = App::memory();
+        app.mount(
+            alert("variant")
+                .variant(variant)
+                .color(Color(34, 139, 230, 255))
+                .title("Title")
+                .content("Message")
+                .icon(sapid::theme_icon(sapid::Icon::Info))
+                .closable(true),
+        )
+        .unwrap();
+        let root = find(&app, "sapid-alert");
+        let body = find(&app, "sapid-alert-body");
+        let close = find(&app, "sapid-alert-close");
+        let tree = app.tree();
+        let root = tree.node(root).unwrap().descriptor.view();
+        assert_eq!(root.style.padding, Some(Edges::all(16.0)));
+        assert_eq!(
+            root.style.border_width,
+            Some(Edges::all(if variant == AlertVariant::Outline {
+                1.0
+            } else {
+                0.0
+            }))
+        );
+        assert!(tree.node(body).unwrap().children.len() == 2);
+        assert_eq!(
+            tree.node(close).unwrap().descriptor.view().name.as_deref(),
+            Some("Dismiss message")
+        );
+        assert!(
+            matches!(tree.node(close).unwrap().descriptor.view().props, Props::Button(p) if p.label == "×")
+        );
+    }
+}

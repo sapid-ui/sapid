@@ -107,6 +107,8 @@ function showcaseSuites(root, output) {
       args: ['-NoProfile', '-File', script('check-theme-export.ps1')] },
     browser('navigation', 'showcase-navigation-browser.cjs'),
     browser('routing', 'showcase-routing-browser.cjs'),
+    browser('feedback', 'showcase-feedback-browser.cjs'),
+    browser('layout', 'showcase-layout-browser.cjs'),
     browser('style', 'showcase-style-browser.cjs'),
     browser('mantine-api', 'mantine-api-browser.cjs'),
     { id: 'cache', program: process.execPath, source: script('cache-browser.cjs'), args: [script('cache-browser.cjs')] },

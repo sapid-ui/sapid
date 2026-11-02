@@ -1248,7 +1248,8 @@
         "implementation": [
           "src/grid_layout.rs",
           "docs/grid-layout.md",
-          "../glory/crates/style/src/grid.rs"
+          "../glory/crates/style/src/grid.rs",
+          "examples/web/src/focused_demos/layout_controls.rs"
         ],
         "tests": [
           "tests/grid_layout.rs",
@@ -1256,7 +1257,8 @@
           "../glory/crates/html/tests/grid.rs",
           "../glory/crates/apace/tests/grid.rs",
           "examples/native/tests/grid.rs",
-          "D:/BuildCache/sapid/grid-browser.json (8 passed; errors=[])"
+          "D:/BuildCache/sapid/grid-browser.json (8 passed; errors=[])",
+          "scripts/showcase-layout-browser.cjs (interactive layout pages; browser evidence separate from platform input acceptance)"
         ]
       }
     },
@@ -2584,7 +2586,8 @@
         "implementation": [
           "src/scroll_area.rs",
           "docs/scroll-area.md",
-          "../glory/crates/render/src/scroll.rs"
+          "../glory/crates/render/src/scroll.rs",
+          "examples/web/src/focused_demos/layout_controls.rs"
         ],
         "tests": [
           "tests/scroll_area.rs",
@@ -2592,14 +2595,15 @@
           "../glory/crates/apace/tests/scroll.rs",
           "examples/native/tests/scroll_area.rs",
           "examples/web/scroll-area-acceptance.js",
-          "D:/BuildCache/sapid/scroll-area-browser.json (9 passed, final fixture, Chromium 148.0.7778.96)"
+          "D:/BuildCache/sapid/scroll-area-browser.json (9 passed, final fixture, Chromium 148.0.7778.96)",
+          "scripts/showcase-layout-browser.cjs (interactive layout pages; browser evidence separate from platform input acceptance)"
         ]
       }
     },
     {
       "id": "P6-08",
       "phase": "P6",
-      "name": "Resizable / Splitter",
+      "name": "Splitter",
       "status": "done",
       "sources": [
         "M:Splitter",
@@ -2611,7 +2615,8 @@
         "implementation": [
           "src/splitter.rs",
           "docs/splitter.md",
-          "../glory/crates/render/src/range.rs"
+          "../glory/crates/render/src/range.rs",
+          "examples/web/src/focused_demos/layout_controls.rs"
         ],
         "tests": [
           "tests/splitter.rs (6 passed)",
@@ -2620,7 +2625,8 @@
           "examples/native/tests/splitter.rs",
           "D:/BuildCache/sapid/splitter-native.log",
           "examples/web/splitter-acceptance.js",
-          "D:/BuildCache/sapid/splitter-browser.json (10 passed incl CDP Touch, web8, Chromium 148.0.7778.96)"
+          "D:/BuildCache/sapid/splitter-browser.json (10 passed incl CDP Touch, web8, Chromium 148.0.7778.96)",
+          "scripts/showcase-layout-browser.cjs (interactive layout pages; browser evidence separate from platform input acceptance)"
         ]
       }
     },

@@ -143,7 +143,8 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
     }
     println!(
-        "Showcase: CSR entry + 36 representative SSR pages in {}",
+        "Showcase: CSR entry + {} representative SSR pages in {}",
+        sapid_web_example::showcase_navigation::SSR_PAGES.len() * 4,
         directory.display()
     );
     Ok(())

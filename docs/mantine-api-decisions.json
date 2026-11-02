@@ -139,7 +139,7 @@
       "priority": "P2"
     },
     "P3-04": {
-      "current": "AspectRatio：有限宽高比、嵌套布局",
+      "current": "AspectRatio：反应比例、独立媒体框、居中绝对内容和尺寸约束",
       "differences": "polymorphic 根元素不移植；媒体裁切/替换内容由 Image fit 负责，不把 ratio 当全套图像组件。",
       "priority": "边界"
     },
@@ -364,12 +364,12 @@
       "priority": "P2"
     },
     "P6-07": {
-      "current": "ScrollArea/Scroller：真实 scroll/query、轴、keyboard 和 metrics",
-      "differences": "缺完整自绘滚动条/scrollHideDelay/overscroll 策略；浏览器/原生 scrollbar 外观本就不同，不应伪造滚动数据。",
+      "current": "ScrollArea/Scroller：真实 scroll/query、反应轴、五种滚动条类型、尺寸/偏移/隐藏延迟、overscroll 样式和按实际范围定位",
+      "differences": "保留宿主真实滚动条与原生滚动/AX；浏览器样式由 Sapid CSS 提供，不引入 Radix DOM/第二套拖拽控制器。Hover/Scroll 非零延迟需显式宿主 timer；非 WebKit 引擎使用 thin 尺寸回退，原生平台外观仍独立验收。",
       "priority": "P2"
     },
     "P6-08": {
-      "current": "Splitter：两面板、范围/step、commit、引用",
+      "current": "Splitter：保留两面板、反应横纵方向、范围/step、commit、引用和受控折叠/恢复",
       "differences": "不支持任意多 pane 树、collapsed/expand API、复杂 snap；需有界 panel model 与共享 drag/keyboard 协议后再增加。",
       "priority": "P2"
     },

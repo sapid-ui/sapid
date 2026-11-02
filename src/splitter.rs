@@ -47,6 +47,7 @@ fn invalid(message: &'static str) -> glory::ui::Error {
 }
 #[derive(Clone, Copy)]
 struct Drag {
+    axis: Orientation,
     ticket: u64,
     start: f64,
     value: f64,
@@ -63,7 +64,7 @@ struct Controller {
     control: Control<f64>,
     local: bool,
     accepted: Cage<Snapshot>,
-    axis: Orientation,
+    axis: Vary<Orientation>,
     step: f64,
     thickness: f64,
     root: Cage<Option<NodeId>>,
@@ -141,7 +142,7 @@ impl Controller {
         self.drag_events.clear();
     }
     fn coordinate(&self, x: f64, y: f64) -> f64 {
-        if self.axis == Orientation::Horizontal {
+        if self.axis.get() == Orientation::Horizontal {
             x
         } else {
             y
@@ -165,6 +166,10 @@ impl Controller {
             result
         };
         if !state.enabled {
+            self.cancel();
+            return Ok(());
+        }
+        if drag.axis != self.axis.try_get()? {
             self.cancel();
             return Ok(());
         }
@@ -215,6 +220,7 @@ impl Controller {
             self.next.set(ticket);
             let coordinate = self.coordinate(x, y);
             *self.drag.borrow_mut() = Some(Drag {
+                axis: self.axis.try_get()?,
                 ticket,
                 start: coordinate,
                 value: state.value,
@@ -242,7 +248,7 @@ impl Controller {
                     let QueryValue::Bounds(rect) = result? else {
                         return Err(invalid("splitter bounds response mismatch"));
                     };
-                    let extent = (if controller.axis == Orientation::Horizontal {
+                    let extent = (if controller.axis.get() == Orientation::Horizontal {
                         rect.width
                     } else {
                         rect.height
@@ -291,7 +297,7 @@ pub struct Splitter {
     min: Vary<f64>,
     max: Vary<f64>,
     step: f64,
-    axis: Orientation,
+    axis: Vary<Orientation>,
     thickness: f64,
     first: Option<Factory>,
     second: Option<Factory>,
@@ -312,7 +318,7 @@ pub fn splitter(key: impl Into<String>) -> Splitter {
         min: 10.0.into(),
         max: 90.0.into(),
         step: 1.0,
-        axis: Orientation::Horizontal,
+        axis: Orientation::Horizontal.into(),
         thickness: 6.0,
         first: None,
         second: None,
@@ -345,8 +351,8 @@ impl Splitter {
         self.step = value;
         self
     }
-    pub fn axis(mut self, value: Orientation) -> Self {
-        self.axis = value;
+    pub fn axis(mut self, value: impl Into<Vary<Orientation>>) -> Self {
+        self.axis = value.into();
         self
     }
     pub fn thickness(mut self, value: f64) -> Self {
@@ -402,7 +408,7 @@ impl Widget for Splitter {
             return Err(invalid("splitter owns its handle tab stop"));
         }
         let local = self.value.source.is_none();
-        let axis = self.axis;
+        let axis = self.axis.clone();
         let handle_name = self
             .common
             .name
@@ -431,7 +437,7 @@ impl Widget for Splitter {
             control,
             local,
             accepted,
-            axis: self.axis,
+            axis: self.axis.clone(),
             step: self.step,
             thickness: self.thickness,
             root,
@@ -456,6 +462,16 @@ impl Widget for Splitter {
         });
         let cleanup = controller.clone();
         scope.on_cleanup(move || cleanup.retire())?;
+        let direction = self.axis.clone();
+        let observer = controller.clone();
+        let mut previous = direction.get();
+        scope.effect(move || {
+            let next = direction.get();
+            if next != previous {
+                observer.cancel();
+                previous = next;
+            }
+        });
         let outer_ref = self.common.node_ref.unwrap_or_else(|| scope.cage(None));
         let custom = self.common.style.clone();
         let mut outer = configure!(
@@ -484,15 +500,16 @@ impl Widget for Splitter {
         }
         outer.show_in(scope)?;
         let parent = scope.child_in(outer_ref.try_get()?.ok_or(glory::ui::Error::Gone)?)?;
+        let direction = self.axis.clone();
         glory::ui::view()
             .class("sapid-splitter-frame")
             .node_ref(root)
-            .style(
+            .style(scope.bond(move || {
                 Style::new()
                     .width(Length::Percent(100.0))
                     .height(Length::Percent(100.0))
                     .display(Display::Flex)
-                    .flex_direction(if self.axis == Orientation::Horizontal {
+                    .flex_direction(if direction.get() == Orientation::Horizontal {
                         FlexDirection::Row
                     } else {
                         FlexDirection::Column
@@ -500,8 +517,8 @@ impl Widget for Splitter {
                     .gap(0.0)
                     .padding(Edges::all(0.0))
                     .border_width(Edges::all(0.0))
-                    .margin(Edges::all(0.0)),
-            )
+                    .margin(Edges::all(0.0))
+            }))
             .show_in(&parent)?;
         let frame = scope.child_in(root.try_get()?.ok_or(glory::ui::Error::Gone)?)?;
         let first_focused = scope.cage(false);
@@ -550,8 +567,9 @@ impl Widget for Splitter {
                         ..Default::default()
                     })
                 }))
-                .style(scope.bond(move || {
-                    Style {
+                .style(scope.bond({
+                    let axis = axis.clone();
+                    move || Style {
                         grow: Some(if first {
                             accepted.get().value
                         } else {
@@ -559,12 +577,12 @@ impl Widget for Splitter {
                         }),
                         shrink: Some(1.0),
                         ..Style::new()
-                            .width(if axis == Orientation::Horizontal {
+                            .width(if axis.get() == Orientation::Horizontal {
                                 Length::Px(0.0)
                             } else {
                                 Length::Percent(100.0)
                             })
-                            .height(if axis == Orientation::Vertical {
+                            .height(if axis.get() == Orientation::Vertical {
                                 Length::Px(0.0)
                             } else {
                                 Length::Percent(100.0)
@@ -623,7 +641,8 @@ fn build_handle(
     name: Vary<String>,
 ) -> Result {
     let accepted = controller.accepted;
-    let axis = controller.axis;
+    let axis = controller.axis.clone();
+    let style_axis = axis.clone();
     let thickness = controller.thickness;
     let range = controller.clone();
     let drag = controller.clone();
@@ -648,7 +667,7 @@ fn build_handle(
             composite::metadata(Semantics {
                 id: Some(id.clone()),
                 splitter: Some(state.range()),
-                separator_axis: Some(if axis == Orientation::Horizontal {
+                separator_axis: Some(if axis.get() == Orientation::Horizontal {
                     Orientation::Vertical
                 } else {
                     Orientation::Horizontal
@@ -658,22 +677,24 @@ fn build_handle(
                 ..Default::default()
             })
         }))
-        .style(Style {
-            shrink: Some(0.0),
-            background: (!unstyled).then_some(color),
-            ..Style::new()
-                .width(if axis == Orientation::Horizontal {
-                    Length::Px(thickness)
-                } else {
-                    Length::Percent(100.0)
-                })
-                .height(if axis == Orientation::Horizontal {
-                    Length::Percent(100.0)
-                } else {
-                    Length::Px(thickness)
-                })
-                .margin(Edges::all(0.0))
-        })
+        .style(scope.bond(move || {
+            Style {
+                shrink: Some(0.0),
+                background: (!unstyled).then_some(color),
+                ..Style::new()
+                    .width(if style_axis.get() == Orientation::Horizontal {
+                        Length::Px(thickness)
+                    } else {
+                        Length::Percent(100.0)
+                    })
+                    .height(if style_axis.get() == Orientation::Horizontal {
+                        Length::Percent(100.0)
+                    } else {
+                        Length::Px(thickness)
+                    })
+                    .margin(Edges::all(0.0))
+            }
+        }))
         .on(EventKind::Range, move |event| {
             if let Event::Range { command, .. } = event
                 && let Err(error) = range.key(command)

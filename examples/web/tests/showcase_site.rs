@@ -204,7 +204,7 @@ fn focused_guides_render_their_own_widget_content() {
         ("P5-01", "Delete this draft?"),
         ("P5-03", "Save draft"),
         ("P5-04", "About Ada"),
-        ("P5-05", "Changes saved"),
+        ("P5-05", "Alert title"),
         ("P5-10", "sapid-skeleton"),
         ("P5-12", "Background sync"),
         ("P7-01", "Amount"),
@@ -362,10 +362,12 @@ fn route_changes_preserve_one_editor_workspace_without_retaining_old_views() {
     state.editor.layer.revise(|v| *v = Layer::Dark);
     let mut next = Page::builtin(Theme::green_light(), "P0-01".into());
     next.revision = 1;
+    next.shell_revision = 1;
     state.page.revise(|v| *v = next);
     app.flush().unwrap();
     let mut next = Page::builtin(Theme::green_dark(), "theme-studio".into());
     next.revision = 2;
+    next.shell_revision = 2;
     state.page.revise(|v| *v = next);
     app.flush().unwrap();
     assert_eq!(
@@ -385,4 +387,66 @@ fn route_changes_preserve_one_editor_workspace_without_retaining_old_views() {
     assert_eq!(app.stats().handlers, 0);
     drop(app);
     assert!(state.editor.draft.try_get().is_err());
+}
+
+#[test]
+fn document_navigation_preserves_sidebar_and_updates_current_link() {
+    use sapid_web_example::showcase_navigation::{Page, State, app as route_app};
+    let app = App::memory();
+    let state = State::new(
+        app.scope(),
+        Page::builtin(Theme::blue_light(), "P5-05".into()),
+        Vec::new(),
+        false,
+    );
+    app.mount(route_app(state)).unwrap();
+    let sidebar = nodes(&app)
+        .into_iter()
+        .find(|id| {
+            app.tree()
+                .node(*id)
+                .unwrap()
+                .descriptor
+                .view()
+                .classes
+                .iter()
+                .any(|class| class == "site-sidebar")
+        })
+        .unwrap();
+    for (revision, widget) in [(1, "P5-10"), (2, "P5-11"), (3, "P5-05")] {
+        state.page.revise(|page| {
+            page.route.widget = widget.into();
+            page.revision = revision;
+        });
+        app.flush().unwrap();
+        assert!(app.tree().node(sidebar).is_ok());
+        let current = nodes(&app)
+            .into_iter()
+            .filter(|id| {
+                app.tree()
+                    .node(*id)
+                    .unwrap()
+                    .descriptor
+                    .view()
+                    .classes
+                    .iter()
+                    .any(|class| class == "site-nav-link")
+                    && app
+                        .tree()
+                        .node(*id)
+                        .unwrap()
+                        .descriptor
+                        .view()
+                        .classes
+                        .iter()
+                        .any(|class| class == "is-active")
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(current.len(), 1);
+        assert!(
+            matches!(app.tree().node(current[0]).unwrap().descriptor.view().props, Props::Link(link) if link.target.contains(widget))
+        );
+    }
+    app.clear().unwrap();
+    assert_eq!(app.stats().nodes, 0);
 }

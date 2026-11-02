@@ -176,6 +176,10 @@ mod focused_alert_dialog;
 pub fn focused_alert_dialog_widget(theme: sapid::Theme) -> Box<dyn Widget> {
     Box::new(focused_alert_dialog::demo(theme))
 }
+mod focused_aspect_ratio;
+pub fn focused_aspect_ratio_widget(theme: sapid::Theme) -> Box<dyn Widget> {
+    Box::new(focused_aspect_ratio::demo(theme))
+}
 mod focused_blockquote;
 pub fn focused_blockquote_widget(theme: sapid::Theme) -> Box<dyn Widget> {
     Box::new(focused_blockquote::demo(theme))
@@ -300,6 +304,10 @@ mod focused_rating;
 pub fn focused_rating_widget(theme: sapid::Theme) -> Box<dyn Widget> {
     Box::new(focused_rating::demo(theme))
 }
+mod focused_scroll_area;
+pub fn focused_scroll_area_widget(theme: sapid::Theme) -> Box<dyn Widget> {
+    Box::new(focused_scroll_area::demo(theme))
+}
 mod focused_segmented_control;
 pub fn focused_segmented_control_widget(theme: sapid::Theme) -> Box<dyn Widget> {
     Box::new(focused_segmented_control::demo(theme))
@@ -315,6 +323,10 @@ pub fn focused_skeleton_widget(theme: sapid::Theme) -> Box<dyn Widget> {
 mod focused_slider;
 pub fn focused_slider_widget(theme: sapid::Theme) -> Box<dyn Widget> {
     Box::new(focused_slider::demo(theme))
+}
+mod focused_splitter;
+pub fn focused_splitter_widget(theme: sapid::Theme) -> Box<dyn Widget> {
+    Box::new(focused_splitter::demo(theme))
 }
 mod focused_suggestion;
 pub fn focused_suggestion_widget(theme: sapid::Theme) -> Box<dyn Widget> {
@@ -347,10 +359,6 @@ pub fn forms_widget(theme: sapid::Theme) -> Box<dyn Widget> {
 mod graphics;
 pub fn graphics_widget(theme: sapid::Theme) -> Box<dyn Widget> {
     Box::new(graphics::demo(theme))
-}
-mod grid;
-pub fn grid_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(grid::demo(theme))
 }
 mod hierarchy_charts;
 pub fn hierarchy_charts_widget(theme: sapid::Theme) -> Box<dyn Widget> {
@@ -484,10 +492,6 @@ mod schedule_timeline;
 pub fn schedule_timeline_widget(theme: sapid::Theme) -> Box<dyn Widget> {
     Box::new(schedule_timeline::demo(theme))
 }
-mod scroll_area;
-pub fn scroll_area_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(scroll_area::demo(theme))
-}
 mod select;
 pub fn select_widget(theme: sapid::Theme) -> Box<dyn Widget> {
     Box::new(select::demo(theme))
@@ -507,10 +511,6 @@ pub fn shell_widget(theme: sapid::Theme) -> Box<dyn Widget> {
 mod spinner;
 pub fn spinner_widget(theme: sapid::Theme) -> Box<dyn Widget> {
     Box::new(spinner::demo(theme))
-}
-mod splitter;
-pub fn splitter_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(splitter::demo(theme))
 }
 mod spoiler;
 pub fn spoiler_widget(theme: sapid::Theme) -> Box<dyn Widget> {

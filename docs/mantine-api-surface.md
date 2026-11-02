@@ -871,9 +871,9 @@
 
 **本地实现：** [src/alert.rs](../src/alert.rs)
 
-**本地公开入口（同族）：** `alert`, `announcement`, `class`, `closable`, `close_label`, `content`, `fill`, `name`, `node_ref`, `on_close`, `severity`, `size`, `style`, `theme`, `title`, `unstyled`, `visible`
+**本地公开入口（同族）：** `alert`, `announcement`, `class`, `closable`, `close_label`, `color`, `content`, `fill`, `icon`, `name`, `node_ref`, `on_close`, `severity`, `size`, `style`, `theme`, `title`, `unstyled`, `variant`, `visible`
 
-**需要语义映射的属性候选：** `autoContrast`, `closeButtonLabel`, `color`, `icon`, `radius`, `withCloseButton`
+**需要语义映射的属性候选：** `autoContrast`, `closeButtonLabel`, `radius`, `withCloseButton`
 
 ### EmptyState — M:EmptyState
 
@@ -1641,9 +1641,9 @@
 
 **本地实现：** [../glory/crates/render/src/scroll.rs](../../glory/crates/render/src/scroll.rs)、[src/scroll_area.rs](../src/scroll_area.rs)
 
-**本地公开入口（同族）：** `allows`, `area`, `as_str`, `axes`, `axis`, `class`, `command`, `content`, `content_ref`, `key`, `keyboard`, `metrics`, `name`, `node_ref`, `on`, `on_metrics_change`, `on_ready`, `on_scroll_change`, `refresh`, `scroll_area`, `scroll_by`, `scroll_to`, `scrollbars`, `scroller`, `size`, `step`, `style`, `theme`, `unstyled`, `validate`
+**本地公开入口（同族）：** `allows`, `area`, `as_str`, `axes`, `axis`, `class`, `command`, `content`, `content_ref`, `delay`, `key`, `keyboard`, `metrics`, `name`, `node_ref`, `offset_scrollbars`, `on`, `on_metrics_change`, `on_ready`, `on_scroll_change`, `overscroll_behavior`, `refresh`, `scroll_area`, `scroll_by`, `scroll_hide_delay`, `scroll_to`, `scroll_to_fraction`, `scrollbar_size`, `scrollbars`, `scroller`, `size`, `step`, `style`, `theme`, `unstyled`, `validate`
 
-**需要语义映射的属性候选：** `offsetScrollbars`, `onBottomReached`, `onLeftReached`, `onOverflowChange`, `onRightReached`, `onScrollPositionChange`, `onTopReached`, `overscrollBehavior`, `scrollHideDelay`, `scrollbarSize`, `startScrollPosition`, `type`, `verticalScrollbarPosition`, `viewportProps`, `viewportRef`
+**需要语义映射的属性候选：** `onBottomReached`, `onLeftReached`, `onOverflowChange`, `onRightReached`, `onScrollPositionChange`, `onTopReached`, `startScrollPosition`, `type`, `verticalScrollbarPosition`, `viewportProps`, `viewportRef`
 
 ### Scroller — M:Scroller
 
@@ -1655,7 +1655,7 @@
 
 **本地实现：** [../glory/crates/render/src/scroll.rs](../../glory/crates/render/src/scroll.rs)、[src/scroll_area.rs](../src/scroll_area.rs)
 
-**本地公开入口（同族）：** `allows`, `area`, `as_str`, `axes`, `axis`, `class`, `command`, `content`, `content_ref`, `key`, `keyboard`, `metrics`, `name`, `node_ref`, `on`, `on_metrics_change`, `on_ready`, `on_scroll_change`, `refresh`, `scroll_area`, `scroll_by`, `scroll_to`, `scrollbars`, `scroller`, `size`, `step`, `style`, `theme`, `unstyled`, `validate`
+**本地公开入口（同族）：** `allows`, `area`, `as_str`, `axes`, `axis`, `class`, `command`, `content`, `content_ref`, `delay`, `key`, `keyboard`, `metrics`, `name`, `node_ref`, `offset_scrollbars`, `on`, `on_metrics_change`, `on_ready`, `on_scroll_change`, `overscroll_behavior`, `refresh`, `scroll_area`, `scroll_by`, `scroll_hide_delay`, `scroll_to`, `scroll_to_fraction`, `scrollbar_size`, `scrollbars`, `scroller`, `size`, `step`, `style`, `theme`, `unstyled`, `validate`
 
 **需要语义映射的属性候选：** `children`, `controlSize`, `draggable`, `edgeGradientColor`, `endControlIcon`, `endControlProps`, `scrollAmount`, `showEndControl`, `showStartControl`, `startControlIcon`, `startControlProps`
 

@@ -1,4 +1,7 @@
 /* Opt-in interaction styles. Rust Theme owns the same semantic tokens. */
+.sapid-alert{text-align:start}
+.sapid-alert-close{cursor:pointer}
+.sapid-alert-close:hover{opacity:.75}
 /* BEGIN SAPID PALETTES */
 .sapid-theme-blue-light,.sapid-theme-blue-light::backdrop{--sp-canvas:#f8f9faff;--sp-surface:#ffffffff;--sp-input:#ffffffff;--sp-text:#212529ff;--sp-muted:#5c6470ff;--sp-accent:#1971c2ff;--sp-hover:#1864abff;--sp-accent-soft:#e7f5ffff;--sp-accent-text:#1864abff;--sp-on-accent:#ffffffff;--sp-ring:#228be6ff;--sp-input-focus:#228be6ff;--sp-danger:#c92a2aff;--sp-danger-fill:#c92a2aff;--sp-on-danger:#ffffffff;--sp-danger-soft:#fff5f5ff;--sp-border:#ced4daff;--sp-disabled:#f1f3f5ff;--sp-disabled-text:#868e96ff;--sp-success:#237032ff;--sp-success-soft:#ebfbeeff;--sp-warning:#664d03ff;--sp-warning-soft:#fff9dbff;--sp-syntax-string:#2b8a3eff;--sp-shadow:#00000028;--sp-shadow-small:#0000001a;--sp-shadow-medium:#0000001f;--sp-shadow-large:#00000023;--sp-checker-light:#ffffffff;--sp-checker-dark:#c0c0c0ff;--sp-control-thumb:#ffffffff;--sp-swatch-mark-light:#000000ff;--sp-swatch-mark-dark:#ffffffff;--sp-backdrop:#0000005a;--sp-shade-0:#e7f5ffff;--sp-shade-1:#d0ebffff;--sp-shade-2:#a5d8ffff;--sp-shade-3:#74c0fcff;--sp-shade-4:#4dabf7ff;--sp-shade-5:#339af0ff;--sp-shade-6:#228be6ff;--sp-shade-7:#1c7ed6ff;--sp-shade-8:#1971c2ff;--sp-shade-9:#1864abff;--sp-series-0:#1971c2ff;--sp-series-1:#c92a2aff;--sp-series-2:#2b8a3eff;--sp-series-3:#9c36b5ff;--sp-series-4:#e67700ff;--sp-series-5:#0b7285ff;--sp-series-6:#5f3dc4ff;--sp-series-7:#862e9cff;color-scheme:light}
 .sapid-theme-blue-dark,.sapid-theme-blue-dark::backdrop{--sp-canvas:#141517ff;--sp-surface:#1a1b1eff;--sp-input:#25262bff;--sp-text:#dee2e6ff;--sp-muted:#adb5bdff;--sp-accent:#1971c2ff;--sp-hover:#1864abff;--sp-accent-soft:#142c41ff;--sp-accent-text:#74c0fcff;--sp-on-accent:#ffffffff;--sp-ring:#74c0fcff;--sp-input-focus:#228be6ff;--sp-danger:#ffa8a8ff;--sp-danger-fill:#c92a2aff;--sp-on-danger:#ffffffff;--sp-danger-soft:#3d2023ff;--sp-border:#495057ff;--sp-disabled:#25262bff;--sp-disabled-text:#909296ff;--sp-success:#8ce99aff;--sp-success-soft:#173322ff;--sp-warning:#ffe066ff;--sp-warning-soft:#382b0dff;--sp-syntax-string:#8ce99aff;--sp-shadow:#00000046;--sp-shadow-small:#00000034;--sp-shadow-medium:#0000003e;--sp-shadow-large:#00000046;--sp-checker-light:#495057ff;--sp-checker-dark:#343a40ff;--sp-control-thumb:#ffffffff;--sp-swatch-mark-light:#000000ff;--sp-swatch-mark-dark:#ffffffff;--sp-backdrop:#00000096;--sp-shade-0:#e7f5ffff;--sp-shade-1:#d0ebffff;--sp-shade-2:#a5d8ffff;--sp-shade-3:#74c0fcff;--sp-shade-4:#4dabf7ff;--sp-shade-5:#339af0ff;--sp-shade-6:#228be6ff;--sp-shade-7:#1c7ed6ff;--sp-shade-8:#1971c2ff;--sp-shade-9:#1864abff;--sp-series-0:#74c0fcff;--sp-series-1:#ff8787ff;--sp-series-2:#8ce99aff;--sp-series-3:#e599f7ff;--sp-series-4:#ffd43bff;--sp-series-5:#66d9e8ff;--sp-series-6:#b197fcff;--sp-series-7:#f783acff;color-scheme:dark}
@@ -113,3 +116,53 @@
 
 /* Host-owned modal layers inherit the resolved palette, including their scrim. */
 .sapid-layer[aria-modal=true]::backdrop{background:var(--sp-backdrop)}
+
+/* Ratio children fill the reserved frame; long content cannot change its ratio. */
+.sapid-aspect-ratio-content>:where(*){max-width:100%;max-height:100%}
+.sapid-aspect-ratio-content>:where(img,video,iframe){width:100%;height:100%;object-fit:cover}
+/* Host scrolling remains native, including thumb dragging and accessibility. */
+.sapid-scroll-area{text-align:start;--sapid-scrollbar-size:12px}
+.sapid-scroll-area::-webkit-scrollbar{width:var(--sapid-scrollbar-size);height:var(--sapid-scrollbar-size);background:transparent}
+.sapid-scroll-area:where(:not(.sapid-unstyled))::-webkit-scrollbar-thumb{border:2px solid transparent;border-radius:100vmax;background:color-mix(in srgb,var(--sp-text) 35%,transparent);background-clip:padding-box}
+.sapid-scroll-area:where(:not(.sapid-unstyled))::-webkit-scrollbar-thumb:hover,.sapid-scroll-area:where(:not(.sapid-unstyled))::-webkit-scrollbar-thumb:active{background-color:color-mix(in srgb,var(--sp-text) 55%,transparent)}
+.sapid-scroll-area::-webkit-scrollbar-button{display:none}
+.sapid-scroll-area::-webkit-scrollbar-corner{background:transparent}
+.sapid-scroll-area:is(.sapid-scroll-hover,.sapid-scroll-scroll):not(.is-scrolling)::-webkit-scrollbar-thumb{background-color:transparent}
+.sapid-scroll-never{scrollbar-width:none}
+.sapid-scroll-never::-webkit-scrollbar{display:none}
+.sapid-overscroll-auto{overscroll-behavior:auto}
+.sapid-overscroll-contain{overscroll-behavior:contain}
+.sapid-overscroll-none{overscroll-behavior:none}
+@supports not selector(::-webkit-scrollbar){.sapid-scroll-area{scrollbar-width:thin;scrollbar-color:color-mix(in srgb,var(--sp-text) 35%,transparent) transparent}.sapid-scroll-area:is(.sapid-scroll-hover,.sapid-scroll-scroll):not(.is-scrolling){scrollbar-color:transparent transparent}.sapid-scroll-never{scrollbar-width:none}}
+.sapid-scroll-size-1{--sapid-scrollbar-size:1px}
+.sapid-scroll-size-2{--sapid-scrollbar-size:2px}
+.sapid-scroll-size-3{--sapid-scrollbar-size:3px}
+.sapid-scroll-size-4{--sapid-scrollbar-size:4px}
+.sapid-scroll-size-5{--sapid-scrollbar-size:5px}
+.sapid-scroll-size-6{--sapid-scrollbar-size:6px}
+.sapid-scroll-size-7{--sapid-scrollbar-size:7px}
+.sapid-scroll-size-8{--sapid-scrollbar-size:8px}
+.sapid-scroll-size-9{--sapid-scrollbar-size:9px}
+.sapid-scroll-size-10{--sapid-scrollbar-size:10px}
+.sapid-scroll-size-11{--sapid-scrollbar-size:11px}
+.sapid-scroll-size-12{--sapid-scrollbar-size:12px}
+.sapid-scroll-size-13{--sapid-scrollbar-size:13px}
+.sapid-scroll-size-14{--sapid-scrollbar-size:14px}
+.sapid-scroll-size-15{--sapid-scrollbar-size:15px}
+.sapid-scroll-size-16{--sapid-scrollbar-size:16px}
+.sapid-scroll-size-17{--sapid-scrollbar-size:17px}
+.sapid-scroll-size-18{--sapid-scrollbar-size:18px}
+.sapid-scroll-size-19{--sapid-scrollbar-size:19px}
+.sapid-scroll-size-20{--sapid-scrollbar-size:20px}
+.sapid-scroll-size-21{--sapid-scrollbar-size:21px}
+.sapid-scroll-size-22{--sapid-scrollbar-size:22px}
+.sapid-scroll-size-23{--sapid-scrollbar-size:23px}
+.sapid-scroll-size-24{--sapid-scrollbar-size:24px}
+.sapid-scroll-size-25{--sapid-scrollbar-size:25px}
+.sapid-scroll-size-26{--sapid-scrollbar-size:26px}
+.sapid-scroll-size-27{--sapid-scrollbar-size:27px}
+.sapid-scroll-size-28{--sapid-scrollbar-size:28px}
+.sapid-scroll-size-29{--sapid-scrollbar-size:29px}
+.sapid-scroll-size-30{--sapid-scrollbar-size:30px}
+.sapid-scroll-size-31{--sapid-scrollbar-size:31px}
+.sapid-scroll-size-32{--sapid-scrollbar-size:32px}
