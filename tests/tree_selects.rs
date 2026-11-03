@@ -170,6 +170,16 @@ fn real_item_activation_proposes_full_paths_and_same_tick_multiple_intents_deriv
             .tree_checked,
         Some(TreeCheckState::Checked)
     );
+    assert!(all(&app).into_iter().any(|id| {
+        let tree = app.tree();
+        let view = tree.node(id).unwrap().descriptor.view();
+        view.classes
+            .contains(&"sapid-tree-check-indicator".to_owned())
+            && view.style.width == Some(glory::style::Length::Px(18.))
+            && view.style.height == Some(glory::style::Length::Px(18.))
+            && view.style.background == Some(sapid::Theme::blue_light().accent)
+            && view.style.pointer_events == Some(glory::style::PointerEvents::None)
+    }));
     app.dispatch(named(&app, "Beta"), Event::Activate).unwrap();
     app.flush().unwrap();
     assert_eq!(

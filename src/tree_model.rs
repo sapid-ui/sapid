@@ -107,6 +107,7 @@ pub struct TreeRow {
     pub position: u16,
     pub count: u16,
     pub parent: Option<usize>,
+    pub line_guides: Vec<bool>,
 }
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TreeModel {
@@ -280,9 +281,16 @@ impl TreeModel {
             .iter()
             .enumerate()
             .rev()
-            .map(|(position, index)| (*index, position, self.roots.len()))
+            .map(|(position, index)| (*index, position, self.roots.len(), Vec::new()))
             .collect::<Vec<_>>();
-        while let Some((index, position, count)) = stack.pop() {
+        while let Some((index, position, count, line_guides)) = stack.pop() {
+            let child_guides = if self.levels[index] >= 2 {
+                let mut guides = line_guides.clone();
+                guides.push(position + 1 < count);
+                guides
+            } else {
+                Vec::new()
+            };
             result.push(TreeRow {
                 key: self.nodes[index].key.clone(),
                 index,
@@ -290,16 +298,13 @@ impl TreeModel {
                 position: position as u16,
                 count: count as u16,
                 parent: self.parents[index],
+                line_guides,
             });
             if expanded.contains(&self.nodes[index].key) {
                 let children = &self.children[index];
-                stack.extend(
-                    children
-                        .iter()
-                        .enumerate()
-                        .rev()
-                        .map(|(position, child)| (*child, position, children.len())),
-                );
+                stack.extend(children.iter().enumerate().rev().map(|(position, child)| {
+                    (*child, position, children.len(), child_guides.clone())
+                }));
             }
         }
         Ok(result)

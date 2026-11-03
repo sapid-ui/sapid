@@ -30,52 +30,199 @@ fn selection(value: &BTreeSet<String>, mode: TreeSelectionMode) -> Result {
     }
     Ok(())
 }
-fn guides(level: u8, color: glory::style::Color) -> Option<impl Widget> {
-    if level <= 1 {
-        return None;
-    }
-    let inset = 8. + f64::from(level - 1) * 20.;
-    let mut commands = Vec::with_capacity(usize::from(level) * 2);
-    for depth in 1..level {
-        let x = 16. + f64::from(depth - 1) * 20.;
-        commands.push(glory::render::PathCommand::Move(
-            glory::render::GraphicPoint::new(x, 0.),
-        ));
-        commands.push(glory::render::PathCommand::Line(
-            glory::render::GraphicPoint::new(x, 34.),
-        ));
-    }
-    commands.push(glory::render::PathCommand::Move(
-        glory::render::GraphicPoint::new(inset - 12., 16.),
-    ));
-    commands.push(glory::render::PathCommand::Line(
-        glory::render::GraphicPoint::new(inset, 16.),
-    ));
-    Some(
-        glory::ui::graphic()
-            .class("sapid-tree-guide")
-            .drawing(glory::render::GraphicProps {
-                width: inset,
-                height: 34.,
-                commands,
-                stroke: Some(glory::render::GraphicStroke {
-                    color,
-                    width: 1.,
-                    cap: glory::render::StrokeCap::Round,
-                }),
-                alternative: None,
-                ..Default::default()
-            })
+fn check_indicator(
+    scope: &Scope,
+    theme: crate::Theme,
+    checked: Vary<BTreeMap<String, glory::render::TreeCheckState>>,
+    key: String,
+    enabled: Vary<bool>,
+) -> impl Widget {
+    let style_checked = checked.clone();
+    let style_enabled = enabled.clone();
+    let style_key = key.clone();
+    let style_theme = theme.clone();
+    let style = scope.bond(move || {
+        let state = style_checked
+            .get()
+            .get(&style_key)
+            .copied()
+            .unwrap_or(glory::render::TreeCheckState::Unchecked);
+        let active = state != glory::render::TreeCheckState::Unchecked;
+        let disabled = !style_enabled.get();
+        Style {
+            display: Some(Display::Flex),
+            align: Some(Align::Center),
+            justify: Some(glory::style::Justify::Center),
+            width: Some(Length::Px(18.)),
+            height: Some(Length::Px(18.)),
+            min_width: Some(Length::Px(18.)),
+            shrink: Some(0.),
+            padding: Some(Edges::all(0.)),
+            border_width: Some(Edges::all(1.)),
+            border_style: Some(BorderStyle::Solid),
+            border_color: Some(if active {
+                style_theme.accent
+            } else {
+                style_theme.border
+            }),
+            background: Some(if disabled {
+                style_theme.disabled
+            } else if active {
+                style_theme.accent
+            } else {
+                style_theme.input
+            }),
+            radius: Some(style_theme.radius),
+            pointer_events: Some(glory::style::PointerEvents::None),
+            ..Style::new()
+        }
+    });
+    let drawing = scope.bond(move || {
+        let values = checked.get();
+        let state = values
+            .get(&key)
+            .copied()
+            .unwrap_or(glory::render::TreeCheckState::Unchecked);
+        let p = glory::render::GraphicPoint::new;
+        let commands = match state {
+            glory::render::TreeCheckState::Checked => vec![
+                glory::render::PathCommand::Move(p(5., 12.)),
+                glory::render::PathCommand::Line(p(10., 17.)),
+                glory::render::PathCommand::Line(p(19., 7.)),
+            ],
+            glory::render::TreeCheckState::Mixed => vec![
+                glory::render::PathCommand::Move(p(6., 12.)),
+                glory::render::PathCommand::Line(p(18., 12.)),
+            ],
+            glory::render::TreeCheckState::Unchecked => Vec::new(),
+        };
+        glory::render::GraphicProps {
+            width: 24.,
+            height: 24.,
+            commands,
+            stroke: Some(glory::render::GraphicStroke {
+                color: if enabled.get() {
+                    theme.on_accent
+                } else {
+                    theme.disabled_text
+                },
+                width: 2.,
+                cap: glory::render::StrokeCap::Round,
+            }),
+            alternative: None,
+            ..Default::default()
+        }
+    });
+    glory::ui::view()
+        .class("sapid-tree-check sapid-tree-check-indicator")
+        .style(style)
+        .fill(
+            glory::ui::graphic()
+                .class("sapid-tree-check-icon")
+                .drawing(drawing)
+                .style(
+                    Style::new()
+                        .width(Length::Px(12.))
+                        .height(Length::Px(12.))
+                        .pointer_events(glory::style::PointerEvents::None),
+                ),
+        )
+}
+fn guide_element(
+    class: &str,
+    direction: Direction,
+    offset: f64,
+    horizontal: bool,
+    last: bool,
+    color: glory::style::Color,
+) -> Box<dyn Widget> {
+    let (left, right) = if direction == Direction::Rtl {
+        (None, Some(Length::Px(offset)))
+    } else {
+        (Some(Length::Px(offset)), None)
+    };
+    Box::new(
+        glory::ui::view()
+            .class(format!("sapid-tree-guide {class}"))
             .style(Style {
                 position: Some(glory::style::Position::Absolute),
-                top: Some(Length::Px(0.)),
-                left: Some(Length::Px(0.)),
-                width: Some(Length::Px(inset)),
-                height: Some(Length::Px(34.)),
+                top: Some(if horizontal {
+                    Length::Percent(50.)
+                } else {
+                    Length::Px(0.)
+                }),
+                left,
+                right,
+                bottom: (!horizontal && !last).then_some(Length::Px(0.)),
+                width: Some(if horizontal {
+                    Length::Px(10.)
+                } else {
+                    Length::Px(0.)
+                }),
+                height: if horizontal {
+                    Some(Length::Px(0.))
+                } else if last {
+                    Some(Length::Percent(50.))
+                } else {
+                    None
+                },
+                border_width: Some(if horizontal {
+                    Edges {
+                        top: 1.,
+                        ..Edges::all(0.)
+                    }
+                } else {
+                    Edges {
+                        left: 1.,
+                        ..Edges::all(0.)
+                    }
+                }),
+                border_style: Some(BorderStyle::Solid),
+                border_color: Some(color),
                 pointer_events: Some(glory::style::PointerEvents::None),
                 ..Style::new()
             }),
     )
+}
+fn guides(row: &TreeRow, direction: Direction, color: glory::style::Color) -> Vec<Box<dyn Widget>> {
+    if row.level <= 1 {
+        return Vec::new();
+    }
+    let mut result = row
+        .line_guides
+        .iter()
+        .enumerate()
+        .filter(|(_, show)| **show)
+        .map(|(index, _)| {
+            guide_element(
+                "sapid-tree-guide-line",
+                direction,
+                8. + (index + 1) as f64 * 20. - 10.,
+                false,
+                false,
+                color,
+            )
+        })
+        .collect::<Vec<_>>();
+    let offset = 8. + f64::from(row.level - 1) * 20. - 10.;
+    let last = row.position + 1 == row.count;
+    result.push(guide_element(
+        "sapid-tree-branch-vertical",
+        direction,
+        offset,
+        false,
+        last,
+        color,
+    ));
+    result.push(guide_element(
+        "sapid-tree-branch-horizontal",
+        direction,
+        offset,
+        true,
+        false,
+        color,
+    ));
+    result
 }
 fn accept_model(scope: &Scope, source: Vary<Vec<TreeNode>>) -> Result<Cage<Rc<TreeModel>>> {
     let read = || {
@@ -760,7 +907,7 @@ impl Widget for Tree {
             }
         })?;
         let reference = self.common.node_ref.unwrap_or_else(|| scope.cage(None));
-        let mut base = composite::column(2.)
+        let mut base = composite::column(if self.popup.is_some() { 0. } else { 2. })
             .padding(Edges::all(4.))
             .min_width(Length::Px(0.));
         if !self.common.unstyled {
@@ -982,10 +1129,11 @@ impl Widget for Tree {
                         }
                     });
                     let disclosure_color = theme.muted;
+                    let check_theme = theme.clone();
                     let guide = if columns || unstyled {
-                        None
+                        Vec::new()
                     } else {
-                        guides(row.with(|row| row.level), theme.border)
+                        row.with(|row| guides(row, direction, theme.border))
                     };
                     let paint = scope.bond(move || {
                         let level = row.with(|row| row.level);
@@ -994,7 +1142,14 @@ impl Widget for Tree {
                         let inset = if columns {
                             8.
                         } else {
-                            8. + f64::from(level - 1) * 20.
+                            let mut inset = 8. + f64::from(level - 1) * 20.;
+                            if level > 1 {
+                                inset += 5.;
+                            }
+                            if value.with(|node| node.kind == TreeKind::Leaf) {
+                                inset += 6.;
+                            }
+                            inset
                         };
                         let mut style = Style::new()
                             .display(Display::Flex)
@@ -1086,19 +1241,20 @@ impl Widget for Tree {
                         }
                     })?;
                     let content = scope.child_in(node)?;
-                    if let Some(guide) = guide {
+                    for guide in guide {
                         guide.show_in(&content)?;
                     }
                     if let Some(checked) = checked {
-                        let check_key = key.clone();
-                        glory::ui::text()
-                            .class("sapid-tree-check")
-                            .content(checked.map(move |values| match values.get(&check_key) {
-                                Some(glory::render::TreeCheckState::Checked) => "☑".into(),
-                                Some(glory::render::TreeCheckState::Mixed) => "⊟".into(),
-                                _ => "☐".into(),
-                            }))
-                            .show_in(&content)?;
+                        let enabled = state.enabled.clone();
+                        let check_enabled = value.map(move |node| enabled.get() && !node.disabled);
+                        check_indicator(
+                            scope,
+                            check_theme,
+                            checked.into(),
+                            key.clone(),
+                            check_enabled.into(),
+                        )
+                        .show_in(&content)?;
                     }
                     let s = state.clone();
                     let toggle_key = key.clone();

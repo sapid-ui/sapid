@@ -54,9 +54,11 @@ controlled/default expansion, clear, themes, size and unstyled are supported.
 Clear uses a compact CloseButton inside the trigger and is visible only when the current
 editable value can be cleared; otherwise a decorative dropdown chevron occupies that section.
 Branch controls use borderless vector chevrons with a 24×24 viewport, 2px stroke
-and round line caps rather than font glyphs. Nested rows draw decorative vector guides
-from their actual depth. Vertical segments span both the 32px row and its 2px gap so
-adjacent rows form a continuous hierarchy line.
+and round line caps rather than font glyphs. Nested rows use absolutely positioned
+border elements for ancestor, vertical and horizontal guides, matching Mantine's structure.
+Popup options have no intervening row gap; only the last sibling's vertical guide is 50% high.
+Checked and mixed states use passive 18×18 indicators with centered vector icons rather
+than text glyphs or duplicate interactive checkboxes.
 Successful values use real readonly Inputs under a hidden structural View, one
 per current accepted path, with the repeated `form_name` and slash-joined ASCII
 keys. Semantic keys exclude slash, so this encoding is unambiguous. Empty choice

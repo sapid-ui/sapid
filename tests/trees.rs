@@ -158,7 +158,7 @@ fn same_tick_controlled_expansion_and_selection_propose_then_reconcile_refusal()
     });
     app.flush().unwrap();
     assert_eq!(items(&app).len(), 5);
-    let guides = all(&app)
+    let vertical = all(&app)
         .into_iter()
         .filter(|id| {
             app.tree()
@@ -167,20 +167,60 @@ fn same_tick_controlled_expansion_and_selection_propose_then_reconcile_refusal()
                 .descriptor
                 .view()
                 .classes
-                .contains(&"sapid-tree-guide".to_owned())
+                .contains(&"sapid-tree-branch-vertical".to_owned())
         })
         .collect::<Vec<_>>();
-    assert_eq!(guides.len(), 3);
-    for id in guides {
+    assert_eq!(vertical.len(), 3);
+    let mut last = 0;
+    for id in vertical {
         let tree = app.tree();
         let view = tree.node(id).unwrap().descriptor.view();
-        assert!(
-            matches!(view.props, Props::Graphic(drawing) if drawing.height == 34. && drawing.commands.len() == 4 && matches!(drawing.commands[1], glory::render::PathCommand::Line(point) if point.y == 34.) && drawing.alternative.is_none())
+        assert!(matches!(view.props, Props::View));
+        assert_eq!(view.style.position, Some(glory::style::Position::Absolute));
+        assert_eq!(view.style.width, Some(glory::style::Length::Px(0.)));
+        assert_eq!(
+            view.style.border_width,
+            Some(glory::style::Edges {
+                left: 1.,
+                ..glory::style::Edges::all(0.)
+            })
         );
-        assert_eq!(view.style.height, Some(glory::style::Length::Px(34.)));
         assert_eq!(
             view.style.pointer_events,
             Some(glory::style::PointerEvents::None)
+        );
+        if view.style.height == Some(glory::style::Length::Percent(50.)) {
+            last += 1;
+        } else {
+            assert_eq!(view.style.bottom, Some(glory::style::Length::Px(0.)));
+        }
+    }
+    assert_eq!(last, 1);
+    let horizontal = all(&app)
+        .into_iter()
+        .filter(|id| {
+            app.tree()
+                .node(*id)
+                .unwrap()
+                .descriptor
+                .view()
+                .classes
+                .contains(&"sapid-tree-branch-horizontal".to_owned())
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(horizontal.len(), 3);
+    for id in horizontal {
+        let tree = app.tree();
+        let view = tree.node(id).unwrap().descriptor.view();
+        assert_eq!(view.style.top, Some(glory::style::Length::Percent(50.)));
+        assert_eq!(view.style.width, Some(glory::style::Length::Px(10.)));
+        assert_eq!(view.style.height, Some(glory::style::Length::Px(0.)));
+        assert_eq!(
+            view.style.border_width,
+            Some(glory::style::Edges {
+                top: 1.,
+                ..glory::style::Edges::all(0.)
+            })
         );
     }
     assert_eq!(proposals.borrow().len(), 2);
