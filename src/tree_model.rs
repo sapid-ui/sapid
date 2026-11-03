@@ -412,6 +412,46 @@ mod tests {
         assert_eq!(model.index("lib"), Some(2));
     }
     #[test]
+    fn second_level_guides_continue_only_through_non_last_ancestors() {
+        let model = TreeModel::new([
+            TreeNode::new("electronics", "Electronics").kind(TreeKind::Branch),
+            TreeNode::new("phones", "Phones")
+                .parent("electronics")
+                .kind(TreeKind::Branch),
+            TreeNode::new("iphone", "iPhone").parent("phones"),
+            TreeNode::new("samsung", "Samsung Galaxy").parent("phones"),
+            TreeNode::new("laptops", "Laptops")
+                .parent("electronics")
+                .kind(TreeKind::Branch),
+            TreeNode::new("macbook", "MacBook").parent("laptops"),
+            TreeNode::new("headphones", "Headphones").parent("electronics"),
+            TreeNode::new("vegetables", "Vegetables")
+                .parent("electronics")
+                .kind(TreeKind::Branch),
+            TreeNode::new("broccoli", "Broccoli").parent("vegetables"),
+        ])
+        .unwrap();
+        let rows = model
+            .visible(&BTreeSet::from([
+                "electronics".into(),
+                "phones".into(),
+                "laptops".into(),
+                "vegetables".into(),
+            ]))
+            .unwrap();
+        let guides = |key: &str| {
+            rows.iter()
+                .find(|row| row.key == key)
+                .map(|row| row.line_guides.clone())
+                .unwrap()
+        };
+        assert!(guides("phones").is_empty());
+        assert_eq!(guides("iphone"), [true]);
+        assert_eq!(guides("samsung"), [true]);
+        assert_eq!(guides("macbook"), [true]);
+        assert_eq!(guides("broccoli"), [false]);
+    }
+    #[test]
     fn cycles_missing_and_unloaded_parents_are_rejected() {
         let mut data = nodes();
         data[0].parent = Some("src".into());

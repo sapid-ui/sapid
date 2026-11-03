@@ -216,15 +216,16 @@ async (hostPage) => {
     assert(await disclosure.evaluate(el => ['borderTopWidth','borderRightWidth','borderBottomWidth','borderLeftWidth'].every(side => getComputedStyle(el)[side] === '0px')), 'Tree disclosure has no native button box');
     assert(!['+','−'].includes((await disclosure.textContent()).trim()), 'Tree disclosure uses a directional chevron');
     assert(await disclosure.locator('.sapid-theme-icon-graphic').count() === 1, 'Tree disclosure uses the shared vector icon');
-    assert(await singlePopup.locator('.sapid-tree-branch-vertical').count() === 5, 'Every nested row has an absolute vertical border');
-    assert(await singlePopup.locator('.sapid-tree-branch-horizontal').count() === 5, 'Every nested row has an absolute horizontal border');
+    assert(await singlePopup.locator('.sapid-tree-branch-vertical').count() === 14, 'Both hierarchy levels have absolute vertical borders');
+    assert(await singlePopup.locator('.sapid-tree-branch-horizontal').count() === 14, 'Both hierarchy levels have absolute horizontal borders');
+    assert(await singlePopup.locator('.sapid-tree-guide-line').count() === 7, 'Second-level children inherit continuous ancestor guides');
     assert(await singlePopup.evaluate(el => getComputedStyle(el).rowGap === '0px'), 'TreeSelect options have no gap that could interrupt guides');
     const guideHeights = await singlePopup.locator('.sapid-tree-branch-vertical').evaluateAll(nodes => nodes.map(node => {const parent=node.parentElement;const style=getComputedStyle(parent);const available=parent.getBoundingClientRect().height-parseFloat(style.borderTopWidth)-parseFloat(style.borderBottomWidth);return {height:node.getBoundingClientRect().height,available,border:getComputedStyle(node).borderLeftWidth,pointer:getComputedStyle(node).pointerEvents,position:getComputedStyle(node).position}}));
-    assert(guideHeights.filter(guide => Math.abs(guide.height - guide.available / 2) < 0.1).length === 2 && guideHeights.filter(guide => Math.abs(guide.height - guide.available) < 0.1).length === 3, 'Only last siblings use Mantine 50% vertical guides');
+    assert(guideHeights.filter(guide => Math.abs(guide.height - guide.available / 2) < 0.1).length === 6 && guideHeights.filter(guide => Math.abs(guide.height - guide.available) < 0.1).length === 8, 'Only last siblings use Mantine 50% vertical guides at both levels');
     assert(guideHeights.every(guide => guide.border === '1px' && guide.pointer === 'none' && guide.position === 'absolute'), 'Tree guides are noninteractive absolute border elements');
-    await treeItem(singlePopup,'Phones').waitFor();
-    await treeItem(singlePopup,'Phones').click();
-    await singleTree.getByText('Phones',{exact:true}).waitFor();
+    await treeItem(singlePopup,'iPhone').waitFor();
+    await treeItem(singlePopup,'iPhone').click();
+    await singleTree.getByText('iPhone',{exact:true}).waitFor();
     await singleClear.waitFor();
     const clearBox = await singleClear.boundingBox();
     assert(clearBox.x >= triggerBox.x && clearBox.x + clearBox.width <= triggerBox.x + triggerBox.width, 'Clear action stays inside the trigger');
@@ -236,13 +237,13 @@ async (hostPage) => {
     const multipleTree = p.getByRole('combobox',{name:'Your favorite items',exact:true});
     const multiplePopup = await popupFor(multipleTree);
     await multipleTree.click();
-    await treeItem(multiplePopup,'Laptops').click();
-    await p.getByRole('button',{name:'Remove laptops',exact:true}).click();
-    await p.getByRole('button',{name:'Remove laptops',exact:true}).waitFor({state:'detached'});
-    assert(await p.getByRole('button',{name:'Remove laptops',exact:true}).count() === 0, 'TreeSelect pills remove one controlled value');
-    await p.getByRole('button',{name:'Remove phones',exact:true}).click();
-    await p.getByRole('button',{name:'Remove phones',exact:true}).waitFor({state:'detached'});
-    assert(await p.getByRole('button',{name:'Remove phones',exact:true}).count() === 0, 'TreeSelect removes the initial pill');
+    await treeItem(multiplePopup,'Samsung Galaxy').click();
+    await p.getByRole('button',{name:'Remove samsung',exact:true}).click();
+    await p.getByRole('button',{name:'Remove samsung',exact:true}).waitFor({state:'detached'});
+    assert(await p.getByRole('button',{name:'Remove samsung',exact:true}).count() === 0, 'TreeSelect pills remove one controlled value');
+    await p.getByRole('button',{name:'Remove iphone',exact:true}).click();
+    await p.getByRole('button',{name:'Remove iphone',exact:true}).waitFor({state:'detached'});
+    assert(await p.getByRole('button',{name:'Remove iphone',exact:true}).count() === 0, 'TreeSelect removes the initial pill');
 
     const cascadeTree = p.getByRole('combobox',{name:'Include categories',exact:true});
     const cascadePopup = await popupFor(cascadeTree);
@@ -273,8 +274,8 @@ async (hostPage) => {
     await p.getByText('Nothing found',{exact:true}).waitFor({state:'detached'});
     assert(await p.getByText('Nothing found',{exact:true}).count() === 0, 'TreeSelect search recovers from empty results');
     await filteredTree.click();
-    await treeItem(filteredPopup,'Phones').waitFor();
-    assert(await treeItem(filteredPopup,'Electronics').count() === 1 && await treeItem(filteredPopup,'Laptops').count() === 0, 'TreeSelect search preserves ancestors but filters siblings');
+    await treeItem(filteredPopup,'iPhone').waitFor();
+    assert(await treeItem(filteredPopup,'Electronics').count() === 1 && await treeItem(filteredPopup,'Phones').count() === 1 && await treeItem(filteredPopup,'Laptops').count() === 0, 'TreeSelect search preserves both ancestors and filters sibling branches');
     reports.push({suite:'showcase-tree-select-usage-and-interactions',status:'passed'});
 
     for (const [id,label] of [['P4-05','Your favorite framework'],['P4-06','Your favorite framework'],['P4-07','Your favorite framework'],['P8-05','Your favorite item']]) {

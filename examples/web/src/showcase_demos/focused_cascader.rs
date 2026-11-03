@@ -21,14 +21,31 @@ mod focused {
     fn tree_select_nodes() -> Vec<TreeNode> {
         vec![
             TreeNode::new("electronics", "Electronics").kind(TreeKind::Branch),
-            TreeNode::new("phones", "Phones").parent("electronics"),
-            TreeNode::new("laptops", "Laptops").parent("electronics"),
+            TreeNode::new("phones", "Phones")
+                .parent("electronics")
+                .kind(TreeKind::Branch),
+            TreeNode::new("iphone", "iPhone").parent("phones"),
+            TreeNode::new("samsung", "Samsung Galaxy").parent("phones"),
+            TreeNode::new("pixel", "Google Pixel").parent("phones"),
+            TreeNode::new("laptops", "Laptops")
+                .parent("electronics")
+                .kind(TreeKind::Branch),
+            TreeNode::new("macbook", "MacBook").parent("laptops"),
+            TreeNode::new("thinkpad", "ThinkPad").parent("laptops"),
             TreeNode::new("headphones", "Headphones").parent("electronics"),
             TreeNode::new("groceries", "Groceries").kind(TreeKind::Branch),
-            TreeNode::new("fruit", "Fruit").parent("groceries"),
-            TreeNode::new("vegetables", "Vegetables").parent("groceries"),
+            TreeNode::new("fruits", "Fruits")
+                .parent("groceries")
+                .kind(TreeKind::Branch),
+            TreeNode::new("apples", "Apples").parent("fruits"),
+            TreeNode::new("bananas", "Bananas").parent("fruits"),
+            TreeNode::new("vegetables", "Vegetables")
+                .parent("groceries")
+                .kind(TreeKind::Branch),
+            TreeNode::new("carrots", "Carrots").parent("vegetables"),
+            TreeNode::new("broccoli", "Broccoli").parent("vegetables"),
             TreeNode::new("books", "Books"),
-            TreeNode::new("toys", "Toys").disabled(true),
+            TreeNode::new("toys", "Toys"),
         ]
     }
 
