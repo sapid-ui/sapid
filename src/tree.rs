@@ -30,7 +30,7 @@ fn selection(value: &BTreeSet<String>, mode: TreeSelectionMode) -> Result {
     }
     Ok(())
 }
-fn guides(level: u8, position: u16, count: u16, color: glory::style::Color) -> Option<impl Widget> {
+fn guides(level: u8, color: glory::style::Color) -> Option<impl Widget> {
     if level <= 1 {
         return None;
     }
@@ -38,16 +38,11 @@ fn guides(level: u8, position: u16, count: u16, color: glory::style::Color) -> O
     let mut commands = Vec::with_capacity(usize::from(level) * 2);
     for depth in 1..level {
         let x = 16. + f64::from(depth - 1) * 20.;
-        let bottom = if depth == level - 1 && position == count {
-            16.
-        } else {
-            32.
-        };
         commands.push(glory::render::PathCommand::Move(
             glory::render::GraphicPoint::new(x, 0.),
         ));
         commands.push(glory::render::PathCommand::Line(
-            glory::render::GraphicPoint::new(x, bottom),
+            glory::render::GraphicPoint::new(x, 34.),
         ));
     }
     commands.push(glory::render::PathCommand::Move(
@@ -61,7 +56,7 @@ fn guides(level: u8, position: u16, count: u16, color: glory::style::Color) -> O
             .class("sapid-tree-guide")
             .drawing(glory::render::GraphicProps {
                 width: inset,
-                height: 32.,
+                height: 34.,
                 commands,
                 stroke: Some(glory::render::GraphicStroke {
                     color,
@@ -76,7 +71,7 @@ fn guides(level: u8, position: u16, count: u16, color: glory::style::Color) -> O
                 top: Some(Length::Px(0.)),
                 left: Some(Length::Px(0.)),
                 width: Some(Length::Px(inset)),
-                height: Some(Length::Px(32.)),
+                height: Some(Length::Px(34.)),
                 pointer_events: Some(glory::style::PointerEvents::None),
                 ..Style::new()
             }),
@@ -990,12 +985,7 @@ impl Widget for Tree {
                     let guide = if columns || unstyled {
                         None
                     } else {
-                        guides(
-                            row.with(|row| row.level),
-                            row.with(|row| row.position),
-                            row.with(|row| row.count),
-                            theme.border,
-                        )
+                        guides(row.with(|row| row.level), theme.border)
                     };
                     let paint = scope.bond(move || {
                         let level = row.with(|row| row.level);

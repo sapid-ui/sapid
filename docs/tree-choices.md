@@ -55,7 +55,8 @@ Clear uses a compact CloseButton inside the trigger and is visible only when the
 editable value can be cleared; otherwise a decorative dropdown chevron occupies that section.
 Branch controls use borderless vector chevrons with a 24×24 viewport, 2px stroke
 and round line caps rather than font glyphs. Nested rows draw decorative vector guides
-from their actual depth and sibling position; the last child terminates at row center.
+from their actual depth. Vertical segments span both the 32px row and its 2px gap so
+adjacent rows form a continuous hierarchy line.
 Successful values use real readonly Inputs under a hidden structural View, one
 per current accepted path, with the repeated `form_name` and slash-joined ASCII
 keys. Semantic keys exclude slash, so this encoding is unambiguous. Empty choice

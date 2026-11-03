@@ -217,6 +217,7 @@ async (hostPage) => {
     assert(!['+','−'].includes((await disclosure.textContent()).trim()), 'Tree disclosure uses a directional chevron');
     assert(await disclosure.locator('.sapid-theme-icon-graphic').count() === 1, 'Tree disclosure uses the shared vector icon');
     assert(await singlePopup.locator('.sapid-tree-guide').count() === 5, 'Every nested tree row has its own vector guide');
+    assert(await singlePopup.locator('.sapid-tree-guide').evaluateAll(nodes => nodes.every(node => Math.abs(node.getBoundingClientRect().height - 34) < 0.1)), 'Tree guides extend across the row gap without interruption');
     assert(await singlePopup.locator('.sapid-tree-guide').evaluateAll(nodes => nodes.every(node => getComputedStyle(node).pointerEvents === 'none')), 'Tree guides never intercept selection');
     await treeItem(singlePopup,'Phones').waitFor();
     await treeItem(singlePopup,'Phones').click();

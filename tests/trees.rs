@@ -175,8 +175,9 @@ fn same_tick_controlled_expansion_and_selection_propose_then_reconcile_refusal()
         let tree = app.tree();
         let view = tree.node(id).unwrap().descriptor.view();
         assert!(
-            matches!(view.props, Props::Graphic(drawing) if drawing.commands.len() == 4 && drawing.alternative.is_none())
+            matches!(view.props, Props::Graphic(drawing) if drawing.height == 34. && drawing.commands.len() == 4 && matches!(drawing.commands[1], glory::render::PathCommand::Line(point) if point.y == 34.) && drawing.alternative.is_none())
         );
+        assert_eq!(view.style.height, Some(glory::style::Length::Px(34.)));
         assert_eq!(
             view.style.pointer_events,
             Some(glory::style::PointerEvents::None)
