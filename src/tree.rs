@@ -149,11 +149,17 @@ fn guide_element(
                 top: Some(if horizontal {
                     Length::Percent(50.)
                 } else {
-                    Length::Px(0.)
+                    // Absolute insets start inside the row's 1px border.
+                    // Include that border so adjacent row segments meet.
+                    Length::Px(-1.)
                 }),
                 left,
                 right,
-                bottom: (!horizontal && !last).then_some(Length::Px(0.)),
+                bottom: (!horizontal).then_some(if last {
+                    Length::Percent(50.)
+                } else {
+                    Length::Px(-1.)
+                }),
                 width: Some(if horizontal {
                     Length::Px(10.)
                 } else {
@@ -161,8 +167,6 @@ fn guide_element(
                 }),
                 height: if horizontal {
                     Some(Length::Px(0.))
-                } else if last {
-                    Some(Length::Percent(50.))
                 } else {
                     None
                 },
@@ -907,7 +911,8 @@ impl Widget for Tree {
             }
         })?;
         let reference = self.common.node_ref.unwrap_or_else(|| scope.cage(None));
-        let mut base = composite::column(if self.popup.is_some() { 0. } else { 2. })
+        // Branch and ancestor guides span consecutive rows, including in Tree.
+        let mut base = composite::column(0.)
             .padding(Edges::all(4.))
             .min_width(Length::Px(0.));
         if !self.common.unstyled {

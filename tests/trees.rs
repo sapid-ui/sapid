@@ -189,10 +189,12 @@ fn same_tick_controlled_expansion_and_selection_propose_then_reconcile_refusal()
             view.style.pointer_events,
             Some(glory::style::PointerEvents::None)
         );
-        if view.style.height == Some(glory::style::Length::Percent(50.)) {
+        assert_eq!(view.style.top, Some(glory::style::Length::Px(-1.)));
+        assert_eq!(view.style.height, None);
+        if view.style.bottom == Some(glory::style::Length::Percent(50.)) {
             last += 1;
         } else {
-            assert_eq!(view.style.bottom, Some(glory::style::Length::Px(0.)));
+            assert_eq!(view.style.bottom, Some(glory::style::Length::Px(-1.)));
         }
     }
     assert_eq!(last, 1);

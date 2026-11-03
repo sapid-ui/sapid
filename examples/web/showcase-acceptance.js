@@ -198,6 +198,33 @@ async (hostPage) => {
     assert(await p.getByText('Refuse path selection',{exact:true}).count() === 0, 'TreeSelect is a usage guide, not an engineering workbench');
     const popupFor = async trigger => p.locator(`#${await trigger.getAttribute('aria-controls')}`);
     const treeItem = (root,name) => root.getByRole('treeitem',{name,exact:true});
+    const continuousTreeGuides = async root => {
+      const geometry = await root.locator('.sapid-tree-item').evaluateAll(rows => rows.map(row => ({
+        box: row.getBoundingClientRect().toJSON(),
+        guides: [...row.querySelectorAll('.sapid-tree-guide')].map(guide => ({
+          box: guide.getBoundingClientRect().toJSON(),
+          horizontal: guide.classList.contains('sapid-tree-branch-horizontal'),
+          closing: guide.style.bottom === '50%',
+        })),
+      })));
+      let joins = 0, endings = 0;
+      for (const [index, row] of geometry.entries()) {
+        for (const guide of row.guides.filter(guide => !guide.horizontal)) {
+          assert(Math.abs(guide.box.top - row.box.top) < 0.1, 'Vertical guides include the top row border');
+          if (guide.closing) {
+            const horizontal = row.guides.find(candidate => candidate.horizontal);
+            assert(horizontal && Math.abs(guide.box.bottom - horizontal.box.top) < 0.1, 'Last sibling ends exactly at its horizontal branch');
+            endings++;
+          } else {
+            assert(Math.abs(guide.box.bottom - row.box.bottom) < 0.1, 'Continuing guides include the bottom row border');
+            const next = geometry[index + 1]?.guides.find(candidate => !candidate.horizontal && Math.abs(candidate.box.x - guide.box.x) < 0.1);
+            assert(next && Math.abs(next.box.top - guide.box.bottom) < 0.1, 'Adjacent branch and ancestor guide segments meet without a gap');
+            joins++;
+          }
+        }
+      }
+      assert(joins > 0 && endings > 0, 'Geometry covers real connecting segments and last siblings');
+    };
     const singleTree = p.getByRole('combobox',{name:'Your favorite item',exact:true});
     const singleControl = p.locator('.sapid-tree-select-control').first();
     const singleClear = singleControl.getByRole('button',{name:'Clear tree selection',exact:true});
@@ -220,9 +247,16 @@ async (hostPage) => {
     assert(await singlePopup.locator('.sapid-tree-branch-horizontal').count() === 14, 'Both hierarchy levels have absolute horizontal borders');
     assert(await singlePopup.locator('.sapid-tree-guide-line').count() === 7, 'Second-level children inherit continuous ancestor guides');
     assert(await singlePopup.evaluate(el => getComputedStyle(el).rowGap === '0px'), 'TreeSelect options have no gap that could interrupt guides');
-    const guideHeights = await singlePopup.locator('.sapid-tree-branch-vertical').evaluateAll(nodes => nodes.map(node => {const parent=node.parentElement;const style=getComputedStyle(parent);const available=parent.getBoundingClientRect().height-parseFloat(style.borderTopWidth)-parseFloat(style.borderBottomWidth);return {height:node.getBoundingClientRect().height,available,border:getComputedStyle(node).borderLeftWidth,pointer:getComputedStyle(node).pointerEvents,position:getComputedStyle(node).position}}));
+    const guideHeights = await singlePopup.locator('.sapid-tree-branch-vertical').evaluateAll(nodes => nodes.map(node => {const parent=node.parentElement;const available=parent.getBoundingClientRect().height;return {height:node.getBoundingClientRect().height,available,border:getComputedStyle(node).borderLeftWidth,pointer:getComputedStyle(node).pointerEvents,position:getComputedStyle(node).position}}));
     assert(guideHeights.filter(guide => Math.abs(guide.height - guide.available / 2) < 0.1).length === 6 && guideHeights.filter(guide => Math.abs(guide.height - guide.available) < 0.1).length === 8, 'Only last siblings use Mantine 50% vertical guides at both levels');
     assert(guideHeights.every(guide => guide.border === '1px' && guide.pointer === 'none' && guide.position === 'absolute'), 'Tree guides are noninteractive absolute border elements');
+    await continuousTreeGuides(singlePopup);
+    await disclosure.click();
+    await treeItem(singlePopup,'Phones').waitFor({state:'hidden'});
+    await continuousTreeGuides(singlePopup);
+    await disclosure.click();
+    await treeItem(singlePopup,'Phones').waitFor();
+    await continuousTreeGuides(singlePopup);
     await treeItem(singlePopup,'iPhone').waitFor();
     await treeItem(singlePopup,'iPhone').click();
     await singleTree.getByText('iPhone',{exact:true}).waitFor();
@@ -237,6 +271,7 @@ async (hostPage) => {
     const multipleTree = p.getByRole('combobox',{name:'Your favorite items',exact:true});
     const multiplePopup = await popupFor(multipleTree);
     await multipleTree.click();
+    await continuousTreeGuides(multiplePopup);
     await treeItem(multiplePopup,'Samsung Galaxy').click();
     await p.getByRole('button',{name:'Remove samsung',exact:true}).click();
     await p.getByRole('button',{name:'Remove samsung',exact:true}).waitFor({state:'detached'});
@@ -260,6 +295,7 @@ async (hostPage) => {
     await treeItem(cascadePopup,'Laptops').click();
     await p.waitForFunction(el => el.getAttribute('aria-checked') === 'mixed', await treeItem(cascadePopup,'Electronics').elementHandle());
     assert(await treeItem(cascadePopup,'Electronics').getAttribute('aria-checked') === 'mixed', 'TreeSelect parent derives half-checked state');
+    await continuousTreeGuides(cascadePopup);
     await p.keyboard.press('Escape');
 
     const treeSearch = p.getByRole('textbox',{name:'Search tree items',exact:true});
@@ -277,6 +313,21 @@ async (hostPage) => {
     await treeItem(filteredPopup,'iPhone').waitFor();
     assert(await treeItem(filteredPopup,'Electronics').count() === 1 && await treeItem(filteredPopup,'Phones').count() === 1 && await treeItem(filteredPopup,'Laptops').count() === 0, 'TreeSelect search preserves both ancestors and filters sibling branches');
     reports.push({suite:'showcase-tree-select-usage-and-interactions',status:'passed'});
+
+    for (const theme of ['blue', 'green']) for (const scheme of ['light', 'dark']) {
+      await go(p, `showcase.html?widget=P8-04&theme=${theme}&scheme=${scheme}`);
+      for (const name of ['Your favorite item', 'Your favorite items', 'Include categories']) {
+        const trigger = p.getByRole('combobox', {name, exact:true});
+        await trigger.click();
+        const popup = await popupFor(trigger);
+        await treeItem(popup, 'Phones').waitFor();
+        await continuousTreeGuides(popup);
+        await p.keyboard.press('Escape');
+      }
+      await go(p, `showcase.html?widget=P8-03&theme=${theme}&scheme=${scheme}`);
+      await continuousTreeGuides(p.getByRole('tree', {name:'Project files', exact:true}));
+    }
+    reports.push({suite:'showcase-tree-guides-four-themes',status:'passed'});
 
     for (const [id,label] of [['P4-05','Your favorite framework'],['P4-06','Your favorite framework'],['P4-07','Your favorite framework'],['P8-05','Your favorite item']]) {
       await go(p, `showcase.html?widget=${id}`);
