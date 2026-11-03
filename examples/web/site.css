@@ -393,7 +393,6 @@ html,body{margin:0;padding:0}
 .sapid-site .site-layout-playground .site-playground-controls{width:250px!important;padding-right:10px}
 .sapid-site .site-demo-heading{font-size:18px!important;font-weight:650!important}
 .sapid-site .site-splitter-pane{padding:14px;text-align:center;font-size:14px;font-weight:500}
-.sapid-site .site-splitter-preview .sapid-splitter-handle{background:var(--site-bg)!important}
 .sapid-site .site-scroll-position,.sapid-site .site-splitter-sizes{font-size:13px!important;color:var(--site-muted)!important}
 @media(max-width:600px){.sapid-site .site-layout-playground .site-playground-preview,.sapid-site .site-layout-playground .site-playground-controls{width:100%!important}.sapid-site .site-layout-playground .site-playground-preview{min-width:0!important}}
 @media(max-width:760px){.sapid-site .site-chart-grid{grid-template-columns:minmax(0,1fr)}}

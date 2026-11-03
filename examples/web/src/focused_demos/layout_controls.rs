@@ -127,6 +127,8 @@ fn splitter_demo(theme: Theme) -> impl Widget {
         let disabled = scope.cage(false);
         let collapsible = scope.cage(false);
         let restored = scope.cage(50.0);
+        let line_size = scope.cage(1.0);
+        let with_grip = scope.cage(true);
         let axis = orientation.map(|value| {
             if value.as_deref() == Some("vertical") {
                 Orientation::Vertical
@@ -139,6 +141,8 @@ fn splitter_demo(theme: Theme) -> impl Widget {
             .name("Resize panes")
             .class("site-splitter-preview")
             .axis(axis)
+            .line_size(line_size)
+            .with_grip(with_grip)
             .value(value)
             .enabled(disabled.map(|disabled| !disabled))
             .min(collapsible.map(|enabled| if *enabled { 0.0 } else { 20.0 }))
@@ -174,6 +178,8 @@ fn splitter_demo(theme: Theme) -> impl Widget {
                     &[("horizontal", "Horizontal"), ("vertical", "Vertical")],
                     &theme,
                 ),
+                range("splitter-line-size", "Line thickness", line_size, 0.0, 6.0, 1.0, &theme),
+                super::controls::switch("Show grip", with_grip, &theme),
                 super::controls::switch("Disabled", disabled, &theme),
                 Box::new(
                     sapid::switch()

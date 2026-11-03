@@ -44,25 +44,40 @@ collapsed pane is hidden while its Owner and children remain mounted. Focus in a
 newly hidden pane moves to an enabled handle. `.first_ref`, `.second_ref`, and
 `.handle_ref` expose stable live nodes and clear on retirement.
 
-The inner layout reserves the handle's actual thickness, then divides the
-remaining extent between panes. Outer padding and borders do not enter that
+The inner layout reserves the draggable area set by `.thickness(6.0)`, then
+divides the remaining extent between panes. `.line_size(1.0)` sets the visible
+line thickness and accepts zero to hide it. `.grip_size(16.0, 3.0)` sets the
+centered grip's length and width. `.with_grip(false)` hides it while keeping
+the separator draggable and keyboard accessible. Line and grip widths are
+capped at the draggable area's width. Line size and grip visibility accept
+reactive sources, and both decorations follow the layout axis. Outer padding and borders do not enter that
 measurement. Panes have zero minimum flex extent and retain their child nodes,
 editor values and engine identities while resizing. Application CSS can still
 change a child's overflow policy; the pane wrapper clips overflowing content.
 
-Pointer capture belongs to the original handle even when release occurs over a
-sibling. One live geometry request serves a drag; move events only retain the
-latest absolute point and publish at most one proposal per host callback rather
-than once per raw pointer event. Drop publishes immediately when geometry is
-available. Cancellation and Owner retirement remove the request and its captures
-immediately; late results cannot publish. Each drag has a non-wrapping ticket,
+The browser and native shell capture the original handle on primary press and
+keep it through release over a sibling. The browser reads the pane extent at
+the press's committed barrier, so a move queued with the press can update the
+panes in the same frame. Hosts with queued bounds replies retain the latest
+point until that reply arrives. Moves and release then use the measured extent.
+A press and release without movement along the resize axis emits no value
+change or commit.
+The browser and native shell coalesce consecutive moves before delivery. The
+browser retains fractional CSS-pixel pointer coordinates. A pane update that
+changes only an existing `flex-grow` writes that property directly in the
+browser. The value still comes from the accepted state.
+The divider stays at its size limit while the pointer is beyond the allowed
+range. When the pointer returns, the divider follows with the original grab
+offset. The browser uses its pointer-focus behavior, with a themed
+outline for keyboard focus. Cancellation and Owner retirement remove the
+request and its captures immediately; late results cannot publish. Each drag has a non-wrapping ticket,
 with no visited-pointer or historical geometry cache.
 HTML's typed splitter contract includes `touch-action:none`. Native Finger
 pointer protocol simulation exercises the real engine input path; it does not
 establish physical-device or screen-reader acceptance.
 
-Validation currently includes eight Sapid component tests, including host-callback
-coalescing and immediate Drop commit; two native component
+Validation currently includes nine Sapid component tests, including initial bounds
+coalescing, same-tick updates and immediate Drop commit; two native component
 tests covering four themes, both axes, measured layout conservation, controlled
 requests, disabled behavior and editor identity; three shared render tests; two
 shared native tests covering queued keyboard, mouse/Finger capture/cancel and
@@ -75,3 +90,13 @@ and the editor selection; cancellation produced no commit. Reports and screensho
 are in `D:/BuildCache/sapid/splitter-browser.json`, `splitter-browser.log`, and
 `splitter-*.png`; native evidence is in `splitter-native.log`. The green/dark
 hydrated screenshot was inspected for readable content and handle placement.
+
+The showcase layout suite also checks line thickness, hidden-grip dragging and
+axis changes in all four themes with CSR and hydration. It checks subpixel
+movement, reversing at either limit and keyboard focus styling. A prior Chromium probe found the
+first update at one pixel after the change, compared with six pixels before.
+Five successive moves after initial measurement went from five handle bounds
+reads to zero. The browser reads the splitter frame's bounds once per press.
+The layout suite queues press and move together, verifies the first frame's
+accepted value, and checks for one `flex-grow` write per pane while preserving
+the other inline declarations.

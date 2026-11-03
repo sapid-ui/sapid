@@ -70,22 +70,84 @@ const output = 'D:/BuildCache/sapid';
       await first.evaluate(node => { window.layoutFirst = node; });
       await second.evaluate(node => { window.layoutSecond = node; });
       await separator.evaluate(node => { window.layoutHandle = node; });
+      const line = root.locator('.sapid-splitter-line');
+      const grip = root.locator('.sapid-splitter-grip');
+      assert.equal((await line.boundingBox()).width, 1);
+      assert.equal(await separator.evaluate(node => getComputedStyle(node).cursor), 'col-resize');
+      assert.deepEqual(await grip.evaluate(node => [node.offsetWidth, node.offsetHeight]), [3, 16]);
+      await slider('Line thickness').focus(); await page.keyboard.press('End'); await tick();
+      assert.equal((await line.boundingBox()).width, 6);
+      assert.equal((await separator.boundingBox()).width, 6);
+      await page.keyboard.press('Home'); await tick();
+      assert.equal(await line.evaluate(node => node.offsetWidth), 0);
+      assert(await grip.isVisible());
+      await page.keyboard.press('ArrowRight');
+      await toggle('Show grip').click(); await tick();
+      assert(await grip.isHidden());
       await button('30 / 70').click(); await tick();
       assert.equal(await separator.getAttribute('aria-valuenow'), '30');
       const a = await first.boundingBox(), b = await second.boundingBox();
       assert(Math.abs(a.width / (a.width + b.width) - 0.3) < 0.01, 'controlled horizontal geometry');
+      const firstFrame = await separator.evaluate(async node => {
+        const [first, , second] = node.closest('.sapid-splitter-frame').children;
+        const originalSetAttribute = Element.prototype.setAttribute;
+        const originalSetProperty = CSSStyleDeclaration.prototype.setProperty;
+        let fullStyles = 0, growWrites = 0;
+        Element.prototype.setAttribute = function (name, value) {
+          if (name === 'style' && (this === first || this === second)) fullStyles++;
+          return originalSetAttribute.call(this, name, value);
+        };
+        CSSStyleDeclaration.prototype.setProperty = function (name, value, priority) {
+          if (name === 'flex-grow' && (this === first.style || this === second.style)) growWrites++;
+          return originalSetProperty.call(this, name, value, priority);
+        };
+        const { x, y, width, height } = node.getBoundingClientRect();
+        const send = (type, dx) => node.dispatchEvent(new PointerEvent(type, {
+          bubbles: true, cancelable: true, isPrimary: true, pointerId: 41, pointerType: 'mouse',
+          button: 0, buttons: type === 'pointerup' ? 0 : 1,
+          clientX: x + width / 2 + dx, clientY: y + height / 2,
+        }));
+        const originalOverflow = first.style.overflowX;
+        try {
+          send('pointerdown', 0);
+          send('pointermove', 12);
+          await new Promise(requestAnimationFrame);
+          return {
+            value: Number(node.getAttribute('aria-valuenow')), fullStyles, growWrites,
+            preservedOverflow: first.style.overflowX === originalOverflow,
+          };
+        } finally {
+          Element.prototype.setAttribute = originalSetAttribute;
+          CSSStyleDeclaration.prototype.setProperty = originalSetProperty;
+          send('pointerup', 12);
+        }
+      });
+      assert(firstFrame.value > 30, 'a move queued with press missed the first frame');
+      assert.equal(firstFrame.growWrites, 2, 'resizing should write one flex-grow property per pane');
+      assert.equal(firstFrame.fullStyles, 0, 'resizing rewrote a complete pane style');
+      assert(firstFrame.preservedOverflow, 'resizing changed unrelated inline declarations');
+      await button('30 / 70').click(); await tick();
       await separator.focus(); await page.keyboard.press('ArrowRight'); await tick();
       assert.equal(await separator.getAttribute('aria-valuenow'), '31');
       await page.keyboard.press('Home'); await tick(); assert.equal(await separator.getAttribute('aria-valuenow'), '20');
       await page.keyboard.press('End'); await tick(); assert.equal(await separator.getAttribute('aria-valuenow'), '80');
       await button('50 / 50').click(); await tick();
       const handleBox = await separator.boundingBox();
-      await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2);
+      const startX = Math.round(handleBox.x + handleBox.width / 2);
+      await page.mouse.move(startX, handleBox.y + handleBox.height / 2);
       await page.mouse.down(); await tick();
+      await page.mouse.move(startX + 0.5, handleBox.y + handleBox.height / 2);
+      await tick();
+      assert(Number(await separator.getAttribute('aria-valuenow')) > 50, 'subpixel movement should resize the held separator');
       await page.mouse.move(handleBox.x + handleBox.width / 2 + 35, handleBox.y + handleBox.height / 2, { steps: 5 });
+      await tick();
+      assert(Number(await separator.getAttribute('aria-valuenow')) > 50, 'drag did not resize while the grip was hidden');
       await page.mouse.up(); await tick();
-      assert(Number(await separator.getAttribute('aria-valuenow')) > 50, 'real pointer drag did not resize panes');
+      await toggle('Show grip').click(); await tick();
+      assert(await grip.isVisible());
       await select('Orientation').selectOption('vertical'); await tick();
+      assert.equal((await line.boundingBox()).height, 1);
+      assert.deepEqual(await grip.evaluate(node => [node.offsetWidth, node.offsetHeight]), [16, 3]);
       assert(await first.evaluate(node => node === window.layoutFirst));
       assert(await second.evaluate(node => node === window.layoutSecond));
       assert(await separator.evaluate(node => node === window.layoutHandle));
@@ -102,10 +164,40 @@ const output = 'D:/BuildCache/sapid';
       await button('Collapse first pane').click(); await toggle('Collapsible').click(); await tick();
       assert.equal(await separator.getAttribute('aria-valuenow'), '50');
       assert.equal(await page.getByRole('separator').count(), 3, 'nested splitter handles');
+      const nested = page.getByRole('separator', { name: 'Resize sidebar', exact: true });
+      await nested.scrollIntoViewIfNeeded();
+      const nestedBox = await nested.boundingBox();
+      const grabOffset = nestedBox.width / 4;
+      const x = nestedBox.x + grabOffset, y = nestedBox.y + nestedBox.height / 2;
+      const nestedFrame = await nested.locator('xpath=../..').boundingBox();
+      const axisExtent = nestedFrame.width - nestedBox.width;
+      const minX = x - axisExtent * 0.15, maxX = x + axisExtent * 0.4;
+      const assertAligned = async pointer => {
+        const bounds = await nested.boundingBox();
+        assert(Math.abs(bounds.x + grabOffset - pointer) < 0.1, 'divider lost its original pointer grab offset');
+      };
+      await page.mouse.move(x, y); await page.mouse.down(); await tick();
+      assert.equal(await nested.evaluate(node => getComputedStyle(node).outlineStyle), 'none', 'mouse press showed a focus outline');
+      for (const [boundary, beyond, value] of [[minX, -24, 15], [maxX, 24, 70]]) {
+        await page.mouse.move(boundary + beyond, y); await tick();
+        assert.equal(Number(await nested.getAttribute('aria-valuenow')), value);
+        await page.mouse.move(boundary + beyond / 2, y); await tick();
+        assert.equal(Number(await nested.getAttribute('aria-valuenow')), value, 'divider left its limit while the pointer was outside the range');
+        const inside = boundary - beyond / 2;
+        await page.mouse.move(inside, y); await tick();
+        await assertAligned(inside);
+      }
+      await page.mouse.move(x, y); await tick();
+      await assertAligned(x);
+      await page.mouse.up(); await tick();
+      await assertAligned(x);
+      assert.equal(await nested.evaluate(node => getComputedStyle(node).outlineStyle), 'none', 'mouse release left a focus outline');
+      await page.keyboard.press('ArrowLeft'); await tick();
+      assert.equal(await nested.evaluate(node => getComputedStyle(node).outlineStyle), 'solid', 'keyboard focus lost its themed outline');
       await select('Orientation').selectOption('horizontal'); await tick();
       if (!hydrate) await page.locator('.site-layout-playground').screenshot({ path: `${output}/layout-splitter-${theme}-${scheme}.png` });
       if (theme === 'blue' && scheme === 'light' && !hydrate) await mobile('splitter');
-      report.reports.push({ suite: `splitter-${mode}`, status: 'passed', checks: 'rename, controlled sizes, actual drag, arrows/bounds, live orientation identity, disable, collapse/restore and nested panes' });
+      report.reports.push({ suite: `splitter-${mode}`, status: 'passed', checks: 'controlled sizes, subpixel drag, retained grab offset through both limits, keyboard-only focus ring, live line sizing, optional grip and stable orientation' });
 
       await open('P6-07', 'scroll-area', theme, scheme, hydrate);
       const group = page.locator('.site-nav-group').filter({ has: page.getByText('Miscellaneous', { exact: true }) });

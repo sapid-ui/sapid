@@ -168,3 +168,7 @@
 .sapid-scroll-size-32{--sapid-scrollbar-size:32px}
 .sapid-table-hover:where(:not(.sapid-unstyled)) .sapid-table-body>.sapid-table-row:hover{background:var(--sp-accent-soft)}
 .sapid-table-tabular-nums:where(:not(.sapid-unstyled)) td{font-variant-numeric:tabular-nums}
+
+.sapid-splitter-handle[aria-orientation=vertical]:not([aria-disabled=true]){cursor:col-resize}
+.sapid-splitter-handle[aria-orientation=horizontal]:not([aria-disabled=true]){cursor:row-resize}
+.sapid-splitter-handle:focus-visible{outline:1px solid var(--sp-ring,Highlight);outline-offset:-1px}

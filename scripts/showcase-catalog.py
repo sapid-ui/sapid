@@ -401,6 +401,13 @@ def focused_bundle(identity, family):
     controls = ''
     if 'super::controls' in body:
         controls = (WEB / "src/focused_demos/controls.rs").read_text(encoding="utf-8")
+        if family == "layout_controls":
+            # Fit the source panel's lexical budget by including the controls
+            # the layout demos actually call.
+            used = set(re.findall(r"super::controls::(\w+)\(", body))
+            functions = re.findall(r"(?ms)^(pub fn (\w+)\(.*?^})", controls)
+            imports = "use glory::prelude::*;\nuse glory::style::FlexWrap;\nuse sapid::Theme;\n\n"
+            controls = imports + "\n\n".join(function for function, name in functions if name in used)
         controls = '\n\n#[allow(dead_code, unused_imports)]\nmod controls {\n' + controls + '\n}'
     return formatted('use glory::prelude::*;\n\npub fn demo(theme: sapid::Theme) -> impl Widget {\n    '
                      + f'focused::demo_for("{identity}", theme)\n'

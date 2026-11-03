@@ -4,9 +4,11 @@ use crate::composite::{self, Callback, Observers};
 use crate::state::{Control, Value};
 use glory::render::{
     Action, DragPhase, Event, EventKind, FocusMode, NodeId, Orientation, Query, QueryToken,
-    QueryValue, RangeCommand, RangeValue, Role, SemanticId, Semantics,
+    QueryValue, RangeCommand, RangeValue, Rect, Role, SemanticId, Semantics,
 };
-use glory::style::{Display, Edges, FlexDirection, Length, Overflow, Style};
+use glory::style::{
+    Align, Display, Edges, FlexDirection, Justify, Length, Overflow, PointerEvents, Position, Style,
+};
 use glory::ui::{Result, WeakScope, Widget};
 use glory::{Cage, Scope, Vary};
 use std::{
@@ -45,17 +47,23 @@ impl Snapshot {
 fn invalid(message: &'static str) -> glory::ui::Error {
     glory::render::Error::InvalidProps(message).into()
 }
-#[derive(Clone, Copy)]
 struct Drag {
     axis: Orientation,
     ticket: u64,
     start: f64,
     value: f64,
-    latest: f64,
-    point: (f64, f64),
     extent: Option<f64>,
-    phase: DragPhase,
-    pending: bool,
+    sample: Option<(DragPhase, f64, f64)>,
+    moved: bool,
+}
+impl Drag {
+    fn coordinate(&self, x: f64, y: f64) -> f64 {
+        if self.axis == Orientation::Horizontal {
+            x
+        } else {
+            y
+        }
+    }
 }
 struct Controller {
     weak: WeakScope,
@@ -141,99 +149,65 @@ impl Controller {
         self.range_events.clear();
         self.drag_events.clear();
     }
-    fn coordinate(&self, x: f64, y: f64) -> f64 {
-        if self.axis.get() == Orientation::Horizontal {
-            x
-        } else {
-            y
-        }
-    }
     fn apply_drag(&self) -> Result {
         let state = self.accepted.try_get()?;
-        let drag = {
+        let axis = self.axis.try_get()?;
+        let (value, phase, x, y) = {
             let mut slot = self.drag.borrow_mut();
             let Some(drag) = slot.as_mut() else {
                 return Ok(());
             };
-            if !drag.pending || drag.extent.is_none() {
+            if !state.enabled || drag.axis != axis {
+                drop(slot);
+                self.cancel();
                 return Ok(());
             }
-            drag.pending = false;
-            let result = *drag;
-            if drag.phase == DragPhase::Drop {
+            let Some(extent) = drag.extent else {
+                return Ok(());
+            };
+            let Some((phase, x, y)) = drag.sample.take() else {
+                return Ok(());
+            };
+            let value = drag.moved.then(|| {
+                // Clamp the divider, keeping the original pointer grab offset
+                // so it lines up again when the pointer reenters the range.
+                let delta = drag.coordinate(x, y) - drag.start;
+                (drag.value + delta / extent * 100.0).clamp(state.min, state.max)
+            });
+            if phase == DragPhase::Drop {
                 slot.take();
             }
-            result
+            (value, phase, x, y)
         };
-        if !state.enabled {
-            self.cancel();
-            return Ok(());
+        if let Some(value) = value {
+            self.propose(value)?;
+            if phase == DragPhase::Drop {
+                self.commit.emit(self.owner, value);
+            }
         }
-        if drag.axis != self.axis.try_get()? {
-            self.cancel();
-            return Ok(());
-        }
-        let extent = drag.extent.unwrap();
-        let value =
-            (drag.value + (drag.latest - drag.start) / extent * 100.0).clamp(state.min, state.max);
-        self.propose(value)?;
-        if drag.phase == DragPhase::Drop {
-            self.commit.emit(self.owner, value);
-        }
-        let (x, y) = drag.point;
-        // Generic observers get the same absolute axis coordinate after the
-        // geometry-dependent typed proposal; pending moves coalesce to one.
         let from = self.handle.try_get()?.ok_or(glory::ui::Error::Gone)?;
-        self.drag_events.emit(
-            self.owner,
-            Event::Drag {
-                from,
-                phase: drag.phase,
-                x,
-                y,
-            },
-        );
+        self.drag_events
+            .emit(self.owner, Event::Drag { from, phase, x, y });
         Ok(())
     }
-    fn schedule_drag(self: &Rc<Self>) -> Result {
-        if self.pending.get().is_some() {
-            return Ok(());
-        }
-        let (ticket, handle) = {
-            let slot = self.drag.borrow();
-            let Some(drag) = slot.as_ref() else {
+
+    fn accept_bounds(&self, ticket: u64, rect: Rect) -> Result {
+        {
+            let mut slot = self.drag.borrow_mut();
+            let Some(drag) = slot.as_mut().filter(|drag| drag.ticket == ticket) else {
                 return Ok(());
             };
-            (
-                drag.ticket,
-                self.handle.try_get()?.ok_or(glory::ui::Error::Gone)?,
-            )
-        };
-        let scope = self.weak.upgrade().ok_or(glory::ui::Error::Gone)?;
-        let controller = self.clone();
-        let token = scope.request(Query::Bounds(handle), move |result| {
-            if controller.ensure().is_err()
-                || controller.drag.borrow().as_ref().map(|drag| drag.ticket) != Some(ticket)
-            {
-                return;
+            let extent = (if drag.axis == Orientation::Horizontal {
+                rect.width
+            } else {
+                rect.height
+            }) - self.thickness;
+            if !extent.is_finite() || extent <= 0.0 {
+                return Err(invalid("splitter needs positive available pane extent"));
             }
-            controller.pending.set(None);
-            let Some(scope) = controller.weak.upgrade() else {
-                return;
-            };
-            let accepted = (|| -> Result {
-                match result? {
-                    QueryValue::Bounds(_) => controller.apply_drag(),
-                    _ => Err(invalid("splitter frame response mismatch")),
-                }
-            })();
-            if let Err(error) = accepted {
-                controller.cancel();
-                scope.report_error(error);
-            }
-        })?;
-        self.pending.set(Some(token));
-        Ok(())
+            drag.extent = Some(extent);
+        }
+        self.apply_drag()
     }
 
     fn pointer(self: &Rc<Self>, event: Event) -> Result {
@@ -259,20 +233,27 @@ impl Controller {
                 .checked_add(1)
                 .ok_or_else(|| invalid("splitter drag ticket exhausted"))?;
             self.next.set(ticket);
-            let coordinate = self.coordinate(x, y);
+            let axis = self.axis.try_get()?;
             *self.drag.borrow_mut() = Some(Drag {
-                axis: self.axis.try_get()?,
+                axis,
                 ticket,
-                start: coordinate,
+                start: if axis == Orientation::Horizontal {
+                    x
+                } else {
+                    y
+                },
                 value: state.value,
-                latest: coordinate,
-                point: (x, y),
                 extent: None,
-                phase: DragPhase::Start,
-                pending: false,
+                sample: None,
+                moved: false,
             });
             let scope = self.weak.upgrade().ok_or(glory::ui::Error::Gone)?;
             let root = self.root.try_get()?.ok_or(glory::ui::Error::Gone)?;
+            if let Some(rect) = scope.bounds_now(root)? {
+                self.accept_bounds(ticket, rect)?;
+                self.drag_events.emit(self.owner, event);
+                return Ok(());
+            }
             let controller = self.clone();
             let token = scope.request(Query::Bounds(root), move |result| {
                 if controller.ensure().is_err() {
@@ -289,22 +270,7 @@ impl Controller {
                     let QueryValue::Bounds(rect) = result? else {
                         return Err(invalid("splitter bounds response mismatch"));
                     };
-                    let extent = (if controller.axis.get() == Orientation::Horizontal {
-                        rect.width
-                    } else {
-                        rect.height
-                    }) - controller.thickness;
-                    if !extent.is_finite() || extent <= 0.0 {
-                        return Err(invalid("splitter needs positive available pane extent"));
-                    }
-                    {
-                        let mut slot = controller.drag.borrow_mut();
-                        let Some(drag) = slot.as_mut().filter(|drag| drag.ticket == ticket) else {
-                            return Ok(());
-                        };
-                        drag.extent = Some(extent);
-                    }
-                    controller.apply_drag()
+                    controller.accept_bounds(ticket, rect)
                 })();
                 if let Err(error) = result {
                     controller.cancel();
@@ -319,26 +285,12 @@ impl Controller {
                 let Some(drag) = slot.as_mut() else {
                     return Ok(());
                 };
-                drag.latest = self.coordinate(x, y);
-                drag.point = (x, y);
-                drag.phase = phase;
-                drag.pending = true;
+                drag.moved |= drag.coordinate(x, y) != drag.start;
+                drag.sample = Some((phase, x, y));
             }
-            if phase == DragPhase::Drop
-                && self
-                    .drag
-                    .borrow()
-                    .as_ref()
-                    .is_some_and(|drag| drag.extent.is_some())
-            {
-                if let Some(token) = self.pending.take() {
-                    let scope = self.weak.upgrade().ok_or(glory::ui::Error::Gone)?;
-                    scope.cancel_request(token)?;
-                }
-                self.apply_drag()?;
-            } else {
-                self.schedule_drag()?;
-            }
+            // The browser and native shell already coalesce consecutive moves.
+            // Publish in this tick once the initial measurement is available.
+            self.apply_drag()?;
         }
         Ok(())
     }
@@ -354,6 +306,9 @@ pub struct Splitter {
     step: f64,
     axis: Vary<Orientation>,
     thickness: f64,
+    line_size: Vary<f64>,
+    with_grip: Vary<bool>,
+    grip_size: (f64, f64),
     first: Option<Factory>,
     second: Option<Factory>,
     first_ref: Option<Cage<Option<NodeId>>>,
@@ -375,6 +330,9 @@ pub fn splitter(key: impl Into<String>) -> Splitter {
         step: 1.0,
         axis: Orientation::Horizontal.into(),
         thickness: 6.0,
+        line_size: 1.0.into(),
+        with_grip: true.into(),
+        grip_size: (16.0, 3.0),
         first: None,
         second: None,
         first_ref: None,
@@ -410,8 +368,25 @@ impl Splitter {
         self.axis = value.into();
         self
     }
+    /// Set the width of the draggable area in CSS pixels.
     pub fn thickness(mut self, value: f64) -> Self {
         self.thickness = value;
+        self
+    }
+    /// Set the visible line thickness in CSS pixels, up to the draggable area.
+    /// Zero hides the line.
+    pub fn line_size(mut self, value: impl Into<Vary<f64>>) -> Self {
+        self.line_size = value.into();
+        self
+    }
+    /// Show or hide the centered grip.
+    pub fn with_grip(mut self, value: impl Into<Vary<bool>>) -> Self {
+        self.with_grip = value.into();
+        self
+    }
+    /// Set the grip's length along the divider and width across it in CSS pixels.
+    pub fn grip_size(mut self, length: f64, width: f64) -> Self {
+        self.grip_size = (length, width);
         self
     }
     pub fn first<W: Widget>(mut self, mut factory: impl FnMut() -> W + 'static) -> Self {
@@ -462,6 +437,19 @@ impl Widget for Splitter {
         if self.common.focus != FocusMode::Auto {
             return Err(invalid("splitter owns its handle tab stop"));
         }
+        if [self.grip_size.0, self.grip_size.1]
+            .into_iter()
+            .any(|size| !(0.0 < size && size <= 128.0))
+        {
+            return Err(invalid("splitter grip dimensions must be in (0,128]"));
+        }
+        let line_size = composite::validated(scope, &self.line_size, |size| {
+            if (0.0..=128.0).contains(size) {
+                Ok(())
+            } else {
+                Err(invalid("splitter line size must be in [0,128]"))
+            }
+        })?;
         let local = self.value.source.is_none();
         let axis = self.axis.clone();
         let handle_name = self
@@ -595,13 +583,13 @@ impl Widget for Splitter {
             ),
         ] {
             if !first {
-                build_handle(
+                self.divider(
                     &frame,
-                    &self.common,
                     controller.clone(),
                     first_id.clone(),
                     handle_id.clone(),
                     handle_name.clone(),
+                    line_size,
                 )?;
             }
             let mut pane = glory::ui::view()
@@ -687,9 +675,101 @@ impl Widget for Splitter {
         Ok(())
     }
 }
+impl Splitter {
+    fn divider(
+        &self,
+        scope: &Scope,
+        controller: Rc<Controller>,
+        first: SemanticId,
+        id: SemanticId,
+        name: Vary<String>,
+        line_size: Cage<f64>,
+    ) -> Result {
+        let axis = self.axis.clone();
+        let line_axis = axis.clone();
+        let grip_axis = axis.clone();
+        let with_grip = self.with_grip.clone();
+        let (grip_length, grip_width) = self.grip_size;
+        let thickness = self.thickness;
+        let grip = (!matches!(&with_grip, Vary::Value(false))).then(|| {
+            let color = self.common.theme.muted;
+            glory::ui::view()
+                .class("sapid-splitter-grip")
+                .style(scope.bond(move || {
+                    let length = Length::Px(grip_length);
+                    let width = Length::Px(grip_width.min(thickness));
+                    Style {
+                        background: Some(color),
+                        shrink: Some(0.0),
+                        ..divider_size(grip_axis.get(), width, length)
+                            .radius(grip_width / 2.0)
+                            .display(if with_grip.get() {
+                                Display::Block
+                            } else {
+                                Display::None
+                            })
+                    }
+                }))
+        });
+        let line = (!self.common.unstyled).then(|| {
+            let color = self.common.theme.border;
+            glory::ui::view()
+                .class("sapid-splitter-line")
+                .style(scope.bond(move || {
+                    Style {
+                        background: Some(color),
+                        align: Some(Align::Center),
+                        justify: Some(Justify::Center),
+                        ..divider_size(
+                            line_axis.get(),
+                            Length::Px(line_size.get().min(thickness)),
+                            Length::Percent(100.0),
+                        )
+                        .display(Display::Flex)
+                        .pointer_events(PointerEvents::None)
+                    }
+                }))
+                .fill(grip)
+        });
+        glory::ui::view()
+            .class("sapid-splitter-divider")
+            .style(scope.bond(move || {
+                Style {
+                    shrink: Some(0.0),
+                    align: Some(Align::Center),
+                    justify: Some(Justify::Center),
+                    ..divider_size(axis.get(), Length::Px(thickness), Length::Percent(100.0))
+                        .position(Position::Relative)
+                        .display(Display::Flex)
+                }
+            }))
+            .fill((
+                line,
+                glory::ui::widget(move |scope| {
+                    build_handle(
+                        scope,
+                        controller.clone(),
+                        first.clone(),
+                        id.clone(),
+                        name.clone(),
+                    )
+                }),
+            ))
+            .show_in(scope)
+    }
+}
+
+fn divider_size(axis: Orientation, width: Length, length: Length) -> Style {
+    let (width, height) = if axis == Orientation::Horizontal {
+        (width, length)
+    } else {
+        (length, width)
+    };
+    Style::new().width(width).height(height)
+}
+
 fn build_handle(
     scope: &Scope,
-    common: &Common,
     controller: Rc<Controller>,
     first: SemanticId,
     id: SemanticId,
@@ -697,14 +777,10 @@ fn build_handle(
 ) -> Result {
     let accepted = controller.accepted;
     let axis = controller.axis.clone();
-    let style_axis = axis.clone();
-    let thickness = controller.thickness;
     let range = controller.clone();
     let drag = controller.clone();
     let weak = scope.downgrade();
     let drag_weak = weak.clone();
-    let color = common.theme.border;
-    let unstyled = common.unstyled;
     glory::ui::view()
         .role(Role::Separator)
         .name(name)
@@ -732,24 +808,15 @@ fn build_handle(
                 ..Default::default()
             })
         }))
-        .style(scope.bond(move || {
-            Style {
-                shrink: Some(0.0),
-                background: (!unstyled).then_some(color),
-                ..Style::new()
-                    .width(if style_axis.get() == Orientation::Horizontal {
-                        Length::Px(thickness)
-                    } else {
-                        Length::Percent(100.0)
-                    })
-                    .height(if style_axis.get() == Orientation::Horizontal {
-                        Length::Percent(100.0)
-                    } else {
-                        Length::Px(thickness)
-                    })
-                    .margin(Edges::all(0.0))
-            }
-        }))
+        .style(
+            Style::new()
+                .position(Position::Absolute)
+                .top(Length::Px(0.0))
+                .left(Length::Px(0.0))
+                .width(Length::Percent(100.0))
+                .height(Length::Percent(100.0))
+                .margin(Edges::all(0.0)),
+        )
         .on(EventKind::Range, move |event| {
             if let Event::Range { command, .. } = event
                 && let Err(error) = range.key(command)
