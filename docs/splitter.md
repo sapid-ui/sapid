@@ -36,6 +36,11 @@ reactive. Invalid configurations return errors before creating nodes; invalid
 later updates preserve accepted descriptors. This component has two panes;
 nested splitters compose additional regions.
 
+The showcase includes fixed-width sidebar composition, four nested workspaces and
+coordinated controlled redistribution. These are application composition patterns,
+not claims of CSS-unit pane sizes, direct multi-pane input or automatic redistribution.
+The existing orientation, collapse, line-size, grip and nested examples remain available.
+
 The arrow keys perpendicular to the separator adjust by one step; Home/End select
 the configured boundaries. Modifier and composition keys retain their host
 meaning. Disabled handles use programmatic focus mode, leave the Tab sequence,
@@ -66,6 +71,14 @@ The browser and native shell coalesce consecutive moves before delivery. The
 browser retains fractional CSS-pixel pointer coordinates. A pane update that
 changes only an existing `flex-grow` writes that property directly in the
 browser. The value still comes from the accepted state.
+During captured mouse drags, browsers that expose `pointerrawupdate` can
+deliver newer coordinates before the next animation frame. Glory samples
+those events and can run a paced turn after the listener returns. A single
+timer (with at least 4 ms after a completed turn) or the next animation
+frame, whichever arrives first, delivers the latest queued move. A turn
+that exceeds the 2.5 ms script budget retires the raw listener for the rest
+of that drag, leaving more time for layout and paint. Release and
+cancellation also retire the listener and its timer.
 The divider stays at its size limit while the pointer is beyond the allowed
 range. When the pointer returns, the divider follows with the original grab
 offset. The browser uses its pointer-focus behavior, with a themed

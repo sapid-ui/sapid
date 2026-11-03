@@ -134,7 +134,31 @@ const output = 'D:/BuildCache/sapid';
       await button('50 / 50').click(); await tick();
       const handleBox = await separator.boundingBox();
       const startX = Math.round(handleBox.x + handleBox.width / 2);
+      const monitorRaw = theme === 'blue' && scheme === 'light' && !hydrate && await page.evaluate(() => {
+        if (!isSecureContext || !('onpointerrawupdate' in window)) return false;
+        const add = document.addEventListener, remove = document.removeEventListener;
+        const counts = { added: 0, removed: 0 };
+        document.addEventListener = function (name, ...args) {
+          if (name === 'pointerrawupdate') counts.added++;
+          return add.call(this, name, ...args);
+        };
+        document.removeEventListener = function (name, ...args) {
+          if (name === 'pointerrawupdate') counts.removed++;
+          return remove.call(this, name, ...args);
+        };
+        window.layoutRawMotion = {
+          counts,
+          stop() {
+            delete document.addEventListener;
+            delete document.removeEventListener;
+            delete window.layoutRawMotion;
+            return counts;
+          },
+        };
+        return true;
+      });
       await page.mouse.move(startX, handleBox.y + handleBox.height / 2);
+      if (monitorRaw) assert.equal(await page.evaluate(() => window.layoutRawMotion.counts.added), 0, 'raw listener installed before capture');
       await page.mouse.down(); await tick();
       await page.mouse.move(startX + 0.5, handleBox.y + handleBox.height / 2);
       await tick();
@@ -143,6 +167,10 @@ const output = 'D:/BuildCache/sapid';
       await tick();
       assert(Number(await separator.getAttribute('aria-valuenow')) > 50, 'drag did not resize while the grip was hidden');
       await page.mouse.up(); await tick();
+      if (monitorRaw) {
+        assert.deepEqual(await page.evaluate(() => window.layoutRawMotion.stop()), { added: 1, removed: 1 },
+          'raw motion listener lifetime did not match the captured drag');
+      }
       await toggle('Show grip').click(); await tick();
       assert(await grip.isVisible());
       await select('Orientation').selectOption('vertical'); await tick();
@@ -163,7 +191,7 @@ const output = 'D:/BuildCache/sapid';
       await button('Expand first pane').click(); await tick(); assert.equal(await separator.getAttribute('aria-valuenow'), '51');
       await button('Collapse first pane').click(); await toggle('Collapsible').click(); await tick();
       assert.equal(await separator.getAttribute('aria-valuenow'), '50');
-      assert.equal(await page.getByRole('separator').count(), 3, 'nested splitter handles');
+      assert.equal(await page.getByRole('separator').count(), 9, 'primary, nested, fixed, multiple and redistributed handles');
       const nested = page.getByRole('separator', { name: 'Resize sidebar', exact: true });
       await nested.scrollIntoViewIfNeeded();
       const nestedBox = await nested.boundingBox();
@@ -195,6 +223,24 @@ const output = 'D:/BuildCache/sapid';
       await page.keyboard.press('ArrowLeft'); await tick();
       assert.equal(await nested.evaluate(node => getComputedStyle(node).outlineStyle), 'solid', 'keyboard focus lost its themed outline');
       await select('Orientation').selectOption('horizontal'); await tick();
+      const fixedSidebar = page.locator('.site-splitter-fixed-sidebar');
+      assert(Math.abs((await fixedSidebar.boundingBox()).width - 240) < 1, `${mode}: fixed 240px sidebar`);
+      const flexible = page.getByRole('separator', { name: 'Resize flexible content', exact: true });
+      await flexible.focus(); await page.keyboard.press('ArrowDown'); await tick();
+      assert.equal(await flexible.getAttribute('aria-valuenow'), '61', `${mode}: flexible content remains resizable`);
+      for (const label of ['Panel A', 'Panel B', 'Panel C', 'Panel D']) {
+        assert(await page.locator('.site-splitter-multiple').getByText(label, { exact: true }).count() > 0, `${mode}: four workspaces include ${label}`);
+      }
+      const multiple = page.getByRole('separator', { name: 'Resize workspace groups', exact: true });
+      await multiple.focus(); await page.keyboard.press('ArrowRight'); await tick();
+      assert.equal(await multiple.getAttribute('aria-valuenow'), '46', `${mode}: multiple pane groups resize independently`);
+      await button('Editor focus').click(); await tick();
+      await page.locator('.site-splitter-redistribute-sizes').getByText('Current sizes: [30, 49, 21]', { exact: true }).waitFor();
+      await button('Balanced').click(); await tick();
+      await page.locator('.site-splitter-redistribute-sizes').getByText('Current sizes: [50, 25, 25]', { exact: true }).waitFor();
+      await button('Terminal focus').click(); await tick();
+      await page.locator('.site-splitter-redistribute-sizes').getByText('Current sizes: [65, 12, 23]', { exact: true }).waitFor();
+      if (theme === 'blue' && scheme === 'light' && !hydrate) await page.screenshot({ path: `${output}/layout-splitter-examples.png`, fullPage: true });
       if (!hydrate) await page.locator('.site-layout-playground').screenshot({ path: `${output}/layout-splitter-${theme}-${scheme}.png` });
       if (theme === 'blue' && scheme === 'light' && !hydrate) await mobile('splitter');
       report.reports.push({ suite: `splitter-${mode}`, status: 'passed', checks: 'controlled sizes, subpixel drag, retained grab offset through both limits, keyboard-only focus ring, live line sizing, optional grip and stable orientation' });

@@ -120,6 +120,149 @@ fn pane(label: impl Into<Vary<String>>, color: Color) -> impl Widget {
         .fill(text().content(label))
 }
 
+fn splitter_pair<A: Into<Vary<String>>, B: Into<Vary<String>>>(
+    theme: &Theme,
+    key: &'static str,
+    name: &'static str,
+    first: A,
+    second: B,
+) -> sapid::Splitter {
+    let first = first.into();
+    let second = second.into();
+    sapid::splitter(key)
+        .theme(theme.clone())
+        .name(name)
+        .first({
+            let first = first.clone();
+            move || pane(first.clone(), Color(34, 139, 230, 255))
+        })
+        .second(move || pane(second.clone(), Color(18, 184, 134, 255)))
+}
+
+fn splitter_extra_demos(theme: Theme) -> impl Widget {
+    widget(move |scope| {
+        let fixed_sidebar = view()
+            .class("site-splitter-fixed-sidebar")
+            .style(Style {
+                shrink: Some(0.0),
+                ..Style::new().width(Length::Px(240.0)).max_width(Limit::Percent(45.0))
+            })
+            .fill(pane("Fixed 240px sidebar", Color(34, 139, 230, 255)));
+        let fixed = view()
+            .class("site-splitter-fixed-layout")
+            .style(
+                Style::new()
+                    .display(Display::Flex)
+                    .width(Length::Percent(100.0))
+                    .height(Length::Px(220.0)),
+            )
+            .fill((
+                fixed_sidebar,
+                splitter_pair(&theme, "showcase-fixed-content", "Resize flexible content", "Editor", "Terminal")
+                    .axis(Orientation::Vertical)
+                    .default_value(60.0)
+                    .min(20.0)
+                    .max(80.0)
+                    .style(Style {
+                        grow: Some(1.0),
+                        min_width: Some(Length::Px(0.0)),
+                        ..Style::new().height(Length::Percent(100.0))
+                    }),
+            ));
+        let multiple = splitter_pair(&theme, "showcase-multiple", "Resize workspace groups", "Panel A", "Panel B")
+            .class("site-splitter-multiple")
+            .default_value(45.0)
+            .min(20.0)
+            .max(80.0)
+            .style(Style::new().height(Length::Px(260.0)))
+            .first({
+                let theme = theme.clone();
+                move || {
+                    splitter_pair(&theme, "showcase-multiple-left", "Resize left workspaces", "Panel A", "Panel B")
+                        .axis(Orientation::Vertical)
+                        .default_value(50.0)
+                        .min(20.0)
+                        .max(80.0)
+                        .style(Style::new().height(Length::Percent(100.0)))
+                }
+            })
+            .second({
+                let theme = theme.clone();
+                move || {
+                    splitter_pair(&theme, "showcase-multiple-right", "Resize right workspaces", "Panel C", "Panel D")
+                        .axis(Orientation::Vertical)
+                        .default_value(55.0)
+                        .min(20.0)
+                        .max(80.0)
+                        .style(Style::new().height(Length::Percent(100.0)))
+                }
+            });
+        let outer = scope.cage(30.0);
+        let inner = scope.cage(65.0);
+        let redistribute = splitter_pair(&theme, "showcase-redistribute", "Resize redistributed panels", "Panel A", "Panel B")
+            .class("site-splitter-redistribute")
+            .value(outer)
+            .min(15.0)
+            .max(70.0)
+            .style(Style::new().height(Length::Px(240.0)))
+            .on_value_change(move |next| outer.revise(|value| *value = next))
+            .second({
+                let theme = theme.clone();
+                move || {
+                    splitter_pair(&theme, "showcase-redistribute-right", "Resize nested panels", "Panel B", "Panel C")
+                        .axis(Orientation::Vertical)
+                        .value(inner)
+                        .min(20.0)
+                        .max(80.0)
+                        .style(Style::new().height(Length::Percent(100.0)))
+                        .on_value_change(move |next| inner.revise(|value| *value = next))
+                }
+            });
+        let sizes = scope.bond(move || {
+            let a = outer.get();
+            let b = inner.get() * (100.0 - a) / 100.0;
+            let c = 100.0 - a - b;
+            format!("Current sizes: [{a:.0}, {b:.0}, {c:.0}]")
+        });
+        let presets = sapid::group().theme(theme.clone()).gap(8.0).fill(
+            [
+                ("Balanced", 50.0, 50.0),
+                ("Editor focus", 30.0, 70.0),
+                ("Terminal focus", 65.0, 35.0),
+            ]
+            .into_iter()
+            .map(|(label, a, b)| {
+                sapid::button()
+                    .theme(theme.clone())
+                    .size(sapid::Size::Small)
+                    .label(label)
+                    .on_press(move || {
+                        outer.revise(|value| *value = a);
+                        inner.revise(|value| *value = b);
+                    })
+            })
+            .collect::<Vec<_>>(),
+        );
+        sapid::stack()
+            .theme(theme.clone())
+            .gap(24.0)
+            .fill((
+                heading("Fixed sidebar and flexible content", &theme),
+                sapid::text().theme(theme.clone()).content("Resizable panes use percentages. A fixed-width sidebar can be composed beside a flexible Splitter."),
+                fixed,
+                heading("Multiple panes", &theme),
+                sapid::text().theme(theme.clone()).content("Compose nested splitters to create any number of workspaces."),
+                multiple,
+                heading("Redistribute with controlled sizes", &theme),
+                sapid::text().theme(theme.clone()).content("Coordinated controlled values let the application redistribute space across all regions."),
+                redistribute,
+                presets,
+                sapid::text().theme(theme.clone()).class("site-splitter-redistribute-sizes").content(sizes),
+            ))
+            .show_in(scope)
+    })
+}
+
 fn splitter_demo(theme: Theme) -> impl Widget {
     widget(move |scope| {
         let orientation = scope.cage(Some("horizontal".to_owned()));
@@ -248,6 +391,7 @@ fn splitter_demo(theme: Theme) -> impl Widget {
                     .style(Style::new().height(Length::Percent(100.0)))
                     .first(|| pane("Editor", Color(18,184,134,255)))
                     .second(|| pane("Terminal", Color(190,75,219,255))) }),
+            splitter_extra_demos(theme.clone()),
         )).show_in(scope)
     })
 }
