@@ -87,6 +87,11 @@ fn four_theme_ssr_uses_real_tree_items_finite_coordinates_and_no_collapsed_owner
             html.contains("aria-expanded=\"false\"") && html.contains("aria-selected=\"true\"")
         );
         assert!(!html.contains("Main") && !html.contains("role=\"button\""));
+        assert!(
+            html.contains("sapid-tree-disclosure")
+                && html.contains("sapid-theme-icon-graphic")
+                && !html.contains(">+<")
+        );
     }
 }
 #[test]
@@ -111,6 +116,18 @@ fn same_tick_controlled_expansion_and_selection_propose_then_reconcile_refusal()
     )
     .unwrap();
     let disclosure = named(&app, "Toggle Source");
+    {
+        let tree = app.tree();
+        let disclosure_view = tree.node(disclosure).unwrap().descriptor.view();
+        assert_eq!(
+            disclosure_view.style.border_width,
+            Some(glory::style::Edges::all(0.))
+        );
+        assert_eq!(
+            disclosure_view.style.width,
+            Some(glory::style::Length::Px(16.))
+        );
+    }
     app.scope()
         .batch(|| {
             app.dispatch(disclosure, Event::Activate).unwrap();
@@ -141,6 +158,30 @@ fn same_tick_controlled_expansion_and_selection_propose_then_reconcile_refusal()
     });
     app.flush().unwrap();
     assert_eq!(items(&app).len(), 5);
+    let guides = all(&app)
+        .into_iter()
+        .filter(|id| {
+            app.tree()
+                .node(*id)
+                .unwrap()
+                .descriptor
+                .view()
+                .classes
+                .contains(&"sapid-tree-guide".to_owned())
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(guides.len(), 3);
+    for id in guides {
+        let tree = app.tree();
+        let view = tree.node(id).unwrap().descriptor.view();
+        assert!(
+            matches!(view.props, Props::Graphic(drawing) if drawing.commands.len() == 4 && drawing.alternative.is_none())
+        );
+        assert_eq!(
+            view.style.pointer_events,
+            Some(glory::style::PointerEvents::None)
+        );
+    }
     assert_eq!(proposals.borrow().len(), 2);
 }
 #[test]

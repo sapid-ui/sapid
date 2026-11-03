@@ -19,7 +19,14 @@ fn themed_icons_use_real_finite_paths_and_optional_image_alternatives() {
         Theme::green_light(),
         Theme::green_dark(),
     ] {
-        for icon in [Icon::Check, Icon::Close, Icon::Info, Icon::ArrowRight] {
+        for icon in [
+            Icon::Check,
+            Icon::Close,
+            Icon::Info,
+            Icon::ArrowRight,
+            Icon::ChevronDown,
+            Icon::ChevronRight,
+        ] {
             for variant in [
                 ThemeIconVariant::Soft,
                 ThemeIconVariant::Solid,

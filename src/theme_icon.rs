@@ -14,6 +14,8 @@ pub enum Icon {
     Close,
     Info,
     ArrowRight,
+    ChevronDown,
+    ChevronRight,
 }
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum ThemeIconVariant {
@@ -95,6 +97,16 @@ fn path(icon: Icon) -> Vec<Path> {
             Path::Move(p(13., 5.)),
             Path::Line(p(20., 12.)),
             Path::Line(p(13., 19.)),
+        ],
+        Icon::ChevronDown => vec![
+            Path::Move(p(6., 9.)),
+            Path::Line(p(12., 15.)),
+            Path::Line(p(18., 9.)),
+        ],
+        Icon::ChevronRight => vec![
+            Path::Move(p(9., 6.)),
+            Path::Line(p(15., 12.)),
+            Path::Line(p(9., 18.)),
         ],
         Icon::Info => vec![
             Path::Move(p(21., 12.)),

@@ -286,6 +286,46 @@ fn data_and_paths_are_admitted_together_and_invalid_external_reparent_recovers()
     );
 }
 #[test]
+fn clear_action_is_only_visible_when_it_can_clear() {
+    let app = App::memory();
+    app.mount(
+        tree_select("clear-visibility")
+            .nodes(nodes())
+            .name("Choose files")
+            .default_open(true)
+            .default_expanded(BTreeSet::from(["root".into()]))
+            .clearable(true),
+    )
+    .unwrap();
+    let clear = named(&app, "Clear tree selection");
+    let style = |display| {
+        let tree = app.tree();
+        let view = tree.node(clear).unwrap().descriptor.view();
+        assert_eq!(view.style.display, Some(display));
+        assert_eq!(view.style.position, Some(glory::style::Position::Absolute));
+    };
+    style(glory::style::Display::None);
+    app.dispatch(named(&app, "Alpha"), Event::Activate).unwrap();
+    app.flush().unwrap();
+    style(glory::style::Display::Flex);
+    app.dispatch(clear, Event::Activate).unwrap();
+    app.flush().unwrap();
+    style(glory::style::Display::None);
+    let trigger = named(&app, "Choose files");
+    assert_eq!(
+        app.tree()
+            .node(trigger)
+            .unwrap()
+            .descriptor
+            .view()
+            .semantics
+            .as_ref()
+            .unwrap()
+            .expanded,
+        Some(false)
+    );
+}
+#[test]
 fn readonly_disabled_and_clear_are_independent_from_external_controlled_updates() {
     let app = App::memory();
     let calls = Rc::new(RefCell::new(Vec::new()));

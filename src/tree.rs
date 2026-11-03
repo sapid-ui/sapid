@@ -30,6 +30,58 @@ fn selection(value: &BTreeSet<String>, mode: TreeSelectionMode) -> Result {
     }
     Ok(())
 }
+fn guides(level: u8, position: u16, count: u16, color: glory::style::Color) -> Option<impl Widget> {
+    if level <= 1 {
+        return None;
+    }
+    let inset = 8. + f64::from(level - 1) * 20.;
+    let mut commands = Vec::with_capacity(usize::from(level) * 2);
+    for depth in 1..level {
+        let x = 16. + f64::from(depth - 1) * 20.;
+        let bottom = if depth == level - 1 && position == count {
+            16.
+        } else {
+            32.
+        };
+        commands.push(glory::render::PathCommand::Move(
+            glory::render::GraphicPoint::new(x, 0.),
+        ));
+        commands.push(glory::render::PathCommand::Line(
+            glory::render::GraphicPoint::new(x, bottom),
+        ));
+    }
+    commands.push(glory::render::PathCommand::Move(
+        glory::render::GraphicPoint::new(inset - 12., 16.),
+    ));
+    commands.push(glory::render::PathCommand::Line(
+        glory::render::GraphicPoint::new(inset, 16.),
+    ));
+    Some(
+        glory::ui::graphic()
+            .class("sapid-tree-guide")
+            .drawing(glory::render::GraphicProps {
+                width: inset,
+                height: 32.,
+                commands,
+                stroke: Some(glory::render::GraphicStroke {
+                    color,
+                    width: 1.,
+                    cap: glory::render::StrokeCap::Round,
+                }),
+                alternative: None,
+                ..Default::default()
+            })
+            .style(Style {
+                position: Some(glory::style::Position::Absolute),
+                top: Some(Length::Px(0.)),
+                left: Some(Length::Px(0.)),
+                width: Some(Length::Px(inset)),
+                height: Some(Length::Px(32.)),
+                pointer_events: Some(glory::style::PointerEvents::None),
+                ..Style::new()
+            }),
+    )
+}
 fn accept_model(scope: &Scope, source: Vary<Vec<TreeNode>>) -> Result<Cage<Rc<TreeModel>>> {
     let read = || {
         source.try_with(|nodes| {
@@ -934,6 +986,17 @@ impl Widget for Tree {
                             FocusMode::Programmatic
                         }
                     });
+                    let disclosure_color = theme.muted;
+                    let guide = if columns || unstyled {
+                        None
+                    } else {
+                        guides(
+                            row.with(|row| row.level),
+                            row.with(|row| row.position),
+                            row.with(|row| row.count),
+                            theme.border,
+                        )
+                    };
                     let paint = scope.bond(move || {
                         let level = row.with(|row| row.level);
                         let selected = selected.with(|set| set.contains(&paint_key));
@@ -965,6 +1028,9 @@ impl Widget for Tree {
                                 }
                             });
                         style.align = Some(Align::Center);
+                        if !columns {
+                            style.position = Some(glory::style::Position::Relative);
+                        }
                         if columns {
                             let position = row.with(|row| row.position);
                             style = style
@@ -1030,6 +1096,9 @@ impl Widget for Tree {
                         }
                     })?;
                     let content = scope.child_in(node)?;
+                    if let Some(guide) = guide {
+                        guide.show_in(&content)?;
+                    }
                     if let Some(checked) = checked {
                         let check_key = key.clone();
                         glory::ui::text()
@@ -1053,16 +1122,72 @@ impl Widget for Tree {
                             .unstyled()
                             .focus(FocusMode::Programmatic)
                             .class("sapid-tree-disclosure")
-                            .label(expanded.map({
-                                let key = key.clone();
-                                move |set| {
-                                    if set.contains(&key) {
-                                        "−".into()
-                                    } else {
-                                        "+".into()
-                                    }
-                                }
-                            }))
+                            .style(Style {
+                                display: Some(Display::Flex),
+                                align: Some(Align::Center),
+                                justify: Some(glory::style::Justify::Center),
+                                width: Some(Length::Px(16.)),
+                                height: Some(Length::Px(16.)),
+                                min_width: Some(Length::Px(16.)),
+                                shrink: Some(0.),
+                                padding: Some(Edges::all(0.)),
+                                margin: Some(Edges::all(0.)),
+                                border_width: Some(Edges::all(0.)),
+                                background: Some(glory::style::Color(0, 0, 0, 0)),
+                                color: (!unstyled).then_some(disclosure_color),
+                                ..Style::new()
+                            })
+                            .fill(
+                                glory::ui::group().fill(
+                                    glory::ui::graphic()
+                                        .class("sapid-theme-icon-graphic")
+                                        .drawing(expanded.map({
+                                            let key = key.clone();
+                                            move |set| {
+                                                let p = glory::render::GraphicPoint::new;
+                                                let commands = if set.contains(&key) {
+                                                    vec![
+                                                        glory::render::PathCommand::Move(p(6., 9.)),
+                                                        glory::render::PathCommand::Line(p(
+                                                            12., 15.,
+                                                        )),
+                                                        glory::render::PathCommand::Line(p(
+                                                            18., 9.,
+                                                        )),
+                                                    ]
+                                                } else {
+                                                    vec![
+                                                        glory::render::PathCommand::Move(p(9., 6.)),
+                                                        glory::render::PathCommand::Line(p(
+                                                            15., 12.,
+                                                        )),
+                                                        glory::render::PathCommand::Line(p(
+                                                            9., 18.,
+                                                        )),
+                                                    ]
+                                                };
+                                                glory::render::GraphicProps {
+                                                    width: 24.,
+                                                    height: 24.,
+                                                    commands,
+                                                    stroke: Some(glory::render::GraphicStroke {
+                                                        color: disclosure_color,
+                                                        width: 2.,
+                                                        cap: glory::render::StrokeCap::Round,
+                                                    }),
+                                                    alternative: None,
+                                                    ..Default::default()
+                                                }
+                                            }
+                                        }))
+                                        .style(Style {
+                                            width: Some(Length::Px(14.)),
+                                            height: Some(Length::Px(14.)),
+                                            pointer_events: Some(glory::style::PointerEvents::None),
+                                            ..Style::new()
+                                        }),
+                                ),
+                            )
                             .name(value.map(|node| format!("Toggle {}", node.label)))
                             .enabled(value.map(move |node| enabled.get() && !node.disabled))
                             .on_press(move || {

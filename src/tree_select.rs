@@ -449,10 +449,19 @@ impl Widget for TreeSelect {
         });
         let root = scope.create(glory::render::Descriptor::new(Props::Group))?;
         let content = scope.child_in(root)?;
+        let control = self.common.theme.control(self.common.size);
+        let padding = control.padding.unwrap_or(Edges::all(0.));
         let base = Style {
+            display: Some(glory::style::Display::Flex),
+            align: Some(glory::style::Align::Center),
             grow: Some(1.),
             min_width: Some(Length::Px(0.)),
-            ..self.common.theme.control(self.common.size)
+            justify: Some(glory::style::Justify::Start),
+            padding: Some(Edges {
+                right: 36.,
+                ..padding
+            }),
+            ..control
         };
         let mut trigger = configure!(
             self.common,
@@ -592,28 +601,81 @@ impl Widget for TreeSelect {
         let s = state.clone();
         tree.on(EventKind::Dismiss, move |_| s.report(s.open(false)))
             .show_in(&content)?;
+        let editable = state.editable.clone();
+        let clear_visible: Vary<bool> = if self.clearable {
+            scope
+                .bond(move || editable.get() && !accepted.with(|a| a.values.is_empty()))
+                .into()
+        } else {
+            false.into()
+        };
+        let action_color = self.common.theme.muted;
         let mut controls: Vec<Box<dyn Widget>> = vec![Box::new(trigger)];
         if self.clearable {
             let s = state.clone();
-            let editable = state.editable.clone();
+            let clear_style = clear_visible.clone();
             controls.push(Box::new(
                 crate::close_button()
                     .theme(self.common.theme.clone())
-                    .size(self.common.size)
+                    .size(crate::Size::Small)
+                    .unstyled()
+                    .class("sapid-tree-select-clear")
                     .name("Clear tree selection")
-                    .enabled(
-                        scope.bond(move || {
-                            editable.get() && !accepted.with(|a| a.values.is_empty())
+                    .enabled(clear_visible.clone())
+                    .style(scope.bond(move || Style {
+                        position: Some(glory::style::Position::Absolute),
+                        top: Some(Length::Px(0.)),
+                        right: Some(Length::Px(4.)),
+                        display: Some(if clear_style.get() {
+                            glory::style::Display::Flex
+                        } else {
+                            glory::style::Display::None
                         }),
-                    )
+                        align: Some(glory::style::Align::Center),
+                        justify: Some(glory::style::Justify::Center),
+                        width: Some(Length::Px(28.)),
+                        height: Some(Length::Percent(100.)),
+                        padding: Some(Edges::all(0.)),
+                        border_width: Some(Edges::all(0.)),
+                        background: Some(glory::style::Color(0, 0, 0, 0)),
+                        color: Some(action_color),
+                        ..Style::new()
+                    }))
                     .on_press(move || s.report(s.clear())),
             ));
         }
+        controls.push(Box::new(
+            crate::theme_icon(crate::Icon::ChevronDown)
+                .theme(self.common.theme.clone())
+                .size(crate::Size::ExtraSmall)
+                .unstyled()
+                .color(action_color)
+                .class("sapid-tree-select-chevron")
+                .style(scope.bond(move || Style {
+                    position: Some(glory::style::Position::Absolute),
+                    top: Some(Length::Px(0.)),
+                    right: Some(Length::Px(10.)),
+                    display: Some(if clear_visible.get() {
+                        glory::style::Display::None
+                    } else {
+                        glory::style::Display::Flex
+                    }),
+                    align: Some(glory::style::Align::Center),
+                    justify: Some(glory::style::Justify::Center),
+                    width: Some(Length::Px(16.)),
+                    height: Some(Length::Percent(100.)),
+                    pointer_events: Some(glory::style::PointerEvents::None),
+                    ..Style::new()
+                })),
+        ));
         glory::ui::view()
             .class("sapid-tree-select-control")
             .style(Style {
+                position: Some(glory::style::Position::Relative),
+                display: Some(glory::style::Display::Flex),
                 align: Some(glory::style::Align::Center),
-                ..Style::new().display(glory::style::Display::Flex).gap(4.)
+                width: Some(Length::Percent(100.)),
+                ..Style::new()
             })
             .fill(controls)
             .show_in(&content)?;
