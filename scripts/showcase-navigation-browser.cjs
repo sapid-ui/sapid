@@ -10,6 +10,27 @@ const base=process.env.SAPID_SHOWCASE_BASE||'http://127.0.0.1:8795';
  const input=name=>page.getByRole('textbox',{name,exact:true});
  const button=name=>page.getByRole('button',{name,exact:true});
  const until=async(fn,message)=>{for(let n=0;n<160;n++){if(await fn())return;await page.waitForTimeout(25)}throw Error(message)};
+ const checkDocEdges=async mode=>{
+  const viewport=page.viewportSize();
+  for(const width of [320,390,450,451,600,800,801,1000,1001,1100,1200,1201,1440,1720,2200]){
+   await page.setViewportSize({...viewport,width});
+   const geometry=await page.evaluate(()=>{
+    const box=selector=>document.querySelector(selector).getBoundingClientRect();
+    const sidebar=box('.site-sidebar'),main=box('.site-doc-main'),toc=box('.site-toc');
+    return {
+     headerLeft:box('.site-brand-wrap').left,headerRight:box('.site-header-tools').right,
+     docLeft:sidebar.width?sidebar.left:main.left,docRight:toc.width?toc.right:main.right,
+     clientWidth:document.documentElement.clientWidth,scrollWidth:document.documentElement.scrollWidth,
+    };
+   });
+   const label=`${mode} at ${width}px: ${JSON.stringify(geometry)}`;
+   assert(Math.abs(geometry.docLeft-geometry.headerLeft)<1,label);
+   assert(Math.abs(geometry.docRight-geometry.headerRight)<1,label);
+   assert(geometry.scrollWidth<=geometry.clientWidth+1,label);
+  }
+  await page.setViewportSize(viewport);
+  ok(`${mode} Showcase aligns the header and documentation edges from 320 to 2200px`);
+ };
  await page.goto(base+'/showcase.html?widget=theme-studio&theme=blue&scheme=dark');await ready('theme-studio','blue','dark');
  await page.evaluate(()=>{window.navigationIdentity={token:'same-document'};});const initialDocuments=documents;
  await input('Theme name').fill('My retained workspace');await input('Base canvas').fill('#1');await until(()=>button('Save & preview').isDisabled(),'invalid draft must disable save');
@@ -20,6 +41,7 @@ const base=process.env.SAPID_SHOWCASE_BASE||'http://127.0.0.1:8795';
  await button('Edit Base colors').click();await input('Base canvas').waitFor();assert.equal(await input('Base canvas').inputValue(),'#1');await input('Base canvas').fill('#faf7ffff');
  ok('Palette and scheme navigation preserve the unsaved draft, layer and preview values');
  await page.getByRole('navigation',{name:'Primary navigation'}).getByRole('link',{name:'Widgets',exact:true}).click();await ready('P0-01','green','light');
+ await checkDocEdges('CSR');
  await page.locator('.site-nav-link').filter({hasText:/^TextInput$/}).click();await ready('P0-02','green','light');
  await input('Search widgets').fill('Calendar');const result=page.locator('.site-search-result').first();await result.waitFor();const target=new URL(await result.getAttribute('href'),base).searchParams.get('widget');await result.click();await ready(target,'green','light');
  await page.goBack();await ready('P0-02','green','light');await page.goBack();await ready('P0-01','green','light');await page.goBack();await ready('theme-studio','green','light');
@@ -33,6 +55,7 @@ const base=process.env.SAPID_SHOWCASE_BASE||'http://127.0.0.1:8795';
  await page.getByRole('navigation',{name:'On this page'}).getByRole('link',{name:'Composition',exact:true}).click();await page.waitForURL(/#composition$/);await page.goBack();await ready('P0-01','green','light');
  assert.equal(await filled.getAttribute('data-gly-node'),identity);assert(await page.getByText('Clicked 1 times',{exact:true}).count());ok('Fragment history retains live widget identity and state');
  await page.goto(base+'/ssr-button-blue-dark.html');await ready('P0-01','blue','dark');const afterSSR=documents;await page.evaluate(()=>window.navigationIdentity={token:'ssr-adopted'});
+ await checkDocEdges('Hydrated');
  await page.locator('.site-nav-link').filter({hasText:/^TextInput$/}).click();await ready('P0-02','blue','dark');await page.goBack();await ready('P0-01','blue','dark');assert.equal(documents,afterSSR);assert.equal(await page.evaluate(()=>window.navigationIdentity?.token),'ssr-adopted');ok('Hydrated SSR pages join client routing and restore their original history entry');
  await page.getByRole('navigation',{name:'Primary navigation'}).getByRole('link',{name:'Theme studio',exact:true}).click();await ready('theme-studio','blue','dark');
  for(const width of [320,390,1720,2200]){await page.setViewportSize({width,height:1100});await page.waitForTimeout(50);const box=await page.locator('.studio-main').boundingBox();const geometry=await page.evaluate(()=>({width:document.documentElement.clientWidth,scroll:document.documentElement.scrollWidth,height:document.querySelector('.sapid-site').getBoundingClientRect().height}));assert(Math.abs(box.width-geometry.width)<=1,JSON.stringify({width,box,geometry}));assert(geometry.scroll<=width+1);assert(geometry.height>=1100-1);}

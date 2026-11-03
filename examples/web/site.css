@@ -10,7 +10,9 @@ html,body{margin:0;min-width:0;min-height:100%;width:100%}#app{min-height:100dvh
 .sapid-site ::selection{background:var(--site-accent-soft);color:var(--site-fg)}
 .sapid-site [data-gly-kind=text]{max-width:100%}
 .sapid-site .site-header{height:60px;border-bottom:1px solid var(--site-border);background:var(--site-bg);position:sticky;top:0;z-index:40}
-.sapid-site .site-header-inner{height:100%;max-width:1440px;padding:0 30px;margin:auto;display:flex;align-items:center;gap:22px}
+.sapid-site{--site-page-inset:30px}
+.sapid-site .site-header-inner,.sapid-site .site-doc-layout{max-width:1440px;margin-inline:auto;padding-inline:var(--site-page-inset)}
+.sapid-site .site-header-inner{height:100%;display:flex;align-items:center;gap:22px}
 .sapid-site .site-brand{display:flex;align-items:center;gap:9px;font-size:23px;font-weight:400;letter-spacing:-1px;white-space:nowrap}
 .sapid-site .site-logo{display:block;width:36px;height:36px;aspect-ratio:1;object-fit:contain;flex-shrink:0}
 .sapid-site .site-version{font-size:11px;color:var(--site-muted);border:1px solid var(--site-border);padding:2px 7px;border-radius:4px;letter-spacing:0;font-weight:500}
@@ -120,7 +122,7 @@ html,body{margin:0;min-width:0;min-height:100%;width:100%}#app{min-height:100dvh
 .sapid-site .site-start-code-header{height:43px;padding:0 18px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--site-border);font-size:11px;font-weight:600;color:var(--site-muted);background:var(--site-card)}
 .sapid-site .site-code-language{font-size:10px;letter-spacing:.4px}
 .sapid-site .site-home-code{border:0!important;border-radius:0!important;max-width:100%;font-size:12px!important;overflow-x:auto}
-.sapid-site .site-doc-layout{display:grid;grid-template-columns:220px minmax(0,820px) 190px;justify-content:center;gap:38px;max-width:1440px;margin:auto;padding:0 26px;min-height:calc(100vh - 100px)}
+.sapid-site .site-doc-layout{display:grid;grid-template-columns:220px minmax(0,1fr) 190px;gap:38px;min-height:calc(100vh - 100px)}
 .sapid-site .site-sidebar{position:sticky;top:60px;height:calc(100vh - 60px);overflow-y:auto;overscroll-behavior:contain;border-right:1px solid var(--site-border);padding:26px 20px 38px 0;scrollbar-width:thin;scrollbar-color:var(--site-border) transparent}
 .sapid-site .site-nav-group{margin-bottom:23px}
 .sapid-site .site-nav-title{font-size:11px;font-weight:750;letter-spacing:.4px;color:var(--site-fg);padding:3px 11px 7px}
@@ -178,7 +180,7 @@ html,body{margin:0;min-width:0;min-height:100%;width:100%}#app{min-height:100dvh
 .sapid-site .site-home-container{max-width:1280px}
 .sapid-site .site-hero-title{font-size:70px}}
 @media(max-width:1200px){.sapid-site .site-toc{display:none}
-.sapid-site .site-doc-layout{grid-template-columns:215px minmax(0,820px);gap:30px}
+.sapid-site .site-doc-layout{grid-template-columns:215px minmax(0,1fr);gap:30px}
 .sapid-site .site-hero{gap:28px}
 .sapid-site .site-hero-title{font-size:55px;letter-spacing:-2.5px}
 .sapid-site .site-hero-lead{font-size:16px}
@@ -189,7 +191,8 @@ html,body{margin:0;min-width:0;min-height:100%;width:100%}#app{min-height:100dvh
 .sapid-site .site-progress-copy{flex-direction:row;align-items:center;flex-wrap:wrap}
 .sapid-site .site-progress-copy .site-mini-muted{display:none}
 .sapid-site .site-topnav{gap:18px;margin-left:5px}}
-@media(max-width:1000px){.sapid-site .site-header-inner{padding:0 22px;gap:15px}
+@media(max-width:1000px){.sapid-site{--site-page-inset:22px}
+.sapid-site .site-header-inner{gap:15px}
 .sapid-site .site-topnav{gap:15px}
 .sapid-site .site-hero-title{font-size:48px}
 .sapid-site .site-hero{min-height:630px;gap:25px}
@@ -201,12 +204,15 @@ html,body{margin:0;min-width:0;min-height:100%;width:100%}#app{min-height:100dvh
 .sapid-site .site-principles{gap:25px}
 .sapid-site .site-search input{width:180px!important}
 .sapid-site .site-search{max-width:180px}
-.sapid-site .site-doc-layout{grid-template-columns:200px minmax(0,1fr);gap:24px;padding:0 22px}}
-@media(max-width:800px){.sapid-site .site-header-inner{padding:0 18px;gap:12px}
+.sapid-site .site-doc-layout{grid-template-columns:200px minmax(0,1fr);gap:24px}}
+@media(max-width:800px){.sapid-site{--site-page-inset:18px}
+.sapid-site .site-header-inner{gap:12px}
 .sapid-site .site-topnav{display:none}
 .sapid-site .site-menu-toggle{display:flex}
 .sapid-site .site-version{font-size:10px}
-.sapid-site .site-header-tools{gap:8px}
+.sapid-site .site-header-tools{gap:8px;min-width:0}
+.sapid-site .site-search{width:180px}
+.sapid-site .site-search input{width:100%!important;min-width:0}
 .sapid-site .site-home-container{width:calc(100% - 40px)}
 .sapid-site .site-hero{grid-template-columns:1fr;gap:6px;padding-top:51px;padding-bottom:38px}
 .sapid-site .site-hero-copy{max-width:610px;padding-bottom:0}
@@ -229,7 +235,7 @@ html,body{margin:0;min-width:0;min-height:100%;width:100%}#app{min-height:100dvh
 .sapid-site .site-playground-card{padding:25px}
 .sapid-site .site-get-started{grid-template-columns:1fr;gap:30px;padding-top:45px;padding-bottom:55px}
 .sapid-site .site-start-copy .site-home-section-title{white-space:normal}
-.sapid-site .site-doc-layout{display:block;padding:0 21px}
+.sapid-site .site-doc-layout{display:block}
 .sapid-site .site-sidebar{display:none;position:fixed;top:60px;left:0;width:260px;background:var(--site-bg);height:calc(100dvh - 60px);z-index:35;padding:22px 20px;box-shadow:12px 0 40px var(--sp-shadow-small)}
 .sapid-site.menu-open .site-sidebar{display:block}
 .sapid-site .site-doc-main{padding-top:27px}
@@ -238,9 +244,9 @@ html,body{margin:0;min-width:0;min-height:100%;width:100%}#app{min-height:100dvh
 .sapid-site .site-demo{padding:25px 20px}
 .sapid-site .site-footer{padding:23px 20px;flex-wrap:wrap}
 .sapid-site .site-search-results{right:0}}
-@media(max-width:450px){.sapid-site .site-search{max-width:115px}
-.sapid-site .site-search input{width:115px!important;font-size:11px!important}
-.sapid-site .site-header-inner{padding:0 13px;gap:9px}
+@media(max-width:450px){.sapid-site{--site-page-inset:13px}
+.sapid-site .site-search input{font-size:11px!important}
+.sapid-site .site-header-inner{gap:9px}
 .sapid-site .site-brand{font-size:21px;gap:7px}
 .sapid-site .site-logo{width:32px;height:32px}
 .sapid-site .site-version{display:none}
@@ -332,7 +338,7 @@ html,body{margin:0;padding:0}
 .sapid-site .site-palette.is-active{outline-color:var(--site-fg)}
 .sapid-site .site-palette:focus-visible{outline:2px solid var(--site-ring);outline-offset:2px}
 .sapid-site .site-theme-toggle,.sapid-site .site-menu-toggle{flex-shrink:0}
-@media(max-width:450px){.sapid-site .site-header-tools{gap:6px;flex:1;min-width:0}.sapid-site .site-search{flex:1;max-width:100px;min-width:0}.sapid-site .site-search input{width:100%!important;min-width:0}}
+@media(max-width:450px){.sapid-site .site-header-tools{gap:6px;flex:1;justify-content:flex-end}.sapid-site .site-search{flex:1;max-width:100px}}
 
 /* Theme studio is ordinary Glory/Sapid UI; all visual colors are palette roles. */
 .sapid-site .site-palettes{max-width:230px;overflow-x:auto;padding:5px 4px;scrollbar-width:thin}
