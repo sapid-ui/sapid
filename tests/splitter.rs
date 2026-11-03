@@ -112,6 +112,32 @@ fn respond(wire: &RefCell<Wire>, index: usize, result: std::result::Result<Query
 }
 
 #[test]
+fn default_grip_has_three_dots_on_a_full_width_divider() {
+    use glory::style::Length;
+    let app = App::memory();
+    app.mount(splitter("dots")).unwrap();
+    let tree = app.tree();
+    assert_eq!(
+        tree.node(class(&app, "sapid-splitter-line"))
+            .unwrap()
+            .descriptor
+            .view()
+            .style
+            .width,
+        Some(Length::Px(6.0))
+    );
+    let grip = tree.node(class(&app, "sapid-splitter-grip")).unwrap();
+    assert_eq!(grip.descriptor.view().style.width, Some(Length::Px(2.0)));
+    assert_eq!(grip.descriptor.view().style.height, Some(Length::Px(12.0)));
+    assert_eq!(grip.children.len(), 3);
+    assert!(
+        grip.children
+            .iter()
+            .all(|dot| tree.node(*dot).unwrap().children.is_empty())
+    );
+}
+
+#[test]
 fn live_orientation_keeps_panes_and_cancels_the_previous_axis_geometry() {
     use glory::render::Orientation;
     use glory::style::{FlexDirection, Length};

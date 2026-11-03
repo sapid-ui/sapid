@@ -330,9 +330,9 @@ pub fn splitter(key: impl Into<String>) -> Splitter {
         step: 1.0,
         axis: Orientation::Horizontal.into(),
         thickness: 6.0,
-        line_size: 1.0.into(),
+        line_size: 6.0.into(),
         with_grip: true.into(),
-        grip_size: (16.0, 3.0),
+        grip_size: (12.0, 2.0),
         first: None,
         second: None,
         first_ref: None,
@@ -699,17 +699,38 @@ impl Splitter {
                     let length = Length::Px(grip_length);
                     let width = Length::Px(grip_width.min(thickness));
                     Style {
-                        background: Some(color),
                         shrink: Some(0.0),
+                        align: Some(Align::Center),
+                        justify: Some(Justify::Center),
                         ..divider_size(grip_axis.get(), width, length)
-                            .radius(grip_width / 2.0)
                             .display(if with_grip.get() {
-                                Display::Block
+                                Display::Flex
                             } else {
                                 Display::None
                             })
+                            .flex_direction(if grip_axis.get() == Orientation::Horizontal {
+                                FlexDirection::Column
+                            } else {
+                                FlexDirection::Row
+                            })
+                            .gap(2.0)
+                            .pointer_events(PointerEvents::None)
                     }
                 }))
+                .fill(
+                    (0..3)
+                        .map(|_| {
+                            glory::ui::view().style(Style {
+                                background: Some(color),
+                                shrink: Some(0.0),
+                                ..Style::new()
+                                    .width(Length::Px(2.0))
+                                    .height(Length::Px(2.0))
+                                    .radius(1.0)
+                            })
+                        })
+                        .collect::<Vec<_>>(),
+                )
         });
         let line = (!self.common.unstyled).then(|| {
             let color = self.common.theme.border;

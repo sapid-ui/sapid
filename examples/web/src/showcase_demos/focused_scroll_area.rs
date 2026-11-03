@@ -399,7 +399,7 @@ mod focused {
             let disabled = scope.cage(false);
             let collapsible = scope.cage(false);
             let restored = scope.cage(50.0);
-            let line_size = scope.cage(1.0);
+            let line_size = scope.cage(6.0);
             let with_grip = scope.cage(true);
             let axis = orientation.map(|value| {
                 if value.as_deref() == Some("vertical") {

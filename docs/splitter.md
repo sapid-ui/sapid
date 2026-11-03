@@ -50,12 +50,13 @@ newly hidden pane moves to an enabled handle. `.first_ref`, `.second_ref`, and
 `.handle_ref` expose stable live nodes and clear on retirement.
 
 The inner layout reserves the draggable area set by `.thickness(6.0)`, then
-divides the remaining extent between panes. `.line_size(1.0)` sets the visible
-line thickness and accepts zero to hide it. `.grip_size(16.0, 3.0)` sets the
-centered grip's length and width. `.with_grip(false)` hides it while keeping
-the separator draggable and keyboard accessible. Line and grip widths are
-capped at the draggable area's width. Line size and grip visibility accept
-reactive sources, and both decorations follow the layout axis. Outer padding and borders do not enter that
+divides the remaining extent between panes. `.line_size(6.0)` fills that area
+by default instead of leaving transparent space around a thin line; zero hides
+the filled divider. `.grip_size(12.0, 2.0)` sets the centered three-dot grip's
+length and width. `.with_grip(false)` hides it while keeping the separator
+draggable and keyboard accessible. Line and grip widths are capped at the
+draggable area's width. Line size and grip visibility accept reactive sources,
+and both decorations follow the layout axis. Outer padding and borders do not enter that
 measurement. Panes have zero minimum flex extent and retain their child nodes,
 editor values and engine identities while resizing. Application CSS can still
 change a child's overflow policy; the pane wrapper clips overflowing content.
@@ -89,8 +90,8 @@ HTML's typed splitter contract includes `touch-action:none`. Native Finger
 pointer protocol simulation exercises the real engine input path; it does not
 establish physical-device or screen-reader acceptance.
 
-Validation currently includes nine Sapid component tests, including initial bounds
-coalescing, same-tick updates and immediate Drop commit; two native component
+Validation currently includes ten Sapid component tests, including divider decoration,
+initial bounds coalescing, same-tick updates and immediate Drop commit; two native component
 tests covering four themes, both axes, measured layout conservation, controlled
 requests, disabled behavior and editor identity; three shared render tests; two
 shared native tests covering queued keyboard, mouse/Finger capture/cancel and
