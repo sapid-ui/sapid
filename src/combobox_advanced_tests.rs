@@ -109,6 +109,138 @@ fn autocomplete_required_is_on_real_successful_input_and_insertion_text_is_singl
     assert_eq!(app.stats().nodes, 0);
 }
 #[test]
+fn autocomplete_limit_first_match_and_blur_selection_are_finite_and_independent() {
+    let app = App::memory();
+    app.mount(
+        choices()
+            .autocomplete()
+            .visible_limit(2)
+            .select_first_on_change(true)
+            .default_open(true),
+    )
+    .unwrap();
+    let visible_options = nodes(&app)
+        .into_iter()
+        .filter(|id| {
+            app.tree()
+                .node(*id)
+                .unwrap()
+                .descriptor
+                .view()
+                .semantics
+                .as_ref()
+                .is_some_and(|value| value.option.is_some() && !value.hidden)
+        })
+        .count();
+    assert_eq!(visible_options, 2);
+    edit(&app, "br", false);
+    let input_id = editor(&app);
+    app.dispatch(
+        input_id,
+        Event::Choice {
+            from: input_id,
+            command: ChoiceCommand::Commit,
+        },
+    )
+    .unwrap();
+    assert_eq!(input(&app).value, "b");
+
+    let app = App::memory();
+    app.mount(
+        choices()
+            .autocomplete()
+            .auto_select_on_blur(true)
+            .default_open(true),
+    )
+    .unwrap();
+    edit(&app, "br", false);
+    let input_id = editor(&app);
+    app.dispatch(
+        input_id,
+        Event::Choice {
+            from: input_id,
+            command: ChoiceCommand::First,
+        },
+    )
+    .unwrap();
+    app.dispatch(
+        input_id,
+        Event::Choice {
+            from: input_id,
+            command: ChoiceCommand::Close,
+        },
+    )
+    .unwrap();
+    app.dispatch(input_id, Event::FocusChanged(false)).unwrap();
+    assert_eq!(input(&app).value, "b");
+
+    let rejected = App::memory();
+    assert!(
+        rejected
+            .mount(choices().autocomplete().visible_limit(1025))
+            .is_err()
+    );
+    assert_eq!(rejected.stats().nodes, 0);
+
+    let clear = App::memory();
+    clear
+        .mount(
+            choices()
+                .autocomplete()
+                .default_search("Free text")
+                .clearable(true),
+        )
+        .unwrap();
+    let clear_button = nodes(&clear)
+        .into_iter()
+        .find(|id| {
+            clear
+                .tree()
+                .node(*id)
+                .unwrap()
+                .descriptor
+                .view()
+                .classes
+                .iter()
+                .any(|class| class == "sapid-autocomplete-clear")
+        })
+        .unwrap();
+    clear.dispatch(clear_button, Event::Activate).unwrap();
+    assert_eq!(input(&clear).value, "");
+
+    let loading = App::memory();
+    loading
+        .mount(
+            choices()
+                .autocomplete()
+                .loading(true)
+                .loading_position(true),
+        )
+        .unwrap();
+    assert!(
+        loading
+            .tree()
+            .node(editor(&loading))
+            .unwrap()
+            .descriptor
+            .view()
+            .semantics
+            .as_ref()
+            .is_some_and(|value| value.busy == Some(true))
+    );
+    assert!(nodes(&loading).into_iter().any(|id| {
+        loading
+            .tree()
+            .node(id)
+            .unwrap()
+            .descriptor
+            .view()
+            .classes
+            .iter()
+            .any(|class| class == "sapid-autocomplete-loading" || class == "is-left")
+    }));
+}
+#[test]
 fn multiple_keeps_search_separate_toggles_options_and_removes_last_selected_key() {
     let app = App::memory();
     app.mount(

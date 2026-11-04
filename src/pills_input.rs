@@ -1,5 +1,7 @@
 //! The free tag editor with pill-shaped accepted values.
-use crate::tags_input::{TagDuplicatePolicy, TagRejection, TagsInput, TagsInputState};
+use crate::tags_input::{
+    TagDuplicatePolicy, TagRejection, TagsInput, TagsInputLoadingPosition, TagsInputState,
+};
 use crate::{FieldControl, Size, Theme};
 use glory::render::{Event, EventKind, FocusMode, NodeId, TagSeparators};
 use glory::style::Style;
@@ -44,6 +46,11 @@ impl PillsInput {
     forward!(max_tags, usize);
     forward!(duplicate_policy, TagDuplicatePolicy);
     forward!(separators, TagSeparators);
+    forward!(clearable, bool);
+    forward!(clear_label, impl Into<String>);
+    forward!(accept_value_on_blur, bool);
+    forward!(loading, impl Into<Vary<bool>>);
+    forward!(loading_position, TagsInputLoadingPosition);
     pub fn unstyled(mut self) -> Self {
         self.inner = self.inner.unstyled();
         self

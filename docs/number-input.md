@@ -144,11 +144,17 @@ The semantic choices follow [ARIA spinbutton](https://www.w3.org/TR/wai-aria/#sp
 and the [APG spinbutton pattern](https://www.w3.org/WAI/ARIA/apg/patterns/spinbutton/).
 These references describe the intended semantics; executable evidence is below.
 
+NumberInput also exposes a bounded reactive `placeholder`. It uses the shared
+single-line input hint semantics and native placeholder layout; it is independent
+of the numeric value, revision and SpinButton range metadata. Invalid reactive
+updates roll back without replacing the editor.
+
 ## Evidence
 
-- `tests/number_inputs.rs`: 17 passed. Exact and same-tick stepping, complete raw
+- `tests/number_inputs.rs`: 18 passed. Exact and same-tick stepping, complete raw
   lexemes/drafts/empty/commit, controlled refusal and callback order, commit-only
-  cursor, bounded source and host edit refusal, invalid-domain recovery, Field
+  cursor, bounded source and host edit refusal, reactive placeholder rollback,
+  invalid-domain recovery, Field
   relations, unified surface/stepper geometry and focus, composition protocol and
   retirement during a callback.
 - `src/number_model.rs`: 6 passed through Cargo, including exact scale/domain,

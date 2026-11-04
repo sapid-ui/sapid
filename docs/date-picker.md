@@ -22,6 +22,24 @@ visible month. `.default_month`, `.direction`, `.disable_weekday`, `.exclude_dat
 and `.exclude_dates` have the Calendar policies. `.allow_deselect(true)` enables
 single-date clearing; multiple selection always toggles the activated day.
 
+`.number_of_columns(2)` renders consecutive months that share one selection and
+one controlled month anchor. `.columns_to_scroll(n)` controls how far the outer
+previous/next month actions advance; it defaults to the column count. Only the
+first column exposes previous controls and only the last exposes next controls,
+and outside dates are hidden between columns so one civil date never appears as
+two actionable Buttons. The finite contract admits 1–4 columns/scroll steps.
+`DatePickerInput` forwards the same builders to its kept-mounted popup.
+Both builders also forward `.with_week_numbers(true)` and
+`.hide_weekdays(true)` to every visible month.
+
+`.level`, `.default_level` and `.max_level` use
+`DatePickerLevel::{Month, Year, Decade}`. The month header opens the real
+MonthPicker grid, its year header opens the real YearPicker decade grid, and
+choosing a year/month descends one level. `.on_level_change` follows the same
+controlled proposal contract as month and value changes: refusing the external
+level leaves the accepted grid visible. DatePickerInput forwards all four level
+settings to its kept-mounted popup.
+
 `SelectedDates` is a sorted unique set in a private fixed array with capacity 32.
 Iterator admission consumes at most 33 items, including duplicate inputs.
 `DateSelection::Multiple` stores this finite value rather than a `Vec`.
@@ -46,8 +64,8 @@ cursor; no action history is retained. Typed callbacks run before generic observ
 
 ## Input and popup
 
-`date_picker_input(key, provider)` displays the exact ISO selection in a real
-readonly text Input with an independent, named Dialog trigger. It supports the
+`date_picker_input(key, provider)` displays the selection in a real readonly text
+Input with an independent, named Dialog trigger. It supports the
 same three modes, Field relationships, required/invalid/disabled state,
 controlled/local selection, controlled/local `.open`, `.on_open_change`, and
 `.trigger_ref`, `.panel_ref`, `.calendar_ref` plus the ordinary Input `.node_ref`.
@@ -61,6 +79,14 @@ A `Field` supplies its accessible label/description/error and successful name;
 `.form_name` explicitly overrides only the successful name. No ComboBox/Listbox
 role is fabricated for the display.
 
+`.display_format(DateInputFormat::{Iso, DayMonthYear, MonthDayYear})` selects a
+finite locale-independent presentation. The formatter covers Single, sorted
+Multiple and both partial and complete Range values; multiple values use `, `
+and ranges use ` – ` as visible separators. It changes presentation only—the
+controlled source remains a typed `DateSelection`. Arbitrary date-fns format
+strings, ambient locale negotiation and unbounded formatter callbacks are not
+accepted.
+
 Successful values use an explicit locale-independent spelling:
 
 | Mode | Empty | Value |
@@ -73,6 +99,13 @@ Successful values use an explicit locale-independent spelling:
 partial range is distinguishable from an empty range; application validation can
 require `is_complete()`. Submission and routing remain application decisions.
 
+`DatePickerPreset` adds a bounded labeled complete `DateSelection`. The same
+typed preset contract supports Single, Multiple and Range modes; labels and
+values must be unique and no more than 32 presets are admitted. A preset uses
+the ordinary controlled proposal path, respects readonly/disabled state and
+current provider bounds, and never replaces the accepted source after refusal.
+`DatePickerInput` closes only after its source accepts a complete preset.
+
 The shared host Layer owns modal focus containment, Escape, outside dismissal
 and return focus. The explicit initial target is the named close Button. The
 panel shell and calendar are kept mounted so closing preserves month and child
@@ -84,27 +117,35 @@ default Dialog and is tested; no unsupported-layer fallback is substituted.
 
 ## Evidence
 
-- Five pure selection-model tests: fixed iterator admission and sorted unique
+- Six pure selection-model tests: fixed iterator admission and sorted unique
   membership, capacity rejection, partial/reverse/restarted ranges, exact ISO and
-  mode/bounds. `D:/BuildCache/sapid/date-selection-rust.log`.
-- Nine component tests in `tests/date_pickers.rs`: same-tick multiple selection,
+  mode/bounds, plus finite single/multiple/partial/complete display formats.
+  `D:/BuildCache/sapid/component-parity`.
+- Seventeen component tests in `tests/date_pickers.rs`: same-tick multiple selection,
   typed-before-generic ordering, disabled interior policy, controlled refusal and
   invalid recovery, 33rd-date nonfault rejection, readonly/disabled/Owner cleanup,
+  atomic Single/Multiple/Range presets, input close and invalid preset admission,
   real readonly Input/Dialog, stable shells, Field relationships, open refusal,
-  admission budgets, and explicit range/multiple Input open/text policies. Calendar's six existing tests pass unchanged.
+  admission budgets, explicit range/multiple Input open/text policies, shared
+  consecutive columns, cross-column range selection, multi-column scrolling and
+  controlled month refusal, week-number forwarding, hidden weekday rows, real
+  month/year level traversal, controlled level refusal and max-level limits.
+  Calendar's seven tests pass unchanged.
   `D:/BuildCache/sapid/date-picker-rust-final.log` (Calendar regression in
   `date-picker-rust.log`).
 - Shared Grid target/rollback tests, all eighteen HTML tests including field-delta
   oracle and reset cases, and native AX multiselection on/off passed:
   `date-grid-rust.log`, `date-grid-html.log`, `date-grid-native-ax.log` in the same
   build root.
-- Three actual native component tests in `examples/native/tests/date_picker.rs`
+- Five actual native component tests in `examples/native/tests/date_picker.rs`
   passed. Four themes open the default physical Dialog, check top-layer entries,
   actual day bounds/hit/selected pixels, real focus, Grid navigation, accepted
   value/close/return focus, stable Input engine identity, reopen/Escape and Owner
   cleanup. The second checks range, disabled interior, readonly and disabled
-  rejection; the third checks an initially open Range Input, partial text,
-  completed-range close and focus return.
+  rejection; another checks an initially open Range Input, partial text,
+  completed-range close and focus return. The multi-column case verifies two
+  physical side-by-side grids and one range selection spanning both months; the
+  preset case verifies its real action geometry and controlled close.
   `D:/BuildCache/sapid/date-picker-native-final.log`.
 - Sapid lib/components, Web WASM and native focused strict Clippy passed:
   `date-input-clippy.log` (includes the final DatePicker tests), `date-picker-web-clippy.log`,
@@ -131,6 +172,13 @@ default Dialog and is tested; no unsupported-layer fallback is substituted.
 The same original 12/12 suite also passed against FORMAT-9 Web29, errors `[]`,
 with Chromium 148.0.7778.96: `date-picker-browser-web29.json` and
 `date-picker-browser-web29.log` under the D build root.
+
+The current public showcase adds a dedicated Value format section with real
+Single, Multiple and Range DatePickerInputs. The unified browser suite verifies
+their exact values together with presets, two-column range selection, levels,
+week rows and DateTimePicker forwarding; errors are `[]` in
+`D:/BuildCache/sapid/date-picker-presets-browser.json`. The release showcase is
+the fingerprinted `assets-5fadcd185e60de03d78a` artifact.
 
 Native component tests drive typed host commands and query physical layout,
 focus, hit testing and raster output. They do not establish OS keyboard/IME or

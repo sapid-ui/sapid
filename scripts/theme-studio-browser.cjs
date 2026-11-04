@@ -1,9 +1,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
-process.env.TEMP = process.env.TMP = 'D:/BuildCache/sapid/tmp';
-const {chromium} = require(process.env.SAPID_PLAYWRIGHT || 'D:/Works/glory-rs/glory/tests/playwright/node_modules/playwright');
-const base=process.env.SAPID_SHOWCASE_BASE || 'http://127.0.0.1:8795';
+const { chromium, base, outputPath, outputRoot, writeReport } = require('./showcase-browser-env.cjs');
 (async()=>{
  let browser;const report={checks:[],errors:[]};
  const ok=name=>{report.checks.push(name);console.log(name)};
@@ -18,7 +16,7 @@ const base=process.env.SAPID_SHOWCASE_BASE || 'http://127.0.0.1:8795';
   const value=async(name,expected)=>until(async()=>await input(name).inputValue()===expected,`${name} should become ${expected}`);
   const disabled=async(locator,expected)=>until(async()=>await locator.isDisabled()===expected,'disabled state did not settle');
   const fill=async(name,v)=>{await input(name).fill(v);await page.waitForTimeout(75)};
-  await go('/showcase.html?widget=P3-04&theme=green&scheme=dark');
+  await go('/showcase.html?widget=aspect-ratio&theme=green&scheme=dark');
   const surfaces=await page.evaluate(()=>['html','body','.sapid-site','.site-header','.site-sidebar'].map(s=>{let e=document.querySelector(s),paint=e;while(paint.parentElement&&getComputedStyle(paint).backgroundColor==='rgba(0, 0, 0, 0)')paint=paint.parentElement;return {selector:s,bg:getComputedStyle(paint).backgroundColor,color:getComputedStyle(e).color}}));
   for(const s of surfaces){assert.equal(s.bg,'rgb(20, 21, 23)',JSON.stringify(s));assert.equal(s.color,'rgb(222, 226, 230)',JSON.stringify(s))}
   const cssFiles=await page.locator('link[rel=stylesheet]').evaluateAll(nodes=>nodes.map(n=>n.getAttribute('href')));
@@ -49,31 +47,31 @@ const base=process.env.SAPID_SHOWCASE_BASE || 'http://127.0.0.1:8795';
   await button('Preview dark').click();
   await page.waitForFunction(()=>getComputedStyle(document.querySelector('.studio-demo')).backgroundColor==='rgb(23, 19, 34)');
   await value('Preview name','Retained sample');ok('Sparse dark overrides and inheritance reset resolve correctly');
-  await page.screenshot({path:'D:/BuildCache/sapid/theme-studio-dark.png',fullPage:true});
+  await page.screenshot({path:outputPath('theme-studio-dark.png'),fullPage:true});
   await button('Copy Rust definition').click();await page.waitForTimeout(120);
   let source=await page.evaluate(()=>navigator.clipboard.readText());assert(source.includes('pub const VIOLET_DUSK: ThemeDefinition'));assert(source.includes('canvas: Some(Color(23, 19, 34, 255))'));
-  fs.writeFileSync('D:/BuildCache/sapid/studio-export.rs',source);ok('Copy exports complete Rust definition');
-  await button('Save & preview').click();await page.waitForURL(/widget=P0-01&theme=custom-1&scheme=dark/);await page.waitForFunction(()=>{if(!window.ready)return false;if(!location.pathname.endsWith('showcase.html'))return true;const q=new URLSearchParams(location.search),h=document.documentElement;return h.getAttribute('data-sapid-widget')===(q.get('widget')||'')&&h.getAttribute('data-sapid-palette')===(q.get('theme')||'blue')&&h.getAttribute('data-sapid-scheme')===(q.get('scheme')||'light')});
+  fs.writeFileSync(outputPath('studio-export.rs'),source);ok('Copy exports complete Rust definition');
+  await button('Save & preview').click();await page.waitForURL(/widget=button&theme=custom-1&scheme=dark/);await page.waitForFunction(()=>{if(!window.ready)return false;if(!location.pathname.endsWith('showcase.html'))return true;const q=new URLSearchParams(location.search),h=document.documentElement;return h.getAttribute('data-sapid-widget')===(q.get('widget')||'')&&h.getAttribute('data-sapid-palette')===(q.get('theme')||'blue')&&h.getAttribute('data-sapid-scheme')===(q.get('scheme')||'light')});
   assert.equal(await page.locator('.site-palette[aria-current=location]').getAttribute('aria-label'),'Use Violet dusk palette');
   assert.equal(await page.locator('.site-header').evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(23, 19, 34)');
   assert.equal(await page.locator('body').evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(23, 19, 34)');
   await page.evaluate(()=>{const key='sapid.theme-studio.v1',data=JSON.parse(localStorage.getItem(key)),first=data.themes[0];data.themes=Array.from({length:8},(_,i)=>({...first,id:`custom-${i+1}`,title:i===0?'Violet dusk':`Custom ${i+1}`}));data.next_id=9;localStorage.setItem(key,JSON.stringify(data))});
-  await go('/showcase.html?widget=P0-01&theme=blue&scheme=dark');assert.equal(await page.locator('.site-palette').count(),10);
+  await go('/showcase.html?widget=button&theme=blue&scheme=dark');assert.equal(await page.locator('.site-palette').count(),10);
   await page.locator('.site-palettes').evaluate(e=>e.scrollLeft=e.scrollWidth);
   const palettePositions=()=>page.locator('.site-palette').evaluateAll(nodes=>Object.fromEntries(nodes.map(n=>{const r=n.getBoundingClientRect();return[n.getAttribute('aria-label'),[r.x,r.y]]})));
   const originalPalettePositions=await palettePositions();
   await page.getByRole('link',{name:'Use Custom 8 palette',exact:true}).click();await page.waitForFunction(()=>document.documentElement.getAttribute('data-sapid-palette')==='custom-8');await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));assert.deepEqual(await palettePositions(),originalPalettePositions);ok('Rightmost custom palette selection preserves every swatch position');
-  await go('/showcase.html?widget=P0-01&theme=custom-1&scheme=dark');
+  await go('/showcase.html?widget=button&theme=custom-1&scheme=dark');
   const actionPositions=()=>page.locator('.site-saved-actions>.sapid-copy-button,.site-saved-actions>a,.site-saved-actions>.sapid-button').evaluateAll(nodes=>nodes.map(n=>{const r=n.getBoundingClientRect();return[r.x,r.y,r.width,r.height]}));
   const originalActionPositions=await actionPositions();
   await button('Copy theme code').click();await page.waitForFunction(()=>document.querySelector('.site-saved-actions>.sapid-copy-button').textContent==='Copied');assert.deepEqual(await actionPositions(),originalActionPositions);ok('Copy feedback preserves theme action positions');await page.waitForTimeout(100);source=await page.evaluate(()=>navigator.clipboard.readText());assert(source.includes('"custom-1"'));
-  fs.writeFileSync('D:/BuildCache/sapid/studio-export.rs',source);ok('Save adds selected custom header swatch, full-page preview and copy action');
-  await go('/showcase.html?widget=P0-07&theme=custom-1&scheme=dark');
+  fs.writeFileSync(outputPath('studio-export.rs'),source);ok('Save adds selected custom header swatch, full-page preview and copy action');
+  await go('/showcase.html?widget=modal&theme=custom-1&scheme=dark');
   await button('Open modal').click();
   const dialog=page.getByRole('dialog',{name:'Edit your profile'});await dialog.waitFor();
   await until(async()=>await dialog.evaluate(e=>getComputedStyle(e,'::backdrop').backgroundColor)==='rgba(40, 28, 64, 0.4)','custom backdrop color');
   await page.keyboard.press('Escape');ok('Modal backdrop reads the selected palette override');
-  await go('/showcase.html?widget=P0-01&theme=custom-1&scheme=dark');
+  await go('/showcase.html?widget=button&theme=custom-1&scheme=dark');
   await page.reload();await page.waitForFunction(()=>{if(!window.ready)return false;if(!location.pathname.endsWith('showcase.html'))return true;const q=new URLSearchParams(location.search),h=document.documentElement;return h.getAttribute('data-sapid-widget')===(q.get('widget')||'')&&h.getAttribute('data-sapid-palette')===(q.get('theme')||'blue')&&h.getAttribute('data-sapid-scheme')===(q.get('scheme')||'light')});assert(await page.getByRole('link',{name:'Use Violet dusk palette'}).count());
   await page.getByRole('link',{name:'Edit theme',exact:true}).click();await page.waitForFunction(()=>{if(!window.ready)return false;if(!location.pathname.endsWith('showcase.html'))return true;const q=new URLSearchParams(location.search),h=document.documentElement;return h.getAttribute('data-sapid-widget')===(q.get('widget')||'')&&h.getAttribute('data-sapid-palette')===(q.get('theme')||'blue')&&h.getAttribute('data-sapid-scheme')===(q.get('scheme')||'light')});
   await value('Theme name','Violet dusk');await button('Edit Dark colors').click();await value('Dark canvas','#171322ff');ok('Saved record survives reload and reopens for editing');
@@ -89,7 +87,7 @@ const base=process.env.SAPID_SHOWCASE_BASE || 'http://127.0.0.1:8795';
    const swatch=page.getByRole('link',{name:'Use Violet dusk palette'});assert(await swatch.isVisible());
    const box=await swatch.boundingBox();assert(box.x>=0&&box.x+box.width<=width,`selected palette ${width}`);
   }
-  await page.screenshot({path:'D:/BuildCache/sapid/theme-studio-mobile.png',fullPage:true});ok('320/360/390px mobile workbench and selected swatch fit');
+  await page.screenshot({path:outputPath('theme-studio-mobile.png'),fullPage:true});ok('320/360/390px mobile workbench and selected swatch fit');
   await button('Remove saved preview').click();await page.waitForURL(/widget=theme-studio&theme=blue&scheme=light/);await page.waitForFunction(()=>{if(!window.ready)return false;if(!location.pathname.endsWith('showcase.html'))return true;const q=new URLSearchParams(location.search),h=document.documentElement;return h.getAttribute('data-sapid-widget')===(q.get('widget')||'')&&h.getAttribute('data-sapid-palette')===(q.get('theme')||'blue')&&h.getAttribute('data-sapid-scheme')===(q.get('scheme')||'light')});
   assert.equal(await page.getByRole('link',{name:'Use Violet dusk palette'}).count(),0);ok('Remove reclaims a saved slot');
   await page.evaluate(()=>localStorage.setItem('sapid.theme-studio.v1','broken'));
@@ -98,5 +96,5 @@ const base=process.env.SAPID_SHOWCASE_BASE || 'http://127.0.0.1:8795';
   report.timingRegression=await require('./test_theme_studio_browser.cjs').verifyPreviewCommitBoundary(browser,base);
   ok('Controlled host-frame boundary rejects the old fill ordering and preserves committed preview state at 1x/8x CPU');
  }catch(error){if(error.previewTiming)report.timingRegression=error.previewTiming;report.errors.push(error.stack||String(error))}
- finally{if(browser)await browser.close();fs.writeFileSync('D:/BuildCache/sapid/theme-studio-browser.json',JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));if(report.errors.length)process.exitCode=1}
+ finally{if(browser)await browser.close();writeReport('theme-studio-browser.json', report);console.log(JSON.stringify(report,null,2));if(report.errors.length)process.exitCode=1}
 })();

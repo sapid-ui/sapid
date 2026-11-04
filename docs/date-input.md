@@ -23,19 +23,22 @@ implicitly clamped. Explicit commit of an invalid/incomplete draft calls
 `.on_reject` and keeps the text. Field validation can separately require a
 complete draft before the application submits it.
 
-The default parser accepts exact ASCII `YYYY-MM-DD`. Its finite prefixes such as
-`2024-` are incomplete. It does not trim whitespace, infer a current year or
-reinterpret invalid leap dates. `.parser(Fn(&str) -> DateParse)` may additionally
+The default `DateInputFormat::Iso` parser accepts exact ASCII `YYYY-MM-DD`.
+`DateInputFormat::{DayMonthYear,MonthDayYear}` provide exact `DD/MM/YYYY` and
+`MM/DD/YYYY` parsing and display. Their finite prefixes are incomplete; none of
+the formats trim whitespace, infer a current year or reinterpret invalid leap
+dates. `.format(...)` changes both the built-in parser and all program/calendar
+formatting. `.parser(Fn(&str) -> DateParse)` may additionally
 accept application spellings. `DateParse::{Empty, Incomplete, Date, Invalid}`
 contains no unbounded diagnostics; bounds are checked independently after the
 application parser. Text is limited to **64 UTF-8 bytes**, and the host uses the
 opt-in InputEdit capture budget before creating an application String. Oversize
-captures restore the accepted ISO value and emit a small TooLong diagnostic
+captures restore the accepted formatted value and emit a small TooLong diagnostic
 without calling the parser or faulting the App.
 
 Custom valid spellings remain as native text while editing. Explicit commit
-normalizes them to ISO. Controlled values are read-only inputs: callbacks propose
-civil dates, and a refused valid proposal reconciles to the accepted ISO value
+normalizes them to the selected finite format. Controlled values are read-only inputs: callbacks propose
+civil dates, and a refused valid proposal reconciles to the accepted formatted value
 at the end of the host tick. Invalid/intermediate text remains an independent
 draft. The single pending draft records its current business baseline so a
 same-tick valid edit followed by an incomplete edit does not lose that final
@@ -58,11 +61,12 @@ evidence, not a claim about actual OS IME acceptance.
 
 The ordinary theme/size/unstyled/style/class/name/enabled/focus/node_ref and
 Field APIs apply to the real editor. `.required`, `.readonly`, `.invalid` and
-`.form_name` are explicit. The Field's label, description, error, required,
+`.form_name` are explicit. `.placeholder(...)` uses the shared bounded Input
+placeholder metadata and can update without replacing the editor. The Field's label, description, error, required,
 readonly and disabled state are retained. Invalid/outside/oversize drafts attach
 a stable actual error target when the Field has no prior error target. The
 native successful value is the displayed draft; an accepted explicit commit
-uses ISO. Applications that serialize the committed model can do so explicitly
+uses the selected finite display format. Applications that serialize the committed model can do so explicitly
 through FormState and validate the independent draft status. No default HTTP
 submission or routing is installed.
 
@@ -80,7 +84,7 @@ native Dialog support is used; it is not replaced by a hidden fallback.
 - Three pure bounded draft/parser tests in `src/date_draft.rs` passed:
   prefixes/leap syntax, independent bounds/empty proposals, and a million-byte
   rejection before the custom parser. `D:/BuildCache/sapid/date-draft-rust.log`.
-- Eleven component tests in `tests/date_inputs.rs` passed: intermediate/invalid/
+- Thirteen component tests in `tests/date_inputs.rs` passed: intermediate/invalid/
   valid/empty text, bounds and rejected commit, custom spelling and callback
   order, same-tick controlled refusal, nonfault oversize rejection, composition
   echo and superseded revision, silent external recovery, readonly/disabled/
@@ -105,7 +109,8 @@ native Dialog support is used; it is not replaced by a hidden fallback.
   draft callback omission: the internal draft became Valid but the application
   could retain its previous draft diagnostic. The source emits the selected
   ISO/Valid draft before its civil value callback, with the tenth component
-  regression. The strengthened original **12/12** suite then passed against
+  regression, finite DMY/MDY formatting and parsing, and reactive placeholder
+  identity. The strengthened original **12/12** suite then passed against
   fixed FORMAT-9 Web30, errors `[]`, on the same Chromium version:
   `D:/BuildCache/sapid/date-input-browser-web30.json` and
   `date-input-browser-web30.log`. This includes an explicit published Valid

@@ -27,13 +27,15 @@ sliders use the documented Slider snapshot attributes; they do not contribute
 native browser FormData entries. Keys require at most 58 ASCII bytes, leaving
 space for independent hue/alpha semantic namespaces.
 
-The trail is a bounded passive visual: 120 HSV color samples for hue, 64 alpha
-samples over a genuine 16×4 white/gray checker for opacity. Samples are explicit
-typed boxes, so Web/SSR/Apace share the same finite representation without author
-CSS gradients or a new host paint promise. This is a sampled trail rather than a
-continuous gradient shader; pointer geometry and channel precision remain
-continuous and independent of sample count. Alpha ignores the supplied Color's
-alpha and keeps its RGB. The thumb previews the current quantized RGBA8 value.
+The trail is a bounded passive visual matching Mantine's layered rendering. Hue
+uses one continuous typed linear gradient. Alpha layers its continuous color
+gradient over one continuous neutral backing gradient; neither trail contains
+independently rasterized cells or seams. The shared `LinearGradient` declarations
+are lowered by Web, SSR and Apace. Hue uses Mantine's
+0/60/120/170/240/300/360-degree stops; alpha blends from transparent to the
+supplied opaque RGB and reverses both layers for RTL. Alpha
+ignores the supplied Color's alpha and keeps its RGB. The thumb previews the
+current quantized RGBA8 value.
 `unstyled()` retains the color data and geometry while removing theme decoration.
 
 The pure `Hsva` model validates hue 0..=360 and saturation/value/alpha 0..=1,

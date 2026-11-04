@@ -15,11 +15,13 @@ select("region")
     .on_value_change(move |proposal| selected_key.revise(|value| *value = proposal));
 ```
 
+补充展示能力保持有限且可移植：`.loading(Vary<bool>)` 同时提供内联进度内容与 busy 语义；`SelectOptionContent` 可为已声明 key 增加最长 256 字节的 leading/description/trailing 单行文字；`SelectCheckPosition::{Hidden,Left,Right}` 控制选中勾号；`.max_dropdown_height(80.0..=4096.0)` 与 `.popup_placement(AnchorPlacement)` 复用共享滚动和锚点协议。未知 key、超预算文字和非有限高度都在创建节点前拒绝。可编辑搜索不是另一个同名 Select：应用显式组合 `combobox(...)`，由它承担 search/filter/limit/loading/empty 状态。
+
 `.default_value(Option<String>)` 和 `.default_open(bool)` 提供本地状态；`.value(Vary<Option<String>>)`、`.open(Vary<bool>)` 只提出 typed 回调建议，不写业务源。选中 key、显示 label 和提交 value 独立。活动项由共享 mounted collection 管理，不会在方向键移动时自动提交。开启或关闭被控制器拒绝时，实际 expanded、active-descendant、选中样式和成功值遵从当前业务源。非法程序源先借用验证，再读取有限值；后续非法更新保留最后有效 UI。
 
 单次配置最多 1024 个 option、32 个不嵌套分组、128KiB 声明数据；key 为 1–64 字节 ASCII token，label 最多 256 字节，业务 value 最多 4096 字节。接收 iterator 只消费预算加一，不完整收集未知长度来源。选项配置通过 Rc 共享，移动和 patch 不复制完整配置。此组件挂载全部有限选项，不声称虚拟化或无限数据支持。
 
-触发器保持唯一的选项导航 Tab 站点。ArrowUp/Down 打开并跳过 disabled 项/组，Home/End 到首尾，方向导航循环，字符键使用有显式时钟与查询预算的 Typeahead；Enter/Space 提交，Escape 关闭，Tab 保留浏览器焦点导航并在失焦时关闭。触发器焦点保留，`aria-activedescendant` 表示活动项，`aria-selected` 表示选中值。Option 的真实 pointerdown 抑制默认抢焦点，移动和激活仍通过有限宿主事件。
+触发器保持唯一的选项导航 Tab 站点。ArrowUp/Down 打开并跳过 disabled 项/组，Home/End 到首尾，方向导航循环，字符键使用有显式时钟与查询预算的 Typeahead；Enter/Space 提交，Escape 关闭，Tab 保留浏览器焦点导航并在失焦时关闭。触发器焦点保留，`aria-activedescendant` 表示活动项，`aria-selected` 表示选中值。Option 及其文本/图标后代的真实 pointerdown 都抑制默认抢焦点，移动和激活仍通过有限宿主事件。Web 宿主从实际命中的后代向上解析最近的 `data-gly-option-owner`，因此点击描述或勾选不会先触发 trigger blur 并丢失提交。
 
 Listbox 使用非模态 `LayerFocus::Preserve`，不自动 focus、return 或 trap Tab。`Action::RevealOption` 只滚动最近拥有该 Option 的 Listbox，使活动项可见；不移动焦点、不滚动页面、不查询业务数据。排队后的关闭、停用和退休再次检查。共享 Action 的 target 与 scroll capability 在排队前验证，直接向 Option 发 Focus 明确拒绝。
 
@@ -31,7 +33,7 @@ active-descendant 与命名关联一样允许晚解析：初建、关闭、Struc
 
 HTML/SSR/Web 共用有限映射和 full-shape differential oracle。该批验收使用 Snapshot HTML v4 / classic envelope v2；当前 producer 随共享协议使用 HTML v13 / envelope v2。该批新增的角色/属性复用既有有限 edits。SSR 输出静态角色、selected、expanded、Layer 和关联，真实 Rust classic producer 验证异步更新及 End。classic 控制器仅应用有限 DOM 编辑，不拥有 WASM Layer 的定位/输入服务，因此 pre-WASM 的手动 popover 不因这些关联属性自动获得交互承诺。Apace 尚无本族 Choice 输入/Layer driver（独立 Dialog/Popover Layer 已另有原生支持），构造 preflight 和 direct apply 在 facet 注册前明确拒绝 combobox/option，保留成功前缀和 query watermark；未宣称原生或屏幕阅读器公告验收。
 
-已有自动证据：Sapid `select::tests` 9 项（含打开后 readonly 的 Escape、unstyled、非法 live 百万字节源恢复、重复字符循环、同一 drained host tick 连续按键）；Glory render `tests/choice.rs` 8 项（含精确事件来源与退休身份）；HTML lib 6 项（含 Choice 2 项、无 navigation 的 combobox typeahead 宿主属性及差分、既有 full-shape oracle）；UI `option_reveal_uses_scroll_capability_and_drops_closed_or_retired_targets` 1 项；SSR `choice_stream_retains_focus_preserving_intrinsics_and_live_active_descendant` 1 项；Apace `tests/choice.rs` 1 项。Sapid lib/tests 与 Web example WASM 严格 Clippy 通过。浏览器脚本为 `examples/web/select-acceptance.js`。
+已有自动证据：Sapid `select::tests` 11 项（含打开后 readonly 的 Escape、unstyled、非法 live 百万字节源恢复、重复字符循环、同一 drained host tick 连续按键、有限 option content/loading/dropdown 配置及创建前拒绝）；Glory render `tests/choice.rs` 8 项（含精确事件来源与退休身份）；HTML lib 6 项（含 Choice 2 项、无 navigation 的 combobox typeahead 宿主属性及差分、既有 full-shape oracle）；UI `option_reveal_uses_scroll_capability_and_drops_closed_or_retired_targets` 1 项；SSR `choice_stream_retains_focus_preserving_intrinsics_and_live_active_descendant` 1 项；Apace `tests/choice.rs` 1 项。Sapid lib/tests 与 Web example WASM 严格 Clippy 通过。原有浏览器脚本为 `examples/web/select-acceptance.js`；新增 `scripts/select-showcase-browser.cjs` 验证 5 个文档场景和 6 条真实交互，完整 showcase acceptance 24/24 通过。
 
 统一 Web10 中 Chromium **148.0.7778.96** 实际 **11/11**，`errors=[]`，报告 `D:/BuildCache/sapid/select-browser-web10.json`。八组主题/CSR/采用验证真实 keyboard、pointer、AX combobox/listbox/option、Field、FormData 业务值与 None、disabled/readonly、受控值与开启拒绝、字符循环、同一 JS task 的宿主按键队列、Escape/Tab、390px 和 Owner 退休；另有真实触屏、保留焦点/身份的采用及真实 Rust classic v2/v4 三组。RevealOption 验证仅 listbox scrollTop 改变、活动末项可见、焦点和页面 scrollY 保持。八张 `select-*.png` 已生成，green-dark-hydrate 已目视检查。Web9 首轮暴露的 typeahead 宿主属性缺失和连续按键按旧 DOM 分类均已在 Web10 验收修复；仅作诊断的 Web9 人工属性修补不计入证据。
 

@@ -7,7 +7,7 @@ use crate::{
 };
 use glory::render::{Direction, Orientation, RangeCommand, RangeValue, Rect, SliderValue};
 use glory::render::{
-    DragPhase, Event, EventKind, FocusMode, NodeId, Query, QueryToken, QueryValue, Role,
+    DragPhase, Event, EventKind, FocusMode, NodeId, Query, QueryToken, QueryValue, Role, Semantics,
 };
 use glory::style::{Edges, Length, Position, Style};
 use glory::ui::{Result, WeakScope, Widget};
@@ -32,30 +32,49 @@ impl RangeThumb {
         }
     }
 }
-/// The two identities and their tab order never exchange. A moving value stops
-/// at its neighbour's minimum gap; no hidden pushing or swapping occurs.
+/// The two identities and their tab order never exchange. Collision policy is
+/// explicit and always publishes one atomic pair.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum RangeCollision {
-    #[default]
     Clamp,
+    #[default]
+    Push,
+    Hold,
 }
 #[derive(Clone, Debug, PartialEq)]
 struct Snapshot {
     values: [f64; 2],
     min: f64,
     max: f64,
+    domain: [f64; 2],
     step: f64,
     page: f64,
     gap: f64,
+    max_gap: Option<f64>,
+    collision: RangeCollision,
     axis: Orientation,
     direction: Direction,
     enabled: bool,
     readonly: bool,
     names: [String; 2],
     text: [Option<String>; 2],
+    scale: f64,
+    marks: Rc<[crate::SliderMark]>,
+    restrict_to_marks: bool,
 }
 impl Snapshot {
     fn validate_numeric(&self) -> Result {
+        if !self.domain[0].is_finite()
+            || !self.domain[1].is_finite()
+            || self.domain[0] >= self.domain[1]
+            || self.domain.iter().any(|value| value.abs() > 1e12)
+            || self.domain[0] > self.min
+            || self.domain[1] < self.max
+        {
+            return Err(invalid(
+                "range slider domain must be a finite strict interval containing min and max",
+            ));
+        }
         RangeValue {
             min: self.min,
             max: self.max,
@@ -78,10 +97,45 @@ impl Snapshot {
             || !self.gap.is_finite()
             || self.gap < 0.
             || self.gap > self.max - self.min
+            || self.max_gap.is_some_and(|max_gap| {
+                !max_gap.is_finite() || max_gap < self.gap || max_gap > self.max - self.min
+            })
             || self.values[1] - self.values[0] < self.gap
+            || !self.scale.is_finite()
+            || self
+                .values
+                .iter()
+                .any(|value| (value * self.scale).abs() > 1e12)
         {
             return Err(invalid(
-                "range slider requires ordered finite values, positive steps and a valid minimum gap",
+                "range slider requires ordered finite values, positive steps, valid gaps and a finite display scale",
+            ));
+        }
+        let mut previous = None;
+        for mark in self.marks.iter() {
+            if !mark.value.is_finite()
+                || mark.value < self.min
+                || mark.value > self.max
+                || previous.is_some_and(|value| value >= mark.value)
+                || mark.label.as_ref().is_some_and(|label| {
+                    label.is_empty() || label.len() > 256 || label.contains(['\0', '\r', '\n'])
+                })
+            {
+                return Err(invalid(
+                    "range slider marks must be sorted, unique, inside the range and have optional 1..=256 byte single-line labels",
+                ));
+            }
+            previous = Some(mark.value);
+        }
+        if self.restrict_to_marks
+            && (self.marks.is_empty()
+                || self
+                    .values
+                    .iter()
+                    .any(|value| !self.marks.iter().any(|mark| mark.value == *value)))
+        {
+            return Err(invalid(
+                "range slider restricted values must equal declared marks",
             ));
         }
         Ok(())
@@ -103,6 +157,21 @@ impl Snapshot {
     }
     fn bounds(&self, thumb: RangeThumb, values: [f64; 2]) -> RangeValue {
         let index = thumb.index();
+        if self.collision != RangeCollision::Clamp {
+            return RangeValue {
+                min: if index == 0 {
+                    self.min
+                } else {
+                    self.min + self.gap
+                },
+                max: if index == 0 {
+                    self.max - self.gap
+                } else {
+                    self.max
+                },
+                value: values[index],
+            };
+        }
         let mut upper_min = values[0] + self.gap;
         if upper_min - values[0] < self.gap {
             upper_min = upper_min.next_up();
@@ -111,24 +180,58 @@ impl Snapshot {
         if values[1] - lower_max < self.gap {
             lower_max = lower_max.next_down();
         }
+        let current_gap = values[1] - values[0];
+        let max_lower = self.max_gap.map_or(self.min, |max_gap| {
+            if current_gap > max_gap {
+                values[0]
+            } else {
+                (values[1] - max_gap).max(self.min)
+            }
+        });
+        let max_upper = self.max_gap.map_or(self.max, |max_gap| {
+            if current_gap > max_gap {
+                values[1]
+            } else {
+                (values[0] + max_gap).min(self.max)
+            }
+        });
         RangeValue {
-            min: if index == 0 { self.min } else { upper_min },
-            max: if index == 0 { lower_max } else { self.max },
+            min: if index == 0 { max_lower } else { upper_min },
+            max: if index == 0 { lower_max } else { max_upper },
             value: values[index],
         }
     }
     fn metadata(&self, thumb: RangeThumb) -> SliderValue {
+        let index = thumb.index();
         SliderValue {
             range: self.bounds(thumb, self.values),
             axis: self.axis,
             direction: self.direction,
             step: self.step,
             page_step: self.page,
-            value_text: self.text[thumb.index()].clone(),
+            value_text: self.text[index].clone().or_else(|| {
+                (self.scale != 1.).then(|| (self.values[index] * self.scale).to_string())
+            }),
         }
+    }
+    fn display_value(&self, index: usize) -> String {
+        self.text[index]
+            .clone()
+            .unwrap_or_else(|| (self.values[index] * self.scale).to_string())
     }
     fn snap(&self, value: f64) -> f64 {
         let value = value.clamp(self.min, self.max);
+        if self.restrict_to_marks {
+            return self
+                .marks
+                .iter()
+                .min_by(|left, right| {
+                    (left.value - value)
+                        .abs()
+                        .total_cmp(&(right.value - value).abs())
+                })
+                .map_or(value, |mark| mark.value);
+        }
         if value == self.min || value == self.max {
             return value;
         }
@@ -149,17 +252,109 @@ impl Snapshot {
         let bounds = self.bounds(thumb, values);
         command.validate(bounds)?;
         let current = values[thumb.index()];
-        let proposed = match command {
-            RangeCommand::Decrease => current - self.step,
-            RangeCommand::Increase => current + self.step,
-            RangeCommand::PageDecrease => current - self.page,
-            RangeCommand::PageIncrease => current + self.page,
-            RangeCommand::Minimum => bounds.min,
-            RangeCommand::Maximum => bounds.max,
-            RangeCommand::Set(v) => v,
+        let proposed = if self.restrict_to_marks {
+            let mut candidates = self
+                .marks
+                .iter()
+                .filter(|mark| mark.value >= bounds.min && mark.value <= bounds.max);
+            match command {
+                RangeCommand::Decrease | RangeCommand::PageDecrease => candidates
+                    .rfind(|mark| mark.value < current)
+                    .map_or(current, |mark| mark.value),
+                RangeCommand::Increase | RangeCommand::PageIncrease => candidates
+                    .find(|mark| mark.value > current)
+                    .map_or(current, |mark| mark.value),
+                RangeCommand::Minimum => candidates.next().map_or(current, |mark| mark.value),
+                RangeCommand::Maximum => candidates.next_back().map_or(current, |mark| mark.value),
+                RangeCommand::Set(value) => candidates
+                    .min_by(|left, right| {
+                        (left.value - value)
+                            .abs()
+                            .total_cmp(&(right.value - value).abs())
+                    })
+                    .map_or(current, |mark| mark.value),
+            }
+        } else {
+            match command {
+                RangeCommand::Decrease => current - self.step,
+                RangeCommand::Increase => current + self.step,
+                RangeCommand::PageDecrease => current - self.page,
+                RangeCommand::PageIncrease => current + self.page,
+                RangeCommand::Minimum => bounds.min,
+                RangeCommand::Maximum => bounds.max,
+                RangeCommand::Set(v) => v,
+            }
         };
+        let candidate = self.snap(proposed).clamp(bounds.min, bounds.max);
+        if self.collision == RangeCollision::Hold {
+            let gap = if thumb == RangeThumb::Lower {
+                values[1] - candidate
+            } else {
+                candidate - values[0]
+            };
+            if gap < self.gap || self.max_gap.is_some_and(|maximum| gap > maximum) {
+                return Ok(values);
+            }
+        }
         let mut next = values;
-        next[thumb.index()] = self.snap(proposed).clamp(bounds.min, bounds.max);
+        next[thumb.index()] = candidate;
+        if self.collision == RangeCollision::Push {
+            let other = if thumb == RangeThumb::Lower { 1 } else { 0 };
+            let gap = next[1] - next[0];
+            let target = if gap < self.gap {
+                let mut target = if thumb == RangeThumb::Lower {
+                    candidate + self.gap
+                } else {
+                    candidate - self.gap
+                };
+                if thumb == RangeThumb::Lower && target - candidate < self.gap {
+                    target = target.next_up();
+                } else if thumb == RangeThumb::Upper && candidate - target < self.gap {
+                    target = target.next_down();
+                }
+                Some(target)
+            } else if self.max_gap.is_some_and(|maximum| gap > maximum) {
+                let maximum = self.max_gap.unwrap();
+                let mut target = if thumb == RangeThumb::Lower {
+                    candidate + maximum
+                } else {
+                    candidate - maximum
+                };
+                if thumb == RangeThumb::Lower && target - candidate > maximum {
+                    target = target.next_down();
+                } else if thumb == RangeThumb::Upper && candidate - target > maximum {
+                    target = target.next_up();
+                }
+                Some(target)
+            } else {
+                None
+            };
+            if let Some(target) = target {
+                next[other] = if self.restrict_to_marks {
+                    let candidate_mark = if thumb == RangeThumb::Lower {
+                        self.marks.iter().find(|mark| {
+                            mark.value >= target
+                                && self
+                                    .max_gap
+                                    .is_none_or(|maximum| mark.value - candidate <= maximum)
+                        })
+                    } else {
+                        self.marks.iter().rev().find(|mark| {
+                            mark.value <= target
+                                && self
+                                    .max_gap
+                                    .is_none_or(|maximum| candidate - mark.value <= maximum)
+                        })
+                    };
+                    let Some(mark) = candidate_mark else {
+                        return Ok(values);
+                    };
+                    mark.value
+                } else {
+                    target
+                };
+            }
+        }
         Ok(next)
     }
     fn point(&self, rect: Rect, x: f64, y: f64) -> Result<f64> {
@@ -175,14 +370,17 @@ impl Snapshot {
         if self.axis == Orientation::Vertical || self.direction == Direction::Rtl {
             fraction = 1. - fraction
         };
-        Ok(self.snap(self.min + (self.max - self.min) * fraction))
+        Ok(self.snap(self.domain[0] + (self.domain[1] - self.domain[0]) * fraction))
     }
     fn same_domain(&self, other: &Self) -> bool {
         self.min == other.min
             && self.max == other.max
+            && self.domain == other.domain
             && self.step == other.step
             && self.page == other.page
             && self.gap == other.gap
+            && self.max_gap == other.max_gap
+            && self.collision == other.collision
             && self.axis == other.axis
             && self.direction == other.direction
             && self.enabled == other.enabled
@@ -197,15 +395,21 @@ mod model_tests {
             values: [25., 75.],
             min: 0.,
             max: 100.,
+            domain: [0., 100.],
             step: 1.,
             page: 10.,
             gap: 10.,
+            max_gap: None,
+            collision: RangeCollision::Clamp,
             axis: Orientation::Horizontal,
             direction: Direction::Ltr,
             enabled: true,
             readonly: false,
             names: ["Minimum".into(), "Maximum".into()],
             text: [None, None],
+            scale: 1.,
+            marks: Rc::from([]),
+            restrict_to_marks: false,
         }
     }
     #[test]
@@ -261,6 +465,26 @@ mod model_tests {
             state.values = values;
             assert!(state.validate().is_err());
         }
+        state.values = [25., 75.];
+        state.domain = [0., 200.];
+        state.validate().unwrap();
+        assert_eq!(
+            state
+                .point(
+                    Rect {
+                        x: 10.,
+                        y: 0.,
+                        width: 200.,
+                        height: 20.
+                    },
+                    110.,
+                    10.
+                )
+                .unwrap(),
+            100.
+        );
+        state.domain = [10., 90.];
+        assert!(state.validate().is_err());
     }
 }
 
@@ -290,6 +514,7 @@ struct Controller {
     expected: Cell<Option<[f64; 2]>>,
     confirmed: Cell<Option<([f64; 2], Option<u64>)>>,
     drag: RefCell<Option<Drag>>,
+    dragging: Cage<Option<RangeThumb>>,
     active: Cell<Option<u64>>,
     pending: Cell<Option<QueryToken>>,
     next: Cell<u64>,
@@ -310,6 +535,7 @@ impl Controller {
     fn cancel(&self) {
         self.active.set(None);
         self.drag.borrow_mut().take();
+        let _ = self.dragging.try_revise(|thumb| *thumb = None);
         if let Some(token) = self.pending.take()
             && let Some(scope) = self.weak.upgrade()
             && let Err(error) = scope.cancel_request(token)
@@ -454,7 +680,8 @@ impl Controller {
             self.publish(ticket, work.thumb, work.latest, work.phase, rect)?
         }
         if work.phase == DragPhase::Drop && self.active.get() == Some(ticket) {
-            self.active.set(None)
+            self.active.set(None);
+            let _ = self.dragging.try_revise(|thumb| *thumb = None);
         }
         Ok(())
     }
@@ -523,6 +750,7 @@ impl Controller {
                 .ok_or_else(|| invalid("range slider gesture ticket exhausted"))?;
             self.next.set(ticket);
             self.active.set(Some(ticket));
+            self.dragging.try_revise(|active| *active = Some(thumb))?;
             *self.drag.borrow_mut() = Some(Drag {
                 ticket,
                 thumb,
@@ -553,9 +781,11 @@ pub struct RangeSlider {
     value: Value<[f64; 2]>,
     min: Vary<f64>,
     max: Vary<f64>,
+    domain: Option<Vary<[f64; 2]>>,
     step: Vary<f64>,
     page: Option<Vary<f64>>,
     gap: Vary<f64>,
+    max_gap: Option<Vary<f64>>,
     names: Vary<[String; 2]>,
     text: Vary<[Option<String>; 2]>,
     axis: Orientation,
@@ -570,6 +800,12 @@ pub struct RangeSlider {
     thumbs: [Option<Cage<Option<NodeId>>>; 2],
     changed: Option<Box<dyn FnMut([f64; 2])>>,
     committed: Option<Box<dyn FnMut([f64; 2])>>,
+    marks: Vec<crate::SliderMark>,
+    restrict_to_marks: bool,
+    inverted: bool,
+    show_value_labels: bool,
+    value_labels_always_on: bool,
+    scale: f64,
 }
 pub fn range_slider(key: impl Into<String>) -> RangeSlider {
     RangeSlider {
@@ -581,14 +817,16 @@ pub fn range_slider(key: impl Into<String>) -> RangeSlider {
         },
         min: 0.0.into(),
         max: 100.0.into(),
+        domain: None,
         step: 1.0.into(),
         page: None,
         gap: 0.0.into(),
+        max_gap: None,
         names: ["Minimum".into(), "Maximum".into()].into(),
         text: [None, None].into(),
         axis: Orientation::Horizontal,
         direction: Direction::Ltr,
-        collision: RangeCollision::Clamp,
+        collision: RangeCollision::Push,
         field: None,
         required: false.into(),
         readonly: false.into(),
@@ -598,6 +836,12 @@ pub fn range_slider(key: impl Into<String>) -> RangeSlider {
         thumbs: [None, None],
         changed: None,
         committed: None,
+        marks: Vec::new(),
+        restrict_to_marks: false,
+        inverted: false,
+        show_value_labels: true,
+        value_labels_always_on: false,
+        scale: 1.,
     }
 }
 macro_rules! source_method {
@@ -659,6 +903,38 @@ impl RangeSlider {
         self.page = Some(value.into());
         self
     }
+    pub fn domain(mut self, value: impl Into<Vary<[f64; 2]>>) -> Self {
+        self.domain = Some(value.into());
+        self
+    }
+    pub fn marks(mut self, values: impl IntoIterator<Item = crate::SliderMark>) -> Self {
+        self.marks = values.into_iter().collect();
+        self
+    }
+    pub fn restrict_to_marks(mut self, value: bool) -> Self {
+        self.restrict_to_marks = value;
+        self
+    }
+    pub fn maximum_gap(mut self, value: impl Into<Vary<f64>>) -> Self {
+        self.max_gap = Some(value.into());
+        self
+    }
+    pub fn inverted(mut self, value: bool) -> Self {
+        self.inverted = value;
+        self
+    }
+    pub fn show_value_labels(mut self, value: bool) -> Self {
+        self.show_value_labels = value;
+        self
+    }
+    pub fn value_labels_always_on(mut self, value: bool) -> Self {
+        self.value_labels_always_on = value;
+        self
+    }
+    pub fn scale(mut self, factor: f64) -> Self {
+        self.scale = factor;
+        self
+    }
     pub fn orientation(mut self, value: Orientation) -> Self {
         self.axis = value;
         self
@@ -669,6 +945,14 @@ impl RangeSlider {
     }
     pub fn collision(mut self, value: RangeCollision) -> Self {
         self.collision = value;
+        self
+    }
+    pub fn push_on_overlap(mut self, value: bool) -> Self {
+        self.collision = if value {
+            RangeCollision::Push
+        } else {
+            RangeCollision::Hold
+        };
         self
     }
     pub fn field(mut self, value: FieldControl) -> Self {
@@ -718,9 +1002,7 @@ impl Widget for RangeSlider {
             }
             self.common.unstyled |= field.unstyled;
         }
-        match self.collision {
-            RangeCollision::Clamp => (),
-        }
+        let collision = self.collision;
         let local = self.value.source.is_none();
         let control = std::mem::take(&mut self.value).mount(scope);
         let enabled = self.field.as_ref().map_or_else(
@@ -738,32 +1020,53 @@ impl Widget for RangeSlider {
         let source = control.source.clone();
         let min = self.min.clone();
         let max = self.max.clone();
+        let domain = self.domain.clone();
         let step = self.step.clone();
         let page = self.page.clone();
         let gap = self.gap.clone();
+        let max_gap = self.max_gap.clone();
         let axis = self.axis;
         let direction = self.direction;
         let names = std::mem::replace(&mut self.names, ["Minimum".into(), "Maximum".into()].into());
         let text = std::mem::replace(&mut self.text, [None, None].into());
+        let scale = self.scale;
         let field_metadata = metadata.clone();
+        if self.marks.len() > 64 {
+            return Err(invalid("range slider supports at most 64 marks"));
+        }
+        let marks: Rc<[crate::SliderMark]> = std::mem::take(&mut self.marks).into();
+        let read_marks = marks.clone();
+        let restrict_to_marks = self.restrict_to_marks;
         let read = move || -> Result<Snapshot> {
             let step = step.try_get()?;
             let page = page
                 .as_ref()
                 .map_or(Ok((step * 10.).min(1e12)), Vary::try_get)?;
+            let min = min.try_get()?;
+            let max = max.try_get()?;
             let mut state = Snapshot {
                 values: source.try_get()?,
-                min: min.try_get()?,
-                max: max.try_get()?,
+                min,
+                max,
+                domain: domain
+                    .as_ref()
+                    .map(Vary::try_get)
+                    .transpose()?
+                    .unwrap_or([min, max]),
                 step,
                 page,
                 gap: gap.try_get()?,
+                max_gap: max_gap.as_ref().map(Vary::try_get).transpose()?,
+                collision,
                 axis,
                 direction,
                 enabled: enabled.try_get()?,
                 readonly: field_metadata.try_with(|s| s.as_ref().is_some_and(|s| s.readonly))?,
                 names: [String::new(), String::new()],
                 text: [None, None],
+                scale,
+                marks: read_marks.clone(),
+                restrict_to_marks,
             };
             state.validate_numeric()?;
             state.names = names.try_with(|names| {
@@ -816,6 +1119,7 @@ impl Widget for RangeSlider {
             expected: Cell::new(None),
             confirmed: Cell::new(None),
             drag: RefCell::new(None),
+            dragging: scope.cage(None),
             active: Cell::new(None),
             pending: Cell::new(None),
             next: Cell::new(0),
@@ -858,14 +1162,25 @@ impl Widget for RangeSlider {
         };
         let horizontal = axis == Orientation::Horizontal;
         let default_width = Length::Px(if horizontal { 240. } else { size });
-        let default_height = Length::Px(if horizontal { size } else { 240. });
+        let has_mark_labels = marks
+            .iter()
+            .any(|mark| !mark.hidden && mark.label.is_some());
+        let default_height = Length::Px(if horizontal {
+            size + if has_mark_labels { 24. } else { 0. }
+        } else {
+            240.
+        });
         let (classes, styles) = self.common.appearance(
             scope,
             "sapid-range-slider",
             Style::new()
                 .position(Position::Relative)
                 .width(Length::Px(if horizontal { 240. } else { size }))
-                .height(Length::Px(if horizontal { size } else { 240. })),
+                .height(Length::Px(if horizontal {
+                    size + if has_mark_labels { 24. } else { 0. }
+                } else {
+                    240.
+                })),
         );
         let root_metadata = metadata.clone();
         let mut root = glory::ui::view()
@@ -918,7 +1233,11 @@ impl Widget for RangeSlider {
         let accent = self.common.theme.accent;
         let border = self.common.theme.border;
         let surface = self.common.theme.surface;
+        let foreground = self.common.theme.foreground;
         let unstyled = self.common.unstyled;
+        let inverted = self.inverted;
+        let show_value_labels = self.show_value_labels;
+        let value_labels_always_on = self.value_labels_always_on;
         for filled in [false, true] {
             glory::ui::view()
                 .class(if filled {
@@ -928,9 +1247,9 @@ impl Widget for RangeSlider {
                 })
                 .style(scope.bond(move || {
                     accepted.with(|state| {
-                        let fractions = state
-                            .values
-                            .map(|v| (v - state.min) / (state.max - state.min) * 100.);
+                        let fractions = state.values.map(|v| {
+                            (v - state.domain[0]) / (state.domain[1] - state.domain[0]) * 100.
+                        });
                         let start = if filled { fractions[0] } else { 0. };
                         let length = if filled {
                             fractions[1] - fractions[0]
@@ -954,7 +1273,8 @@ impl Widget for RangeSlider {
                             style.bottom = Some(Length::Percent(start));
                         }
                         if !unstyled {
-                            style.background = Some(if filled { accent } else { border });
+                            style.background =
+                                Some(if filled ^ inverted { accent } else { border });
                             style.radius = Some(2.);
                         }
                         style
@@ -962,12 +1282,140 @@ impl Widget for RangeSlider {
                 }))
                 .show_in(&parent)?;
         }
+        let mark_label_color = self.common.theme.muted;
+        for mark in marks.iter().cloned() {
+            if mark.hidden {
+                continue;
+            }
+            let marker_state = accepted;
+            glory::ui::view()
+                .class("sapid-range-slider-mark")
+                .style(scope.bond(move || {
+                    let state = marker_state.get();
+                    let fraction = ((mark.value - state.domain[0])
+                        / (state.domain[1] - state.domain[0])
+                        * 100.)
+                        .clamp(0., 100.);
+                    let mut style = Style::new()
+                        .position(Position::Absolute)
+                        .width(Length::Px(4.))
+                        .height(Length::Px(4.));
+                    if horizontal {
+                        style.left = Some(Length::Percent(if direction == Direction::Rtl {
+                            100. - fraction
+                        } else {
+                            fraction
+                        }));
+                        style.top = Some(Length::Px(size / 2. - 2.));
+                        style.margin = Some(Edges {
+                            left: -2.,
+                            top: 0.,
+                            right: 0.,
+                            bottom: 0.,
+                        });
+                    } else {
+                        style.bottom = Some(Length::Percent(fraction));
+                        style.left = Some(Length::Px(size / 2. - 2.));
+                    }
+                    if !unstyled {
+                        style.background = Some(border);
+                        style.radius = Some(2.);
+                    }
+                    style
+                }))
+                .show_in(&parent)?;
+            if let Some(label) = mark.label {
+                let label_state = accepted;
+                glory::ui::text()
+                    .class("sapid-range-slider-mark-label")
+                    .content(label)
+                    .style(scope.bond(move || {
+                        let state = label_state.get();
+                        let fraction = ((mark.value - state.domain[0])
+                            / (state.domain[1] - state.domain[0])
+                            * 100.)
+                            .clamp(0., 100.);
+                        let mut style = Style::new().position(Position::Absolute);
+                        if horizontal {
+                            style.left = Some(Length::Percent(if direction == Direction::Rtl {
+                                100. - fraction
+                            } else {
+                                fraction
+                            }));
+                            style.top = Some(Length::Px(size));
+                        } else {
+                            style.bottom = Some(Length::Percent(fraction));
+                            style.left = Some(Length::Px(size));
+                        }
+                        style.font_size = Some(11.);
+                        style.color = Some(mark_label_color);
+                        style
+                    }))
+                    .show_in(&parent)?;
+            }
+        }
         for thumb in [RangeThumb::Lower, RangeThumb::Upper] {
             let index = thumb.index();
             let meta = metadata.clone();
             let id = ids[index].clone();
             let focused = scope.cage(false);
             let focus_ring = self.common.theme.focus_ring;
+            if show_value_labels {
+                let label_state = accepted;
+                let dragging = state.dragging;
+                let label_content =
+                    scope.bond(move || label_state.with(|state| state.display_value(index)));
+                glory::ui::view()
+                    .class("sapid-range-slider-value-label")
+                    .semantics(Some(Box::new(Semantics {
+                        inert: true,
+                        ..Default::default()
+                    })))
+                    .style(scope.bond(move || {
+                        let state = label_state.get();
+                        let mut fraction = (state.values[index] - state.domain[0])
+                            / (state.domain[1] - state.domain[0])
+                            * 100.;
+                        if horizontal && direction == Direction::Rtl {
+                            fraction = 100. - fraction
+                        }
+                        let mut style = Style::new().position(Position::Absolute);
+                        if horizontal {
+                            style.left = Some(Length::Percent(fraction));
+                            style.top = Some(Length::Px(-18.));
+                            style.margin = Some(Edges {
+                                left: -18.,
+                                top: 0.,
+                                right: 0.,
+                                bottom: 0.,
+                            });
+                        } else {
+                            style.bottom = Some(Length::Percent(fraction));
+                            style.left = Some(Length::Px(size + 8.));
+                        }
+                        style.padding = Some(Edges {
+                            left: 6.,
+                            top: 2.,
+                            right: 6.,
+                            bottom: 2.,
+                        });
+                        style.font_size = Some(11.);
+                        style.opacity =
+                            Some(if value_labels_always_on || dragging.get() == Some(thumb) {
+                                1.
+                            } else {
+                                0.
+                            });
+                        if !unstyled {
+                            style.background = Some(surface);
+                            style.color = Some(foreground);
+                            style.radius = Some(4.);
+                        }
+                        style
+                    }))
+                    .fill(glory::ui::text().content(label_content))
+                    .show_in(&parent)?;
+            }
             let mut widget = glory::ui::view()
                 .role(Role::Slider)
                 .node_ref(thumbs[index])
@@ -1008,7 +1456,8 @@ impl Widget for RangeSlider {
                 }))
                 .style(scope.bond(move || {
                     accepted.with(|s| {
-                        let mut fraction = (s.values[index] - s.min) / (s.max - s.min) * 100.;
+                        let mut fraction =
+                            (s.values[index] - s.domain[0]) / (s.domain[1] - s.domain[0]) * 100.;
                         if horizontal && direction == Direction::Rtl {
                             fraction = 100. - fraction
                         }

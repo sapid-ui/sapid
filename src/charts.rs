@@ -7,7 +7,8 @@ pub use crate::chart_model::{
 };
 pub use crate::chart_scene::{
     CartesianKind, CartesianOptions, CartesianScene, ChartFrame, ChartLabel, ChartLocation,
-    ChartPath, ChartTheme, ChartTick,
+    ChartPath, ChartReferenceArea, ChartReferenceAxis, ChartReferenceDot, ChartReferenceLabel,
+    ChartReferenceLine, ChartTheme, ChartTick, MAX_CHART_REFERENCES,
 };
 pub use crate::chart_widget::{
     Chart, ChartPointDetails, ChartSelection, area_chart, bar_chart, chart, composite_chart,

@@ -109,7 +109,8 @@ fn button(app: &App, label: &str) -> NodeId {
     let mut pending = std::collections::VecDeque::from(tree.roots().to_vec());
     while let Some(id) = pending.pop_front() {
         let node = tree.node(id).unwrap();
-        if matches!(node.descriptor.view().props,glory::render::Props::Button(p)if p.label==label) {
+        if matches!(node.descriptor.view().props,glory::render::Props::Button(p)if p.label==label || node.descriptor.view().name.as_deref() == Some(label))
+        {
             return id;
         }
         pending.extend(&node.children)

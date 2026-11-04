@@ -1,6 +1,6 @@
 use glory::prelude::*;
 use glory::render::{NodeId, Props, TextKind};
-use glory::style::{Color, Display, Length, Overflow, TextOverflow, WhiteSpace};
+use glory::style::{Color, Display, Length, LinearGradient, Overflow, TextOverflow, WhiteSpace};
 use sapid::{TextVariant, Theme};
 fn find(app: &App, class: &str) -> NodeId {
     let tree = app.tree();
@@ -145,6 +145,52 @@ fn truncation_is_typed_keeps_full_text_and_false_omits_native_unsupported_proper
             .text_overflow,
         None
     );
+}
+
+#[test]
+fn multiline_clamp_and_gradient_are_typed_and_preserve_full_semantic_text() {
+    let gradient = LinearGradient {
+        angle: 45.0,
+        stops: vec![Color(20, 110, 240, 255), Color(170, 40, 220, 255)],
+    };
+    let app = App::memory();
+    app.mount(
+        sapid::text()
+            .class("clamped-gradient")
+            .line_clamp(3)
+            .gradient(gradient.clone())
+            .content("The complete paragraph remains available to semantics."),
+    )
+    .unwrap();
+    let tree = app.tree();
+    let node = tree
+        .node(find(&app, "clamped-gradient"))
+        .unwrap()
+        .descriptor
+        .view();
+    assert_eq!(node.style.line_clamp, Some(3));
+    assert_eq!(node.style.text_gradient, Some(gradient));
+    assert!(
+        matches!(&node.props, Props::Text(value) if value.content.contains("complete paragraph"))
+    );
+
+    let html = glory::ssr::render(
+        sapid::title(2)
+            .line_clamp(2)
+            .gradient(LinearGradient {
+                angle: 90.0,
+                stops: vec![Color(255, 0, 0, 255), Color(0, 0, 255, 255)],
+            })
+            .content("A long gradient heading"),
+    )
+    .unwrap();
+    assert!(html.contains("-webkit-line-clamp:2"));
+    assert!(html.contains("background-clip:text"));
+    assert!(html.contains("linear-gradient(90deg"));
+    assert!(html.contains("A long gradient heading"));
+
+    assert!(App::memory().mount(sapid::text().line_clamp(0)).is_err());
+    assert!(App::memory().mount(sapid::text().line_clamp(257)).is_err());
 }
 #[test]
 fn unstyled_removes_theme_but_keeps_explicit_text_and_truncation_declarations() {

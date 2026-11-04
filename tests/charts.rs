@@ -296,3 +296,33 @@ fn chart_tooltip_uses_real_description_relations_and_no_point_disables_the_relat
             .is_none()
     );
 }
+
+#[test]
+fn reference_area_line_dot_and_labels_are_real_finite_chart_layers() {
+    let app = App::memory();
+    app.mount(
+        line_chart("references")
+            .data(data())
+            .reference_areas([ChartReferenceArea::new()
+                .categories("head", "feb")
+                .label("Reporting window")])
+            .reference_lines([ChartReferenceLine::value(1.).label("Target")])
+            .reference_dots([ChartReferenceDot::new("head", 2.).label("Peak")]),
+    )
+    .unwrap();
+    assert!(text(&app).contains("Reporting window"));
+    assert!(text(&app).contains("Target"));
+    assert!(text(&app).contains("Peak"));
+    assert_eq!(count(&app, "sapid-chart-reference-label"), 3);
+    assert!(count(&app, "sapid-chart-layer") >= 5);
+
+    let app = App::memory();
+    assert!(
+        app.mount(
+            line_chart("bad-reference")
+                .data(data())
+                .reference_dots([ChartReferenceDot::new("missing", 1.)]),
+        )
+        .is_err()
+    );
+}

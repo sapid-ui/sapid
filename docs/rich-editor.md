@@ -22,7 +22,15 @@ source emits no mutation. External source changes are silent and clear undo/redo
 `readonly` preserves focus and selection; `enabled(false)`, ancestor Fieldset
 and inert policy prevent editing. `toolbar(false)` removes the toolbar. The four
 themes, size, style/class and unstyled options use the ordinary Sapid contract;
-unstyled retains required editor geometry.
+unstyled retains required editor geometry. `placeholder(...)` displays passive,
+non-interactive guidance only while the accepted document is empty. `subtle(true)`
+uses the quieter shell and subtle toolbar controls without changing the document,
+selection, history or acceptance contract.
+
+The public showcase uses the component directly in six sections: ordinary usage,
+subtle variant, controlled document/value output, placeholder behavior, content
+without a toolbar, and readonly/disabled states. The separate protocol workbench
+remains an engineering fixture and is not used as the public component example.
 
 `controller_ref` exposes an Owner-bound `EditorController`. `format` and `insert`
 query the actual host selection; only one current query is retained and a newer
@@ -96,8 +104,11 @@ Chromium CDP composition tests establish only the recorded Chromium host scope.
 - Native explicit-rejection 1 test and strict Clippy: `rich-native-tests.log` and
   `rich-native-final-clippy.log`; no native editing is claimed.
 - Shared render/UI/HTML/SSR allfeatures/alltargets strict: `rich-shared-final-clippy.log`.
-- Sapid controller/component 6 tests cover accepted history, controlled refusal,
-  source silence, composition, finite budgets, formatting and four-theme SSR: `rich-component-tests-final.log`.
+- Sapid controller/component 7 tests cover accepted history, controlled refusal,
+  source silence, composition, finite budgets, formatting, placeholder/subtle and
+  four-theme SSR: `D:/BuildCache/sapid/rich-editor-component-tests.log`.
+- Focused public showcase browser acceptance covers all six documented sections:
+  `D:/BuildCache/sapid/rich-editor-showcase-browser.json`.
 - Classic Rust producer 1: `rich-stream-tests.log`; actual Chromium 148 classic
   11 cases: `rich-editor-stream-browser-rich-classic41.json`. This independent
   artifact uses the immutable Web41 classic script and a separately generated

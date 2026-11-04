@@ -82,6 +82,49 @@ fn slot(app: &App, label: &str) -> NodeId {
         .unwrap_or_else(|| panic!("missing {label}"))
 }
 #[test]
+fn timeline_presentation_options_hide_shell_regions_and_scale_exact_slot_geometry() {
+    let app = App::memory();
+    app.mount(
+        day_view("presentation", data(1))
+            .with_header(false)
+            .with_all_day(false)
+            .slot_height(48.),
+    )
+    .unwrap();
+    assert!(class(&app, "sapid-schedule-header").is_empty());
+    assert!(class(&app, "sapid-agenda-event").is_empty());
+    let first = class(&app, "sapid-schedule-slot")[0];
+    assert_eq!(
+        app.tree()
+            .node(first)
+            .unwrap()
+            .descriptor
+            .view()
+            .style
+            .height,
+        Some(glory::style::Length::Px(48.))
+    );
+    let timeline = class(&app, "sapid-schedule-timeline")[0];
+    assert_eq!(
+        app.tree()
+            .node(timeline)
+            .unwrap()
+            .descriptor
+            .view()
+            .style
+            .height,
+        Some(glory::style::Length::Px(992.))
+    );
+
+    let rejected = App::memory();
+    assert!(
+        rejected
+            .mount(day_view("bad-height", data(1)).slot_height(19.))
+            .is_err()
+    );
+    assert!(rejected.tree().roots().is_empty());
+}
+#[test]
 fn week_has_real_grid_slot_metadata_and_separate_exact_overlap_lanes() {
     let app = App::memory();
     let grid = app.scope().cage(None);

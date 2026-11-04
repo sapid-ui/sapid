@@ -5,13 +5,27 @@ top-layer driver are implemented and tested. Drawer sheet, Menu/Tooltip/Listbox
 layers and ContextPoint remain separate native capability boundaries.
 
 `popover(key).placement(AnchorPlacement { side, align, gap, viewport_padding,
-flip, shift })` uses four physical sides and Start/Center/End alignment. Defaults
+flip, shift, match_width, arrow })` uses four physical sides and Start/Center/End alignment. Defaults
 are Bottom/Start, gap 6 CSS px, viewport padding 8 CSS px, flip and shift enabled.
 Gap and padding each accept finite 0..=4096 values. Flip chooses the opposite
 side only when it has less viewport overflow; shift independently clamps both
 axes. Oversized panels stay at the viewport's padded starting edge. Directional
 menus retain their explicit physical side and gap. The old `PopoverAlign` and
 four `LayerPlacement::Anchor*` variants have been removed, with no aliases.
+
+`PopoverWidth::{Auto,Target,Default,Px}` is the finite panel sizing contract.
+Target width is measured from the live anchor border box by Web or Apace before
+the panel is placed; it is not approximated by a component CSS percentage.
+`offset` updates the bounded placement gap. `AnchorArrow` has bounded size,
+radius and offset plus Center/Side placement. The host records the actual side
+after flip/shift and positions the arrow against that result. HTML format v15
+adds the width and arrow fields independently so hydration rejects an older or
+mismatched shape before controller registration.
+
+The focused showcase contains separate basic, target-width, arrow/offset and
+controlled-dismiss examples. `scripts/popover-showcase-browser.cjs` verifies
+the real trigger/panel geometry, resolved arrow side and controlled outside/
+Escape behavior in Chromium; it is part of the combined acceptance entry point.
 
 `trigger_content(factory)` and `close_content(factory)` supply visual children
 inside the actual Buttons. `label` and `close_label` remain their accessible

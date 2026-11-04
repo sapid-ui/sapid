@@ -1,11 +1,12 @@
 //! Actual semantic images with host-owned request completion and bounded retry.
 use crate::appearance::{Common, configure, observe};
-use glory::render::{Event, EventKind, FocusMode, ImageStatus, NodeId};
+use glory::render::{Event, EventKind, FocusMode, ImageStatus, NodeId, ResponsiveImage};
 use glory::style::{Display, Length, Limit, ObjectFit, Overflow, Position, Style};
 use glory::ui::{IntoChildren, Result, Widget};
 use glory::{Cage, Scope, Vary};
 
 pub const MAX_IMAGE_SOURCE_BYTES: usize = 4096;
+pub use glory::render::{ImageCandidate, ImageLoading, ImageSizeHint, ImageSlotSize};
 pub(crate) fn validate_source(source: &str) -> Result {
     if source.trim().is_empty() || source.len() > MAX_IMAGE_SOURCE_BYTES {
         return Err(glory::render::Error::InvalidProps(
@@ -28,6 +29,8 @@ pub struct Image {
     alternative: Option<Vary<String>>,
     decorative: bool,
     fallback: Option<String>,
+    responsive: ResponsiveImage,
+    loading: ImageLoading,
     fit: Option<ObjectFit>,
     width: Option<Length>,
     height: Option<Length>,
@@ -41,6 +44,8 @@ pub fn image(source: impl Into<Vary<String>>) -> Image {
         alternative: None,
         decorative: false,
         fallback: None,
+        responsive: ResponsiveImage::default(),
+        loading: ImageLoading::Auto,
         fit: None,
         width: None,
         height: None,
@@ -101,6 +106,20 @@ impl Image {
         self.fallback = Some(value.into());
         self
     }
+    /// Adds ordered width-descriptor candidates for host source selection.
+    pub fn srcset(mut self, value: impl IntoIterator<Item = ImageCandidate>) -> Self {
+        self.responsive.candidates = value.into_iter().collect();
+        self
+    }
+    /// Adds finite viewport size hints. The last entry must be an unconditional fallback.
+    pub fn sizes(mut self, value: impl IntoIterator<Item = ImageSizeHint>) -> Self {
+        self.responsive.sizes = value.into_iter().collect();
+        self
+    }
+    pub fn loading(mut self, value: ImageLoading) -> Self {
+        self.loading = value;
+        self
+    }
     pub fn fit(mut self, value: ObjectFit) -> Self {
         self.fit = Some(value);
         self
@@ -137,6 +156,15 @@ impl Widget for Image {
             .try_with(|source| validate_source(source).map(|()| source.clone()))??;
         if let Some(fallback) = &self.fallback {
             validate_source(fallback)?;
+        }
+        self.responsive.validate()?;
+        if !self.responsive.candidates.is_empty()
+            && (self.source.is_reactive() || self.fallback.is_some())
+        {
+            return Err(glory::render::Error::InvalidProps(
+                "responsive image candidates require a static primary source and no fallback",
+            )
+            .into());
         }
         if !self.decorative && self.alternative.is_none() {
             return Err(glory::render::Error::InvalidProps(
@@ -223,7 +251,9 @@ impl Widget for Image {
             merged().into()
         };
         let mut inner = configure!(self.common, glory::ui::image(), scope, "sapid-image", base)
-            .source(initial.current);
+            .source(initial.current)
+            .responsive(self.responsive.clone())
+            .loading(self.loading);
         inner = if self.decorative {
             inner.decorative()
         } else {
@@ -301,6 +331,18 @@ impl BackgroundImage {
     }
     pub fn fallback_src(mut self, value: impl Into<String>) -> Self {
         self.image = self.image.take().map(|image| image.fallback_src(value));
+        self
+    }
+    pub fn srcset(mut self, value: impl IntoIterator<Item = ImageCandidate>) -> Self {
+        self.image = self.image.take().map(|image| image.srcset(value));
+        self
+    }
+    pub fn sizes(mut self, value: impl IntoIterator<Item = ImageSizeHint>) -> Self {
+        self.image = self.image.take().map(|image| image.sizes(value));
+        self
+    }
+    pub fn loading(mut self, value: ImageLoading) -> Self {
+        self.image = self.image.take().map(|image| image.loading(value));
         self
     }
     pub fn fit(mut self, value: ObjectFit) -> Self {

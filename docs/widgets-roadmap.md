@@ -23,7 +23,7 @@ Switch、RadioGroup/SegmentedControl、动作按钮、展示表面、NumberForma
 已增加实际宿主证据；Menu、Stepper、辅助文本、图像、提示层、原生选择和应用框架亦已验收，
 新批次的完成状态及宿主边界以清单和逐组件证据为准。
 DataTable、Tree/FileTree、TreeSelect 和 Cascader 已按有限契约完成实现和宿主验收；
-图表、文件、编辑器、日程和聊天模块的当前完成状态以清单及对应证据为准。
+图表、文件、编辑器和日程模块的当前完成状态以清单及对应证据为准。
 
 名称需要按语义对照：当前 Dialog 对应 Mantine Modal / shadcn Dialog；Mantine Dialog
 是另外的非模态提示需求，单列 FloatingDialog。Sheet 已在 Drawer 上增加有限手势与 snap
@@ -37,16 +37,16 @@ Dialog/Popover 已验收 Web/SSR/hydration、Document 跨 App 栈、完整有限
 
 ## 目标边界
 
-1. 覆盖两套官方目录中可见的核心 widgets，并纳入 Mantine 日期/图表/日程/编辑器等扩展。
-   shadcn 新增的消息、问卷、Trace 和 AI Elements 也保留条目，作为可选展示模块。
-2. 同义名称和紧密变体共享实现，但清单保留每个来源 URL。149 项工作不是 149 个独立 widgets；
+1. 覆盖两套官方目录中可见的通用核心 widgets，并纳入 Mantine 日期/图表/日程/编辑器等扩展；
+   对话、AI 工作流和消息展示不属于通用 widget 范围。
+2. 同义名称和紧密变体共享实现，但清单保留每个来源 URL。137 项工作不是 137 个独立 widgets；
    其中包含已有组件补强、公共基础设施和多个变体的共同实现。每个变体都要有自己的验收证据。
 3. 不照搬 React/JSX API、hooks、JS 库依赖和代码分发 CLI。继续使用手写 Rust builder、
    Cage/Bond/Vary、Glory Widget 与现有所有权/宿主边界；第三方实现不复制进仓库。
 4. 社区 Registry、页面 Blocks、完整业务应用和任意第三方插件不是有限可穷尽的 widgets 清单。
    React 表单库绑定不移植，但对应表单能力列入 P1；主题/provider/方向/locale 是基础设施。
-5. 默认 Sapid 保持轻依赖。日期、图表、文件、富文本、日程和聊天组件使用可选模块或独立 crate。
-   当前是 Sapid 的 `dates/charts/files/editor/chat/code/json` 可选 features，日程随 `dates`；
+5. 默认 Sapid 保持轻依赖。日期、图表、文件、富文本和日程组件使用可选模块或独立 crate。
+   当前是 Sapid 的 `dates/charts/files/editor/code/json` 可选 features，日程随 `dates`；
    尚未拆为同名独立 crate，也不把可选宿主依赖带入默认组件图。
    图表需要可访问数据表示和跨宿主绘图能力；富文本需要独立文档/编辑协议，不能空壳交付。
 6. 实现默认样式、主题 token、尺寸/状态和 unstyled 组合能力；不把黑白原生控件包装当完整设计系统。
@@ -54,7 +54,7 @@ Dialog/Popover 已验收 Web/SSR/hydration、Document 跨 App 栈、完整有限
 
 ## 执行方式与依赖
 
-按下表 P1 → P13 推进，阶段内按任务编号逐个交付。P0 是贯穿所有阶段的补强队列；
+按下表 P1 → P12 推进，阶段内按任务编号逐个交付。P0 是贯穿所有阶段的补强队列；
 依赖 P0 表示先完成当前组件必需的基础，不要求先完成全部原生浮层/动画等工程才开始 Field。
 每批实现 1–3 个有共同依赖的组件；复杂项目先把该项拆为可验收子任务，再编码。
 未完成当前批的状态/键盘/宿主测试前，不用新增空 builder 的数量代表进展。
@@ -123,12 +123,12 @@ S= shadcn 主目录；D=日期；C=图表；T=日程；H=代码；X=其他 Manti
 | P0-06 | Tabs | 已完成并记录证据 | 动态稳定key成员与短Owner、复用trigger/panel工厂、受控缺失选择保留及本地修复、LTR/RTL roving和自动/手动激活已补齐。10模型及旧30回归、四主题原生真实几何/身份/焦点与Chromium148实际9项通过；受拒绝Focus不会吞掉后续用户激活。 | [M:Tabs](https://mantine.dev/core/tabs/)、[S:Tabs](https://ui.shadcn.com/docs/components/base/tabs) |
 | P0-07 | Dialog | 已完成并记录证据 | Dialog原生独立top layer布局/命中/paint、Manage焦点/AX、嵌套和非模态关联、滚动隔离、真正Button slots与Document跨App栈均已补齐；Web26矩阵71/675、独立layer12/placement13、原生Layer8/AX1/Sapid消费者7与真fork全验收通过。 | [M:Modal](https://mantine.dev/core/modal/)、[S:Dialog](https://ui.shadcn.com/docs/components/base/dialog) |
 | P0-08 | Drawer | 已完成并记录证据 | 四侧 Drawer、默认 Unmount/KeepMounted、稳定 panel、Modal Layer 焦点循环/返回、Escape/outside 和 Owner 清理已验收；P5-02 补齐有限四侧握柄手势、snap、移动 viewport、滚动隔离和动态 reduced motion。原生Drawer Edge/Sheet facet仍明确拒绝；Dialog/Popover原生与跨App能力已在P0-07/P0-09单独验收。 | [M:Drawer](https://mantine.dev/core/drawer/)、[S:Drawer](https://ui.shadcn.com/docs/components/base/drawer) |
-| P0-09 | Popover | 已完成并记录证据 | Popover完整12 placement/flip/shift/gap/padding、锚点失效与恢复、真Button trigger/close slots已完成，Web实际13及跨App12、原生12位置/焦点/paint/AX与ColorInput消费者均通过；默认非模态Manage，Preserve明确不抢焦点。 | [M:Popover](https://mantine.dev/core/popover/)、[M:ComboboxPopover](https://mantine.dev/core/combobox-popover/)、[S:Popover](https://ui.shadcn.com/docs/components/base/popover) |
+| P0-09 | Popover | 已完成并记录证据 | Popover完整12 placement/flip/shift/gap/padding、锚点失效与恢复、真Button trigger/close slots已完成；新增 Auto/Target/Px 面板宽度、offset 和碰撞翻转后方向正确的有限箭头，showcase 分为基础、同宽、箭头定位和受控关闭四段并有实际浏览器几何验证。既有跨App、原生位置/焦点/paint/AX与ColorInput消费者证据保留；默认非模态Manage。 | [M:Popover](https://mantine.dev/core/popover/)、[M:ComboboxPopover](https://mantine.dev/core/combobox-popover/)、[S:Popover](https://ui.shadcn.com/docs/components/base/popover) |
 | P0-10 | Collection / RovingFocus / Typeahead | 已完成并记录证据 | 有界存活Owner/key注册、roving禁用/循环/首尾/RTL及有限字符搜索已实现；Radio接入并完成Web/SSR验收，原生RTL已验证、字符搜索驱动明确拒绝，不保留访问历史。 | Sapid/Glory 共享能力 |
 | P0-11 | FocusScope / Layer / Portal | 已完成并记录证据 | Layer、Portal 与独立 FocusScope 已闭环：真实 Web/SSR/原生焦点、跨 App/嵌套返回、有限声明与 placement 预算、Owner 生命周期和经典流协议。保持原生其余 Layer facet 的明确能力边界。 | [M:FocusTrap](https://mantine.dev/core/focus-trap/)、[M:Portal](https://mantine.dev/core/portal/) |
 | P0-12 | Theme / Direction / Locale / Motion | 已完成并记录证据 | 显式 Theme/Direction/Locale factory context，有限不可变 spacing/control/typography/radius tokens 被真实 Button/Input/Check/Text/Title 消费；typed inherited dir/lang 与 Native AX language，Locale 12 条显式消息，Reduce 被真实 Collapsible 过渡消费。宿主时钟和 Owner 取消复用既有能力，不宣称隐式全控件翻译。 | [S:Direction](https://ui.shadcn.com/docs/components/base/direction)、[M:Transition](https://mantine.dev/core/transition/) |
 | P0-13 | VisuallyHidden | 已完成并记录证据 | 纯文本绝对定位零尺寸与双轴裁剪，不使用hidden/display:none；动态文字及稳定描述关系、四主题真实Web/native布局和AX名称/描述已验收。 | [M:VisuallyHidden](https://mantine.dev/core/visually-hidden/) |
-| P0-14 | Gallery / Adapter capability matrix | 已完成并记录证据 | Glory + Sapid Rust 展示站：首页、149 工作项文档路由、搜索、明暗主题、实际示例、源码和 Button 参数面板；另保留显式149任务×5能力轴账本及静态审计 Gallery。独立 CSR 站点与20个代表 SSR/adoption 页面分别验收。 | Sapid/Glory 共享能力 |
+| P0-14 | Gallery / Adapter capability matrix | 已完成并记录证据 | Glory + Sapid Rust 展示站：首页、137 工作项文档路由、搜索、明暗主题、实际示例、源码和 Button 参数面板；另保留显式137任务×5能力轴账本及静态审计 Gallery。独立 CSR 站点与代表 SSR/adoption 页面分别验收。 | Sapid/Glory 共享能力 |
 
 ### P1 · 字段与表单基础
 
@@ -177,7 +177,7 @@ S= shadcn 主目录；D=日期；C=图表；T=日程；H=代码；X=其他 Manti
 | P3-02 | Center / Container / Space | 已完成并记录证据 | 已完成原有真实布局及 ResponsiveRoot/Context：显式 SSR 初宽、五档有序断点、一个初始 Bounds + coalesced Resize、Owner 取消；断点 Style 被 Center/Container/Space/Grid/SimpleGrid 真正消费，更新几何保持节点身份。列数仍由调用方显式配置，不暗中扫描内容。 | [M:Center](https://mantine.dev/core/center/)、[M:Container](https://mantine.dev/core/container/)、[M:Space](https://mantine.dev/core/space/) |
 | P3-03 | Grid / SimpleGrid | 已完成并记录证据 | 已完成原有真实布局及 ResponsiveRoot/Context：显式 SSR 初宽、五档有序断点、一个初始 Bounds + coalesced Resize、Owner 取消；断点 Style 被 Center/Container/Space/Grid/SimpleGrid 真正消费，更新几何保持节点身份。列数仍由调用方显式配置，不暗中扫描内容。 | [M:Grid](https://mantine.dev/core/grid/)、[M:SimpleGrid](https://mantine.dev/core/simple-grid/) |
 | P3-04 | AspectRatio | 已完成并记录证据 | 有限正比例/Auto与尺寸约束已接入共享typed Style；非法值先拒绝，源恢复和节点identity由Rust、四主题Web/native真实布局验证。 | [M:AspectRatio](https://mantine.dev/core/aspect-ratio/)、[S:Aspect Ratio](https://ui.shadcn.com/docs/components/base/aspect-ratio) |
-| P3-05 | Text / Title / Typography | 已完成并记录证据 | Text/Title/Typography统一变体、主题字号/行高/颜色、语义段落/标题与富内容组合，typed ellipsis在Web真实验收、native显式拒绝；17项联合测试及四主题宿主证据已齐。 | [M:Text](https://mantine.dev/core/text/)、[M:Title](https://mantine.dev/core/title/)、[M:Typography](https://mantine.dev/core/typography/)、[S:Typography](https://ui.shadcn.com/docs/components/base/typography) |
+| P3-05 | Text / Title / Typography | 已完成并记录证据 | Text/Title/Typography统一变体、主题字号/行高/颜色、语义段落/标题与富内容组合；新增 Glory typed lineClamp 与原子 text gradient，Web 实际验证两行几何、完整文本、渐变和真实 H2，native 在布局/paint 支持前显式拒绝。原 ellipsis 与四主题宿主证据保留。 | [M:Text](https://mantine.dev/core/text/)、[M:Title](https://mantine.dev/core/title/)、[M:Typography](https://mantine.dev/core/typography/)、[S:Typography](https://ui.shadcn.com/docs/components/base/typography) |
 | P3-06 | Anchor | 已完成并记录证据 | Anchor使用真正Link.target、名称和受控导航请求，读取已接受语义；NewContext输出_blank/noopener/noreferrer，native创建与patch明确拒绝，Current导航已验收。 | [M:Anchor](https://mantine.dev/core/anchor/) |
 | P3-07 | List | 已完成并记录证据 | 有序/无序/嵌套TextList与Item真实ol/ul/li结构，区别于虚拟List；透明Group放置内容规则、原生角色与四主题Web/native已验证。 | [M:List](https://mantine.dev/core/list/) |
 | P3-08 | Blockquote | 已完成并记录证据 | Blockquote含引文/出处插槽，真实blockquote标签与AccessKit角色、主题/unstyled，SSR转义和Web/native布局已验证。 | [M:Blockquote](https://mantine.dev/core/blockquote/) |
@@ -186,7 +186,7 @@ S= shadcn 主目录；D=日期；C=图表；T=日程；H=代码；X=其他 Manti
 | P3-11 | Card / Paper | 已完成并记录证据 | Card/Paper插槽/边框/主题、typed单层outset shadow/None及三级主题token已实现；四主题浏览器实际阴影与原生CPU像素证据通过。 | [M:Card](https://mantine.dev/core/card/)、[M:Paper](https://mantine.dev/core/paper/)、[S:Card](https://ui.shadcn.com/docs/components/base/card) |
 | P3-12 | Separator | 已完成并记录证据 | 横/纵装饰分隔与静态可访问Separator，禁用无效焦点/action/children，HTML aria-orientation与native AX Splitter一致；四主题真实几何通过。 | [M:Divider](https://mantine.dev/core/divider/)、[S:Separator](https://ui.shadcn.com/docs/components/base/separator) |
 | P3-13 | Avatar / AvatarGroup | 已完成并记录证据 | 真实Image source与有界AvatarGroup、圆/方五档尺寸、叠放/更多人数及失败文本回退已实现；版本化加载与旧结果/Owner退休控制、四主题Web/SSR/native实际几何及身份已验收。 | [M:Avatar](https://mantine.dev/core/avatar/)、[S:Avatar](https://ui.shadcn.com/docs/components/base/avatar) |
-| P3-14 | Image / BackgroundImage | 已完成并记录证据 | 具名/装饰Image、五值ObjectFit、占位尺寸、单次fallback及BackgroundImage内容叠放已实现；Glory版本化Source/ImageStatus与Web decode/native请求代数、旧A/B/A结果/卸载、实际资源和布局已验收。宿主拥有资源加载。 | [M:Image](https://mantine.dev/core/image/)、[M:BackgroundImage](https://mantine.dev/core/background-image/) |
+| P3-14 | Image / BackgroundImage | 已完成并记录证据 | 具名/装饰Image、五值ObjectFit、占位尺寸、单次fallback、有限width-descriptor srcset/响应式sizes/加载策略及BackgroundImage内容叠放已实现；Glory HTML v17映射真实img属性，native在资源工作前拒绝responsive/lazy；版本化Source/ImageStatus、旧A/B/A结果/卸载、实际资源和布局已验收。宿主拥有资源加载。 | [M:Image](https://mantine.dev/core/image/)、[M:BackgroundImage](https://mantine.dev/core/background-image/) |
 | P3-15 | Indicator / ThemeIcon | 已完成并记录证据 | 有界Indicator九种实际锚定与四种finite ThemeIcon已实现；Graphic纯typed路径、HTML真实SVG/namespace、native CPU矢量与clip/opacity/patch已验收，具名/装饰语义和四主题Web/SSR/stream通过。 | [M:Indicator](https://mantine.dev/core/indicator/)、[M:ThemeIcon](https://mantine.dev/core/theme-icon/) |
 | P3-16 | Kbd | 已完成并记录证据 | Kbd真实kbd与Windows/Mac/Linux键名；显示提示不注册快捷键，Web与原生布局/标签已验证。 | [M:Kbd](https://mantine.dev/core/kbd/)、[S:Kbd](https://ui.shadcn.com/docs/components/base/kbd) |
 | P3-17 | EmptyState | 已完成并记录证据 | EmptyState提供标题/描述/图示/body/actions插槽，无自动alert或loading推断，真实heading/button、主题与Web/native已验证。 | [M:EmptyState](https://mantine.dev/core/empty-state/)、[S:Empty](https://ui.shadcn.com/docs/components/base/empty) |
@@ -207,11 +207,11 @@ S= shadcn 主目录；D=日期；C=图表；T=日程；H=代码；X=其他 Manti
 | P4-02 | ContextMenu | 已完成并记录证据 | ContextMenu region、有限viewport point、最近边界、Native/Override编辑器策略及Menu模型/子菜单/受控关闭已实现；Glory原生ContextPoint Layer/输入及上下文区域Tab边界已连接，四主题实际消费端通过；触屏长按保持宿主策略，真实OS输入/读屏另验收。 | [S:Context Menu](https://ui.shadcn.com/docs/components/base/context-menu) |
 | P4-03 | Menubar | 已完成并记录证据 | Menubar/MenuItemAction根语义、互斥受控根菜单、水平/RTL/typeahead和嵌套菜单/Tab边界已实现；Glory原生协议和AX关系现已连接，四主题实际消费端及原有浏览器证据保留；系统菜单栏/OS读屏分开验收。 | [M:Menubar](https://mantine.dev/core/menubar/)、[S:Menubar](https://ui.shadcn.com/docs/components/base/menubar) |
 | P4-04 | NativeSelect | 已完成并记录证据 | 真实select/option/optgroup、单/多选独立key/value、Field/Form/required和受控整tick恢复已实现；HTMLv4/classicv2版本升级及旧版本无突变拒绝、dirty adoption/stream已验收。readonly与native Select明确拒绝，不伪装Input。 | [M:NativeSelect](https://mantine.dev/core/native-select/)、[S:Native Select](https://ui.shadcn.com/docs/components/base/native-select) |
-| P4-05 | Select | 已完成并记录证据 | 有限Listbox/Option、独立活动项与受控值、清空/分组/disabled/readonly与Field成功值代理已完成；真实Web11字符循环、同tick按键、触摸/dirty接管/AX和typed透明主题通过；native显式拒绝，classic仅有限DOM传递、不伪造pre-WASM Layer驱动。 | [M:Select](https://mantine.dev/core/select/)、[S:Select](https://ui.shadcn.com/docs/components/base/select) |
-| P4-06 | Combobox | 已完成并记录证据 | 真实Input editable Combobox，active-descendant、有限过滤、composition冻结/结束协调、独立搜索/选中/open受控状态与Field/FormData已实现。四主题CSR/hydration、dirty adoption、classic stream、真实键鼠触摸/AX及CDP组合输入通过；不宣称OS IME/屏幕阅读器验收，native Choice facet明确拒绝。 | [M:Combobox](https://mantine.dev/core/combobox/)、[S:Combobox](https://ui.shadcn.com/docs/components/base/combobox) |
-| P4-07 | Autocomplete | 已完成并记录证据 | 真实单行Input支持自由文字、建议value/label/key分离、过滤活动高亮、composition冻结、Field/native required与实际成功控件值；百万来源预算和受控拒绝恢复、四主题CSR/hydration/dirty/触屏/IME协议/classic通过。共享Choice native明确拒绝；不宣称OS IME。 | [M:Autocomplete](https://mantine.dev/core/autocomplete/) |
-| P4-08 | MultiSelect | 已完成并记录证据 | 真实 Multiple Input、独立受控搜索与 known-key Vec、动态 tags/移除、IME 保护、multiple 成功值 proxy 和有界选项已实现。弱 Owner handle 支持当前过滤且 enabled 选项的原子全选及清空；受控拒绝、只读/组合输入/退休拒绝与四主题实际浏览器已验收。 新增 max_values、hide_picked_options、clearable/clear_label 与真实 placeholder；新增边界和宿主证据见 Mantine 全量 API 报告。 | [M:MultiSelect](https://mantine.dev/core/multi-select/) |
-| P4-09 | TagsInput / PillsInput | 已完成并记录证据 | 自由 TagsInput/PillsInput 的原子受控 state、重复策略、有界分隔/粘贴/删除、IME 保护、成功值 proxy 与清理已实现；Glory 原生 host 协议和 AX textbox 现已连接，五项四主题实际消费端含 256 tags/UTF-16/拒绝恢复通过。平台剪贴板服务与 OS 输入/读屏另验收；原 Web16 14 项证据保留。 | [M:TagsInput](https://mantine.dev/core/tags-input/)、[M:PillsInput](https://mantine.dev/core/pills-input/) |
+| P4-05 | Select | 已完成并记录证据 | 有限Listbox/Option、独立活动项与受控值、清空/分组/disabled/readonly与Field成功值代理已完成；新增响应式loading/busy、有限前导/描述/尾随 option content、勾选位置、dropdown高度和共享锚点。search/filter/limit/empty 由显式Combobox组合提供；五段showcase与真实鼠标子节点点击通过，Web会抑制Option后代pointerdown抢焦点。任意宿主节点renderer与无限虚拟结果不进入有限声明契约。 | [M:Select](https://mantine.dev/core/select/)、[S:Select](https://ui.shadcn.com/docs/components/base/select) |
+| P4-06 | Combobox | 已完成并记录证据 | 真实Input editable Combobox，active-descendant、有限过滤、composition冻结/结束协调、独立搜索/选中/open受控状态与Field/FormData已实现；新增可见结果limit、响应式busy/loading indicator。四主题CSR/hydration、dirty adoption、classic stream、真实键鼠触摸/AX及CDP组合输入通过；不宣称OS IME/屏幕阅读器验收，native Choice facet明确拒绝。 | [M:Combobox](https://mantine.dev/core/combobox/)、[S:Combobox](https://ui.shadcn.com/docs/components/base/combobox) |
+| P4-07 | Autocomplete | 已完成并记录证据 | 真实单行Input支持自由文字、建议value/label/key分离、过滤活动高亮、composition冻结、Field/native required与实际成功控件值；新增最多1024范围内的可见结果limit、输入时首项高亮、失焦提交高亮项、内建清空、左右响应式loading indicator和六段showcase。受控拒绝恢复、四主题CSR/hydration/dirty/触屏/IME协议/classic通过。共享Choice native明确拒绝；不宣称OS IME。 | [M:Autocomplete](https://mantine.dev/core/autocomplete/) |
+| P4-08 | MultiSelect | 已完成并记录证据 | 真实 Multiple Input、独立受控搜索与 known-key Vec、动态 tags/移除、IME 保护、multiple 成功值 proxy 和有界选项已实现。弱 Owner handle 支持当前过滤且 enabled 选项的原子全选及清空；受控拒绝、只读/组合输入/退休拒绝与四主题实际浏览器已验收。新增 max_values、hide_picked_options、clearable/clear_label、真实 placeholder、可见结果limit、左右响应式loading和三段详细showcase；新增边界和宿主证据见 Mantine 全量 API 报告。 | [M:MultiSelect](https://mantine.dev/core/multi-select/) |
+| P4-09 | TagsInput / PillsInput | 已完成并记录证据 | 自由 TagsInput/PillsInput 的原子受控 state、重复策略、有界分隔/粘贴/删除、IME 保护、成功值 proxy 与清理已实现；新增 clearable、默认失焦接纳/显式关闭、左右响应式 loading 和 controlled/loading/max-clear/blur/parsing 五段详细 showcase。Glory 原生 host 协议和 AX textbox 现已连接，五项四主题实际消费端含 256 tags/UTF-16/拒绝恢复通过。平台剪贴板服务与 OS 输入/读屏另验收；原 Web16 14 项证据保留。 | [M:TagsInput](https://mantine.dev/core/tags-input/)、[M:PillsInput](https://mantine.dev/core/pills-input/) |
 | P4-10 | Command / Spotlight | 已完成并记录证据 | Command/Spotlight真实Dialog+editable Input+有界Listbox/分组、显式Owner Palette快捷键、受控搜索/打开及异步结果取消已实现；Glory原生Choice/Palette连接后，四主题实际中文搜索/提交/模态恢复及同批菜单导航隔离通过，OS输入/读屏另验收。 | [S:Command](https://ui.shadcn.com/docs/components/base/command)、[X:Spotlight](https://mantine.dev/x/spotlight/) |
 
 ### P5 · 浮层与反馈
@@ -229,7 +229,7 @@ S= shadcn 主目录；D=日期；C=图表；T=日程；H=代码；X=其他 Manti
 | P5-05 | Alert | 已完成并记录证据 | Info/Success/Warning/Danger与Off/Polite/Assertive公告策略独立，具名真实status/alert和受控/本地关闭、动态文本接受/恢复已实现；四主题Web真实AX与原生布局/身份已验收，不声明读屏语音。 | [M:Alert](https://mantine.dev/core/alert/)、[S:Alert](https://ui.shadcn.com/docs/components/base/alert) |
 | P5-06 | Notification / Toast system | 已完成并记录证据 | Notification/Toaster有限去重FIFO、原子更新/替换、动作与关闭、Owner清理和显式Clock共享单timer已实现。精确暂停/过早完成/满队列/析构重入模型10项、四主题原生2项及Web13真实浏览器10项通过；默认永久显示，原生hover与OS公告未宣称。 | [M:Notification](https://mantine.dev/core/notification/)、[X:Notifications system](https://mantine.dev/x/notifications/)、[S:Toast](https://ui.shadcn.com/docs/components/base/toast) |
 | P5-07 | Spinner / Loader | 已完成并记录证据 | 加载名称/busy与decorative模式、有限旋转Graphic动画、动态reduced-motion及原生共享时钟已实现；四主题真实Web旋转矩阵/零逐帧DOM写与原生像素、隐藏暂停/Resume/Owner清理通过。 | [M:Loader](https://mantine.dev/core/loader/)、[S:Spinner](https://ui.shadcn.com/docs/components/base/spinner) |
-| P5-08 | Progress / Ring / SemiCircle | 已完成并记录证据 | 只读ProgressBar有限min/max/current与本地化value_text、indeterminate不伪造0、typed line与有界圆弧Ring/SemiCircle已实现；非法源保留接受状态，四主题原生真实arc/track像素与AX、Web/SSR/stream通过。 | [M:Progress](https://mantine.dev/core/progress/)、[M:RingProgress](https://mantine.dev/core/ring-progress/)、[M:SemiCircleProgress](https://mantine.dev/core/semi-circle-progress/)、[S:Progress](https://ui.shadcn.com/docs/components/base/progress) |
+| P5-08 | Progress / Ring / SemiCircle | 已完成并记录证据 | 只读ProgressBar有限min/max/current与本地化value_text、indeterminate不伪造0、typed line与有界圆弧Ring/SemiCircle已实现；Line支持水平/垂直主轴，确定/未知/最多16个有序静态彩色ProgressSection均共享单一语义；SemiCircle支持up/down、左右填充、独立空/填充色与bottom/center label；Ring支持startAngle、sectionGap、rootColor、roundCaps与中心label，showcase九段；圆形视图明确拒绝线性vertical。非法源保留接受状态，四主题原生真实arc/track像素与AX、Web/SSR/stream通过。 | [M:Progress](https://mantine.dev/core/progress/)、[M:RingProgress](https://mantine.dev/core/ring-progress/)、[M:SemiCircleProgress](https://mantine.dev/core/semi-circle-progress/)、[S:Progress](https://ui.shadcn.com/docs/components/base/progress) |
 | P5-09 | NavigationProgress | 已完成并记录证据 | 应用显式开始/数值/结束/取消、单当前操作及不回绕token已实现；替换撤销过期结果，Owner退休无Scope保留，真实Web八主题/adoption场景与native四主题宽度/身份通过。 | [X:NavigationProgress](https://mantine.dev/x/nprogress/) |
 | P5-10 | Skeleton | 已完成并记录证据 | 有限像素/百分比占位尺寸、circle/radius、独立busy区域与decorative Graphic已实现；loading隐藏保持identity，不启动计时或动画，四主题Web/SSR及native paint实际geometry/身份已验收。 | [M:Skeleton](https://mantine.dev/core/skeleton/)、[S:Skeleton](https://ui.shadcn.com/docs/components/base/skeleton) |
 | P5-11 | Overlay / LoadingOverlay | 已完成并记录证据 | Overlay保留真正绘制的装饰遮罩及pointer透传；LoadingOverlay以busy+inert抑制区域输入/焦点/AX，保留原控件身份并阻止已有top-layer逃逸。四主题CSR/hydration、classic stream/adoption及原生像素/命中/AX通过；不冒用全局modal或通用滚轮锁。 | [M:Overlay](https://mantine.dev/core/overlay/)、[M:LoadingOverlay](https://mantine.dev/core/loading-overlay/) |
@@ -253,7 +253,7 @@ S= shadcn 主目录；D=日期；C=图表；T=日程；H=代码；X=其他 Manti
 | P6-05 | AppShell | 已完成并记录证据 | 真实Banner/ContentInfo/Main与侧栏布局、局部ShellLayout尺寸/断点context、Resize响应式及skip link实际聚焦已实现；不绑定路由，同一导航Owner/控件身份跨布局保持。 | [M:AppShell](https://mantine.dev/core/app-shell/) |
 | P6-06 | Stepper | 已完成并记录证据 | Stepper已实现Current::Step/list/状态说明、可选跳步、错误/完成、受控拒绝、KeepMounted/Unmount与实际焦点交接；FormState同步/可取消异步校验屏障显式集成，四主题CSR/水合及原生证据已通过。 | [M:Stepper](https://mantine.dev/core/stepper/) |
 | P6-07 | ScrollArea / Scroller | 已完成并记录证据 | ScrollArea/Scroller使用真实ScrollMetrics与有界顺序intent、viewport自身键盘、嵌套输入保留原生编辑、实际边界和focus行为已实现；Owner query取消/晚到拒绝、四主题Web/SSR/native均已验收，水平动作明确LTR边界。 | [M:ScrollArea](https://mantine.dev/core/scroll-area/)、[M:Scroller](https://mantine.dev/core/scroller/)、[S:Scroll Area](https://ui.shadcn.com/docs/components/base/scroll-area) |
-| P6-08 | Resizable / Splitter | 已完成并记录证据 | 双pane守恒比例与bounds、控/本地更新、disabled tabstop、真实Separator numeric语义和queued AX动作、keyboard/mouse/touch capture已实现；单pending几何query可取消，晚到/Owner退休有界，四主题Web/SSR及native真实协议通过。 | [M:Splitter](https://mantine.dev/core/splitter/)、[S:Resizable](https://ui.shadcn.com/docs/components/base/resizable) |
+| P6-08 | Splitter | 已完成并记录证据 | 双pane守恒比例与bounds、控/本地更新、disabled tabstop、真实Separator numeric语义和queued AX动作、keyboard/mouse/touch capture已实现；单pending几何query可取消，晚到/Owner退休有界，四主题Web/SSR及native真实协议通过。 | [M:Splitter](https://mantine.dev/core/splitter/)、[S:Resizable](https://ui.shadcn.com/docs/components/base/resizable) |
 | P6-09 | Affix | 已完成并记录证据 | typed Fixed/right/bottom视口锚定、显式Relative容器Absolute/Sticky与响应式偏移已实现；native实际祖先scroll/viewport resize通过，Sticky仍明确拒绝。 | [M:Affix](https://mantine.dev/core/affix/) |
 | P6-10 | Toolbar / ActionBar | 已完成并记录证据 | 有界具名分组Toolbar共享roving入口，方向键/Home/End、RTL/垂直/非循环、动态disabled与身份保留。ActionBar按受控selection count展示、只提议清空、不制造modal或夺取焦点。四项模型、一项含四主题原生实际布局和Web14四主题CSR/hydration八项通过；任意Widget/动态业务集合自动注册不在契约内。 | [M:Toolbar](https://mantine.dev/core/toolbar/)、[M:ActionBar](https://mantine.dev/core/action-bar/) |
 | P6-11 | TableOfContents | 已完成并记录证据 | 仅存活256标题的显式注册索引、真实Location当前节链接/嵌套列表、实际Bounds滚动及Owner任务查询合并已完成。9组件+3纯模型、原生四主题geometry/CPU/focus/identity1和私有toc-next实际11项CSR/采用/移动端/dirty/退休全过；SSR与首测前确定性seed一致。 | [M:TableOfContents](https://mantine.dev/core/table-of-contents/) |
@@ -269,14 +269,14 @@ S= shadcn 主目录；D=日期；C=图表；T=日程；H=代码；X=其他 Manti
 
 | 编号 | 工作项 | 当前状态 | 实现与验收重点 | 来源 |
 |---|---|---|---|---|
-| P7-01 | NumberInput | 已完成并记录证据 | 精确Decimal单源NumberInput已实现：本地化完整草稿/范围/readonly/disabled/步进、真正SpinButton输入、同tick有序键盘、IME回声收口、Enter先Commit再Form Submit。6纯模型、15组件、原生组件2+Spin driver/AX2及Web22实际12项加强边界验收全过。 | [M:NumberInput](https://mantine.dev/core/number-input/) |
-| P7-02 | Slider | 已完成并记录证据 | 真实 Slider 语义、键盘等价、受控 cursor（含 commit-only 同 tick 接受）、捕获指针/触屏、RTL/纵向、Field 和有界 geometry query 已实现；11 模型/2 原生与 Web16 四主题实际 10 项通过。 | [M:Slider](https://mantine.dev/core/slider/)、[S:Slider](https://ui.shadcn.com/docs/components/base/slider) |
-| P7-03 | RangeSlider | 已完成并记录证据 | 双具名真实 Slider thumb、固定 Lower/Upper 身份和 Tab 顺序、Clamp/min_gap、闭区间 readonly、单次 geometry query 和受控 commit-only 已实现；10 Rust/2 原生与 Web16 四主题实际 10 项通过。交换策略明确固定为 Clamp，拒绝越过相邻 thumb。 | [M:RangeSlider](https://mantine.dev/core/range-slider/) |
+| P7-01 | NumberInput | 已完成并记录证据 | 精确Decimal单源NumberInput已实现：本地化完整草稿/范围/readonly/disabled/步进、真正SpinButton输入、同tick有序键盘、IME回声收口、Enter先Commit再Form Submit，并补共享有界响应式 placeholder。6纯模型、18组件、原生组件2+Spin driver/AX2及Web22实际12项加强边界验收全过。 | [M:NumberInput](https://mantine.dev/core/number-input/) |
+| P7-02 | Slider | 已完成并记录证据 | 真实 Slider 语义、键盘等价、受控 cursor（含 commit-only 同 tick 接受）、捕获指针/触屏、RTL/纵向、Field 和有界 geometry query 已实现；新增最多64个严格有序 marks、可选标签与 restrict_to_marks 的指针/键盘 snap，showcase 补 controlled/commit/bounds/marks 四段真实示例。14项模型回归通过，既有原生与 Web16 证据保留。 | [M:Slider](https://mantine.dev/core/slider/)、[S:Slider](https://ui.shadcn.com/docs/components/base/slider) |
+| P7-03 | RangeSlider | 已完成并记录证据 | 双具名真实 Slider thumb、固定 Lower/Upper 身份和 Tab 顺序、独立visual domain、minimum_gap/maximum_gap、闭区间 readonly、单次 geometry query 和受控 commit-only 已实现；默认Push会在min/max gap处原子推动另一thumb，push_on_overlap(false)使用Hold拒绝越界提议，Clamp保留为额外显式策略。共享 SliderMark 支持最多64个有序/隐藏标记及restrict_to_marks，inverted仅反转轨道填充。value labels支持拖动/常显/禁用，有限scale只改变视觉与aria-valuetext，有界value_text可覆盖格式，标签节点inert。showcase七段。15项Rust集成与2项模型回归通过，既有原生与Web16证据保留。 | [M:RangeSlider](https://mantine.dev/core/range-slider/) |
 | P7-04 | AngleSlider | 已完成并记录证据 | 复用有界 Slider query/cursor 的真正二维 atan2 AngleSlider、0/360 同位置数值端点与超端点环绕、中心保持、顺时针指针及圆外捕获已实现。8组件/3 mapping/2四主题原生真实几何及旋转像素与 Web18 实际10项通过；标准水平 Slider 键盘 L/R、Page/Home/End 提供等价操作。 | [M:AngleSlider](https://mantine.dev/core/angle-slider/) |
 | P7-05 | Rating | 已完成并记录证据 | Whole/Half Rating、真实 RadioGroup、数值成功值、受控/Field 与 display_only 已实现；新版 Glory 原生交互/只读 Radio 支持，四主题实际 checked、稳定身份、半星像素和 direct-apply 水位验证通过。 | [M:Rating](https://mantine.dev/core/rating/) |
 | P7-06 | ColorSwatch | 已完成并记录证据 | 有限RGBA preview和真实透明棋盘、可选真实Button/pressed勾选、受控来源静默、颜色文本替代与预算已实现。模型5项、四主题原生alpha像素/命中/identity1项、Web15四主题CSR/hydration/keyboard/AX/touch9项通过。 | [M:ColorSwatch](https://mantine.dev/core/color-swatch/) |
-| P7-07 | HueSlider / AlphaSlider | 已完成并记录证据 | Hue/Alpha f64 数值域、真实 Slider 交互/Field、有限采样色带与真实透明棋盘、HSV/hex 纯模型已实现。6模型/7组件/1四主题原生像素通过；unstyled 默认宽高缺失已修，Web18 加强实际尺寸/不重叠断言后10项全过，并保留显式 Auto/custom 样式。 | [M:HueSlider](https://mantine.dev/core/hue-slider/)、[M:AlphaSlider](https://mantine.dev/core/alpha-slider/) |
-| P7-08 | ColorPicker / ColorInput | 已完成并记录证据 | ColorPicker/ColorInput与共享DragCapture、二维饱和/亮度及真正Slider键盘替代、精确HSV/hex解析/Field/Popover已实现。11组件/3原生/Web19实际11项通过；目检发现的小plane通道宽度/indicator居中已修，加强原生真实bounds与同源command-next实际11项全部通过。默认原生浮层仍明确Unsupported，Picker与显式hex-only已验证。 | [M:ColorPicker](https://mantine.dev/core/color-picker/)、[M:ColorInput](https://mantine.dev/core/color-input/) |
+| P7-07 | HueSlider / AlphaSlider | 已完成并记录证据 | Hue/Alpha f64 数值域、真实 Slider 交互/Field、Mantine 式连续渐变色带与真实透明棋盘、HSV/hex 纯模型已实现。6模型/7组件/1四主题原生像素通过；unstyled 默认宽高缺失已修，Web18 加强实际尺寸/不重叠断言后10项全过，并保留显式 Auto/custom 样式。 | [M:HueSlider](https://mantine.dev/core/hue-slider/)、[M:AlphaSlider](https://mantine.dev/core/alpha-slider/) |
+| P7-08 | ColorPicker / ColorInput | 已完成并记录证据 | ColorPicker/ColorInput与共享DragCapture、连续二维饱和/亮度、Hue/Alpha及可选Slider键盘精度控件已实现。ColorInput支持hex(a)/rgb(a)/hsl(a)六种格式、受控草稿/commit、preserve-invalid、disallow-input、完整连续色面+全部swatches、点击色块关闭、隐藏弹层、loading/左右section及四种控件状态；EyeDropper通过应用显式注入的异步服务工作并支持自定义图标，不调用隐式浏览器I/O。ColorPicker保留无损Hsva业务值，同时以真实隐藏Input发布可选格式的表单快照。showcase现有16个ColorInput行为区块和4个ColorPicker区块，浏览器逐项验证真实输入、弹层、色块、服务和表单值。 | [M:ColorPicker](https://mantine.dev/core/color-picker/)、[M:ColorInput](https://mantine.dev/core/color-input/) |
 | P7-09 | PinInput / InputOTP | 已完成并记录证据 | PinInput/InputOTP单真实Input+紧凑连续glyph cells已实现，单String控制/完整粘贴拒绝/IME/accepted-only完成/Field与密码AX保密均补齐。typed Ch最后u64 Value位及独立OneTimeCode/Numeric hints共享实现；6模型+10组件、原生真实字体/掩码/指针caret/布局和Web23实际12项全过。OS autofill与宽间距cell不作承诺。 | [M:PinInput](https://mantine.dev/core/pin-input/)、[S:Input OTP](https://ui.shadcn.com/docs/components/base/input-otp) |
 | P7-10 | MaskInput | 已完成并记录证据 | 有限ASCII MaskInput已实现，单真实Input、raw/display UTF16映射、粘贴/字面量删除/同tick草稿、typed InputEdit与SelectText、组合及受控拒绝/超大输入恢复。9模型+9组件+原生2与旧输入36回归、Web26实际12含四themeCSR/采用/物理caret/dirty/IME/touch/退休全过；规范键入实际0次value重写。Unicode掩码与OS IME接受不宣称。 | [M:MaskInput](https://mantine.dev/core/mask-input/) |
 | P7-11 | JsonInput | 已完成并记录证据 | 可选 json feature 的真实多行 JsonInput、受控草稿/格式化提案、Field 错误关系与 IME、字节/深度/输出预算已实现；格式化保留重复 key、顺序和精确数字 lexeme。7 组件/4 模型/1 四主题原生与 Web16 实际 9 项通过；默认依赖图无 JSON/serde。 | [M:JsonInput](https://mantine.dev/core/json-input/) |
@@ -291,8 +291,8 @@ S= shadcn 主目录；D=日期；C=图表；T=日程；H=代码；X=其他 Manti
 |---|---|---|---|---|
 | P8-01 | Table | 已完成并记录证据 | 真实Table/caption/行组/th/td组合、显式表头关系及有限行列跨度已完成；3模型+4组件+4共享目标/回滚、HTML差分、原生四主题布局/像素/编辑器身份与跨度2、AX命名1、Web24实际12条CSR/hydration/移动/dirty/stream/退休全过。DataTable业务模型单列后续。 | [M:Table](https://mantine.dev/core/table/)、[S:Table](https://ui.shadcn.com/docs/components/base/table) |
 | P8-02 | DataTable | 已完成并记录证据 | 有限本地/权威服务端分页、稳定排序/筛选/选择/列显隐、键控窗口行已完成；5模型+6组件、共享坐标/排序/窗口/HTML差分、原生四主题实际窗口/像素2及AX1、Web27b真实20条CSR/hydration/移动/脏输入/服务端迟到回复/classic stream全过，严格检查通过。相同请求的新鲜度和网络取消由应用负责。 | [S:Data Table](https://ui.shadcn.com/docs/components/base/data-table) |
-| P8-03 | Tree | 已完成并记录证据 | 真实Tree/TreeItem、有限层级/同级坐标、受控展开/选择、键盘/RTL/typeahead、显式lazy与FileTree纯数据适配已完成；5模型+10组件、render3/HTML差分1、原生真实键盘AX2与四主题布局/像素/滚动/编辑器2，Web30强化12条CSR/hydration/受控拒绝/dirty/touch/禁用Fieldset全过。仅挂载当前展开的有限2048节点，不宣称任意大源窗口化。 | [M:Tree](https://mantine.dev/core/tree/)、[A:File Tree](https://ui.shadcn.com/docs/ai-elements/base/file-tree) |
-| P8-04 | TreeSelect | 已完成并记录证据 | TreeSelect 复用 Tree/Combobox 与完整路径值、多选/半选策略；新版 Glory 原生树弹层已连接，四主题消费端验证真实几何、选择、关闭恢复焦点与触发器身份。 | [M:TreeSelect](https://mantine.dev/core/tree-select/) |
+| P8-03 | Tree | 已完成并记录证据 | 真实Tree/TreeItem、有限层级/同级坐标、受控展开/选择、键盘/RTL/typeahead、显式lazy与FileTree纯数据适配已完成；进一步补齐批量展开、级联/独立勾选、保留祖先过滤、连接线、Before/Inside/After真实指针拖放与allow_drop。8个组件名 showcase 章节及7条浏览器交互全过。仅挂载当前展开的有限2048节点，虚拟化由应用组合有限源，不宣称扫描任意大源。 | [M:Tree](https://mantine.dev/core/tree/)、[A:File Tree](https://ui.shadcn.com/docs/ai-elements/base/file-tree) |
+| P8-04 | TreeSelect | 已完成并记录证据 | TreeSelect 复用真实Tree popup与完整路径值，支持single/multiple、级联或独立勾选、受控值/展开/搜索、内置保留祖先过滤与空结果、hide_picked、max_values、typed node/value renderer、连接线及有限下拉宽高/锚点。8组组件名展示和7条Chromium交互通过；Glory允许editable combobox驱动Tree popup且保留有限协议验证。 | [M:TreeSelect](https://mantine.dev/core/tree-select/) |
 | P8-05 | Cascader | 已完成并记录证据 | Cascader 保留分列路径、展开/返回与懒加载；新版 Glory 原生树弹层已连接，四主题消费端验证真实几何、路径选择、焦点返回与触发器身份。 | [M:Cascader](https://mantine.dev/core/cascader/) |
 
 ### P9 · 日期与时间
@@ -304,14 +304,14 @@ S= shadcn 主目录；D=日期；C=图表；T=日程；H=代码；X=其他 Manti
 | 编号 | 工作项 | 当前状态 | 实现与验收重点 | 来源 |
 |---|---|---|---|---|
 | P9-01 | Date model / DatesProvider | 已完成并记录证据 | 可选dates无依赖公历模型和显式DatesProvider已完成，civil/local/instant/fixed-offset独立类型、严格ISO解析、locale/week-start/参考日期与today/minmax明确传入；7模型测试含完整400年146097日与9999年所有月份边界、负Unix及偏移溢出，严格通过。不推断IANA/DST或OS时钟。 | Sapid/Glory 共享能力 |
-| P9-02 | Calendar / MiniCalendar | 已完成并记录证据 | 有限42格Calendar/MiniCalendar、独立焦点/选择/today、月年跳转、禁用日/边界/locale/RTL、共享Grid键盘协议已完成；6组件+7日期模型、共享目标/HTML差分/原生键盘AX、原生四主题布局像素2、Web27b实际12条CSR/hydration/同tick导航/dirty/退休全过。 | [D:Calendar](https://mantine.dev/dates/calendar/)、[D:MiniCalendar](https://mantine.dev/dates/mini-calendar/)、[S:Calendar](https://ui.shadcn.com/docs/components/base/calendar) |
+| P9-02 | Calendar / MiniCalendar | 已完成并记录证据 | 有限42格Calendar/MiniCalendar、独立焦点/选择/today、月年跳转、禁用日/边界/locale/RTL、共享Grid键盘协议已完成；新增公开DateSelection自定义选择投影、typed inline day renderer、full-width百分比几何和无隐藏按钮的passive static模式，5组组件名展示与Chromium专项覆盖。 | [D:Calendar](https://mantine.dev/dates/calendar/)、[D:MiniCalendar](https://mantine.dev/dates/mini-calendar/)、[S:Calendar](https://ui.shadcn.com/docs/components/base/calendar) |
 | P9-03 | DatePicker / DatePickerInput | 已完成并记录证据 | 单日/固定容量32多日/有序范围、Calendar复用、Field成功值及默认真实Dialog输入弹层已完成；5模型+9组件、原生默认popup实际3（四主题布局/像素/焦点/输入身份/退休）、Web28真实12条CSR/hydration/受控拒绝/同tick/容量/dirty/touch全过。 | [D:DatePicker](https://mantine.dev/dates/date-picker/)、[D:DatePickerInput](https://mantine.dev/dates/date-picker-input/)、[S:Date Picker](https://ui.shadcn.com/docs/components/base/date-picker) |
 | P9-04 | DateInput | 已完成并记录证据 | 真实单行Input、有限严格ISO/注入parser、独立Empty/Incomplete/Valid/Invalid/OutOfBounds草稿与civil值、composition/程序revision/受控拒绝、默认Calendar Dialog及Field已完成；3模型+10组件、原生四主题输入/caret/像素/popup2、Web30强化12条通过，Calendar选择先发布Valid草稿再value回调。 | [D:DateInput](https://mantine.dev/dates/date-input/) |
 | P9-05 | MonthPicker / MonthPickerInput | 已完成并记录证据 | 按月选择及范围，网格键盘导航。 | [D:MonthPicker](https://mantine.dev/dates/month-picker/)、[D:MonthPickerInput](https://mantine.dev/dates/month-picker-input/) |
 | P9-06 | YearPicker / YearPickerInput | 已完成并记录证据 | 年份/区间、十年视图和边界。 | [D:YearPicker](https://mantine.dev/dates/year-picker/)、[D:YearPickerInput](https://mantine.dev/dates/year-picker-input/) |
-| P9-07 | TimeInput / TimeValue | 已完成并记录证据 | TimeInput/TimeValue 保留小时/分/秒、12/24h、空值与本地化；新版 Glory 原生支持中文 UTF-16 精确选区，真实编辑器、只读/禁用、身份与像素已验证。 | [D:TimeInput](https://mantine.dev/dates/time-input/)、[D:TimeValue](https://mantine.dev/dates/time-value/) |
-| P9-08 | TimePicker / TimeGrid | 已完成并记录证据 | 分段时间输入与可选时间网格、步长/禁用值。 | [D:TimePicker](https://mantine.dev/dates/time-picker/)、[D:TimeGrid](https://mantine.dev/dates/time-grid/) |
-| P9-09 | DateTimePicker / InlineDateTimePicker | 已完成并记录证据 | DateTimePicker 与 InlineDateTimePicker：显式 civil/fixed-offset/application resolver、fold/gap 策略，部分草稿不默认补齐，受控值/清除/拒绝、真实 Calendar/TimePicker 组合和 Done/Escape/Form 边界。 | [D:DateTimePicker](https://mantine.dev/dates/date-time-picker/)、[D:InlineDateTimePicker](https://mantine.dev/dates/inline-date-time-picker/) |
+| P9-07 | TimeInput / TimeValue | 已完成并记录证据 | TimeInput/TimeValue 保留小时/分/秒、12/24h、空值与本地化；TimeInput补齐共享有界placeholder及Field/controlled/格式秒/placeholder/states五段showcase；Glory原生支持真实hint layout与中文UTF-16精确选区，真实编辑器、只读/禁用、身份与像素已验证。 | [D:TimeInput](https://mantine.dev/dates/time-input/)、[D:TimeValue](https://mantine.dev/dates/time-value/) |
+| P9-08 | TimePicker / TimeGrid | 已完成并记录证据 | 分段时间输入与可选时间网格、typed duration/minHoursDigits、步长/禁用值、不完整草稿可见的受控 clearable、默认/自定义分段 placeholder、presets、完整 controls dropdown、32-byte pasteSplit、受控锚定弹层、labels/focus、typed placement/width，以及十五段 showcase。 | [D:TimePicker](https://mantine.dev/dates/time-picker/)、[D:TimeGrid](https://mantine.dev/dates/time-grid/) |
+| P9-09 | DateTimePicker / InlineDateTimePicker | 已完成并记录证据 | DateTimePicker 与 InlineDateTimePicker：真实 input dialog、显式 resolver/fold/gap、部分草稿、presets/default time、placeholder/typed display format、受控 clearable、TimePicker controls 转发、Done/Escape/Form 边界和七段 showcase。 | [D:DateTimePicker](https://mantine.dev/dates/date-time-picker/)、[D:InlineDateTimePicker](https://mantine.dev/dates/inline-date-time-picker/) |
 
 ### P10 · 文件、媒体、代码与编辑器
 
@@ -328,7 +328,7 @@ S= shadcn 主目录；D=日期；C=图表；T=日程；H=代码；X=其他 Manti
 | P10-05 | Lightbox | 已完成并记录证据 | 最多128条/256KiB元数据，真实管理Dialog中仅一个Image资源消费者；替代文本/解码失败、受控键值和1..4倍实际滚动缩放、键盘和焦点返回，关闭/Owner释放及宿主资源配置边界；Web/Native四主题实测。 | [X:Lightbox](https://mantine.dev/x/lightbox/) |
 | P10-06 | CodeBlock / CodeHighlight | 已完成并记录证据 | 可选code无依赖语言tokenizer、真实可选文本/行号/强调/滚动、字节/token/行预算及accepted source真实复制已完成；7 Code+5组合复制测试、原生四主题布局像素1，原Code9与Web30配置复制8实际通过，精确源不含gutter/token装饰。 | [H:CodeHighlight](https://mantine.dev/code-highlight/code-highlight/)、[S:Code Block](https://ui.shadcn.com/docs/components/base/code-block) |
 | P10-07 | JsonViewer | 已完成并记录证据 | 有界无损JSON模型/重复key拒绝、文档disclosure与显式真实Tree模式、路径身份/搜索/深度节点预算及accepted完整源复制已完成；10 Rust、原生四主题两模式实际布局/像素/焦点/重排、原Json9及Web30 Tree9/组合复制8实际通过。Tree模式支持含root64级并在发布前拒更深数据。 | [H:JsonViewer](https://mantine.dev/code-highlight/json-viewer/) |
-| P10-08 | RichTextEditor | 已完成并记录证据 | 真实有限富文档/UTF16选区/marks/段落与heading、应用受控拒绝、独立32项2MiB历史、Web composition/source仲裁/真实plain clipboard；FORMAT13共享mapper/SSRstream/oracle，Web43原9+classic11+extra3全过；Native编辑与相关AX明确typed拒绝，不用Textarea冒充。 | [X:Rich text editor](https://mantine.dev/x/tiptap/) |
+| P10-08 | RichTextEditor | 已完成并记录证据 | 真实有限富文档/UTF16选区/marks/段落与heading、应用受控拒绝、独立32项2MiB历史、Web composition/source仲裁/真实plain clipboard；补齐 controlled、placeholder、subtle、无工具栏/只读/禁用的公开示例。FORMAT13共享mapper/SSRstream/oracle，Web43原9+classic11+extra3全过；Native编辑与相关AX明确typed拒绝，不用Textarea冒充；任意Tiptap插件/HTML、表格、任务、媒体与源码模式保留为协议边界。 | [X:Rich text editor](https://mantine.dev/x/tiptap/) |
 
 ### P11 · 图表
 
@@ -339,7 +339,7 @@ S= shadcn 主目录；D=日期；C=图表；T=日程；H=代码；X=其他 Manti
 | 编号 | 工作项 | 当前状态 | 实现与验收重点 | 来源 |
 |---|---|---|---|---|
 | P11-01 | Chart / ChartTheme / Legend / Tooltip | 已完成并记录证据 | 可选 charts 无新增依赖；有限 data/domain/frame/Graphic 协议、八色主题、真实 legend/tooltip、逐点操作/受控提案、可访问完整数值表与安全 SVG 几何导出。原生默认 Click/键盘/绘制支持，pointer hover/Tooltip 保持明确拒绝。 | [S:Chart](https://ui.shadcn.com/docs/components/base/chart) |
-| P11-02 | AreaChart / LineChart / BarChart / CompositeChart | 已完成并记录证据 | Line/Area/Bar/Composite 实际几何、真实空值断线、正负 bar 堆叠与非负 area 堆叠、有限刻度/显式裁剪、inclusive brush、稳定完整 key、全数据表、受控拒绝及 CSR/adoption/原生四主题验收。 | [C:AreaChart](https://mantine.dev/charts/area-chart/)、[C:LineChart](https://mantine.dev/charts/line-chart/)、[C:BarChart](https://mantine.dev/charts/bar-chart/)、[C:CompositeChart](https://mantine.dev/charts/composite-chart/) |
+| P11-02 | AreaChart / LineChart / BarChart / CompositeChart | 已完成并记录证据 | Line/Area/Bar/Composite 实际几何、真实空值断线、正负 bar 堆叠与非负 area 堆叠、有限刻度/显式裁剪、inclusive brush、稳定完整 key、全数据表、受控拒绝及 CSR/adoption/原生四主题验收。新增最多16项的 typed reference area/line/dot 与标签，按当前 brush 裁剪并进入共享 Web/Native Graphic 场景；四个公开指南各展示 usage、stack/legend、references、brush。 | [C:AreaChart](https://mantine.dev/charts/area-chart/)、[C:LineChart](https://mantine.dev/charts/line-chart/)、[C:BarChart](https://mantine.dev/charts/bar-chart/)、[C:CompositeChart](https://mantine.dev/charts/composite-chart/) |
 | P11-03 | PieChart / DonutChart / RadialBarChart | 已完成并记录证据 | 真实 Pie/Donut 角度占比和零值处理、RadialBar 同心弧线；有限键盘逐点与完整数值表，四主题 Web CSR/adoption 和 Native 真实绘制/命中验收。 | [C:PieChart](https://mantine.dev/charts/pie-chart/)、[C:DonutChart](https://mantine.dev/charts/donut-chart/)、[C:RadialBarChart](https://mantine.dev/charts/radial-bar-chart/) |
 | P11-04 | ScatterChart / BubbleChart / CandlestickChart | 已完成并记录证据 | 真实 XY/面积尺寸尺度与零尺寸、OHLC 交叉约束/方向、至多128次索引回调的显式采样及来源数量说明；有限逐点/完整表，四主题 Web/Native 实测。 | [C:ScatterChart](https://mantine.dev/charts/scatter-chart/)、[C:BubbleChart](https://mantine.dev/charts/bubble-chart/)、[C:CandlestickChart](https://mantine.dev/charts/candlestick-chart/) |
 | P11-05 | RadarChart / FunnelChart / Sparkline | 已完成并记录证据 | Radar 径向轴/缺值断线、Funnel 独立梯形、Sparkline 真正分段路径，保留文字与数值替代、受控交互及四主题 Web/Native 实测。 | [C:RadarChart](https://mantine.dev/charts/radar-chart/)、[C:FunnelChart](https://mantine.dev/charts/funnel-chart/)、[C:Sparkline](https://mantine.dev/charts/sparkline/) |
@@ -361,41 +361,20 @@ S= shadcn 主目录；D=日期；C=图表；T=日程；H=代码；X=其他 Manti
 | P12-04 | AgendaView | 已完成并记录证据 | 真实按日期/半开请求区间分组的 Agenda List/Heading/事件按钮、受控选择/拒绝、readonly、窗口分页、当前数据稳定 key 更新、空状态与 Owner 清理；四主题 CSR/adoption、360px touch 与原生布局/命中/像素已验证。 | [T:AgendaView](https://mantine.dev/schedule/agenda-view/) |
 | P12-05 | Resource schedule views | 已完成并记录证据 | 真实单画布资源日/周/月排程与双轴Grid，当前有限资源/日期窗口和权限，鼠标/CDP触摸/query-backed跨日跨资源移动/端点调整、键盘等价提案、受控拒绝与同tick排序/Owner取消，所有业务授权/冲突/持久化归App；Web42强化12与Native3实际通过。 | [T:ResourcesDayView](https://mantine.dev/schedule/resources-day-view/)、[T:ResourcesWeekView](https://mantine.dev/schedule/resources-week-view/)、[T:ResourcesMonthView](https://mantine.dev/schedule/resources-month-view/)、[T:ResourcesSchedule](https://mantine.dev/schedule/resources-schedule/) |
 
-### P13 · 对话及 AI 应用展示
-
-以传入的数据和动作构造展示组件；不绑定模型服务、网络、工具执行或隐藏推理数据。
-
-依赖：P4、P5、P6、P8、P10。
-
-| 编号 | 工作项 | 当前状态 | 实现与验收重点 | 来源 |
-|---|---|---|---|---|
-| P13-01 | Message / Bubble / Marker | 已完成并记录证据 | 有限调用方消息数据、真实段落/Blockquote/Anchor、作者时间状态与分组、引用标记和调用方动作；完整模型先验收再更新，literal文本转义、稳定节点身份和Owner清理，四主题Web CSR/adoption及Native真实布局通过。 | [S:Message](https://ui.shadcn.com/docs/components/base/message)、[S:Bubble](https://ui.shadcn.com/docs/components/base/bubble)、[S:Marker](https://ui.shadcn.com/docs/components/base/marker)、[A:Message](https://ui.shadcn.com/docs/ai-elements/base/message) |
-| P13-02 | MessageScroller / Chat | 已完成并记录证据 | 真实索引窗口消息列表/Chat组合，最多64live+focused1、256测量；显式accepted append通知/未读、用户离底/回尾与prepend和顶部相交key+within测量锚点；晚到program ack不冒充user，原始40浏览器12全通过。 | [S:Message Scroller](https://ui.shadcn.com/docs/components/base/message-scroller)、[A:Chat](https://ui.shadcn.com/docs/ai-elements/base/chat) |
-| P13-03 | PromptInput | 已完成并记录证据 | 真实Form/Textarea/Submit和Cancel、受控提案拒绝、完整host tick后Owner任务回调，浏览器IME与输入法提交门控、有限建议；可选FileController显式文件权限/读取，无自动发送/清空或模型服务；四主题Web与Native实测，Native可选文件明确拒绝。 | [A:Prompt Input](https://ui.shadcn.com/docs/ai-elements/base/prompt-input) |
-| P13-04 | Questionnaire | 已完成并记录证据 | 真实typed FormState与Stepper的有限Questionnaire，受控步骤提案/拒绝、KeepMounted答案身份、当前步与最终全步骤重新验证，连续Invalid attempt与异步Back/Owner取消护栏；无JSON schema VM/服务。Web43原始12和四主题Native实测通过。 | [S:Questionnaire](https://ui.shadcn.com/docs/components/base/questionnaire) |
-| P13-05 | ModelSelector | 已完成并记录证据 | 有限显式模型/provider catalog、真实 Combobox/Search/Listbox、独立 accepted model/query 与受控拒绝已实现；新版 Glory 原生 editable Choice 已连接，四主题消费端验证业务值、拒绝/接受、编辑器焦点/身份与像素。 | [A:Model Selector](https://ui.shadcn.com/docs/ai-elements/base/model-selector) |
-| P13-06 | Suggestion | 已完成并记录证据 | 真实Toolbar/Buttons有限建议组，当前应用label/value、方向/箭头/Home/End单Tab、disabled与完整key/Owner清理，选择仅typed应用回调不自动发送；四主题Web43与Native实际通过。 | [A:Suggestion](https://ui.shadcn.com/docs/ai-elements/base/suggestion) |
-| P13-07 | Confirmation / Checkpoint | 已完成并记录证据 | 有限Confirmation/Checkpoint显式App状态与revision，真实Approve/Reject/Restore按钮仅提案，controlled拒绝/source静默/disabled或缺callback/Owner清理均验证；不授予权限或执行回退，Web43原9和四主题Native实际通过。 | [A:Confirmation](https://ui.shadcn.com/docs/ai-elements/base/confirmation)、[A:Checkpoint](https://ui.shadcn.com/docs/ai-elements/base/checkpoint) |
-| P13-08 | Plan / Task / Queue | 已完成并记录证据 | 有限128项/128KiB应用Plan/Task/Queue，真实有序列表和精确任务/processed进度、完整key稳定更新/重排、可操作项仅typed应用回调及受控拒绝、真实禁用/Owner清理，无调度/执行/授权服务；四主题Web和Native实际通过。 | [A:Plan](https://ui.shadcn.com/docs/ai-elements/base/plan)、[A:Task](https://ui.shadcn.com/docs/ai-elements/base/task)、[A:Queue](https://ui.shadcn.com/docs/ai-elements/base/queue) |
-| P13-09 | Reasoning / ChainOfThought | 已完成并记录证据 | 仅显示应用已提供可公开摘要/有限步骤，真实Collapsible与无序/有序列表，显式状态/耗时、受控拒绝、完整模型先验和稳定key/Owner清理；无隐藏推理访问或模型服务，四主题Web/Native实际通过。 | [A:Reasoning](https://ui.shadcn.com/docs/ai-elements/base/reasoning)、[A:Chain of Thought](https://ui.shadcn.com/docs/ai-elements/base/chain-of-thought) |
-| P13-10 | Context / Sources / InlineCitation | 已完成并记录证据 | 显式上下文整数用量/未知容量/超限文字与只读Progress；有限Sources真实List/Link、literal预览与调用方可信度，InlineCitation真实文内链接/默认fragment导航和可选App接管，无自动抓取；四主题Web/Native实际通过。 | [A:Context](https://ui.shadcn.com/docs/ai-elements/base/context)、[A:Sources](https://ui.shadcn.com/docs/ai-elements/base/sources)、[A:Inline Citation](https://ui.shadcn.com/docs/ai-elements/base/inline-citation) |
-| P13-11 | Trace / StackTrace / Subagent / Tool | 已完成并记录证据 | sealed有限Trace森林/Stack帧和真实Tool/Subagent Collapsible/ordered list，显式Public/Truncated/无原文Redacted与应用状态/elapsed/Inspect或location回调；完整key/受控展开/hidden与Owner重入释放，严格360px/1100px和函数/位置分行；无工具执行/调度/file访问，Web44原始24和四主题Native2实际通过。 | [S:Trace](https://ui.shadcn.com/docs/components/base/trace)、[A:Stack Trace](https://ui.shadcn.com/docs/ai-elements/base/stack-trace)、[A:Subagent](https://ui.shadcn.com/docs/ai-elements/base/subagent)、[A:Tool](https://ui.shadcn.com/docs/ai-elements/base/tool) |
-| P13-12 | Terminal / TestResults | 已完成并记录证据 | 只读Terminal和TestResults，十亿条索引源有界可见行/测量/稀疏索引，显式stdout/stderr/状态/统计、literal控制字符转义与无原文Redacted；真实测试详情/First/Newest/Pause、完整key和受控源、清空时序/Owner回收，无命令或测试执行；Web42原始10与四主题Native实际通过。 | [A:Terminal](https://ui.shadcn.com/docs/ai-elements/base/terminal)、[A:Test Results](https://ui.shadcn.com/docs/ai-elements/base/test-results) |
-
 ## 快照覆盖校验
 
 | 目录 | 原始条目数 |
 |---|---:|
 | mantine-core | 121 |
-| shadcn-components | 66 |
+| shadcn-components | 60 |
 | mantine-dates | 15 |
 | mantine-charts | 22 |
 | mantine-schedule | 13 |
 | mantine-code | 2 |
 | mantine-extensions | 8 |
-| shadcn-ai | 21 |
+| shadcn-ai | 1 |
 
-共 268 个来源条目，归并为 149 项工作：0 项已有基线、0 项部分基础、0 项未实现、149 项按后续完成标准关闭。日程目录包含事件数据与重复规则两项模型文档，基础设施也单独计入，不能把总数解释为缺失组件数量。
+共 242 个来源条目，归并为 137 项工作：0 项已有基线、0 项部分基础、0 项未实现、137 项按后续完成标准关闭。日程目录包含事件数据与重复规则两项模型文档，基础设施也单独计入，不能把总数解释为缺失组件数量。
 
 ## 对照来源
 

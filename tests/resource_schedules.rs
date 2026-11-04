@@ -792,3 +792,91 @@ fn non_editable_events_fill_the_card_and_styled_buttons_receive_the_actual_theme
         assert!(classes(&app, "sapid-resources-drag-handles").is_empty());
     }
 }
+
+fn model_for_resource_view(view: ResourceScheduleView) -> ResourceScheduleData {
+    let current = model(1, 0, 2);
+    let window = match view {
+        ResourceScheduleView::Day => ScheduleWindow::days(date("2024-02-29"), 1),
+        ResourceScheduleView::Week => ScheduleWindow::days(date("2024-02-26"), 7),
+        ResourceScheduleView::Month => ScheduleWindow::month(YearMonth::new(2024, 2).unwrap()),
+    }
+    .unwrap();
+    ResourceScheduleData::new(
+        ScheduleData::new(
+            current.data().zone().clone(),
+            window,
+            current.data().events().iter().cloned(),
+        )
+        .unwrap(),
+        current.resources().clone(),
+        current.resource_window(),
+    )
+    .unwrap()
+}
+
+#[test]
+fn unified_resource_schedule_switches_real_views_after_matching_window_acceptance() {
+    let app = App::memory();
+    let source = app
+        .scope()
+        .cage(model_for_resource_view(ResourceScheduleView::Day));
+    let view = app.scope().cage(ResourceScheduleView::Day);
+    let changes = app.scope().cage(0usize);
+    let update_scope = app.scope().downgrade();
+    app.mount(
+        resources_schedule("resource-switcher", source)
+            .view_value(view)
+            .available_views([
+                ResourceScheduleView::Day,
+                ResourceScheduleView::Week,
+                ResourceScheduleView::Month,
+            ])
+            .on_view_change(move |next| {
+                changes.revise(|count| *count += 1);
+                update_scope
+                    .upgrade()
+                    .unwrap()
+                    .batch(|| {
+                        source.revise(|current| *current = model_for_resource_view(next));
+                        view.revise(|current| *current = next);
+                    })
+                    .unwrap();
+            }),
+    )
+    .unwrap();
+    let day = button(&app, "Day");
+    assert_eq!(classes(&app, "sapid-resources-day-view").len(), 1);
+
+    app.dispatch(button(&app, "Week"), Event::Activate).unwrap();
+    app.flush().unwrap();
+    assert_eq!(classes(&app, "sapid-resources-week-view").len(), 1);
+    assert!(classes(&app, "sapid-resources-day-view").is_empty());
+
+    app.dispatch(button(&app, "Month"), Event::Activate)
+        .unwrap();
+    app.flush().unwrap();
+    assert_eq!(classes(&app, "sapid-resources-month-view").len(), 1);
+    assert_eq!(button(&app, "Day"), day);
+    assert_eq!(changes.get(), 2);
+
+    let previous_month = classes(&app, "sapid-resources-month-view")[0];
+    source.revise(|current| {
+        *current = ResourceScheduleData::new(
+            ScheduleData::new(
+                current.data().zone().clone(),
+                ScheduleWindow::month(YearMonth::new(2024, 3).unwrap()).unwrap(),
+                current.data().events().iter().cloned(),
+            )
+            .unwrap(),
+            current.resources().clone(),
+            current.resource_window(),
+        )
+        .unwrap();
+    });
+    app.flush().unwrap();
+    assert_ne!(
+        classes(&app, "sapid-resources-month-view")[0],
+        previous_month
+    );
+    assert_eq!(button(&app, "Day"), day);
+}

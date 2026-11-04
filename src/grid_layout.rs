@@ -2,7 +2,8 @@
 use crate::appearance::{Common, merge};
 use glory::render::{NodeId, SemanticId, Semantics};
 use glory::style::{
-    AspectRatio as Ratio, Display, GridPlacement, GridTrack, GridTracks, Length, Style,
+    Align, AspectRatio as Ratio, Display, GridPlacement, GridTrack, GridTracks, Justify, Length,
+    Position, Style,
 };
 use glory::ui::{Children, IntoChildren, Result, View, Widget};
 use glory::{Cage, Scope, Vary};
@@ -433,7 +434,21 @@ impl AspectRatio {
 }
 impl Widget for AspectRatio {
     fn build(&mut self, scope: &Scope) -> Result {
-        let mut fixed = Style::new().width(self.width).min_width(Length::Px(0.0));
+        let custom = self.common.style.clone();
+        self.common.style = crate::composite::validated(scope, &custom, |style| {
+            if style.position == Some(Position::Static) {
+                return Err(invalid("aspect ratio content requires a positioned frame"));
+            }
+            style
+                .validate()
+                .map_err(glory::render::Error::InvalidProps)?;
+            Ok(())
+        })?
+        .into();
+        let mut fixed = Style::new()
+            .width(self.width)
+            .min_width(Length::Px(0.0))
+            .position(Position::Relative);
         fixed.height = self.height;
         if !self.common.unstyled {
             fixed.color = Some(self.common.theme.foreground);
@@ -482,7 +497,24 @@ impl Widget for AspectRatio {
             value().into()
         };
         configured(&mut self.common, scope, "sapid-aspect-ratio", base)
-            .fill(std::mem::replace(&mut self.children, ().into_children()))
+            .fill(
+                glory::ui::view()
+                    .class("sapid-aspect-ratio-content")
+                    .style(Style {
+                        align: Some(Align::Center),
+                        justify: Some(Justify::Center),
+                        ..Style::new()
+                            .position(Position::Absolute)
+                            .top(Length::Px(0.0))
+                            .right(Length::Px(0.0))
+                            .bottom(Length::Px(0.0))
+                            .left(Length::Px(0.0))
+                            .display(Display::Flex)
+                            .min_width(Length::Px(0.0))
+                            .min_height(Length::Px(0.0))
+                    })
+                    .fill(std::mem::replace(&mut self.children, ().into_children())),
+            )
             .show_in(scope)
     }
 }

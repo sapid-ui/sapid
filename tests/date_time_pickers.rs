@@ -57,6 +57,50 @@ fn button(app: &App, label: &str) -> NodeId {
 fn day(app: &App, date: CivilDate) -> NodeId {
     button(app, &DateLocale::En.date_label(date))
 }
+fn class_count(app: &App, class: &str) -> usize {
+    all(app)
+        .into_iter()
+        .filter(|id| {
+            app.tree()
+                .node(*id)
+                .unwrap()
+                .descriptor
+                .view()
+                .classes
+                .iter()
+                .any(|value| value == class)
+        })
+        .count()
+}
+
+#[test]
+fn inline_and_dialog_forward_real_date_levels_and_multiple_columns() {
+    let app = App::memory();
+    app.mount(
+        inline_date_time_picker("levels", provider(), DateTimePolicy::Civil)
+            .default_month(YearMonth::new(2024, 2).unwrap())
+            .default_level(DatePickerLevel::Decade),
+    )
+    .unwrap();
+    app.dispatch(button(&app, "2025"), Event::Activate).unwrap();
+    app.flush().unwrap();
+    app.dispatch(button(&app, "March 2025"), Event::Activate)
+        .unwrap();
+    app.flush().unwrap();
+    assert!(all(&app).contains(&day(&app, d("2025-03-01"))));
+
+    let app = App::memory();
+    app.mount(
+        date_time_picker("columns", provider(), DateTimePolicy::Civil)
+            .default_open(true)
+            .default_month(YearMonth::new(2024, 2).unwrap())
+            .number_of_columns(2)
+            .columns_to_scroll(1),
+    )
+    .unwrap();
+    assert_eq!(class_count(&app, "sapid-calendar-grid"), 2);
+    assert_eq!(class_count(&app, "sapid-calendar-level-control"), 1);
+}
 #[test]
 fn complete_pair_is_required_and_draft_callback_precedes_value_and_resolution() {
     let app = App::memory();
@@ -510,4 +554,120 @@ fn resolver_and_draft_reentry_that_only_changes_reset_configuration_rejects_old_
         assert_eq!(props(&app, h.get().unwrap()).value, "10");
         assert_eq!(calls.get(), 0);
     }
+}
+
+#[test]
+fn default_time_and_finite_presets_use_the_same_resolved_controlled_value_path() {
+    let app = App::memory();
+    let value = app.scope().cage(None);
+    app.mount(
+        inline_date_time_picker("presets", provider(), DateTimePolicy::Civil)
+            .value(value)
+            .default_time(LocalTime::new(9, 30, 0).unwrap())
+            .presets([
+                DateTimePreset::new("Morning", dt("2024-02-28T09:00")),
+                DateTimePreset::new("Evening", dt("2024-02-29T18:30")),
+            ])
+            .on_value_change(move |next| value.revise(|old| *old = next)),
+    )
+    .unwrap();
+    app.dispatch(button(&app, "Evening"), Event::Activate)
+        .unwrap();
+    app.flush().unwrap();
+    assert_eq!(value.get(), Some(dt("2024-02-29T18:30")));
+    app.dispatch(button(&app, "Clear date and time"), Event::Activate)
+        .unwrap();
+    app.flush().unwrap();
+    app.dispatch(day(&app, d("2024-02-28")), Event::Activate)
+        .unwrap();
+    app.flush().unwrap();
+    assert_eq!(value.get(), Some(dt("2024-02-28T09:30")));
+
+    let invalid = App::memory();
+    assert!(
+        invalid
+            .mount(
+                inline_date_time_picker("too-many", provider(), DateTimePolicy::Civil).presets(
+                    (0..=MAX_DATE_TIME_PRESETS).map(|index| DateTimePreset::new(
+                        format!("Preset {index}"),
+                        dt("2024-02-29T10:00")
+                    ))
+                )
+            )
+            .is_err()
+    );
+    assert_eq!(invalid.stats().nodes, 0);
+}
+
+#[test]
+fn input_picker_clearable_is_controlled_and_forwards_presets_and_default_time() {
+    let app = App::memory();
+    let value = app.scope().cage(Some(dt("2024-02-29T10:20")));
+    let input = app.scope().cage(None);
+    let hour = app.scope().cage(None);
+    app.mount(
+        date_time_picker("input-features", provider(), DateTimePolicy::Civil)
+            .value(value)
+            .node_ref(input)
+            .hour_ref(hour)
+            .display_format(DateTimeDisplayFormat::DayMonthYear)
+            .placeholder("Choose appointment")
+            .default_open(true)
+            .clearable(true)
+            .clear_label("Clear appointment")
+            .default_time(LocalTime::new(8, 15, 0).unwrap())
+            .time_dropdown(true)
+            .time_steps(1, 15, 10)
+            .presets([DateTimePreset::new(
+                "Start of shift",
+                dt("2024-02-28T08:15"),
+            )])
+            .on_value_change(move |next| value.revise(|old| *old = next)),
+    )
+    .unwrap();
+    let input = input.get().unwrap();
+    assert_eq!(props(&app, input).value, "29/02/2024 10:20");
+    assert_eq!(
+        app.tree()
+            .node(input)
+            .unwrap()
+            .descriptor
+            .view()
+            .semantics
+            .as_ref()
+            .unwrap()
+            .placeholder
+            .as_deref(),
+        Some("Choose appointment")
+    );
+    app.dispatch(hour.get().unwrap(), Event::FocusChanged(true))
+        .unwrap();
+    app.flush().unwrap();
+    assert_eq!(
+        all(&app)
+            .into_iter()
+            .filter(|id| {
+                app.tree().node(*id).is_ok_and(|node| {
+                    node.descriptor
+                        .view()
+                        .classes
+                        .iter()
+                        .any(|class| class == "sapid-time-picker-control-column")
+                })
+            })
+            .count(),
+        2
+    );
+    app.dispatch(button(&app, "Start of shift"), Event::Activate)
+        .unwrap();
+    app.flush().unwrap();
+    assert_eq!(value.get(), Some(dt("2024-02-28T08:15")));
+    app.dispatch(button(&app, "Clear appointment"), Event::Activate)
+        .unwrap();
+    app.flush().unwrap();
+    assert_eq!(value.get(), None);
+    assert!(all(&app).into_iter().all(|id| {
+        let tree = app.tree();
+        !matches!(tree.node(id).unwrap().descriptor.view().props, Props::Button(value) if value.label == "Clear appointment")
+    }));
 }

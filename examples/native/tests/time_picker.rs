@@ -1,6 +1,6 @@
 use glory::apace::{Raster, shell::WindowApp};
 use glory::prelude::*;
-use glory::render::{Action, InputProps, NodeId, Props, Query, QueryValue, Rect};
+use glory::render::{Action, DismissReason, InputProps, NodeId, Props, Query, QueryValue, Rect};
 use sapid::prelude::*;
 use std::{cell::RefCell, rc::Rc};
 fn t(v: &str) -> LocalTime {
@@ -47,6 +47,20 @@ fn button(app: &App, name: &str) -> NodeId {
         })
         .unwrap()
 }
+fn nodes(app: &App, class: &str) -> Vec<NodeId> {
+    all(app)
+        .into_iter()
+        .filter(|id| {
+            app.tree().node(*id).is_ok_and(|node| {
+                node.descriptor
+                    .view()
+                    .classes
+                    .iter()
+                    .any(|item| item == class)
+            })
+        })
+        .collect()
+}
 #[test]
 fn native_time_segments_four_themes_have_real_spin_editors_geometry_focus_and_shared_grid_value() {
     for theme in [
@@ -74,6 +88,7 @@ fn native_time_segments_four_themes_have_real_spin_editors_geometry_focus_and_sh
                 .minute_ref(m)
                 .second_ref(s)
                 .value(value)
+                .clearable(true)
                 .grid(TimeGridSpec::new(t("09:00"), t("10:30"), 1800, 2).unwrap())
                 .on_value_change(move |v| value.revise(|old| *old = v)),
         )
@@ -139,6 +154,40 @@ fn native_time_segments_four_themes_have_real_spin_editors_geometry_focus_and_sh
         ]) {
             assert!(a.abs_diff(b) <= 2);
         }
+        let clear = button(app, "Clear time");
+        let clear_rect = bounds(app, clear);
+        assert!(clear_rect.width >= 20. && clear_rect.height >= 20.);
+        let clear_hit = host.renderer().inspect(|dom| {
+            dom.hit(
+                (clear_rect.x + clear_rect.width / 2.) as f32,
+                (clear_rect.y + clear_rect.height / 2.) as f32,
+            )
+            .unwrap()
+            .node_id
+        });
+        assert_eq!(
+            clear_hit,
+            host.renderer()
+                .engine_id(clear, glory::html::Part::Main)
+                .unwrap()
+        );
+        app.dispatch(clear, Event::Activate).unwrap();
+        app.settle(16).unwrap();
+        assert_eq!(value.get(), None);
+        assert!(!all(app).contains(&clear));
+        assert_eq!(props(app, h).value, "");
+        host.renderer().inspect(|dom| {
+            let input = dom
+                .get_node(physical)
+                .unwrap()
+                .element_data()
+                .unwrap()
+                .text_input_data()
+                .unwrap();
+            assert!(input.placeholder_shown());
+            assert!(input.placeholder_layout().is_some());
+            assert!(input.editor.raw_text().is_empty());
+        });
         assert_eq!(
             host.renderer()
                 .engine_id(h, glory::html::Part::Main)
@@ -197,4 +246,123 @@ fn native_time_grid_queued_navigation_skips_disabled_and_readonly_keeps_focus_wi
     app.clear().unwrap();
     assert!(root.get().is_none());
     assert_eq!(app.stats().queries, 0);
+}
+
+#[test]
+fn native_time_picker_presets_use_a_real_anchored_layer_and_keep_editor_identity() {
+    let host = WindowApp::new();
+    host.renderer().set_viewport(800, 600, 1.).unwrap();
+    let app = host.app();
+    let hour = app.scope().cage(None);
+    let value = app.scope().cage(Some(t("09:00")));
+    let open = app.scope().cage(false);
+    host.mount(
+        time_picker("native-presets")
+            .hour_ref(hour)
+            .value(value)
+            .open(open)
+            .presets(vec![t("09:00"), t("12:30"), t("17:45")])
+            .close_on_preset_select(true)
+            .on_value_change(move |next| value.revise(|old| *old = next))
+            .on_open_change(move |next| open.revise(|old| *old = next)),
+    )
+    .unwrap();
+    app.settle(16).unwrap();
+    let hour = hour.get().unwrap();
+    let physical = host
+        .renderer()
+        .engine_id(hour, glory::html::Part::Main)
+        .unwrap();
+    app.dispatch(hour, Event::FocusChanged(true)).unwrap();
+    app.settle(16).unwrap();
+    assert!(open.get());
+    let panel = nodes(app, "sapid-popover")[0];
+    let panel_rect = bounds(app, panel);
+    let trigger_rect = bounds(app, nodes(app, "sapid-time-picker-preset-trigger")[0]);
+    assert!(panel_rect.width > 100. && panel_rect.height > 35.);
+    assert!(panel_rect.y >= trigger_rect.y + trigger_rect.height - 1.);
+    let preset = button(app, "12:30");
+    let preset_rect = bounds(app, preset);
+    let hit = host.renderer().inspect(|dom| {
+        dom.hit(
+            (preset_rect.x + preset_rect.width / 2.) as f32,
+            (preset_rect.y + preset_rect.height / 2.) as f32,
+        )
+        .unwrap()
+        .node_id
+    });
+    assert_eq!(
+        hit,
+        host.renderer()
+            .engine_id(preset, glory::html::Part::Main)
+            .unwrap()
+    );
+    app.dispatch(preset, Event::Activate).unwrap();
+    app.settle(16).unwrap();
+    assert_eq!(value.get(), Some(t("12:30")));
+    assert!(!open.get());
+    assert_eq!(
+        host.renderer()
+            .engine_id(hour, glory::html::Part::Main)
+            .unwrap(),
+        physical
+    );
+    app.dispatch(hour, Event::FocusChanged(true)).unwrap();
+    app.settle(16).unwrap();
+    app.dispatch(panel, Event::Dismiss(DismissReason::Escape))
+        .unwrap();
+    app.settle(16).unwrap();
+    assert!(!open.get());
+}
+
+#[test]
+fn native_duration_picker_expands_hours_beyond_a_day_and_keeps_real_editors() {
+    let host = WindowApp::new();
+    host.renderer().set_viewport(800, 420, 1.).unwrap();
+    let app = host.app();
+    let hour = app.scope().cage(None);
+    let minute = app.scope().cage(None);
+    let value = app
+        .scope()
+        .cage(Some(TimeDuration::new(123, 45, 0).unwrap()));
+    host.mount(
+        time_picker("native-duration")
+            .duration()
+            .min_hours_digits(4)
+            .hour_ref(hour)
+            .minute_ref(minute)
+            .value(value)
+            .on_value_change(move |next| value.revise(|old| *old = next)),
+    )
+    .unwrap();
+    app.settle(16).unwrap();
+    let hour = hour.get().unwrap();
+    let minute = minute.get().unwrap();
+    let initial_rect = bounds(app, hour);
+    assert!(initial_rect.width >= 67. && bounds(app, minute).x > initial_rect.x);
+    let physical = host
+        .renderer()
+        .engine_id(hour, glory::html::Part::Main)
+        .unwrap();
+    app.dispatch(
+        hour,
+        Event::ValueChanged {
+            value: "123456".into(),
+            revision: props(app, hour).revision,
+            composing: false,
+        },
+    )
+    .unwrap();
+    app.settle(16).unwrap();
+    assert_eq!(
+        value.get(),
+        Some(TimeDuration::new(123_456, 45, 0).unwrap())
+    );
+    assert!(bounds(app, hour).width > initial_rect.width);
+    assert_eq!(
+        host.renderer()
+            .engine_id(hour, glory::html::Part::Main)
+            .unwrap(),
+        physical
+    );
 }

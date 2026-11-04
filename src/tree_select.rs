@@ -8,8 +8,8 @@ use crate::{
     tree_model::*,
 };
 use glory::render::{
-    ChoiceCommand, ComboboxKind, Direction, Event, EventKind, FormControl, Layer, LayerFocus,
-    LayerPlacement, PopupKind, Props, Semantics,
+    AnchorPlacement, ChoiceCommand, ComboboxKind, Direction, Event, EventKind, FormControl, Layer,
+    LayerFocus, LayerPlacement, PopupKind, Props, Semantics,
 };
 use glory::style::{BorderStyle, Edges, Length, Limit, Style};
 use glory::ui::{Result, WeakScope, Widget};
@@ -95,19 +95,58 @@ fn admit(
     Ok(accepted)
 }
 
+fn visible_nodes(
+    nodes: &[TreeNode],
+    query: &str,
+    choices: &TreeChoices,
+    hide_picked: bool,
+) -> Result<Vec<TreeNode>> {
+    let filtered = filter_tree_nodes(nodes, query).map_err(error)?;
+    if !hide_picked || choices.is_empty() {
+        return Ok(filtered);
+    }
+    let hidden = choices
+        .paths()
+        .iter()
+        .map(TreePath::leaf)
+        .collect::<BTreeSet<_>>();
+    let retained = filtered
+        .iter()
+        .filter(|node| {
+            let mut current = Some(node.key.as_str());
+            while let Some(key) = current {
+                if hidden.contains(key) {
+                    return false;
+                }
+                current = filtered
+                    .iter()
+                    .find(|candidate| candidate.key == key)
+                    .and_then(|candidate| candidate.parent.as_deref());
+            }
+            true
+        })
+        .cloned()
+        .collect::<Vec<_>>();
+    TreeModel::validate(&retained).map_err(error)?;
+    Ok(retained)
+}
+
 struct State {
     owner: glory::core::InstanceId,
     weak: WeakScope,
     accepted: Cage<Accepted>,
     value: Control<TreeChoices>,
     open: Control<bool>,
+    search: Control<String>,
     visible: Vary<bool>,
     editable: Vary<bool>,
     pending: RefCell<Option<TreeChoices>>,
     dirty: Dirty,
     changed: Callback<TreeChoices>,
+    searched: Callback<String>,
     opened: Callback<bool>,
     within: Cell<Option<bool>>,
+    max_values: usize,
 }
 impl State {
     fn report(&self, result: Result) {
@@ -126,7 +165,25 @@ impl State {
         }
         self.open.accept(&value)?;
         self.opened.emit(self.owner, value);
+        if !value && !self.search.source.get().is_empty() {
+            self.search.accept(&String::new())?;
+            self.searched.emit(self.owner, String::new());
+        }
         Ok(())
+    }
+    fn edit_search(&self, value: String) -> Result {
+        if !self.owner.is_alive() {
+            return Err(glory::ui::Error::Gone);
+        }
+        if !self.editable.get() {
+            return Ok(());
+        }
+        if value.len() > MAX_TREE_LABEL_BYTES || value.contains(['\0', '\r']) {
+            return Err(error(TreeError::State));
+        }
+        self.search.accept(&value)?;
+        self.searched.emit(self.owner, value);
+        self.open(true)
     }
     fn toggle(&self, key: &str) -> Result {
         if !self.owner.is_alive() {
@@ -142,6 +199,9 @@ impl State {
             .clone()
             .unwrap_or_else(|| accepted.values.clone());
         let next = accepted.model.toggle(&current, key).map_err(error)?;
+        if next.paths().len() > self.max_values && next.paths().len() > current.paths().len() {
+            return Ok(());
+        }
         if next == current {
             let node = accepted
                 .model
@@ -192,15 +252,19 @@ impl State {
     }
 }
 
+type NodeFactory = Rc<RefCell<Box<dyn FnMut(Vary<TreeNode>) -> Box<dyn Widget>>>>;
+
 pub struct TreeSelect {
     common: Common,
     key: String,
     nodes: Option<Vary<Vec<TreeNode>>>,
     value: Value<TreeChoices>,
     open: Value<bool>,
+    search: Value<String>,
     expanded: Value<BTreeSet<String>>,
     changed: Option<Box<dyn FnMut(TreeChoices)>>,
     opened: Option<Box<dyn FnMut(bool)>>,
+    searched: Option<Box<dyn FnMut(String)>>,
     expansion: Option<Box<dyn FnMut(BTreeSet<String>)>>,
     load: Option<Box<dyn FnMut(String)>>,
     policy: TreeChoicePolicy,
@@ -208,6 +272,16 @@ pub struct TreeSelect {
     direction: Direction,
     placeholder: String,
     clearable: bool,
+    searchable: bool,
+    hide_picked: bool,
+    max_values: usize,
+    nothing_found: String,
+    with_lines: bool,
+    max_dropdown_height: f64,
+    popup_width: f64,
+    popup_placement: AnchorPlacement,
+    render_node: Option<NodeFactory>,
+    render_value: Option<NodeFactory>,
     field: Option<crate::FieldControl>,
     form_name: Option<Vary<String>>,
     required: Vary<bool>,
@@ -222,9 +296,11 @@ pub fn tree_select(key: impl Into<String>) -> TreeSelect {
         nodes: None,
         value: Value::default(),
         open: Value::default(),
+        search: Value::default(),
         expanded: Value::default(),
         changed: None,
         opened: None,
+        searched: None,
         expansion: None,
         load: None,
         policy: TreeChoicePolicy::Leaves,
@@ -232,6 +308,16 @@ pub fn tree_select(key: impl Into<String>) -> TreeSelect {
         direction: Direction::Ltr,
         placeholder: "Choose an item".into(),
         clearable: false,
+        searchable: false,
+        hide_picked: false,
+        max_values: MAX_TREE_CHOICES,
+        nothing_found: "Nothing found".into(),
+        with_lines: true,
+        max_dropdown_height: 288.,
+        popup_width: 320.,
+        popup_placement: AnchorPlacement::default(),
+        render_node: None,
+        render_value: None,
         field: None,
         form_name: None,
         required: false.into(),
@@ -266,6 +352,14 @@ impl TreeSelect {
         self.open.default = value;
         self
     }
+    pub fn search(mut self, value: impl Into<Vary<String>>) -> Self {
+        self.search.source = Some(value.into());
+        self
+    }
+    pub fn default_search(mut self, value: impl Into<String>) -> Self {
+        self.search.default = value.into();
+        self
+    }
     pub fn expanded(mut self, value: impl Into<Vary<BTreeSet<String>>>) -> Self {
         self.expanded.source = Some(value.into());
         self
@@ -280,6 +374,10 @@ impl TreeSelect {
     }
     pub fn on_open_change(mut self, value: impl FnMut(bool) + 'static) -> Self {
         self.opened = Some(Box::new(value));
+        self
+    }
+    pub fn on_search_change(mut self, value: impl FnMut(String) + 'static) -> Self {
+        self.searched = Some(Box::new(value));
         self
     }
     pub fn on_expanded_change(mut self, value: impl FnMut(BTreeSet<String>) + 'static) -> Self {
@@ -310,6 +408,56 @@ impl TreeSelect {
         self.clearable = value;
         self
     }
+    pub fn searchable(mut self, value: bool) -> Self {
+        self.searchable = value;
+        self
+    }
+    pub fn hide_picked(mut self, value: bool) -> Self {
+        self.hide_picked = value;
+        self
+    }
+    pub fn max_values(mut self, value: usize) -> Self {
+        self.max_values = value;
+        self
+    }
+    pub fn nothing_found_message(mut self, value: impl Into<String>) -> Self {
+        self.nothing_found = value.into();
+        self
+    }
+    pub fn with_lines(mut self, value: bool) -> Self {
+        self.with_lines = value;
+        self
+    }
+    pub fn max_dropdown_height(mut self, value: f64) -> Self {
+        self.max_dropdown_height = value;
+        self
+    }
+    pub fn popup_width(mut self, value: f64) -> Self {
+        self.popup_width = value;
+        self
+    }
+    pub fn popup_placement(mut self, value: AnchorPlacement) -> Self {
+        self.popup_placement = value;
+        self
+    }
+    pub fn render_node<W: Widget>(
+        mut self,
+        mut render: impl FnMut(Vary<TreeNode>) -> W + 'static,
+    ) -> Self {
+        self.render_node = Some(Rc::new(RefCell::new(Box::new(move |node| {
+            Box::new(render(node))
+        }))));
+        self
+    }
+    pub fn render_value<W: Widget>(
+        mut self,
+        mut render: impl FnMut(Vary<TreeNode>) -> W + 'static,
+    ) -> Self {
+        self.render_value = Some(Rc::new(RefCell::new(Box::new(move |node| {
+            Box::new(render(node))
+        }))));
+        self
+    }
     pub fn field(mut self, value: crate::FieldControl) -> Self {
         self.common.theme = value.theme.clone();
         self.common.size = value.size;
@@ -336,9 +484,20 @@ impl TreeSelect {
 }
 impl Widget for TreeSelect {
     fn build(&mut self, scope: &Scope) -> Result {
-        if self.placeholder.len() > 256 || self.placeholder.contains(['\0', '\r', '\n']) {
+        if self.placeholder.len() > 256
+            || self.placeholder.contains(['\0', '\r', '\n'])
+            || self.nothing_found.len() > 256
+            || self.nothing_found.contains(['\0', '\r'])
+            || self.max_values == 0
+            || self.max_values > MAX_TREE_CHOICES
+            || !self.max_dropdown_height.is_finite()
+            || !(80.0..=4096.0).contains(&self.max_dropdown_height)
+            || !self.popup_width.is_finite()
+            || !(160.0..=4096.0).contains(&self.popup_width)
+        {
             return Err(error(TreeError::Label));
         }
+        self.popup_placement.validate()?;
         let trigger_id = self
             .field
             .as_ref()
@@ -357,6 +516,14 @@ impl Widget for TreeSelect {
             self.columns.then(|| expanded.source.clone()),
         )?;
         let open = std::mem::take(&mut self.open).mount(scope);
+        let search = std::mem::take(&mut self.search).mount(scope);
+        let accepted_search = composite::validated(scope, &search.source, |value| {
+            if value.len() > MAX_TREE_LABEL_BYTES || value.contains(['\0', '\r']) {
+                Err(error(TreeError::State))
+            } else {
+                Ok(())
+            }
+        })?;
         let enabled = self
             .field
             .as_ref()
@@ -384,18 +551,22 @@ impl Widget for TreeSelect {
             accepted,
             value,
             open,
+            search,
             visible: visible.clone(),
             editable: editable.clone(),
             pending: RefCell::new(None),
             dirty: Dirty::new(scope),
             changed: Callback::new(self.changed.take()),
+            searched: Callback::new(self.searched.take()),
             opened: Callback::new(self.opened.take()),
             within: Cell::new(None),
+            max_values: self.max_values,
         });
         let weak = Rc::downgrade(&state);
         scope.on_cleanup(move || {
             if let Some(state) = weak.upgrade() {
                 state.changed.clear();
+                state.searched.clear();
                 state.opened.clear();
                 state.pending.take();
             }
@@ -414,11 +585,7 @@ impl Widget for TreeSelect {
                 }
             }
         });
-        let placeholder = self.placeholder.clone();
         let label = accepted.map(move |a| {
-            if a.values.is_empty() {
-                return placeholder.clone();
-            }
             a.values
                 .paths()
                 .iter()
@@ -433,34 +600,55 @@ impl Widget for TreeSelect {
                 .collect::<Vec<_>>()
                 .join(", ")
         });
+        let button_placeholder = self.placeholder.clone();
+        let button_label = scope.bond(move || {
+            let value = label.get();
+            if value.is_empty() {
+                button_placeholder.clone()
+            } else {
+                value
+            }
+        });
         let name = trigger_id.clone();
         let panel = panel_id.clone();
         let shown = visible.clone();
         let form_meta = metadata.clone();
+        let semantic_placeholder = self.placeholder.clone();
+        let semantic_searchable = self.searchable;
+        let semantic_kind = if self.searchable {
+            ComboboxKind::Editable
+        } else {
+            ComboboxKind::Select
+        };
         let trigger_meta = scope.bond(move || {
             let mut s = form_meta.get().unwrap_or_default();
             s.id = Some(name.clone());
             s.form_control = None;
-            s.combobox = Some(ComboboxKind::Select);
+            s.combobox = Some(semantic_kind);
             s.popup = Some(PopupKind::Tree);
             s.controls = Some(panel.clone());
             s.expanded = Some(shown.get());
+            if semantic_searchable {
+                s.placeholder = Some(semantic_placeholder.clone());
+            }
             Some(s)
         });
         let root = scope.create(glory::render::Descriptor::new(Props::Group))?;
         let content = scope.child_in(root)?;
-        let base = self.common.theme.control(self.common.size);
-        let mut trigger = configure!(
-            self.common,
-            glory::ui::button(),
-            scope,
-            "sapid-tree-select",
-            base
-        )
-        .label(label)
-        .enabled(enabled.clone())
-        .semantics(trigger_meta);
-        let s = state.clone();
+        let control = self.common.theme.control(self.common.size);
+        let padding = control.padding.unwrap_or(Edges::all(0.));
+        let base = Style {
+            display: Some(glory::style::Display::Flex),
+            align: Some(glory::style::Align::Center),
+            grow: Some(1.),
+            min_width: Some(Length::Px(0.)),
+            justify: Some(glory::style::Justify::Start),
+            padding: Some(Edges {
+                right: 36.,
+                ..padding
+            }),
+            ..control
+        };
         let activation = Observers::new(
             self.common
                 .handlers
@@ -469,11 +657,6 @@ impl Widget for TreeSelect {
         );
         let clear = activation.clone();
         scope.on_cleanup(move || clear.clear())?;
-        trigger = trigger.on(EventKind::Activate, move |event| {
-            s.report(s.open(!s.visible.get()));
-            activation.emit(s.owner, event);
-        });
-        let s = state.clone();
         let choices = Observers::new(
             self.common
                 .handlers
@@ -482,27 +665,132 @@ impl Widget for TreeSelect {
         );
         let clear = choices.clone();
         scope.on_cleanup(move || clear.clear())?;
-        trigger = trigger.on(EventKind::Choice, move |event| {
-            if let Event::Choice { command, .. } = &event {
-                match command {
-                    ChoiceCommand::Close => s.report(s.open(false)),
-                    _ => s.report(s.open(true)),
+        let trigger: Box<dyn Widget> = if self.searchable {
+            let search_visible = visible.clone();
+            let display = scope.bond(move || {
+                if search_visible.get() {
+                    accepted_search.get()
+                } else {
+                    label.get()
                 }
+            });
+            let mut trigger = configure!(
+                self.common,
+                glory::ui::input(),
+                scope,
+                "sapid-tree-select sapid-tree-select-searchable",
+                base
+            )
+            .value(display)
+            .enabled(enabled.clone())
+            .semantics(trigger_meta);
+            for kind in [EventKind::ValueChanged, EventKind::Commit] {
+                let s = state.clone();
+                let observers =
+                    Observers::new(self.common.handlers.remove(&kind).unwrap_or_default());
+                let clear = observers.clone();
+                scope.on_cleanup(move || clear.clear())?;
+                trigger = trigger.on(kind, move |event| {
+                    if let Event::ValueChanged { value, .. } | Event::Commit { value, .. } = &event
+                    {
+                        s.report(s.edit_search(value.clone()));
+                    }
+                    observers.emit(s.owner, event);
+                });
             }
-            choices.emit(s.owner, event);
-        });
-        for (kind, handlers) in std::mem::take(&mut self.common.handlers) {
-            let observers = Observers::new(handlers);
-            let clear = observers.clone();
-            scope.on_cleanup(move || clear.clear())?;
-            let owner = scope.id();
-            trigger = trigger.on(kind, move |event| observers.emit(owner, event));
-        }
-        trigger.show_in(&content)?;
+            let s = state.clone();
+            trigger = trigger.on(EventKind::FocusChanged, move |event| {
+                if matches!(event, Event::FocusChanged(true)) {
+                    s.report(s.open(true));
+                }
+            });
+            let s = state.clone();
+            trigger = trigger.on(EventKind::Choice, move |event| {
+                if let Event::Choice { command, .. } = &event {
+                    match command {
+                        ChoiceCommand::Close => s.report(s.open(false)),
+                        _ => s.report(s.open(true)),
+                    }
+                }
+                choices.emit(s.owner, event);
+            });
+            for (kind, handlers) in std::mem::take(&mut self.common.handlers) {
+                let observers = Observers::new(handlers);
+                let clear = observers.clone();
+                scope.on_cleanup(move || clear.clear())?;
+                let owner = scope.id();
+                trigger = trigger.on(kind, move |event| observers.emit(owner, event));
+            }
+            Box::new(trigger)
+        } else {
+            let mut trigger = configure!(
+                self.common,
+                glory::ui::button(),
+                scope,
+                "sapid-tree-select",
+                base
+            )
+            .label(button_label)
+            .enabled(enabled.clone())
+            .semantics(trigger_meta);
+            if let Some(renderer) = self.render_value.clone() {
+                let values = accepted.map(|a| {
+                    a.values
+                        .paths()
+                        .iter()
+                        .filter_map(|path| {
+                            a.model
+                                .tree()
+                                .index(path.leaf())
+                                .map(|index| a.model.tree().nodes()[index].clone())
+                        })
+                        .collect::<Vec<_>>()
+                });
+                trigger = trigger.fill(
+                    glory::ui::each(values)
+                        .key(|node| node.key.clone())
+                        .children(move |entry| (renderer.borrow_mut())(entry.value.into())),
+                );
+            }
+            let s = state.clone();
+            trigger = trigger.on(EventKind::Activate, move |event| {
+                s.report(s.open(!s.visible.get()));
+                activation.emit(s.owner, event);
+            });
+            let s = state.clone();
+            trigger = trigger.on(EventKind::Choice, move |event| {
+                if let Event::Choice { command, .. } = &event {
+                    match command {
+                        ChoiceCommand::Close => s.report(s.open(false)),
+                        _ => s.report(s.open(true)),
+                    }
+                }
+                choices.emit(s.owner, event);
+            });
+            for (kind, handlers) in std::mem::take(&mut self.common.handlers) {
+                let observers = Observers::new(handlers);
+                let clear = observers.clone();
+                scope.on_cleanup(move || clear.clear())?;
+                let owner = scope.id();
+                trigger = trigger.on(kind, move |event| observers.emit(owner, event));
+            }
+            Box::new(trigger)
+        };
         let hidden = visible.clone();
         let s = state.clone();
         let focus_state = state.clone();
-        let nodes = accepted.map(|a| a.model.tree().nodes().to_vec());
+        let hide_picked = self.hide_picked;
+        let nodes = scope.bond(move || {
+            accepted.with(|a| {
+                visible_nodes(
+                    a.model.tree().nodes(),
+                    &accepted_search.get(),
+                    &a.values,
+                    hide_picked,
+                )
+                .expect("accepted tree-select filtering")
+            })
+        });
         let selection = accepted.map(|a| {
             a.values
                 .paths()
@@ -514,7 +802,9 @@ impl Widget for TreeSelect {
             .theme(self.common.theme.clone())
             .name("Choices")
             .class("sapid-tree-select-popup")
-            .height(288.)
+            .height(self.max_dropdown_height)
+            .with_lines(self.with_lines)
+            .empty_message(self.nothing_found.clone())
             .nodes(nodes)
             .selected(selection)
             .selection_mode(if self.multiple {
@@ -531,13 +821,14 @@ impl Widget for TreeSelect {
                 hidden: scope.bond(move || !hidden.get()).into(),
                 layer: Layer {
                     modal: false,
-                    focus: LayerFocus::Manage,
-                    placement: LayerPlacement::Anchor(glory::render::AnchorPlacement::new(
-                        glory::render::AnchorSide::Bottom,
-                        glory::render::AnchorAlign::Start,
-                    )),
+                    focus: if self.searchable {
+                        LayerFocus::Preserve
+                    } else {
+                        LayerFocus::Manage
+                    },
+                    placement: LayerPlacement::Anchor(self.popup_placement),
                     anchor: Some(trigger_id.clone()),
-                    return_focus: Some(trigger_id),
+                    return_focus: (!self.searchable).then_some(trigger_id),
                     ..Default::default()
                 },
             })
@@ -549,7 +840,11 @@ impl Widget for TreeSelect {
             });
         let mut popup_style = Style::new()
             .min_width(Length::Px(180.))
-            .width(Length::Px(if self.columns { 560. } else { 320. }))
+            .width(Length::Px(if self.columns {
+                560.
+            } else {
+                self.popup_width
+            }))
             .max_width(Limit::Percent(95.));
         if !self.common.unstyled {
             popup_style = popup_style
@@ -563,6 +858,9 @@ impl Widget for TreeSelect {
         }
         if self.columns {
             tree = tree.column_layout();
+        }
+        if let Some(renderer) = self.render_node.take() {
+            tree = tree.render_label(move |node| (renderer.borrow_mut())(node));
         }
         if self.multiple {
             tree = tree
@@ -589,18 +887,84 @@ impl Widget for TreeSelect {
         let s = state.clone();
         tree.on(EventKind::Dismiss, move |_| s.report(s.open(false)))
             .show_in(&content)?;
+        let editable = state.editable.clone();
+        let clear_visible: Vary<bool> = if self.clearable {
+            scope
+                .bond(move || editable.get() && !accepted.with(|a| a.values.is_empty()))
+                .into()
+        } else {
+            false.into()
+        };
+        let action_color = self.common.theme.muted;
+        let mut controls: Vec<Box<dyn Widget>> = vec![trigger];
         if self.clearable {
             let s = state.clone();
-            let editable = state.editable.clone();
-            crate::button()
-                .theme(self.common.theme.clone())
-                .label("Clear tree selection")
-                .enabled(
-                    scope.bond(move || editable.get() && !accepted.with(|a| a.values.is_empty())),
-                )
-                .on_press(move || s.report(s.clear()))
-                .show_in(&content)?;
+            let clear_style = clear_visible.clone();
+            controls.push(Box::new(
+                crate::close_button()
+                    .theme(self.common.theme.clone())
+                    .size(crate::Size::Small)
+                    .unstyled()
+                    .class("sapid-tree-select-clear")
+                    .name("Clear tree selection")
+                    .enabled(clear_visible.clone())
+                    .style(scope.bond(move || Style {
+                        position: Some(glory::style::Position::Absolute),
+                        top: Some(Length::Px(0.)),
+                        right: Some(Length::Px(4.)),
+                        display: Some(if clear_style.get() {
+                            glory::style::Display::Flex
+                        } else {
+                            glory::style::Display::None
+                        }),
+                        align: Some(glory::style::Align::Center),
+                        justify: Some(glory::style::Justify::Center),
+                        width: Some(Length::Px(28.)),
+                        height: Some(Length::Percent(100.)),
+                        padding: Some(Edges::all(0.)),
+                        border_width: Some(Edges::all(0.)),
+                        background: Some(glory::style::Color(0, 0, 0, 0)),
+                        color: Some(action_color),
+                        ..Style::new()
+                    }))
+                    .on_press(move || s.report(s.clear())),
+            ));
         }
+        controls.push(Box::new(
+            crate::theme_icon(crate::Icon::ChevronDown)
+                .theme(self.common.theme.clone())
+                .size(crate::Size::ExtraSmall)
+                .unstyled()
+                .color(action_color)
+                .class("sapid-tree-select-chevron")
+                .style(scope.bond(move || Style {
+                    position: Some(glory::style::Position::Absolute),
+                    top: Some(Length::Px(0.)),
+                    right: Some(Length::Px(10.)),
+                    display: Some(if clear_visible.get() {
+                        glory::style::Display::None
+                    } else {
+                        glory::style::Display::Flex
+                    }),
+                    align: Some(glory::style::Align::Center),
+                    justify: Some(glory::style::Justify::Center),
+                    width: Some(Length::Px(16.)),
+                    height: Some(Length::Percent(100.)),
+                    pointer_events: Some(glory::style::PointerEvents::None),
+                    ..Style::new()
+                })),
+        ));
+        glory::ui::view()
+            .class("sapid-tree-select-control")
+            .style(Style {
+                position: Some(glory::style::Position::Relative),
+                display: Some(glory::style::Display::Flex),
+                align: Some(glory::style::Align::Center),
+                width: Some(Length::Percent(100.)),
+                ..Style::new()
+            })
+            .fill(controls)
+            .show_in(&content)?;
         // Only current accepted values are successful. Real readonly Inputs
         // live under a hidden semantic View; no programmatic file/DOM injection.
         let form_name = composite::form_name(scope, &self.form_name)?;

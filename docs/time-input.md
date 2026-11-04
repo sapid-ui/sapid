@@ -10,6 +10,7 @@ use sapid::prelude::*;
 let value = scope.cage(Some(LocalTime::new(9, 30, 0)?));
 let widget = time_input("meeting-time")
     .name("Meeting time")
+    .placeholder("Select a time")
     .form_name("meeting_time")
     .value(value)
     .bounds(TimeBounds::new(
@@ -68,23 +69,33 @@ the typed `LocalTime` (and handle validation) in their submit callback. There is
 hidden HTML field or implicit HTTP serialization. `unstyled` preserves default
 width and size-dependent minimum height; explicit styles can override them.
 
+`placeholder(Vary<String>)` uses Glory's shared bounded single-line placeholder
+metadata. Web serializes it as the real input placeholder; native creates a
+separate hint layout only while the editor is empty and not composing. Reactive
+placeholder changes preserve the input node, raw editor text, selection and IME
+identity. Newline, carriage-return, NUL-containing or oversized hints are
+rejected by the shared input contract rather than normalized; an empty hint is
+valid and simply paints nothing.
+
 Validation completed so far:
 
 - Four pure model tests cover every second of the day in both hour cycles and
   both supported locales, every valid UTF-8 display prefix, all 1,440 minutes,
   midnight/noon, precision loss, bounds and an oversized draft:
   `D:/BuildCache/sapid/time-model-rust.log`.
-- Nine component tests cover drafts, bounds/no clamp, callback order, Chinese
+- Ten component tests cover drafts, bounds/no clamp, callback order, Chinese
   seconds, controlled refusal/invalid source/recovery, same-tick valid then
   incomplete editing, composition echo/stale revisions, readonly/disabled/Owner,
-  display Text and direct million-byte Commit rejection:
+  display Text, reactive placeholder identity/rejection and direct million-byte Commit rejection:
   `D:/BuildCache/sapid/time-date-input-rust.log` (also includes 11 DateInput tests).
 
-Two actual native tests passed (`D:/BuildCache/sapid/time-input-native-final.log`).
+Three actual native tests passed (`D:/BuildCache/sapid/time-input-native-final.log`).
 Four themes query real editor bounds, focus, hit testing, raw draft updates,
 ASCII selection/caret, stable engine identity and input-background raster pixels.
 The second checks twelve-hour Chinese seconds in the actual editor, unstyled
 small dimensions, readonly, disabled focus rejection and Owner cleanup. The first
+additional placeholder test checks the actual native hint layout in all four
+themes, its disappearance after editing and stable engine identity. The first
 non-ASCII exact-selection attempt is preserved in
 `time-input-native-first-selection-boundary.log` as historical evidence. Current
 Glory accepts the Chinese UTF-16 range 9..11 with backward direction; the

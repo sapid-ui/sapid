@@ -86,6 +86,42 @@ fn native_four_theme_tree_has_real_indent_focus_selection_pixels_and_stable_cust
         let main_bounds = bounds(app, main);
         assert!(source_bounds.height >= 32. && main_bounds.height >= 36.);
         assert!(main_bounds.width > 300. && main_bounds.y > source_bounds.y);
+        let rows = all(app)
+            .into_iter()
+            .filter(|id| {
+                app.tree()
+                    .node(*id)
+                    .unwrap()
+                    .descriptor
+                    .view()
+                    .classes
+                    .iter()
+                    .any(|class| class == "sapid-tree-item")
+            })
+            .collect::<Vec<_>>();
+        let mut segments = 0;
+        for row in rows {
+            let row_bounds = bounds(app, row);
+            let children = app.tree().node(row).unwrap().children.clone();
+            for child in children {
+                let closing = {
+                    let tree = app.tree();
+                    let view = tree.node(child).unwrap().descriptor.view();
+                    if !view.classes.iter().any(|class| {
+                        class == "sapid-tree-branch-vertical" || class == "sapid-tree-guide-line"
+                    }) {
+                        continue;
+                    }
+                    view.style.bottom == Some(glory::style::Length::Percent(50.))
+                };
+                let guide = bounds(app, child);
+                assert!((guide.y - row_bounds.y).abs() < 0.1);
+                let expected = row_bounds.height * if closing { 0.5 } else { 1. };
+                assert!((guide.height - expected).abs() < 0.1);
+                segments += 1;
+            }
+        }
+        assert!(segments >= 3);
         let label = all(app)
             .into_iter()
             .find(|id| {

@@ -1,6 +1,6 @@
 use glory::prelude::*;
 use glory::render::{DragPhase, EventKind, NodeId, RangeCommand};
-use sapid::{field, slider};
+use sapid::{SliderMark, field, slider};
 use std::{
     cell::{Cell, RefCell},
     rc::Rc,
@@ -27,6 +27,68 @@ fn key(app: &App, node: NodeId, command: RangeCommand) {
         },
     )
     .unwrap();
+}
+fn class_count(app: &App, class: &str) -> usize {
+    let mut pending = app.tree().roots().to_vec();
+    let mut count = 0;
+    while let Some(id) = pending.pop() {
+        let tree = app.tree();
+        let node = tree.node(id).unwrap();
+        count += usize::from(
+            node.descriptor
+                .view()
+                .classes
+                .iter()
+                .any(|value| value == class),
+        );
+        pending.extend(node.children.iter().copied());
+    }
+    count
+}
+
+#[test]
+fn marks_render_with_labels_and_restricted_keyboard_moves_only_between_marks() {
+    let app = App::memory();
+    let reference = app.scope().cage(None);
+    app.mount(
+        slider("marks")
+            .default_value(20.)
+            .marks([
+                SliderMark::new(0., "0"),
+                SliderMark::new(20., "20"),
+                SliderMark::unlabeled(50.),
+                SliderMark::new(100., "100"),
+            ])
+            .restrict_to_marks(true)
+            .node_ref(reference),
+    )
+    .unwrap();
+    let node = reference.get().unwrap();
+    assert_eq!(class_count(&app, "sapid-slider-mark"), 4);
+    assert_eq!(class_count(&app, "sapid-slider-mark-label"), 3);
+    key(&app, node, RangeCommand::Increase);
+    assert_eq!(range(&app, node).range.value, 50.);
+    key(&app, node, RangeCommand::PageIncrease);
+    assert_eq!(range(&app, node).range.value, 100.);
+    key(&app, node, RangeCommand::Decrease);
+    assert_eq!(range(&app, node).range.value, 50.);
+}
+
+#[test]
+fn invalid_marks_and_non_mark_restricted_values_create_no_nodes() {
+    for widget in [
+        slider("empty").restrict_to_marks(true),
+        slider("order").marks([SliderMark::unlabeled(50.), SliderMark::unlabeled(20.)]),
+        slider("outside").marks([SliderMark::unlabeled(101.)]),
+        slider("value")
+            .default_value(25.)
+            .marks([SliderMark::unlabeled(20.)])
+            .restrict_to_marks(true),
+    ] {
+        let app = App::memory();
+        assert!(app.mount(widget).is_err());
+        assert!(app.tree().is_empty());
+    }
 }
 #[test]
 fn local_range_steps_pages_endpoints_and_same_tick_intents_accumulate() {

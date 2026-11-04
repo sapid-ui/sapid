@@ -13,6 +13,7 @@ mod fixture {
     pub fn loading_overlay_form(theme: Theme) -> impl Widget {
         widget(move |scope| {
             let loading = scope.cage(false);
+            let region_open = scope.cage(false);
             let visible = scope.cage(true);
             let actions = scope.cage(0usize);
             let value = scope.cage("Retained text".to_string());
@@ -43,6 +44,10 @@ mod fixture {
                                     .on_press(move || actions.revise(|n| *n += 1)),
                                 dialog("loading-region-dialog")
                                     .theme(theme.clone())
+                                    .open(region_open)
+                                    .on_open_change(move |next| {
+                                        region_open.revise(|open| *open = next)
+                                    })
                                     .label("Open region dialog")
                                     .title("Region dialog")
                                     .content_policy(ContentPolicy::KeepMounted)
@@ -50,7 +55,11 @@ mod fixture {
                                         button()
                                             .theme(inside_theme.clone())
                                             .label("Load from region dialog")
-                                            .on_press(move || loading.revise(|value| *value = true))
+                                            .on_press(move || {
+                                                // Retire the modal before making its ancestor inert.
+                                                region_open.revise(|open| *open = false);
+                                                loading.revise(|value| *value = true);
+                                            })
                                     }),
                             )),
                         ),

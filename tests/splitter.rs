@@ -110,6 +110,104 @@ fn respond(wire: &RefCell<Wire>, index: usize, result: std::result::Result<Query
         result,
     });
 }
+
+#[test]
+fn default_grip_has_three_dots_on_a_full_width_divider() {
+    use glory::style::Length;
+    let app = App::memory();
+    app.mount(splitter("dots")).unwrap();
+    let tree = app.tree();
+    assert_eq!(
+        tree.node(class(&app, "sapid-splitter-line"))
+            .unwrap()
+            .descriptor
+            .view()
+            .style
+            .width,
+        Some(Length::Px(6.0))
+    );
+    let grip = tree.node(class(&app, "sapid-splitter-grip")).unwrap();
+    assert_eq!(grip.descriptor.view().style.width, Some(Length::Px(2.0)));
+    assert_eq!(grip.descriptor.view().style.height, Some(Length::Px(12.0)));
+    assert_eq!(grip.children.len(), 3);
+    assert!(
+        grip.children
+            .iter()
+            .all(|dot| tree.node(*dot).unwrap().children.is_empty())
+    );
+}
+
+#[test]
+fn live_orientation_keeps_panes_and_cancels_the_previous_axis_geometry() {
+    use glory::render::Orientation;
+    use glory::style::{FlexDirection, Length};
+    let (app, wire) = fixture();
+    let axis = app.scope().cage(Orientation::Horizontal);
+    let first = app.scope().cage(None);
+    let second = app.scope().cage(None);
+    let handle = app.scope().cage(None);
+    app.mount(
+        splitter("direction")
+            .axis(axis)
+            .first_ref(first)
+            .second_ref(second)
+            .handle_ref(handle)
+            .first(|| glory::ui::input().name("First draft").value("Keep me"))
+            .second(|| glory::ui::text().content("Preview")),
+    )
+    .unwrap();
+    let identities = (first.get(), second.get(), handle.get());
+    let separator = handle.get().unwrap();
+    pointer(&app, separator, DragPhase::Start, 100.0, 100.0);
+    assert_eq!(app.stats().queries, 1);
+    axis.revise(|axis| *axis = Orientation::Vertical);
+    app.flush().unwrap();
+    assert_eq!(app.stats().queries, 0);
+    respond(
+        &wire,
+        0,
+        Ok(QueryValue::Bounds(Rect {
+            x: 0.0,
+            y: 0.0,
+            width: 600.0,
+            height: 300.0,
+        })),
+    );
+    app.pump().unwrap();
+    pointer(&app, separator, DragPhase::Drop, 550.0, 290.0);
+    assert_eq!(value(&app, separator), 50.0);
+    assert_eq!((first.get(), second.get(), handle.get()), identities);
+    let tree = app.tree();
+    assert_eq!(
+        tree.node(class(&app, "sapid-splitter-frame"))
+            .unwrap()
+            .descriptor
+            .view()
+            .style
+            .flex_direction,
+        Some(FlexDirection::Column)
+    );
+    assert_eq!(
+        tree.node(first.get().unwrap())
+            .unwrap()
+            .descriptor
+            .view()
+            .style
+            .width,
+        Some(Length::Percent(100.0))
+    );
+    assert_eq!(
+        tree.node(separator)
+            .unwrap()
+            .descriptor
+            .view()
+            .semantics
+            .as_ref()
+            .unwrap()
+            .separator_axis,
+        Some(Orientation::Horizontal)
+    );
+}
 #[test]
 fn local_same_tick_keys_accumulate_and_typed_callbacks_precede_generic_observers() {
     let (app, wire) = fixture();
@@ -402,4 +500,81 @@ fn cancel_and_owner_retirement_remove_pending_geometry_and_ignore_late_errors() 
     );
     app.pump().unwrap();
     assert_eq!(count.get(), 0);
+}
+
+#[test]
+fn measured_drag_updates_in_the_move_tick_without_another_bounds_query() {
+    let (app, wire) = fixture();
+    let changes = Rc::new(RefCell::new(Vec::new()));
+    let commits = Rc::new(RefCell::new(Vec::new()));
+    let changed = changes.clone();
+    let committed = commits.clone();
+    app.mount(
+        splitter("coalesced")
+            .on_value_change(move |value| changed.borrow_mut().push(value))
+            .on_value_commit(move |value| committed.borrow_mut().push(value)),
+    )
+    .unwrap();
+    let handle = class(&app, "sapid-splitter-handle");
+    pointer(&app, handle, DragPhase::Start, 100.0, 100.0);
+    respond(
+        &wire,
+        0,
+        Ok(QueryValue::Bounds(Rect {
+            width: 600.0,
+            height: 300.0,
+            ..Default::default()
+        })),
+    );
+    app.pump().unwrap();
+    assert!(changes.borrow().is_empty());
+    wire.borrow_mut().inputs.push(Input::Event {
+        node: handle,
+        event: Event::Drag {
+            from: handle,
+            phase: DragPhase::Move,
+            x: 300.0,
+            y: 100.0,
+        },
+    });
+    app.pump().unwrap();
+    assert_eq!(wire.borrow().requests.len(), 1);
+    assert_eq!(app.stats().queries, 0);
+    assert_eq!(changes.borrow().len(), 1);
+    let latest = changes.borrow()[0];
+    assert!((latest - (50.0 + 200.0 / 594.0 * 100.0)).abs() < 0.0001);
+    assert_eq!(value(&app, handle), latest);
+    pointer(&app, handle, DragPhase::Drop, 350.0, 100.0);
+    app.flush().unwrap();
+    let dropped = 90.0;
+    assert!((value(&app, handle) - dropped).abs() < 0.0001);
+    assert_eq!(changes.borrow().last().copied(), Some(dropped));
+    assert_eq!(commits.borrow().last().copied(), Some(dropped));
+    assert_eq!(app.stats().queries, 0);
+}
+
+#[test]
+fn pressing_and_releasing_without_axis_motion_does_not_propose_or_commit() {
+    let (app, wire) = fixture();
+    app.mount(
+        splitter("press")
+            .on_value_change(|_| panic!("stationary press proposed a resize"))
+            .on_value_commit(|_| panic!("stationary press committed a resize")),
+    )
+    .unwrap();
+    let handle = class(&app, "sapid-splitter-handle");
+    pointer(&app, handle, DragPhase::Start, 100.0, 100.0);
+    pointer(&app, handle, DragPhase::Drop, 100.0, 100.0);
+    respond(
+        &wire,
+        0,
+        Ok(QueryValue::Bounds(Rect {
+            width: 600.0,
+            height: 300.0,
+            ..Default::default()
+        })),
+    );
+    app.pump().unwrap();
+    assert_eq!(value(&app, handle), 50.0);
+    assert_eq!(app.stats().queries, 0);
 }

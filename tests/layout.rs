@@ -153,3 +153,32 @@ fn center_container_space_and_box_serialize_portable_structure_with_no_implicit_
     assert!(html.contains("&lt;&amp;&gt;"));
     assert!(!html.contains("role="));
 }
+
+#[test]
+fn center_inline_uses_inline_flex_and_can_restore_the_default() {
+    let app = App::memory();
+    app.mount(sapid::center().inline(true).fill(text().content("Inline")))
+        .unwrap();
+    assert_eq!(
+        app.tree()
+            .node(find(&app, "sapid-center"))
+            .unwrap()
+            .descriptor
+            .view()
+            .style
+            .display,
+        Some(Display::InlineFlex)
+    );
+    let app = App::memory();
+    app.mount(sapid::center().inline(false)).unwrap();
+    assert_eq!(
+        app.tree()
+            .node(find(&app, "sapid-center"))
+            .unwrap()
+            .descriptor
+            .view()
+            .style
+            .display,
+        Some(Display::Flex)
+    );
+}

@@ -87,6 +87,11 @@ fn four_theme_ssr_uses_real_tree_items_finite_coordinates_and_no_collapsed_owner
             html.contains("aria-expanded=\"false\"") && html.contains("aria-selected=\"true\"")
         );
         assert!(!html.contains("Main") && !html.contains("role=\"button\""));
+        assert!(
+            html.contains("sapid-tree-disclosure")
+                && html.contains("sapid-theme-icon-graphic")
+                && !html.contains(">+<")
+        );
     }
 }
 #[test]
@@ -111,6 +116,18 @@ fn same_tick_controlled_expansion_and_selection_propose_then_reconcile_refusal()
     )
     .unwrap();
     let disclosure = named(&app, "Toggle Source");
+    {
+        let tree = app.tree();
+        let disclosure_view = tree.node(disclosure).unwrap().descriptor.view();
+        assert_eq!(
+            disclosure_view.style.border_width,
+            Some(glory::style::Edges::all(0.))
+        );
+        assert_eq!(
+            disclosure_view.style.width,
+            Some(glory::style::Length::Px(16.))
+        );
+    }
     app.scope()
         .batch(|| {
             app.dispatch(disclosure, Event::Activate).unwrap();
@@ -141,6 +158,73 @@ fn same_tick_controlled_expansion_and_selection_propose_then_reconcile_refusal()
     });
     app.flush().unwrap();
     assert_eq!(items(&app).len(), 5);
+    let vertical = all(&app)
+        .into_iter()
+        .filter(|id| {
+            app.tree()
+                .node(*id)
+                .unwrap()
+                .descriptor
+                .view()
+                .classes
+                .contains(&"sapid-tree-branch-vertical".to_owned())
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(vertical.len(), 3);
+    let mut last = 0;
+    for id in vertical {
+        let tree = app.tree();
+        let view = tree.node(id).unwrap().descriptor.view();
+        assert!(matches!(view.props, Props::View));
+        assert_eq!(view.style.position, Some(glory::style::Position::Absolute));
+        assert_eq!(view.style.width, Some(glory::style::Length::Px(0.)));
+        assert_eq!(
+            view.style.border_width,
+            Some(glory::style::Edges {
+                left: 1.,
+                ..glory::style::Edges::all(0.)
+            })
+        );
+        assert_eq!(
+            view.style.pointer_events,
+            Some(glory::style::PointerEvents::None)
+        );
+        assert_eq!(view.style.top, Some(glory::style::Length::Px(-1.)));
+        assert_eq!(view.style.height, None);
+        if view.style.bottom == Some(glory::style::Length::Percent(50.)) {
+            last += 1;
+        } else {
+            assert_eq!(view.style.bottom, Some(glory::style::Length::Px(-1.)));
+        }
+    }
+    assert_eq!(last, 1);
+    let horizontal = all(&app)
+        .into_iter()
+        .filter(|id| {
+            app.tree()
+                .node(*id)
+                .unwrap()
+                .descriptor
+                .view()
+                .classes
+                .contains(&"sapid-tree-branch-horizontal".to_owned())
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(horizontal.len(), 3);
+    for id in horizontal {
+        let tree = app.tree();
+        let view = tree.node(id).unwrap().descriptor.view();
+        assert_eq!(view.style.top, Some(glory::style::Length::Percent(50.)));
+        assert_eq!(view.style.width, Some(glory::style::Length::Px(10.)));
+        assert_eq!(view.style.height, Some(glory::style::Length::Px(0.)));
+        assert_eq!(
+            view.style.border_width,
+            Some(glory::style::Edges {
+                top: 1.,
+                ..glory::style::Edges::all(0.)
+            })
+        );
+    }
     assert_eq!(proposals.borrow().len(), 2);
 }
 #[test]
@@ -420,4 +504,36 @@ fn disabled_tree_uses_a_real_fieldset_for_custom_inputs_and_excludes_item_tab_st
             .iter()
             .all(|id| app.tree().node(*id).unwrap().descriptor.view().focus != FocusMode::TabStop)
     );
+}
+
+#[test]
+fn drag_drop_marks_finite_rows_and_allow_drop_requires_a_consumer() {
+    let app = App::memory();
+    app.mount(
+        tree("reorder")
+            .nodes(nodes())
+            .default_expanded(BTreeSet::from(["src".into()]))
+            .on_drag_drop(|_| {}),
+    )
+    .unwrap();
+
+    for item in items(&app) {
+        let tree = app.tree();
+        let descriptor = tree.node(item).unwrap().descriptor.view();
+        assert_eq!(descriptor.semantics.as_ref().unwrap().drag_capture, None);
+        assert!(
+            descriptor
+                .classes
+                .iter()
+                .any(|class| class == "sapid-tree-draggable")
+        );
+    }
+
+    let invalid = App::memory();
+    assert!(
+        invalid
+            .mount(tree("invalid-drop").nodes(nodes()).allow_drop(|_| true))
+            .is_err()
+    );
+    assert_eq!(invalid.stats().nodes, 0);
 }

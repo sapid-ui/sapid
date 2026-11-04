@@ -50,8 +50,13 @@ Explicit typed style overrides can deliberately change the computed layout.
 finite and in [0.000001,1000000]. Width defaults to 100%; `width`, `height`, `fill`,
 and typed style overrides remain available. With both axes definite, CSS's size
 constraints determine the box. Minimums can exceed maximums; the engine still
-applies the minimum. Intrinsic child content can also require a larger box.
-No percentage-padding trick, absolute child wrapper or image fit policy is used.
+applies the minimum. A positioned, full-frame content wrapper keeps intrinsic
+children from changing the reserved ratio. Its contents are centered; explicit
+Image width/height/fit selects media cropping. The opt-in stylesheet stretches
+direct image/video/frame children. No percentage-padding measurement is needed.
+An explicit Static position is rejected, including reactive updates, because it
+would move the absolute content outside its frame. Other explicit size and ratio
+overrides retain normal CSS precedence.
 
 An invalid initial ratio fails before node creation. Later invalid values report
 a typed error, preserve the last accepted ratio and recover on a valid source

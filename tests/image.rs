@@ -1,7 +1,9 @@
 use glory::render::{Event, EventKind, ImageStatus, NodeId, Props};
 use glory::style::{Length, ObjectFit, Position, Style};
 use glory::ui::App;
-use sapid::{Theme, background_image, image};
+use sapid::{
+    ImageCandidate, ImageLoading, ImageSizeHint, ImageSlotSize, Theme, background_image, image,
+};
 use std::{cell::RefCell, rc::Rc};
 fn photo(app: &App, id: NodeId) -> glory::render::ImageProps {
     let tree = app.tree();
@@ -276,4 +278,90 @@ fn source_drivers_node_refs_and_captures_retire_with_owner() {
     source.revise(|value| *value = "b.png".into());
     app.flush().unwrap();
     assert_eq!(app.stats().nodes, 0);
+}
+
+#[test]
+fn responsive_candidates_sizes_and_loading_lower_through_the_shared_image_protocol() {
+    let widget = image("default.png")
+        .alt("Responsive photo")
+        .srcset([
+            ImageCandidate {
+                source: "small.png".into(),
+                width: 320,
+            },
+            ImageCandidate {
+                source: "large.png".into(),
+                width: 960,
+            },
+        ])
+        .sizes([
+            ImageSizeHint {
+                max_viewport_width: Some(600),
+                slot: ImageSlotSize::ViewportWidth(100),
+            },
+            ImageSizeHint {
+                max_viewport_width: None,
+                slot: ImageSlotSize::Pixels(480),
+            },
+        ])
+        .loading(ImageLoading::Lazy);
+    let app = App::memory();
+    app.mount(widget).unwrap();
+    let props = photo(&app, app.tree().roots()[0]);
+    assert_eq!(props.loading, ImageLoading::Lazy);
+    assert_eq!(props.responsive.candidates.len(), 2);
+    let html = glory::ssr::render(
+        image("default.png")
+            .alt("Responsive photo")
+            .srcset([
+                ImageCandidate {
+                    source: "small.png".into(),
+                    width: 320,
+                },
+                ImageCandidate {
+                    source: "large.png".into(),
+                    width: 960,
+                },
+            ])
+            .sizes([
+                ImageSizeHint {
+                    max_viewport_width: Some(600),
+                    slot: ImageSlotSize::ViewportWidth(100),
+                },
+                ImageSizeHint {
+                    max_viewport_width: None,
+                    slot: ImageSlotSize::Pixels(480),
+                },
+            ])
+            .loading(ImageLoading::Lazy),
+    )
+    .unwrap();
+    assert!(html.contains("srcset=\"small.png 320w, large.png 960w\""));
+    assert!(html.contains("sizes=\"(max-width: 600px) 100vw, 480px\""));
+    assert!(html.contains("loading=\"lazy\""));
+}
+
+#[test]
+fn invalid_or_ambiguous_responsive_requests_fail_before_creation() {
+    let app = App::memory();
+    for widget in [
+        image("default.png").alt("Photo").srcset([ImageCandidate {
+            source: "small.png".into(),
+            width: 320,
+        }]),
+        image("default.png")
+            .alt("Photo")
+            .srcset([ImageCandidate {
+                source: "small.png".into(),
+                width: 320,
+            }])
+            .sizes([ImageSizeHint {
+                max_viewport_width: None,
+                slot: ImageSlotSize::ViewportWidth(100),
+            }])
+            .fallback_src("fallback.png"),
+    ] {
+        assert!(app.mount(widget).is_err());
+        assert_eq!(app.tree().len(), 0);
+    }
 }

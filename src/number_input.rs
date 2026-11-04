@@ -324,6 +324,8 @@ pub struct NumberInput {
     readonly: Vary<bool>,
     invalid: Vary<bool>,
     form_name: Option<Vary<String>>,
+    placeholder: Option<Vary<String>>,
+    input_edit_capture: Option<usize>,
     changed: Option<Box<dyn FnMut(NumberValue)>>,
     committed: Option<Box<dyn FnMut(NumberValue)>>,
     rejected: Option<Box<dyn FnMut(NumberError)>>,
@@ -344,6 +346,8 @@ pub fn number_input() -> NumberInput {
         readonly: false.into(),
         invalid: false.into(),
         form_name: None,
+        placeholder: None,
+        input_edit_capture: None,
         changed: None,
         committed: None,
         rejected: None,
@@ -410,6 +414,14 @@ impl NumberInput {
         self.form_name = Some(value.into());
         self
     }
+    pub fn placeholder(mut self, value: impl Into<Vary<String>>) -> Self {
+        self.placeholder = Some(value.into());
+        self
+    }
+    pub(crate) fn capture_input_edits(mut self, max_bytes: usize) -> Self {
+        self.input_edit_capture = Some(max_bytes);
+        self
+    }
     pub fn on_value_change(mut self, callback: impl FnMut(NumberValue) + 'static) -> Self {
         self.changed = Some(Box::new(callback));
         self
@@ -431,6 +443,7 @@ impl Widget for NumberInput {
         } else {
             self.value.default.validate().map_err(|_| invalid())?;
         }
+        let placeholder = crate::text_input::placeholder(scope, self.placeholder.take(), false)?;
         let local = self.value.source.is_none();
         let control = std::mem::take(&mut self.value).mount(scope);
         let raw = composite::validated(scope, &control.source, |v| {
@@ -449,6 +462,29 @@ impl Widget for NumberInput {
             self.readonly.clone(),
             self.invalid.clone(),
         );
+        let metadata = if let Some(placeholder) = placeholder {
+            scope
+                .bond(move || {
+                    let mut state = metadata.get().unwrap_or_default();
+                    state.placeholder = Some(placeholder.get());
+                    Some(state)
+                })
+                .into()
+        } else {
+            metadata
+        };
+        let edit_capture = self.input_edit_capture;
+        let metadata = if let Some(max_bytes) = edit_capture {
+            scope
+                .bond(move || {
+                    let mut state = metadata.get().unwrap_or_default();
+                    state.input_edit = Some(glory::render::InputEditCapture { max_bytes });
+                    Some(state)
+                })
+                .into()
+        } else {
+            metadata
+        };
         let form_name = composite::form_name(scope, &self.form_name)?;
         let min = self.min.clone();
         let max = self.max.clone();

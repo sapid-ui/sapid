@@ -92,9 +92,7 @@ pub fn form(scope: &Scope, theme: Theme) -> (impl Widget + use<>, State) {
         .second(|| glory::ui::text().content("Bottom pane"));
     (
         glory::ui::view().class("splitter-demo").fill((
-            sapid::title(1)
-                .theme(theme.clone())
-                .content("Resizable Splitter"),
+            sapid::title(1).theme(theme.clone()).content("Splitter"),
             horizontal,
             sapid::text()
                 .theme(theme.clone())

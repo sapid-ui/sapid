@@ -19,12 +19,17 @@ pub struct FieldControl {
     required: Vary<bool>,
     readonly: Vary<bool>,
     invalid: Vary<bool>,
+    success: Vary<bool>,
     disabled: Vary<bool>,
     pub(crate) theme: crate::Theme,
     pub(crate) size: crate::Size,
     pub(crate) unstyled: bool,
 }
 impl FieldControl {
+    pub(crate) fn success_state(&self, scope: &Scope, success: Vary<bool>) -> Vary<bool> {
+        let inherited = self.success.clone();
+        scope.bond(move || success.get() || inherited.get()).into()
+    }
     pub(crate) fn readonly_state(&self, scope: &Scope, readonly: Vary<bool>) -> Vary<bool> {
         let inherited = self.readonly.clone();
         scope.bond(move || readonly.get() || inherited.get()).into()
@@ -62,6 +67,15 @@ impl FieldControl {
 }
 
 type ControlFactory = Box<dyn FnMut(FieldControl) -> Box<dyn Widget>>;
+/// The four semantic parts of a [`Field`]. An order must contain every slot
+/// exactly once so accessible relationships never reference omitted content.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FieldSlot {
+    Label,
+    Description,
+    Control,
+    Error,
+}
 fn accepted_form_control(
     scope: &Scope,
     name: Option<Vary<String>>,
@@ -129,6 +143,8 @@ pub struct Field {
     required: Vary<bool>,
     readonly: Vary<bool>,
     invalid: Vary<bool>,
+    success: Vary<bool>,
+    order: [FieldSlot; 4],
     control: Option<ControlFactory>,
 }
 pub fn field(key: impl Into<String>) -> Field {
@@ -143,6 +159,13 @@ pub fn field(key: impl Into<String>) -> Field {
         required: false.into(),
         readonly: false.into(),
         invalid: false.into(),
+        success: false.into(),
+        order: [
+            FieldSlot::Label,
+            FieldSlot::Description,
+            FieldSlot::Control,
+            FieldSlot::Error,
+        ],
         control: None,
     }
 }
@@ -182,6 +205,14 @@ impl Field {
         self.invalid = value.into();
         self
     }
+    pub fn success(mut self, value: impl Into<Vary<bool>>) -> Self {
+        self.success = value.into();
+        self
+    }
+    pub fn order(mut self, value: [FieldSlot; 4]) -> Self {
+        self.order = value;
+        self
+    }
     pub fn control<W: Widget>(
         mut self,
         mut factory: impl FnMut(FieldControl) -> W + 'static,
@@ -192,6 +223,21 @@ impl Field {
 }
 impl Widget for Field {
     fn build(&mut self, scope: &Scope) -> Result {
+        let mut seen = [false; 4];
+        for slot in self.order {
+            let index = match slot {
+                FieldSlot::Label => 0,
+                FieldSlot::Description => 1,
+                FieldSlot::Control => 2,
+                FieldSlot::Error => 3,
+            };
+            if std::mem::replace(&mut seen[index], true) {
+                return Err(glory::render::Error::InvalidProps(
+                    "field order requires each semantic slot exactly once",
+                )
+                .into());
+            }
+        }
         if self.form_value.is_some() && self.form_name.is_none() {
             return Err(
                 glory::render::Error::InvalidProps("form value requires a form name").into(),
@@ -220,6 +266,7 @@ impl Widget for Field {
             required: self.required.clone(),
             readonly: self.readonly.clone(),
             invalid: self.invalid.clone(),
+            success: self.success.clone(),
             disabled: scope.bond(move || !enabled.get()).into(),
             theme: self.common.theme.clone(),
             size: self.common.size,
@@ -232,6 +279,7 @@ impl Widget for Field {
         let size = self.common.size;
         let unstyled = self.common.unstyled;
         let required = self.required.clone();
+        let order = self.order;
         let mut root = configure!(
             self.common,
             glory::ui::view(),
@@ -240,37 +288,47 @@ impl Widget for Field {
             composite::column(6.0)
         );
         root = root.fill(glory::ui::widget(move |scope| {
-            if let Some(content) = label.clone() {
-                let mut part = label_part(label_id.clone(), id.clone())
-                    .content(content)
-                    .theme(theme.clone())
-                    .size(size)
-                    .required(required.clone());
-                if unstyled {
-                    part = part.unstyled();
+            for slot in order {
+                match slot {
+                    FieldSlot::Label => {
+                        if let Some(content) = label.clone() {
+                            let mut part = label_part(label_id.clone(), id.clone())
+                                .content(content)
+                                .theme(theme.clone())
+                                .size(size)
+                                .required(required.clone());
+                            if unstyled {
+                                part = part.unstyled();
+                            }
+                            part.show_in(scope)?;
+                        }
+                    }
+                    FieldSlot::Description => {
+                        if let Some(content) = description.clone() {
+                            let mut part = field_description(description_id.clone())
+                                .content(content)
+                                .theme(theme.clone())
+                                .size(size);
+                            if unstyled {
+                                part = part.unstyled();
+                            }
+                            part.show_in(scope)?;
+                        }
+                    }
+                    FieldSlot::Control => factory(context.clone()).show_in(scope)?,
+                    FieldSlot::Error => {
+                        if let Some(content) = error.clone() {
+                            let mut part = field_error(error_id.clone())
+                                .content(content)
+                                .theme(theme.clone())
+                                .size(size);
+                            if unstyled {
+                                part = part.unstyled();
+                            }
+                            part.show_in(scope)?;
+                        }
+                    }
                 }
-                part.show_in(scope)?;
-            }
-            if let Some(content) = description.clone() {
-                let mut part = field_description(description_id.clone())
-                    .content(content)
-                    .theme(theme.clone())
-                    .size(size);
-                if unstyled {
-                    part = part.unstyled();
-                }
-                part.show_in(scope)?;
-            }
-            factory(context.clone()).show_in(scope)?;
-            if let Some(content) = error.clone() {
-                let mut part = field_error(error_id.clone())
-                    .content(content)
-                    .theme(theme.clone())
-                    .size(size);
-                if unstyled {
-                    part = part.unstyled();
-                }
-                part.show_in(scope)?;
             }
             Ok(())
         }));

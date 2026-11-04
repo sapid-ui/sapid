@@ -1,4 +1,6 @@
-pub use glory::render::{AnchorAlign, AnchorPlacement, AnchorSide};
+pub use glory::render::{
+    AnchorAlign, AnchorArrow, AnchorArrowPosition, AnchorPlacement, AnchorSide,
+};
 use glory::render::{
     DismissReason, Event, EventKind, FocusMode, Layer, LayerPlacement, NodeId, Role, SemanticId,
     Semantics, TextKind,
@@ -19,6 +21,18 @@ pub enum DrawerSide {
     Right,
     Top,
     Bottom,
+}
+/// Finite Popover panel width policy.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub enum PopoverWidth {
+    /// Use the component's intrinsic content width.
+    Auto,
+    /// Match the live trigger border-box width in the host.
+    Target,
+    /// Use a fixed CSS-pixel width.
+    #[default]
+    Default,
+    Px(f64),
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AlertCancelReason {
@@ -44,6 +58,7 @@ struct Overlay {
     close_content: Option<Factory>,
     policy: ContentPolicy,
     trigger: Option<Cage<Option<NodeId>>>,
+    external_anchor: Option<SemanticId>,
     panel: Option<Cage<Option<NodeId>>>,
     config: Layer,
     snaps: Option<Vary<crate::DrawerSnaps>>,
@@ -54,6 +69,8 @@ struct Overlay {
     cancel: Option<Box<dyn FnMut(AlertCancelReason)>>,
     confirm_enabled: Vary<bool>,
     confirm_variant: crate::ButtonVariant,
+    full_screen: bool,
+    popover_width: PopoverWidth,
 }
 impl Overlay {
     fn new(
@@ -85,6 +102,7 @@ impl Overlay {
             close_content: None,
             policy: ContentPolicy::Unmount,
             trigger: None,
+            external_anchor: None,
             panel: None,
             snaps: None,
             snap: Value::default(),
@@ -105,6 +123,8 @@ impl Overlay {
             cancel: None,
             confirm_enabled: true.into(),
             confirm_variant: crate::ButtonVariant::Primary,
+            full_screen: false,
+            popover_width: PopoverWidth::Default,
         }
     }
 }
@@ -282,6 +302,13 @@ macro_rules! managed_focus {
     })+};
 }
 managed_focus!(Dialog, Drawer, Popover, AlertDialog);
+impl Dialog {
+    /// Fill the host viewport while preserving the same modal focus and dismissal protocol.
+    pub fn full_screen(mut self, value: bool) -> Self {
+        self.inner.full_screen = value;
+        self
+    }
+}
 impl AlertDialog {
     pub fn confirm_enabled(mut self, value: impl Into<Vary<bool>>) -> Self {
         self.inner.confirm_enabled = value.into();
@@ -341,8 +368,44 @@ impl Drawer {
     }
 }
 impl Popover {
+    /// Use an existing semantic control as the trigger and anchor. The caller
+    /// owns activation and the controlled `open` state.
+    pub(crate) fn external_trigger(mut self, anchor: SemanticId) -> Self {
+        self.inner.show_trigger = false;
+        self.inner.external_anchor = Some(anchor);
+        self
+    }
     pub fn placement(mut self, placement: AnchorPlacement) -> Self {
         self.inner.config.placement = LayerPlacement::Anchor(placement);
+        self
+    }
+    /// Configure intrinsic, trigger-matched or fixed panel width.
+    pub fn width(mut self, width: PopoverWidth) -> Self {
+        self.inner.popover_width = width;
+        self
+    }
+    /// Set the anchor-to-panel gap in CSS pixels.
+    pub fn offset(mut self, offset: f64) -> Self {
+        if let LayerPlacement::Anchor(mut placement) = self.inner.config.placement {
+            placement.gap = offset;
+            self.inner.config.placement = LayerPlacement::Anchor(placement);
+        }
+        self
+    }
+    /// Enable the default collision-aware arrow.
+    pub fn with_arrow(mut self, enabled: bool) -> Self {
+        if let LayerPlacement::Anchor(mut placement) = self.inner.config.placement {
+            placement.arrow = enabled.then(AnchorArrow::default);
+            self.inner.config.placement = LayerPlacement::Anchor(placement);
+        }
+        self
+    }
+    /// Configure a collision-aware arrow using bounded host geometry.
+    pub fn arrow(mut self, arrow: AnchorArrow) -> Self {
+        if let LayerPlacement::Anchor(mut placement) = self.inner.config.placement {
+            placement.arrow = Some(arrow);
+            self.inner.config.placement = LayerPlacement::Anchor(placement);
+        }
         self
     }
     pub fn modal(mut self, modal: bool) -> Self {
@@ -355,11 +418,21 @@ impl Widget for Overlay {
         if let LayerPlacement::Anchor(placement) = self.config.placement {
             placement.validate()?;
         }
+        if self.kind == "popover"
+            && let PopoverWidth::Px(width) = self.popover_width
+            && (!width.is_finite() || !(1.0..=4096.0).contains(&width))
+        {
+            return Err(glory::render::Error::InvalidProps(
+                "popover width must be finite and within 1..=4096 CSS pixels",
+            )
+            .into());
+        }
         let alert = self.kind == "alert-dialog";
         let floating = self.kind == "floating-dialog";
         if !self.show_trigger
             && (self.title.is_none() && self.common.name.is_none()
-                || matches!(self.config.placement, LayerPlacement::Anchor(_)))
+                || matches!(self.config.placement, LayerPlacement::Anchor(_))
+                    && self.external_anchor.is_none())
         {
             return Err(glory::render::Error::InvalidProps(
                 "a triggerless dialog requires a name/title and non-anchored placement",
@@ -494,20 +567,36 @@ impl Widget for Overlay {
             trigger = trigger.style(self.common.theme.control(self.common.size));
         }
         let mut config = self.config.clone();
-        if self.show_trigger
+        if self.kind == "popover"
+            && let LayerPlacement::Anchor(mut placement) = config.placement
+        {
+            placement.match_width = self.popover_width == PopoverWidth::Target;
+            config.placement = LayerPlacement::Anchor(placement);
+        }
+        if (self.show_trigger || self.external_anchor.is_some())
             && config.focus == glory::render::LayerFocus::Manage
             && config.return_focus.is_none()
         {
-            config.return_focus = Some(trigger_id.clone());
+            config.return_focus = Some(
+                self.external_anchor
+                    .clone()
+                    .unwrap_or_else(|| trigger_id.clone()),
+            );
         }
         if matches!(config.placement, LayerPlacement::Anchor(_)) {
-            config.anchor = Some(trigger_id.clone());
+            config.anchor = Some(
+                self.external_anchor
+                    .clone()
+                    .unwrap_or_else(|| trigger_id.clone()),
+            );
         }
         let label = if self.common.name.is_some() {
             None
         } else {
             Some(if self.title.is_some() {
                 title_id.clone()
+            } else if let Some(anchor) = self.external_anchor.clone() {
+                anchor
             } else {
                 trigger_id
             })
@@ -635,11 +724,35 @@ impl Widget for Overlay {
             .width(Length::Px(360.0))
             .padding(Edges::all(20.0))
             .radius(self.common.theme.radius);
+        if self.kind == "popover" {
+            base.width = match self.popover_width {
+                PopoverWidth::Auto => None,
+                PopoverWidth::Target => Some(Length::Px(360.0)),
+                PopoverWidth::Default => Some(Length::Px(360.0)),
+                PopoverWidth::Px(width) => Some(Length::Px(width)),
+            };
+        }
+        if self.full_screen {
+            if self.kind != "dialog" {
+                return Err(glory::render::Error::InvalidProps(
+                    "full-screen presentation requires a dialog",
+                )
+                .into());
+            }
+            base.width = Some(Length::Percent(100.));
+            base.height = Some(Length::Percent(100.));
+            base.max_width = Some(glory::style::Limit::None);
+            base.max_height = Some(glory::style::Limit::None);
+            base.radius = Some(0.);
+        }
         base.background = Some(self.common.theme.surface);
         base.color = Some(self.common.theme.foreground);
-        let (classes, styles) =
-            self.common
-                .appearance(scope, &format!("sapid-{} sapid-layer", self.kind), base);
+        let presentation = if self.full_screen {
+            format!("sapid-{} sapid-layer sapid-dialog-full-screen", self.kind)
+        } else {
+            format!("sapid-{} sapid-layer", self.kind)
+        };
+        let (classes, styles) = self.common.appearance(scope, &presentation, base);
         panel = panel.class(classes);
         if sheet.is_some() {
             let edge = self.config.placement;

@@ -371,6 +371,52 @@ fn ratio_initial_rejection_unstyled_explicit_axes_and_css_precedence_are_clear()
     assert_eq!(node.style.aspect_ratio, Some(Ratio::Auto));
     assert_eq!(node.style.color, None);
 }
+
+#[test]
+fn ratio_reserves_its_frame_and_rejects_a_detached_static_content_block() {
+    use glory::style::Position;
+    let app = App::memory();
+    assert!(
+        app.mount(aspect_ratio(1.5).style(Style::new().position(Position::Static)))
+            .is_err()
+    );
+    assert!(app.tree().is_empty());
+    let style = app.scope().cage(Style::new());
+    app.mount(
+        aspect_ratio(1.5)
+            .style(style)
+            .fill(glory::ui::text().content("Long content stays inside the reserved frame")),
+    )
+    .unwrap();
+    let root = app.tree().roots()[0];
+    let frame = app.tree().node(root).unwrap().children[0];
+    let child = app.tree().node(frame).unwrap().children[0];
+    assert_eq!(
+        app.tree()
+            .node(frame)
+            .unwrap()
+            .descriptor
+            .view()
+            .style
+            .position,
+        Some(Position::Absolute)
+    );
+    style.revise(|style| *style = Style::new().position(Position::Static));
+    assert!(app.flush().is_err());
+    assert_eq!(
+        app.tree()
+            .node(root)
+            .unwrap()
+            .descriptor
+            .view()
+            .style
+            .position,
+        Some(Position::Relative)
+    );
+    style.revise(|style| *style = Style::new().position(Position::Relative));
+    app.flush().unwrap();
+    assert_eq!(app.tree().node(frame).unwrap().children[0], child);
+}
 #[test]
 fn ssr_grid_slots_escape_content_and_use_layout_without_fake_table_roles() {
     let html = glory::ssr::render(

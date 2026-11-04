@@ -6,18 +6,22 @@
 RouteViews 挂载现有页面 Widget；组件、主题、编辑记录等 query 解码在共享 Rust 模块中。
 `Page` 保存解析后的主题展示模型，编辑工作区仍归应用根 Scope 所有，不保存第二套历史游标。
 
+同主题的 widget 文档之间切换仅替换正文、顶栏目标与页面操作，保留侧栏、导航项和滚动容器。
+当前项的 class/`aria-current` 直接订阅当前路由；前进/后退沿用同一容器，不靠重建后的滚动补偿。
+主题或页面类型变化仍显式退休旧 shell，旧 shell 不再构建目标页面。
+
 BrowserHistory 管理 EntryKey、popstate/hashchange、window 滚动和 fragment；应用仅处理组件切换
 的置顶策略及横向调色板位置。应用只使用新 routing 的历史状态，不迁移旧格式。
 SSR 别名与 query 使用同一解码器，静态文档携带 routing
 bootstrap，先接管实际 SSR 页面，再处理 WASM 加载期间变化的地址。
 
 新增 `examples/web/tests/showcase_routing.rs` 和 `scripts/showcase-routing-browser.cjs`，并接入
-`check-showcase.ps1` 的测试/浏览器流程；它们覆盖编码、36 个 SSR 别名、历史身份、页内导航、
+`check-showcase.ps1` 的测试/浏览器流程；它们覆盖编码、48 个 SSR 别名、历史身份、页内导航、
 默认参数及未知 query 保留、加载期间 URL 改变。生产构建依赖固定到包含新 routing 的 Glory 合并提交。
 
 标签、图标动作和选择输入的视觉修复与 Mantine API 对照见
 [样式复核](showcase-style-review.md)。共享修复位于 Sapid 本身；新增专项浏览器
-矩阵覆盖四主题、桌面/手机及 CSR/SSR 接管。展示站现生成 36 个代表性 SSR 页面。
+矩阵覆盖四主题、桌面/手机及 CSR/SSR 接管。展示站现生成 48 个代表性 SSR 页面。
 
 项目源码：[sapid-ui/sapid](https://github.com/sapid-ui/sapid)。顶栏 GitHub 与首页源码入口均指向此仓库。
 
@@ -32,6 +36,31 @@ bootstrap，先接管实际 SSR 页面，再处理 WASM 加载期间变化的地
 站内链接通过 Sapid Anchor 的语义导航请求交给 Rust 路由，使用 History API 更新 URL。
 指南、搜索结果、配色和明暗切换不再重载文档或重新初始化 WASM；浏览器前进/后退与页内锚点仍然有效。
 主题仍是 widget 的挂载配置，因此主题切换会重建相应视图；一个应用级调色工作区保留草稿、编辑层、颜色检查器和预览值。
+
+Alert 的布局对照 [Mantine Alert](https://mantine.dev/core/alert/)：左侧可选图标、标题/正文与右上角具名关闭动作。
+共享 `AlertVariant::{Light,Filled,Outline,Transparent}`、`color` 和 `icon` 配置由 Rust 实现；
+右侧控制器连接 Variant、Color、Radius、With close button、Title、Children，关闭后可用 Show alert 恢复。
+Overlay 示例内的加载操作会先关闭区域弹窗，再设置加载区域的 inert，避免禁用弹窗本身而锁住整个页面。
+`scripts/showcase-feedback-browser.cjs` 已接入展示站浏览器门禁，复测上述操作、侧栏身份/滚动位置、历史导航和手机宽度。
+2026-11-02 的 Chromium 148 实测 9/9、errors=[]，四主题截图与
+`showcase-feedback-browser.json` 位于 `D:/BuildCache/sapid`。Sapid 默认/全 feature 测试与严格 Clippy、
+展示站 12 项测试/3 项路由测试及 host/wasm32 Clippy 通过；额外 Glory 全量门禁受其已有锁文件需更新阻止，未改动该锁。
+
+AspectRatio、Splitter、ScrollArea 使用独立的 `focused_demos/layout_controls.rs`，
+不再把 Grid 或工程事件计数 fixture 当作使用示例。Resizable 的站内名称统一为 Splitter；
+ScrollArea/Scroller 分类移至 Extensions。比例页展示真实图片和 flex 场景；Splitter 展示
+受控尺寸、键盘/拖拽、保留身份的方向切换、关闭/恢复和嵌套布局；ScrollArea 提供五种
+滚动条显示策略、大小/偏移/延迟、双轴、overscroll 和精确顶部/中间/底部定位。
+参数更新保留滚动容器和编辑器。三页均有四主题 SSR 文档，专项浏览器门禁为
+`scripts/showcase-layout-browser.cjs`。现有两 pane 和宿主滚动边界仍在组件文档中明确记录，
+不把工程 fixture 或编译成功当作完整上游 API/原生输入等价证明。
+
+2026-11-02 的布局页验收覆盖四主题 × CSR/SSR 水合 × 三组件，共 24 组，
+Chromium 148 错误日志为空；同时复测 Alert/Overlay/侧栏保留的 9 组流程。
+三个组件的 26 项模型集成测试、134 项库单元测试、5 项现有原生布局回归、
+展示站 12 项测试/3 项路由测试及库/host/wasm32 严格 Clippy 通过。
+浏览器报告为 `D:/BuildCache/sapid/showcase-layout-browser.json`，
+原生日志为 `D:/BuildCache/sapid/layout-native-tests.log`。
 
 ## 站点标识
 
@@ -111,20 +140,17 @@ SVG 宽高均为 256；顶栏桌面显示 36 × 36，手机显示 32 × 32，保
 首页和 `showcase.html` 使用同一个入口。例如：
 
 - [首页](http://127.0.0.1:8795/)
-- [Button 参数面板](http://127.0.0.1:8795/showcase.html?widget=P0-01)
-- [TextField](http://127.0.0.1:8795/showcase.html?widget=P0-02)
-- [Button 深色主题](http://127.0.0.1:8795/showcase.html?widget=P0-01&scheme=dark)
+- [Button 参数面板](http://127.0.0.1:8795/showcase.html?widget=button)
+- [TextInput](http://127.0.0.1:8795/showcase.html?widget=text-input)
+- [Button 深色主题](http://127.0.0.1:8795/showcase.html?widget=button&scheme=dark)
 
-149 个指南对应路线图的 149 个工作项，并不表示 149 个互不重复的底层控件。
-14 个核心示例在 `src/showcase_demos/core_*.rs` 中直接编写；16 个聚焦示例族位于
-`src/focused_demos/`，为 43 个指南生成独立模块，避免把整份共享验收夹具当作组件首屏。
-聚焦模块使用 `focused_<widget>.rs` 语义命名，例如 `focused_rating.rs`；`P7-05` 等编号仅用于清单和路由。
-其余 86 个示例族由 `showcase-catalog.py` 从实际夹具生成；共 142 个实现模块供 149 个指南使用。
-目录的 `build` 指向这些模块的 `demo(theme)`，`code` 通过 `include_str!` 读取同一个文件。
-因此 Source、Copy 与预览使用完全相同的已编译源码，包含状态、导入和所需辅助模块，
-调节器辅助代码仅在示例实际引用时嵌入，未使用的页面不携带重复的 `controls` 模块。
-没有依赖展示站私有 `crate::…` 的片段。生成器 `--check` 验证同步；Rust 测试逐一挂载
-149 个指南、检查高亮预算和卸载后的节点/任务清理。
+展示站包含 181 个官方对应指南；路线图的 137 个工程工作项仍单独保留，其中 122 个映射到这些指南。
+Core 的 121 个条目、分类和顺序与 Mantine 9.7.4 一致；内部工作项名称不显示在侧栏。
+每个指南都有独立的构建入口。同一工作项中的多个组件不再共用混杂预览，分别由
+`focused_demos/mantine_pages.rs` 或 `focused_demos/charts.rs` 按页面身份构建。
+共 181 个生成模块供 181 个指南使用；目录的 `build` 指向模块的 `demo(theme)`，
+`code` 通过 `include_str!` 读取同一个文件。因此 Source、Copy 与预览使用完全相同的已编译源码。
+生成器 `--check` 验证同步；Rust 测试逐一挂载 181 个指南、检查高亮预算和卸载后的节点/任务清理。
 
 生成器固定读取仓库的 `rustfmt.toml`，目录文件和示例模块使用同一格式流程。
 修改格式配置或夹具后运行 `python scripts/showcase-catalog.py`，再执行 `--check` 和
@@ -140,28 +166,55 @@ Web 页面最终由 Glory 的 HTML/DOM 适配器输出，WASM 由 wasm-bindgen �
 元数据在 Rust 的 `start_showcase` 中读取。页面本体、交互和示例没有 JS UI 构建器。
 旧的 `showcase.js`、`gallery.js` 和各手写 HTML 属于 8794 验收夹具，新展示站不加载它们。
 
-Button 页的 Variant、Size、Disabled、Loading 控件驱动实际同一个 Button 节点；
+Button 页的 Variant、Color、Size、Radius、Compact、Disabled、Loading 控件驱动实际 Button；
+独立场景覆盖 full width、左右插槽、插槽分布、compact、disabled、loading 和 Button.Group。
 按钮激活计数和禁用行为由 Cage 及 Sapid 控件处理。搜索按名称、类别和工作项 ID 过滤，
 结果为实际语义链接。手机导航通过 Rust 状态打开和关闭。
+所有指南提供 Mantine 式 Documentation、Properties、Styles API、Source、Capabilities 页签；
+Properties 只列出当前 Sapid Widget 的真实 Rust builder 签名，不把 Mantine 或 React 属性当作 Sapid 属性；
+Styles API 列出实现中的实际类名。Charts 的 22 个指南分别使用独立示例和数据说明，不再混入共享验收工作台；
+`charts` feature 在库中默认关闭，展示应用只是显式启用它来编译这些指南。
+TreeSelect 展示单选、可移除多选、父子级联、独立选择、保留祖先的搜索、受控展开及禁用/只读/错误状态；
+Select、Combobox、Autocomplete 和 Cascader 同样使用各自的使用示例，不再显示工程拒绝、提案计数或 Owner 开关。
+Calendar 展示真实42格使用方式、调用方拥有的三项自定义选择、全宽百分比网格、无隐藏按钮的静态自定义日期，
+以及周编号/隐藏星期标题；这些示例直接调用组件 builder，不在页面层复制日期选择逻辑或普通按钮网格。
+RichTextEditor 展示普通使用、subtle、controlled、placeholder、无工具栏内容和只读/禁用六组真实组件状态；
+任意 Tiptap 插件、HTML、表格、任务、图片和源码模式明确保留为有限 RichDocument 协议边界，页面不以脚本伪装支持。
+AreaChart、BarChart、LineChart 与 CompositeChart 各自展示 usage、stack/legend、共享 reference area/line/dot
+以及 inclusive brush；annotation 进入组件的有限共享几何场景，不是展示页额外绘制。
+命名示例的源码面板只保留当前示例及其传递引用的辅助函数，预览、复制文本和编译内容仍来自同一 Rust 模块。
 
 ## 实现与证据
 
 - 页面与状态：[showcase.rs](../examples/web/src/showcase.rs)。
 - 首页：[showcase_home.rs](../examples/web/src/showcase_home.rs)。
 - 实际控件示例：[showcase_examples.rs](../examples/web/src/showcase_examples.rs)。
-- 149 项目录：[生成器](../scripts/showcase-catalog.py)读取 canonical inventory 和能力账本，
+- 181 项目录：[生成器](../scripts/showcase-catalog.py)读取 canonical inventory、能力账本和 Mantine 9.7.4 审计快照，
   `--check` 检测目录漂移；[生成结果](../examples/web/src/showcase_catalog.rs)保留真实支持范围。
+  Core 分组与顺序和 Mantine 一致；[API 元数据](../examples/web/src/showcase_api.rs)
+  只从当前 Widget 的实际 Rust 实现生成。
 - 页面样式：[site.css](../examples/web/site.css)，只由此展示站加载。
 - Web 挂载与 SSR：[showcase_host](../examples/web/src/showcase_host/mod.rs)、
   [showcase_ssr.rs](../examples/web/src/bin/showcase_ssr.rs)。
 - Rust 验收：[showcase_site.rs](../examples/web/tests/showcase_site.rs)与示例模块内测试。
 - 浏览器验收：[showcase-acceptance.js](../examples/web/showcase-acceptance.js)、
-  [运行器](../scripts/showcase-browser.cjs)。
+  [统一运行器](../scripts/showcase-acceptance.cjs)和
+  [共享环境](../scripts/showcase-browser-env.cjs)。专项 `.cjs` 只描述页面交互；
+  Playwright、构建根、临时目录和报告目录由 `SAPID_PLAYWRIGHT`、
+  `SAPID_BUILD_ROOT`、`SAPID_BROWSER_TEMP`、`SAPID_BROWSER_OUTPUT` 注入，
+  不包含开发者机器的绝对路径。
 
-构建门禁包括 8 项 focused Rust 测试、host 全 target 严格 Clippy、wasm32 严格 Clippy、
-WASM 构建，以及 5 个代表页面乘 4 个主题组合的 20 个 SSR/adoption 页面。
-149 个指南均通过 CSR 路由提供；20 个代表 SSR 页面不代表已经逐一验收 149 个 SSR 页面。
-站点的完整浏览器验收逐一点击 149 个侧栏链接，并检查实际演示、搜索、Button 参数与节点身份、
+2026-11-04 的统一门禁在 `D:/BuildCache/sapid/showcase-acceptance/` 完成 26/26；
+TreeSelect 后续加入真实 editable-tree 焦点验收，Calendar 专项加入后统一套件为 27 组；
+RichTextEditor 六节专项加入后统一套件为 28 组。
+Cartesian charts 四页专项加入后统一套件为 29 组。
+Schedule、ResourcesSchedule、Day/Week 与 Month/Year/MobileMonth 专项完成后，
+当前统一矩阵为 33/33，`complete=true`、`errors=[]`。
+
+构建门禁包括 14 项 focused Rust 测试、host 全 target 严格 Clippy、wasm32 严格 Clippy、
+WASM 构建，以及 12 个代表页面乘 4 个主题组合的 48 个 SSR/adoption 页面。
+181 个指南均通过 CSR 路由提供；48 个代表 SSR 页面不代表已经逐一验收 181 个 SSR 页面。
+站点的完整浏览器验收逐一点击 181 个侧栏链接，并检查实际演示、搜索、Button 参数与节点身份、
 代码展开/收起、完整复制、Source 页、主题、TextField、手机菜单、SSR 及采用前的编辑/选择区。
 
 最终运行结果、产物哈希和截图见下方记录。原有widget的全量能力验收继续保存在

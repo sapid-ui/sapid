@@ -4,7 +4,9 @@ const http = require('node:http');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { spawn, spawnSync } = require('node:child_process');
-const artifactRoot = 'D:/BuildCache/sapid';
+const artifactRootValue = process.env.SAPID_BUILD_ROOT;
+if (!artifactRootValue) throw Error('SAPID_BUILD_ROOT is required');
+const artifactRoot = path.resolve(artifactRootValue);
 const hash = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
 const mime = { '.html': 'text/html; charset=utf-8', '.js': 'application/javascript',
   '.wasm': 'application/wasm', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png',
@@ -107,7 +109,31 @@ function showcaseSuites(root, output) {
       args: ['-NoProfile', '-File', script('check-theme-export.ps1')] },
     browser('navigation', 'showcase-navigation-browser.cjs'),
     browser('routing', 'showcase-routing-browser.cjs'),
+    browser('feedback', 'showcase-feedback-browser.cjs'),
+    browser('layout', 'showcase-layout-browser.cjs'),
     browser('style', 'showcase-style-browser.cjs'),
+    browser('date-picker-presets', 'date-picker-presets-browser.cjs'),
+    browser('calendar-showcase', 'calendar-showcase-browser.cjs'),
+    browser('input-showcase', 'input-showcase-browser.cjs'),
+    browser('popover-showcase', 'popover-showcase-browser.cjs'),
+    browser('typography-showcase', 'typography-showcase-browser.cjs'),
+    browser('image-showcase', 'image-showcase-browser.cjs'),
+    browser('date-input-showcase', 'date-input-showcase-browser.cjs'),
+    browser('time-input-showcase', 'time-input-showcase-browser.cjs'),
+    browser('time-picker-showcase', 'time-picker-showcase-browser.cjs'),
+    browser('date-time-picker-showcase', 'date-time-picker-showcase-browser.cjs'),
+    browser('combobox-showcase', 'combobox-showcase-browser.cjs'),
+    browser('select-showcase', 'select-showcase-browser.cjs'),
+    browser('tree-showcase', 'tree-showcase-browser.cjs'),
+    browser('tree-select-showcase', 'tree-select-showcase-browser.cjs'),
+    browser('color-picker-showcase', 'color-picker-showcase-browser.cjs'),
+    browser('modal-showcase', 'modal-showcase-browser.cjs'),
+    browser('rich-editor-showcase', 'rich-editor-showcase-browser.cjs'),
+    browser('cartesian-chart-showcase', 'cartesian-chart-showcase-browser.cjs'),
+    browser('schedule-showcase', 'schedule-showcase-browser.cjs'),
+    browser('resources-schedule-showcase', 'resources-schedule-showcase-browser.cjs'),
+    browser('schedule-timelines-showcase', 'schedule-timelines-showcase-browser.cjs'),
+    browser('schedule-calendars-showcase', 'schedule-calendars-showcase-browser.cjs'),
     browser('mantine-api', 'mantine-api-browser.cjs'),
     { id: 'cache', program: process.execPath, source: script('cache-browser.cjs'), args: [script('cache-browser.cjs')] },
   ];
@@ -119,6 +145,7 @@ async function runAcceptance(options) {
   const output = artifactPath(options.output || `${artifactRoot}/showcase-acceptance`);
   fs.mkdirSync(output, { recursive: true });
   const env = { ...process.env, TEMP: path.join(output, 'tmp'), TMP: path.join(output, 'tmp'),
+    SAPID_BUILD_ROOT: artifactRoot, SAPID_BROWSER_OUTPUT: artifactRoot,
     SAPID_SHOWCASE_MANIFEST: path.join(directory, 'asset-hashes.json'),
     SAPID_PALETTE_REPORT: path.join(output, 'palette-order-browser.json'),
     SAPID_STUDIO_EXPORT: process.env.SAPID_STUDIO_EXPORT || path.join(output, 'studio-export.rs'),

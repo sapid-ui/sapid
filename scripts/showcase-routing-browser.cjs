@@ -1,8 +1,6 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const { chromium } = require(process.env.SAPID_PLAYWRIGHT || 'D:/Works/glory-rs/glory/tests/playwright/node_modules/playwright');
-const base = process.env.SAPID_SHOWCASE_BASE || 'http://127.0.0.1:8795';
-process.env.TEMP = process.env.TMP = 'D:/BuildCache/sapid/tmp';
+const { chromium, base, outputPath, outputRoot, writeReport } = require('./showcase-browser-env.cjs');
 (async () => {
   const browser = await chromium.launch({ headless: true, ...(process.env.GLORY_CHROME ? { executablePath: process.env.GLORY_CHROME } : {}) });
   const report = { checks: [], errors: [] };
@@ -17,8 +15,8 @@ process.env.TEMP = process.env.TMP = 'D:/BuildCache/sapid/tmp';
       await page.evaluate(() => history.replaceState({ otherApplication: 'retained' }, '', location.href));
       await route.continue();
     });
-    await page.goto(base + '/showcase.html?widget=P0-01&theme=blue&scheme=dark');
-    await ready(page, 'P0-01', 'blue', 'dark');
+    await page.goto(base + '/showcase.html?widget=button&theme=blue&scheme=dark');
+    await ready(page, 'button', 'blue', 'dark');
     const firstKey = await page.evaluate(() => history.state.__glory_routing_v1);
     assert.equal(typeof firstKey, 'string');
     await page.locator('.site-demo').getByRole('button', { name: 'Filled button', exact: true }).click();
@@ -29,28 +27,50 @@ process.env.TEMP = process.env.TMP = 'D:/BuildCache/sapid/tmp';
     const secondKey = await page.evaluate(() => history.state.__glory_routing_v1);
     assert.notEqual(secondKey, firstKey);
     assert.equal(await page.evaluate(() => history.state.otherApplication), 'retained');
-    await page.goBack(); await ready(page, 'P0-01', 'blue', 'dark');
+    await page.goBack(); await ready(page, 'button', 'blue', 'dark');
     assert.equal(await page.evaluate(() => history.state.__glory_routing_v1), firstKey);
     assert(await page.evaluate(() => window.retainedDemo === document.querySelector('.site-demo')));
     await page.getByText('Clicked 1 times', { exact: true }).waitFor();
     report.checks.push('Glory history keys retain foreign state and fragment traversal keeps the live demo');
 
+    const namedRoute = await browser.newPage();
+    namedRoute.on('pageerror', error => report.errors.push(error.message));
+    await namedRoute.goto(base + '/showcase.html?widget=range-slider&theme=blue&scheme=light#range-domain');
+    await ready(namedRoute, 'range-slider', 'blue', 'light');
+    assert.match(namedRoute.url(), /widget=range-slider&theme=blue&scheme=light#range-domain$/);
+    assert.equal(await namedRoute.locator('a[href*="widget=range-slider"]').count() > 0, true);
+    const publicTargets = await namedRoute.locator('a[href*="widget="]').evaluateAll(links => links.map(link => new URL(link.href).searchParams.get('widget')));
+    assert.equal(publicTargets.some(widget => /^P\d+-\d+/.test(widget || '')), false);
+    report.checks.push('Public widget routes and navigation links use component-name slugs only');
+    await namedRoute.close();
+
+    const rejectedInternal = await browser.newPage();
+    rejectedInternal.on('pageerror', error => report.errors.push(error.message));
+    const internalTask = ['P7', '03'].join('-');
+    await rejectedInternal.goto(`${base}/showcase.html?widget=${internalTask}&theme=blue&scheme=light`);
+    await ready(rejectedInternal, internalTask, 'blue', 'light');
+    await rejectedInternal.getByRole('heading', { name: 'Widget not found', exact: true }).waitFor();
+    assert.equal(new URL(rejectedInternal.url()).searchParams.get('widget'), internalTask);
+    assert.equal(await rejectedInternal.getByRole('heading', { name: 'RangeSlider', exact: true }).count(), 0);
+    report.checks.push('Internal audit task keys are rejected instead of being treated as routing aliases');
+    await rejectedInternal.close();
+
     const late = await browser.newPage();
     late.on('pageerror', error => report.errors.push(error.message));
     await late.route('**/sapid_web_example.js', async route => {
       assert.equal(await late.locator('.site-demo').count(), 1);
-      await late.evaluate(() => history.replaceState({ foreign: 'late' }, '', '/showcase.html?widget=P0-02&theme=green&scheme=light'));
+      await late.evaluate(() => history.replaceState({ foreign: 'late' }, '', '/showcase.html?widget=text-input&theme=green&scheme=light'));
       await route.continue();
     });
     await late.goto(base + '/ssr-button-blue-dark.html');
-    await ready(late, 'P0-02', 'green', 'light');
+    await ready(late, 'text-input', 'green', 'light');
     assert.equal(await late.evaluate(() => history.state.foreign), 'late');
     report.checks.push('SSR alias adopts its bootstrap before a changed pre-WASM URL selects a different widget/theme');
 
     assert.deepEqual(report.errors, []);
   } finally {
     await browser.close();
-    fs.writeFileSync('D:/BuildCache/sapid/showcase-routing-browser.json', JSON.stringify(report, null, 2));
+    writeReport('showcase-routing-browser.json', report);
   }
   console.log(JSON.stringify(report, null, 2));
 })().catch(error => { console.error(error); process.exitCode = 1; });

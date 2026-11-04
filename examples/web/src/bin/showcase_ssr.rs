@@ -114,8 +114,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     let csr = document("", "", "blue", "light", false, &assets, "/showcase.html");
     fs::write(directory.join("showcase.html"), &csr)?;
     fs::write(directory.join("index.html"), csr)?;
-    // This is a deliberately representative SSR set, not 149 × four renders.
-    // All 149 canonical documents remain directly addressable in the CSR shell.
+    // This is a deliberately representative SSR set, not 181 × four renders.
+    // All 181 canonical documents remain directly addressable in the CSR shell.
     for &(selection, name) in sapid_web_example::showcase_navigation::SSR_PAGES {
         for hue_name in ["blue", "green"] {
             for (scheme_name, scheme) in [
@@ -143,7 +143,8 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
     }
     println!(
-        "Showcase: CSR entry + 36 representative SSR pages in {}",
+        "Showcase: CSR entry + {} representative SSR pages in {}",
+        sapid_web_example::showcase_navigation::SSR_PAGES.len() * 4,
         directory.display()
     );
     Ok(())

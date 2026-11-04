@@ -74,6 +74,11 @@ fn bounded_options(value: &CartesianOptions) -> Result<CartesianOptions> {
     if value.hidden.iter().any(|key| key.len() > 64) {
         return Err(invalid(ChartError::Key));
     }
+    if value.reference_lines.len() + value.reference_areas.len() + value.reference_dots.len()
+        > MAX_CHART_REFERENCES
+    {
+        return Err(invalid(ChartError::Budget));
+    }
     Ok(value.clone())
 }
 pub struct Chart {
@@ -180,6 +185,21 @@ impl Chart {
     /// controls work independently; native hosts currently reject this interest.
     pub fn pointer_selection(mut self, value: bool) -> Self {
         self.pointer_selection = value;
+        self
+    }
+    pub fn reference_lines(mut self, value: impl IntoIterator<Item = ChartReferenceLine>) -> Self {
+        self.default_options.reference_lines =
+            value.into_iter().take(MAX_CHART_REFERENCES + 1).collect();
+        self
+    }
+    pub fn reference_areas(mut self, value: impl IntoIterator<Item = ChartReferenceArea>) -> Self {
+        self.default_options.reference_areas =
+            value.into_iter().take(MAX_CHART_REFERENCES + 1).collect();
+        self
+    }
+    pub fn reference_dots(mut self, value: impl IntoIterator<Item = ChartReferenceDot>) -> Self {
+        self.default_options.reference_dots =
+            value.into_iter().take(MAX_CHART_REFERENCES + 1).collect();
         self
     }
 }
@@ -542,6 +562,60 @@ fn build_plot(scope: &Scope, state: &State, frame: ChartFrame, pointer_selection
                         model.with(|m| {
                             m.data.categories[m.scene.labels[index].category]
                                 .label
+                                .clone()
+                        })
+                    }))
+                    .show_in(scope)
+            })
+        })
+        .show_in(&plot)?;
+    let reference_labels = plot.bond(move || {
+        model.with(|m| {
+            m.scene
+                .reference_labels
+                .iter()
+                .map(|label| label.key.clone())
+                .collect::<Vec<_>>()
+        })
+    });
+    glory::ui::each(reference_labels)
+        .key(|key| key.clone())
+        .children(move |entry| {
+            let key = entry.value.get_untracked();
+            glory::ui::widget(move |scope| {
+                let style_key = key.clone();
+                let text_key = key.clone();
+                glory::ui::text()
+                    .class("sapid-chart-reference-label")
+                    .style(scope.bond(move || {
+                        model.with(|m| {
+                            let label = m
+                                .scene
+                                .reference_labels
+                                .iter()
+                                .find(|label| label.key == style_key)
+                                .expect("live chart reference label");
+                            Style {
+                                font_size: Some(11.),
+                                ..Style::new()
+                            }
+                            .position(Position::Absolute)
+                            .left(Length::Percent(label.x / frame.width * 100.))
+                            .top(Length::Percent(label.y / frame.height * 100.))
+                            .width(Length::Percent(24.))
+                            .height(Length::Px(20.))
+                            .overflow_x(Overflow::Hidden)
+                            .overflow_y(Overflow::Hidden)
+                        })
+                    }))
+                    .content(scope.bond(move || {
+                        model.with(|m| {
+                            m.scene
+                                .reference_labels
+                                .iter()
+                                .find(|label| label.key == text_key)
+                                .expect("live chart reference label")
+                                .text
                                 .clone()
                         })
                     }))

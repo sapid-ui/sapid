@@ -7,14 +7,17 @@ pub const DOCUMENT: RouteKey<glory::routing::Params> = RouteKey::new("showcase.d
 pub const SCHEMA: &str = "sapid-showcase-routing-v1";
 pub const SSR_PAGES: &[(&str, &str)] = &[
     ("", "home"),
-    ("P0-01", "button"),
-    ("P0-02", "textfield"),
-    ("P2-08", "actions"),
-    ("P3-10", "pills"),
-    ("P4-08", "multi-select"),
-    ("P4-09", "tags"),
-    ("P9-01", "dates"),
-    ("P13-01", "chat"),
+    ("button", "button"),
+    ("text-input", "textfield"),
+    ("action-icon", "actions"),
+    ("pill", "pills"),
+    ("aspect-ratio", "aspect-ratio"),
+    ("scroll-area", "scroll-area"),
+    ("splitter", "splitter"),
+    ("multi-select", "multi-select"),
+    ("tags-input", "tags"),
+    ("date-picker", "dates"),
+    ("area-chart", "charts"),
 ];
 pub fn routes() -> Routes {
     // The public application is query-routed, including its static SSR aliases.
@@ -62,7 +65,7 @@ impl Route {
             .values("return_to")
             .next()
             .filter(|id| crate::showcase_catalog::find(id).is_some())
-            .unwrap_or("P0-01")
+            .unwrap_or("button")
             .into();
         route.edit = query.values("edit").next().map(str::to_owned);
         route.fragment = location.fragment().unwrap_or_default().into();
@@ -73,7 +76,7 @@ impl Route {
             widget,
             palette: theme.name.clone(),
             scheme: theme.scheme.name().into(),
-            return_to: "P0-01".into(),
+            return_to: "button".into(),
             edit: None,
             fragment: String::new(),
         }
@@ -104,7 +107,7 @@ impl Route {
             .with_query("widget", &self.widget)
             .with_query("theme", &self.palette)
             .with_query("scheme", self.mode().name());
-        if self.return_to != "P0-01" {
+        if self.return_to != "button" {
             url = url.with_query("return_to", &self.return_to);
         }
         if let Some(edit) = &self.edit {
@@ -131,7 +134,9 @@ pub struct Page {
     pub initial: ThemeRecord,
     pub notice: String,
     pub revision: u64,
+    pub shell_revision: u64,
 }
+
 impl Page {
     pub fn builtin(theme: Theme, widget: String) -> Self {
         Self {
@@ -144,6 +149,7 @@ impl Page {
             theme,
             notice: String::new(),
             revision: 0,
+            shell_revision: 0,
         }
     }
 }
@@ -171,7 +177,7 @@ impl State {
 }
 pub fn app(state: State) -> impl Widget {
     widget(move |scope| {
-        let revisions = scope.bond(move || vec![state.page.with(|p| p.revision)]);
+        let revisions = scope.bond(move || vec![state.page.with(|p| p.shell_revision)]);
         scope.effect(move || {
             let page = state.page.get();
             if let Err(error) = crate::showcase_host::present(&page, state.page) {
@@ -196,6 +202,7 @@ pub fn app(state: State) -> impl Widget {
                     page.route.return_to,
                     state.notice,
                     state.editor,
+                    state.page,
                 )
             })
             .show_in(scope)

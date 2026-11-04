@@ -8,9 +8,9 @@ ROOT = Path(__file__).resolve().parents[1]
 INVENTORY = ROOT / "docs/widget-inventory.json"
 REPORT = ROOT / "docs/widgets-roadmap.md"
 EXPECTED = {
-    "mantine-core": 121, "shadcn-components": 66, "mantine-dates": 15,
+    "mantine-core": 121, "shadcn-components": 60, "mantine-dates": 15,
     "mantine-charts": 22, "mantine-schedule": 13, "mantine-code": 2,
-    "mantine-extensions": 8, "shadcn-ai": 21,
+    "mantine-extensions": 8, "shadcn-ai": 1,
 }
 STATUS = {"baseline": "已有基线，需补强", "partial": "部分基础", "planned": "未实现", "done": "已完成并记录证据"}
 
@@ -39,7 +39,7 @@ Switch、RadioGroup/SegmentedControl、动作按钮、展示表面、NumberForma
 已增加实际宿主证据；Menu、Stepper、辅助文本、图像、提示层、原生选择和应用框架亦已验收，
 新批次的完成状态及宿主边界以清单和逐组件证据为准。
 DataTable、Tree/FileTree、TreeSelect 和 Cascader 已按有限契约完成实现和宿主验收；
-图表、文件、编辑器、日程和聊天模块的当前完成状态以清单及对应证据为准。
+图表、文件、编辑器和日程模块的当前完成状态以清单及对应证据为准。
 
 名称需要按语义对照：当前 Dialog 对应 Mantine Modal / shadcn Dialog；Mantine Dialog
 是另外的非模态提示需求，单列 FloatingDialog。Sheet 已在 Drawer 上增加有限手势与 snap
@@ -53,16 +53,16 @@ Dialog/Popover 已验收 Web/SSR/hydration、Document 跨 App 栈、完整有限
 
 ## 目标边界
 
-1. 覆盖两套官方目录中可见的核心 widgets，并纳入 Mantine 日期/图表/日程/编辑器等扩展。
-   shadcn 新增的消息、问卷、Trace 和 AI Elements 也保留条目，作为可选展示模块。
-2. 同义名称和紧密变体共享实现，但清单保留每个来源 URL。149 项工作不是 149 个独立 widgets；
+1. 覆盖两套官方目录中可见的通用核心 widgets，并纳入 Mantine 日期/图表/日程/编辑器等扩展；
+   对话、AI 工作流和消息展示不属于通用 widget 范围。
+2. 同义名称和紧密变体共享实现，但清单保留每个来源 URL。137 项工作不是 137 个独立 widgets；
    其中包含已有组件补强、公共基础设施和多个变体的共同实现。每个变体都要有自己的验收证据。
 3. 不照搬 React/JSX API、hooks、JS 库依赖和代码分发 CLI。继续使用手写 Rust builder、
    Cage/Bond/Vary、Glory Widget 与现有所有权/宿主边界；第三方实现不复制进仓库。
 4. 社区 Registry、页面 Blocks、完整业务应用和任意第三方插件不是有限可穷尽的 widgets 清单。
    React 表单库绑定不移植，但对应表单能力列入 P1；主题/provider/方向/locale 是基础设施。
-5. 默认 Sapid 保持轻依赖。日期、图表、文件、富文本、日程和聊天组件使用可选模块或独立 crate。
-   当前是 Sapid 的 `dates/charts/files/editor/chat/code/json` 可选 features，日程随 `dates`；
+5. 默认 Sapid 保持轻依赖。日期、图表、文件、富文本和日程组件使用可选模块或独立 crate。
+   当前是 Sapid 的 `dates/charts/files/editor/code/json` 可选 features，日程随 `dates`；
    尚未拆为同名独立 crate，也不把可选宿主依赖带入默认组件图。
    图表需要可访问数据表示和跨宿主绘图能力；富文本需要独立文档/编辑协议，不能空壳交付。
 6. 实现默认样式、主题 token、尺寸/状态和 unstyled 组合能力；不把黑白原生控件包装当完整设计系统。
@@ -70,7 +70,7 @@ Dialog/Popover 已验收 Web/SSR/hydration、Document 跨 App 栈、完整有限
 
 ## 执行方式与依赖
 
-按下表 P1 → P13 推进，阶段内按任务编号逐个交付。P0 是贯穿所有阶段的补强队列；
+按下表 P1 → P12 推进，阶段内按任务编号逐个交付。P0 是贯穿所有阶段的补强队列；
 依赖 P0 表示先完成当前组件必需的基础，不要求先完成全部原生浮层/动画等工程才开始 Field。
 每批实现 1–3 个有共同依赖的组件；复杂项目先把该项拆为可验收子任务，再编码。
 未完成当前批的状态/键盘/宿主测试前，不用新增空 builder 的数量代表进展。

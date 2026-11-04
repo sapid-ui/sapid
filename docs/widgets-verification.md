@@ -8,13 +8,13 @@
 GitHub Release 的报告及来源哈希；复跑结果应另记日期、产品/测试脚本 revision 与工具版本。
 Chrome AX、AccessKit 与自动输入协议证据不能替代 OS IME、读屏语音或实际设备验收。
 
-日期：2026-10-25。冻结目录的 268 个来源条目已归并为 149 项工作，
-当前 149 项均已实现并记录逐项证据，覆盖 14 个阶段。
+日期：2026-10-25。冻结目录经移除对话及 AI 工作流后，242 个来源条目归并为 137 项工作，
+当前 137 项均已实现并记录逐项证据，覆盖 13 个阶段。
 [路线图](widgets-roadmap.md)、[canonical inventory](widget-inventory.json)、
 [逐项能力账本](widget-capabilities.md)和 [gallery](../examples/web/gallery.html)保持同步。
 完成范围是各项明确的有限契约；可选模块、宿主拒绝与未验收平台分别记录。
 
-后续新增的 Mantine 风格 Glory + Sapid 展示站、149 个文档路由及独立构建/验收证据，
+后续新增的 Mantine 风格 Glory + Sapid 展示站、181 个文档路由及独立构建/验收证据，
 见 [showcase-site.md](showcase-site.md)。下文的 8794 组件矩阵与冻结记录继续保留。
 
 ## 最终检查

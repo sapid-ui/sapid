@@ -6,7 +6,7 @@ use glory::render::{
     Descriptor, Event, EventKind, FormControl, Props, SelectEntry, SelectOption, SelectProps,
     SemanticId, Semantics, TagHostRejection, TagSeparators, TagsCommand,
 };
-use glory::style::{Display, FlexDirection, FlexWrap, Limit, Overflow, Style};
+use glory::style::{Display, FlexDirection, FlexWrap, Length, Limit, Overflow, Style};
 use glory::ui::{Result, Widget};
 use glory::{Cage, Scope, Vary};
 use std::rc::Rc;
@@ -35,6 +35,12 @@ pub enum TagRejection {
     SearchTooLong,
     PasteTooLong,
     NonCanonical,
+}
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum TagsInputLoadingPosition {
+    Left,
+    #[default]
+    Right,
 }
 
 #[derive(Clone, Copy)]
@@ -136,6 +142,11 @@ pub struct TagsInput {
     readonly: Vary<bool>,
     invalid: Vary<bool>,
     placeholder: Option<Vary<String>>,
+    clearable: bool,
+    clear_label: String,
+    accept_value_on_blur: bool,
+    loading: Vary<bool>,
+    loading_left: bool,
 }
 pub fn tags_input(key: impl Into<String>) -> TagsInput {
     TagsInput {
@@ -158,6 +169,11 @@ pub fn tags_input(key: impl Into<String>) -> TagsInput {
         readonly: false.into(),
         invalid: false.into(),
         placeholder: None,
+        clearable: false,
+        clear_label: "Clear tags".into(),
+        accept_value_on_blur: true,
+        loading: false.into(),
+        loading_left: false,
     }
 }
 impl TagsInput {
@@ -196,6 +212,26 @@ impl TagsInput {
     }
     pub fn max_tags(mut self, value: usize) -> Self {
         self.settings.max_tags = value;
+        self
+    }
+    pub fn clearable(mut self, value: bool) -> Self {
+        self.clearable = value;
+        self
+    }
+    pub fn clear_label(mut self, value: impl Into<String>) -> Self {
+        self.clear_label = value.into();
+        self
+    }
+    pub fn accept_value_on_blur(mut self, value: bool) -> Self {
+        self.accept_value_on_blur = value;
+        self
+    }
+    pub fn loading(mut self, value: impl Into<Vary<bool>>) -> Self {
+        self.loading = value.into();
+        self
+    }
+    pub fn loading_position(mut self, value: TagsInputLoadingPosition) -> Self {
+        self.loading_left = matches!(value, TagsInputLoadingPosition::Left);
         self
     }
     pub fn on_change(mut self, callback: impl FnMut(TagsInputState) + 'static) -> Self {
@@ -388,6 +424,27 @@ impl Controller {
         }
         Ok(())
     }
+    fn commit_search(&self) -> Result {
+        let search = self.current()?.search;
+        if search.trim().is_empty() {
+            return Ok(());
+        }
+        self.command(&TagsCommand::Commit { value: search })
+    }
+    fn clear(&self) -> Result {
+        if !self.owner.is_alive() || !self.editable.try_get()? || self.composing.try_get()? {
+            return Ok(());
+        }
+        let mut next = self.current()?;
+        if next.values.is_empty() && next.search.is_empty() {
+            return Ok(());
+        }
+        next.values.clear();
+        next.search.clear();
+        self.dirty.touch()?;
+        self.propose(next)?;
+        Ok(())
+    }
 }
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 struct Row {
@@ -397,6 +454,8 @@ struct Row {
 impl Widget for TagsInput {
     fn build(&mut self, scope: &Scope) -> Result {
         let placeholder = crate::text_input::placeholder(scope, self.placeholder.take(), false)?;
+        let loading = self.loading.clone();
+        let shows_loading = loading.is_reactive() || loading.get();
         let settings = self.settings;
         if settings.max_tags == 0 || settings.max_tags > MAX_TAGS_INPUT_VALUES {
             return Err(invalid("tags input max_tags must be 1..=256"));
@@ -564,15 +623,32 @@ impl Widget for TagsInput {
             .show_in(&tags_scope)?;
         content.retain(tags_scope)?;
         let input_metadata = metadata.clone();
+        let loading_metadata = loading.clone();
         let metadata = scope.bond(move || {
             let mut value = input_metadata.get().map(|value| *value).unwrap_or_default();
             value.id = Some(input_id.clone());
             value.form_control = None;
             value.tags_input = Some(settings.separators);
             value.placeholder = placeholder.map(|placeholder| placeholder.get());
+            value.busy = Some(loading_metadata.get());
             Some(Box::new(value))
         });
-        let base = self.common.theme.control(self.common.size);
+        let mut base = self.common.theme.control(self.common.size);
+        if self.clearable || shows_loading {
+            base.width = Some(Length::Percent(100.));
+            let mut padding = base.padding.unwrap_or_else(|| glory::style::Edges::all(0.));
+            if shows_loading && self.loading_left {
+                padding.left = padding.left.max(38.);
+            }
+            if self.clearable || (shows_loading && !self.loading_left) {
+                padding.right = padding.right.max(if self.clearable && shows_loading {
+                    64.
+                } else {
+                    38.
+                });
+            }
+            base.padding = Some(padding);
+        }
         let mut input = configure!(
             self.common,
             glory::ui::input(),
@@ -621,12 +697,133 @@ impl Widget for TagsInput {
                 observers.emit(scope.id(), event);
             });
         }
+        let focus_observers = Observers::new(
+            self.common
+                .handlers
+                .remove(&EventKind::FocusChanged)
+                .unwrap_or_default(),
+        );
+        let blur_command = controller.clone();
+        let blur_weak = scope.downgrade();
+        let accept_value_on_blur = self.accept_value_on_blur;
+        input = input.on(EventKind::FocusChanged, move |event| {
+            let Some(scope) = blur_weak.upgrade() else {
+                return;
+            };
+            if accept_value_on_blur
+                && matches!(event, Event::FocusChanged(false))
+                && let Err(error) = blur_command.commit_search()
+            {
+                scope.report_error(error);
+                return;
+            }
+            focus_observers.emit(scope.id(), event);
+        });
         for (kind, handlers) in std::mem::take(&mut self.common.handlers) {
             let observers = Observers::new(handlers);
             let owner = scope.id();
             input = input.on(kind, move |event| observers.emit(owner, event));
         }
-        input.show_in(&content)?;
+        if self.clearable || shows_loading {
+            let row_ref = scope.cage(None);
+            glory::ui::view()
+                .class("sapid-tags-input-editor")
+                .style(
+                    Style::new()
+                        .position(glory::style::Position::Relative)
+                        .display(Display::Block)
+                        .width(Length::Percent(100.)),
+                )
+                .node_ref(row_ref)
+                .show_in(&content)?;
+            let row = scope.child_in(row_ref.get().ok_or(glory::ui::Error::Gone)?)?;
+            if shows_loading && self.loading_left {
+                crate::loader()
+                    .theme(self.common.theme.clone())
+                    .size(self.common.size)
+                    .decorative()
+                    .visible(loading.clone())
+                    .class("sapid-tags-input-loading is-left")
+                    .style(
+                        Style::new()
+                            .position(glory::style::Position::Absolute)
+                            .left(Length::Px(9.))
+                            .top(Length::Px(8.)),
+                    )
+                    .show_in(&row)?;
+            }
+            input.show_in(&row)?;
+            if self.clearable {
+                let clear_command = controller.clone();
+                let clear_label = self.clear_label.clone();
+                let clear_visible = scope.bond(move || {
+                    clear_command.editable.get()
+                        && !clear_command.composing.get()
+                        && clear_command
+                            .accepted
+                            .with(|state| !state.values.is_empty())
+                });
+                let clear_command = controller.clone();
+                let clear_theme = self.common.theme.clone();
+                let clear_size = self.common.size;
+                let clear_plain = self.common.unstyled;
+                glory::ui::when(clear_visible, move || {
+                    let clear_command = clear_command.clone();
+                    let clear_label = clear_label.clone();
+                    let clear_theme = clear_theme.clone();
+                    glory::ui::widget(move |scope| {
+                        let clear_command = clear_command.clone();
+                        let clear_weak = scope.downgrade();
+                        let mut button = crate::close_button()
+                            .theme(clear_theme.clone())
+                            .size(clear_size)
+                            .class("sapid-tags-input-clear")
+                            .name(clear_label.clone())
+                            .style(
+                                Style::new()
+                                    .position(glory::style::Position::Absolute)
+                                    .right(Length::Px(7.))
+                                    .top(Length::Px(6.))
+                                    .width(Length::Px(24.))
+                                    .min_width(Length::Px(24.))
+                                    .height(Length::Px(24.))
+                                    .min_height(Length::Px(24.)),
+                            )
+                            .on_press(move || {
+                                let Some(scope) = clear_weak.upgrade() else {
+                                    return;
+                                };
+                                if let Err(error) = clear_command.clear() {
+                                    scope.report_error(error)
+                                }
+                            });
+                        if clear_plain {
+                            button = button.unstyled();
+                        }
+                        button.show_in(scope)
+                    })
+                })
+                .show_in(&row)?;
+            }
+            if shows_loading && !self.loading_left {
+                crate::loader()
+                    .theme(self.common.theme.clone())
+                    .size(self.common.size)
+                    .decorative()
+                    .visible(loading)
+                    .class("sapid-tags-input-loading is-right")
+                    .style(
+                        Style::new()
+                            .position(glory::style::Position::Absolute)
+                            .right(Length::Px(if self.clearable { 37. } else { 9. }))
+                            .top(Length::Px(8.)),
+                    )
+                    .show_in(&row)?;
+            }
+            content.retain(row)?;
+        } else {
+            input.show_in(&content)?;
+        }
         let input_node = reference.get().ok_or(glory::ui::Error::Gone)?;
         let weak = scope.downgrade();
         let observed = controller.clone();
@@ -813,6 +1010,18 @@ mod tests {
             },
         );
     }
+    fn class_node(app: &App, class: &str) -> Option<NodeId> {
+        nodes(app).into_iter().find(|id| {
+            app.tree()
+                .node(*id)
+                .unwrap()
+                .descriptor
+                .view()
+                .classes
+                .iter()
+                .any(|candidate| candidate == class)
+        })
+    }
     #[test]
     fn free_tags_commit_and_remove_have_no_known_option_requirement_or_combo_roles() {
         let app = App::memory();
@@ -832,6 +1041,53 @@ mod tests {
         let descriptor = tree.node(editor_id).unwrap().descriptor.view();
         assert!(descriptor.semantics.as_ref().unwrap().combobox.is_none());
         assert!(descriptor.role.is_none());
+    }
+    #[test]
+    fn blur_acceptance_clear_and_loading_are_independent_and_policy_checked() {
+        let app = App::memory();
+        app.mount(
+            tags_input("details")
+                .default_value(vec!["A".into()])
+                .default_search("B")
+                .clearable(true)
+                .loading(true),
+        )
+        .unwrap();
+        assert!(class_node(&app, "sapid-tags-input-clear").is_some());
+        assert!(class_node(&app, "sapid-tags-input-loading").is_some());
+        assert_eq!(
+            app.tree()
+                .node(editor(&app))
+                .unwrap()
+                .descriptor
+                .view()
+                .semantics
+                .as_ref()
+                .and_then(|value| value.busy),
+            Some(true)
+        );
+        app.dispatch(editor(&app), Event::FocusChanged(false))
+            .unwrap();
+        assert_eq!(values(&app), ["A", "B"]);
+        let clear = class_node(&app, "sapid-tags-input-clear").unwrap();
+        app.dispatch(clear, Event::Activate).unwrap();
+        assert!(values(&app).is_empty());
+        assert_eq!(input(&app).value, "");
+        assert!(class_node(&app, "sapid-tags-input-clear").is_none());
+
+        let no_blur = App::memory();
+        no_blur
+            .mount(
+                tags_input("no-blur")
+                    .default_search("draft")
+                    .accept_value_on_blur(false),
+            )
+            .unwrap();
+        no_blur
+            .dispatch(editor(&no_blur), Event::FocusChanged(false))
+            .unwrap();
+        assert!(values(&no_blur).is_empty());
+        assert_eq!(input(&no_blur).value, "draft");
     }
     #[test]
     fn controlled_atomic_refusal_preserves_tags_search_and_accepted_observer_order() {

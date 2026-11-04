@@ -72,6 +72,11 @@ pub struct Combobox {
     clearable: bool,
     clear_label: String,
     placeholder: Option<Vary<String>>,
+    visible_limit: usize,
+    select_first_on_change: bool,
+    auto_select_on_blur: bool,
+    loading: Vary<bool>,
+    loading_left: bool,
 }
 pub fn combobox(key: impl Into<String>) -> Combobox {
     Combobox {
@@ -103,6 +108,11 @@ pub fn combobox(key: impl Into<String>) -> Combobox {
         clearable: false,
         clear_label: "Clear selection".into(),
         placeholder: None,
+        visible_limit: 1024,
+        select_first_on_change: false,
+        auto_select_on_blur: false,
+        loading: false.into(),
+        loading_left: false,
     }
 }
 impl Combobox {
@@ -128,6 +138,27 @@ impl Combobox {
     }
     pub(crate) fn autocomplete(mut self) -> Self {
         self.kind = ComboboxKind::Autocomplete;
+        self
+    }
+    pub(crate) fn visible_limit(mut self, limit: usize) -> Self {
+        self.visible_limit = limit;
+        self
+    }
+    pub(crate) fn select_first_on_change(mut self, value: bool) -> Self {
+        self.select_first_on_change = value;
+        self
+    }
+    pub(crate) fn auto_select_on_blur(mut self, value: bool) -> Self {
+        self.auto_select_on_blur = value;
+        self
+    }
+    /// Marks the editor busy and mounts a decorative loading indicator.
+    pub fn loading(mut self, value: impl Into<Vary<bool>>) -> Self {
+        self.loading = value.into();
+        self
+    }
+    pub(crate) fn loading_position(mut self, left: bool) -> Self {
+        self.loading_left = left;
         self
     }
     pub(crate) fn multiple(mut self) -> Self {
@@ -213,6 +244,17 @@ impl Combobox {
     }
     pub fn filter(mut self, value: ComboboxFilter) -> Self {
         self.filter = value;
+        self
+    }
+    /// Caps the number of matching options mounted as visible results.
+    /// The complete declaration remains bounded to 1024 options.
+    pub fn limit(mut self, value: usize) -> Self {
+        self.visible_limit = value;
+        self
+    }
+    /// Places the loading indicator before the text when `left` is true.
+    pub fn loading_left(mut self, left: bool) -> Self {
+        self.loading_left = left;
         self
     }
     pub fn empty_message(mut self, value: impl Into<String>) -> Self {
@@ -342,6 +384,9 @@ struct State {
     committed: Callback<String>,
     opened: Callback<bool>,
     activated: Observers,
+    visible_limit: usize,
+    select_first_on_change: bool,
+    auto_select_on_blur: bool,
 }
 struct Multiple {
     values: Control<Vec<String>>,
@@ -373,7 +418,7 @@ impl MultiSelectHandle {
     }
 }
 impl State {
-    fn option_visible(&self, key: &str, label: &str) -> bool {
+    fn option_matches(&self, key: &str, label: &str) -> bool {
         self.query.with(|query| self.filter.matches(label, query))
             && !self.multiple.as_ref().is_some_and(|multiple| {
                 multiple.hide_picked
@@ -381,6 +426,24 @@ impl State {
                         .selected
                         .with(|values| values.iter().any(|value| value == key))
             })
+    }
+    fn option_visible(&self, key: &str, label: &str) -> bool {
+        if !self.option_matches(key, label) || self.visible_limit == 0 {
+            return false;
+        }
+        let mut admitted = 0usize;
+        for (option, _) in self.config.options() {
+            if option.key.as_str() == key {
+                return admitted < self.visible_limit;
+            }
+            if self.option_matches(option.key.as_str(), &option.label) {
+                admitted += 1;
+                if admitted == self.visible_limit {
+                    return false;
+                }
+            }
+        }
+        false
     }
     fn option_admitted(&self, key: &str) -> bool {
         self.multiple.as_ref().is_none_or(|multiple| {
@@ -463,6 +526,38 @@ impl State {
         let multiple = self.multiple.as_ref().expect("validated multiple mode");
         multiple.values.accept(&values)?;
         multiple.changed.emit(self.owner, values);
+        Ok(())
+    }
+    fn clear_autocomplete(&self) -> Result {
+        if self.kind != ComboboxKind::Autocomplete
+            || !self.owner.is_alive()
+            || !self.editable.try_get()?
+            || self.composing.try_get()?
+        {
+            return Ok(());
+        }
+        let selected = self.value.source.try_get()?;
+        let search = self.search.source.try_with(|value| {
+            validate_search(value)?;
+            Ok::<_, glory::ui::Error>(value.clone())
+        })??;
+        if selected.is_none() && search.is_empty() {
+            return Ok(());
+        }
+        if selected.is_some() {
+            self.value.accept(&None)?;
+            self.changed.emit(self.owner, None);
+        }
+        if self.owner.is_alive() && !search.is_empty() {
+            self.search.accept(&String::new())?;
+            self.dirty.touch()?;
+            self.searched.emit(self.owner, String::new());
+        }
+        if self.owner.is_alive() {
+            self.finalize_search(false)?;
+            self.opened(true)?;
+            self.initial_cursor()?;
+        }
         Ok(())
     }
     fn opened(&self, value: bool) -> Result {
@@ -555,12 +650,30 @@ impl State {
             self.finalize_search(true)?;
             if !commit && changed {
                 self.opened(true)?;
+                if self.select_first_on_change {
+                    self.navigate(Navigation::First)?;
+                }
             }
         }
         Ok(())
     }
+    fn blur(&self) -> Result {
+        if self.kind == ComboboxKind::Autocomplete
+            && self.auto_select_on_blur
+            && let Some(item) = self.current()?
+        {
+            return self.choose_with_visibility(&item.key, false);
+        }
+        self.opened(false)
+    }
     fn choose(&self, key: &str) -> Result {
-        if !self.editable.try_get()? || self.composing.try_get()? || !self.visible.try_get()? {
+        self.choose_with_visibility(key, true)
+    }
+    fn choose_with_visibility(&self, key: &str, require_visible: bool) -> Result {
+        if !self.editable.try_get()?
+            || self.composing.try_get()?
+            || (require_visible && !self.visible.try_get()?)
+        {
             return Ok(());
         }
         if !self
@@ -694,6 +807,7 @@ impl Widget for Combobox {
     fn build(&mut self, scope: &Scope) -> Result {
         let placeholder = crate::text_input::placeholder(scope, self.placeholder.take(), false)?;
         if self.count > 1024
+            || self.visible_limit > 1024
             || self.max_values > MAX_MULTI_SELECT_VALUES
             || (self.clearable
                 && (self.clear_label.trim().is_empty()
@@ -849,6 +963,9 @@ impl Widget for Combobox {
                     .remove(&EventKind::Activate)
                     .unwrap_or_default(),
             ),
+            visible_limit: self.visible_limit,
+            select_first_on_change: self.select_first_on_change,
+            auto_select_on_blur: self.auto_select_on_blur,
         });
         let cleanup = state.clone();
         scope.on_cleanup(move || {
@@ -869,6 +986,8 @@ impl Widget for Combobox {
         let panel_accessible_name = self.common.name.clone();
         let panel_named = panel_accessible_name.is_some();
         let key = self.key.clone();
+        let loading = self.loading.clone();
+        let loading_meta = loading.clone();
         let input_meta = scope.bond(move || {
             let mut value = metadata.get().map(|value| *value).unwrap_or_default();
             value.placeholder = placeholder.map(|placeholder| placeholder.get());
@@ -887,6 +1006,7 @@ impl Widget for Combobox {
             value.controls = Some(input_panel.clone());
             value.popup = Some(PopupKind::Listbox);
             value.expanded = Some(input_state.visible.get());
+            value.busy = Some(loading_meta.get());
             value.active_descendant = if input_state.visible.get() {
                 input_state
                     .current()
@@ -898,7 +1018,28 @@ impl Widget for Combobox {
             };
             Some(Box::new(value))
         });
-        let base = self.common.theme.control(self.common.size);
+        let clearable_editor = self.clearable
+            && matches!(
+                self.kind,
+                ComboboxKind::Multiple | ComboboxKind::Autocomplete
+            );
+        let shows_loading = loading.is_reactive() || loading.get();
+        let mut base = self.common.theme.control(self.common.size);
+        if clearable_editor || shows_loading {
+            base.width = Some(Length::Percent(100.));
+            let mut padding = base.padding.unwrap_or_else(|| Edges::all(0.));
+            if shows_loading && self.loading_left {
+                padding.left = padding.left.max(38.);
+            }
+            if clearable_editor || (shows_loading && !self.loading_left) {
+                padding.right = padding.right.max(if clearable_editor && shows_loading {
+                    64.
+                } else {
+                    38.
+                });
+            }
+            base.padding = Some(padding);
+        }
         let mut input = configure!(
             self.common,
             glory::ui::input(),
@@ -985,7 +1126,7 @@ impl Widget for Combobox {
         input = input.on(EventKind::FocusChanged, move |event| {
             let Some(scope) = weak.upgrade() else { return };
             let result = match event {
-                Event::FocusChanged(false) => controller.opened(false),
+                Event::FocusChanged(false) => controller.blur(),
                 Event::FocusChanged(true) if controller.editable.try_get().unwrap_or(false) => {
                     controller
                         .opened(true)
@@ -1097,29 +1238,47 @@ impl Widget for Combobox {
                 .show_in(&values_scope)?;
             content.retain(values_scope)?;
         }
-        if self.clearable && self.kind == ComboboxKind::Multiple {
+        if clearable_editor || shows_loading {
             let row_ref = scope.cage(None);
             glory::ui::view()
                 .class("sapid-combobox-editor")
                 .style(Style {
-                    align: Some(Align::Center),
                     ..Style::new()
-                        .display(Display::Flex)
-                        .gap(6.0)
+                        .position(glory::style::Position::Relative)
+                        .display(Display::Block)
+                        .width(Length::Percent(100.))
                         .min_width(Length::Px(0.0))
                 })
                 .node_ref(row_ref)
                 .show_in(&content)?;
             let row = scope.child_in(row_ref.get().ok_or(glory::ui::Error::Gone)?)?;
+            if shows_loading && self.loading_left {
+                crate::loader()
+                    .theme(self.common.theme.clone())
+                    .size(self.common.size)
+                    .decorative()
+                    .visible(loading.clone())
+                    .class("sapid-combobox-loading sapid-autocomplete-loading is-left")
+                    .style(
+                        Style::new()
+                            .position(glory::style::Position::Absolute)
+                            .left(Length::Px(9.))
+                            .top(Length::Px(8.)),
+                    )
+                    .show_in(&row)?;
+            }
             input.show_in(&row)?;
+            let has_clear = clearable_editor;
             let controller = state.clone();
             let shown = scope.bond(move || {
                 controller.editable.get()
                     && !controller.composing.get()
-                    && controller
-                        .multiple
-                        .as_ref()
-                        .is_some_and(|multiple| !multiple.selected.with(Vec::is_empty))
+                    && has_clear
+                    && if let Some(multiple) = &controller.multiple {
+                        !multiple.selected.with(Vec::is_empty)
+                    } else {
+                        !controller.accepted_search.with(String::is_empty)
+                    }
             });
             let controller = state.clone();
             let theme = self.common.theme.clone();
@@ -1136,8 +1295,22 @@ impl Widget for Combobox {
                     let mut button = crate::close_button()
                         .theme(theme.clone())
                         .size(size)
-                        .class("sapid-multi-select-clear")
+                        .class(if controller.multiple.is_some() {
+                            "sapid-multi-select-clear"
+                        } else {
+                            "sapid-autocomplete-clear"
+                        })
                         .name(label.clone())
+                        .style(
+                            Style::new()
+                                .position(glory::style::Position::Absolute)
+                                .right(Length::Px(7.))
+                                .top(Length::Px(6.))
+                                .width(Length::Px(24.))
+                                .min_width(Length::Px(24.))
+                                .height(Length::Px(24.))
+                                .min_height(Length::Px(24.)),
+                        )
                         .on_press(move || {
                             let Some(scope) = weak.upgrade() else { return };
                             let result = (|| -> Result {
@@ -1149,7 +1322,11 @@ impl Widget for Combobox {
                                 {
                                     return Ok(());
                                 }
-                                command.select_all(true)?;
+                                if command.multiple.is_some() {
+                                    command.select_all(true)?;
+                                } else {
+                                    command.clear_autocomplete()?;
+                                }
                                 if command.owner.is_alive()
                                     && scope.capabilities()?.focus
                                     && let Some(node) = reference.try_get()?
@@ -1169,6 +1346,21 @@ impl Widget for Combobox {
                 })
             })
             .show_in(&row)?;
+            if shows_loading && !self.loading_left {
+                crate::loader()
+                    .theme(self.common.theme.clone())
+                    .size(self.common.size)
+                    .decorative()
+                    .visible(loading)
+                    .class("sapid-combobox-loading sapid-autocomplete-loading is-right")
+                    .style(
+                        Style::new()
+                            .position(glory::style::Position::Absolute)
+                            .right(Length::Px(if clearable_editor { 37. } else { 9. }))
+                            .top(Length::Px(8.)),
+                    )
+                    .show_in(&row)?;
+            }
             content.retain(row)?;
         } else {
             input.show_in(&content)?;

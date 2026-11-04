@@ -9,6 +9,12 @@ use glory::{Cage, Scope, Vary};
 pub struct MultiSelect {
     inner: Combobox,
 }
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum MultiSelectLoadingPosition {
+    Left,
+    #[default]
+    Right,
+}
 pub fn multi_select(key: impl Into<String>) -> MultiSelect {
     MultiSelect {
         inner: crate::combobox(key).multiple(),
@@ -147,6 +153,21 @@ impl MultiSelect {
     }
     pub fn filter(mut self, value: ComboboxFilter) -> Self {
         self.inner = self.inner.filter(value);
+        self
+    }
+    /// Caps the number of matching options mounted as visible results.
+    pub fn limit(mut self, value: usize) -> Self {
+        self.inner = self.inner.visible_limit(value);
+        self
+    }
+    pub fn loading(mut self, value: impl Into<Vary<bool>>) -> Self {
+        self.inner = self.inner.loading(value);
+        self
+    }
+    pub fn loading_position(mut self, value: MultiSelectLoadingPosition) -> Self {
+        self.inner = self
+            .inner
+            .loading_position(matches!(value, MultiSelectLoadingPosition::Left));
         self
     }
     pub fn empty_message(mut self, value: impl Into<String>) -> Self {

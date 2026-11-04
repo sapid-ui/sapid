@@ -265,6 +265,7 @@ pub struct TimeInput {
     value: Value<Option<LocalTime>>,
     field: Option<FieldControl>,
     form_name: Option<Vary<String>>,
+    placeholder: Option<Vary<String>>,
     required: Vary<bool>,
     readonly: Vary<bool>,
     invalid: Vary<bool>,
@@ -282,6 +283,7 @@ pub fn time_input(key: impl Into<String>) -> TimeInput {
         value: Value::default(),
         field: None,
         form_name: None,
+        placeholder: None,
         required: false.into(),
         readonly: false.into(),
         invalid: false.into(),
@@ -311,6 +313,10 @@ impl TimeInput {
     }
     pub fn form_name(mut self, v: impl Into<Vary<String>>) -> Self {
         self.form_name = Some(v.into());
+        self
+    }
+    pub fn placeholder(mut self, value: impl Into<Vary<String>>) -> Self {
+        self.placeholder = Some(value.into());
         self
     }
     pub fn required(mut self, v: impl Into<Vary<bool>>) -> Self {
@@ -362,6 +368,7 @@ impl Widget for TimeInput {
             return Err(invalid());
         }
         let error_id = SemanticId::new(format!("{}-time-error", self.key))?;
+        let placeholder = crate::text_input::placeholder(scope, self.placeholder.take(), false)?;
         let control = std::mem::take(&mut self.value).mount(scope);
         let value = control.source.clone();
         let bounds = self.bounds.clone();
@@ -379,6 +386,17 @@ impl Widget for TimeInput {
             self.readonly.clone(),
             self.invalid.clone(),
         );
+        let metadata = if let Some(placeholder) = placeholder {
+            scope
+                .bond(move || {
+                    let mut state = metadata.get().unwrap_or_default();
+                    state.placeholder = Some(placeholder.get());
+                    Some(state)
+                })
+                .into()
+        } else {
+            metadata
+        };
         let form_name = composite::form_name(scope, &self.form_name)?;
         let source = scope.bond(move || {
             let mut metadata = metadata.get().map(|s| *s).unwrap_or_default();

@@ -22,33 +22,8 @@ mod browser {
             },
         );
         let build = move |_: &Scope| -> Box<dyn Widget> {
-            if family == 98 {
-                Box::new(crate::confirmation_form::confirmation_form(theme.clone()))
-            } else if family == 99 {
-                Box::new(crate::tasks_form::tasks_form(theme.clone()))
-            } else if family == 82 {
+            if family == 82 {
                 Box::new(crate::rich_editor_form::rich_editor_form(theme.clone()))
-            } else if family == 101 {
-                Box::new(crate::output_form::output_form(theme.clone()))
-            } else if family == 96 || family == 97 {
-                Box::new(crate::chat_evidence_form::chat_evidence_form(
-                    theme.clone(),
-                    family == 97,
-                ))
-            } else if family == 94 {
-                Box::new(crate::model_suggestions_form::model_suggestions_form(
-                    theme.clone(),
-                ))
-            } else if family == 93 {
-                Box::new(crate::questionnaire_form::questionnaire_form(theme.clone()))
-            } else if family == 92 {
-                Box::new(crate::prompt_form::prompt_form(theme.clone()))
-            } else if family == 91 {
-                Box::new(crate::message_scroller_form::message_scroller_form(
-                    theme.clone(),
-                ))
-            } else if family == 90 {
-                Box::new(crate::messages_form::messages_form(theme.clone()))
             } else if family == 81 {
                 Box::new(crate::lightbox_form::lightbox_form(theme.clone()))
             } else if family == 80 {
@@ -363,34 +338,6 @@ mod browser {
         mount(hydrate, 74, hue, scheme)
     }
     #[wasm_bindgen]
-    pub fn mount_messages(hydrate: bool, hue: String, scheme: String) -> Result<(), JsValue> {
-        mount(hydrate, 90, hue, scheme)
-    }
-    #[wasm_bindgen]
-    pub fn mount_message_scroller(
-        hydrate: bool,
-        hue: String,
-        scheme: String,
-    ) -> Result<(), JsValue> {
-        mount(hydrate, 91, hue, scheme)
-    }
-    #[wasm_bindgen]
-    pub fn mount_model_suggestions(
-        hydrate: bool,
-        hue: String,
-        scheme: String,
-    ) -> Result<(), JsValue> {
-        mount(hydrate, 94, hue, scheme)
-    }
-    #[wasm_bindgen]
-    pub fn mount_questionnaire(hydrate: bool, hue: String, scheme: String) -> Result<(), JsValue> {
-        mount(hydrate, 93, hue, scheme)
-    }
-    #[wasm_bindgen]
-    pub fn mount_prompt(hydrate: bool, hue: String, scheme: String) -> Result<(), JsValue> {
-        mount(hydrate, 92, hue, scheme)
-    }
-    #[wasm_bindgen]
     pub fn mount_responsive(hydrate: bool, hue: String, scheme: String) -> Result<(), JsValue> {
         mount(hydrate, 75, hue, scheme)
     }
@@ -469,30 +416,6 @@ mod browser {
     #[wasm_bindgen]
     pub fn mount_lightbox(hydrate: bool, hue: String, scheme: String) -> Result<(), JsValue> {
         mount(hydrate, 81, hue, scheme)
-    }
-    #[wasm_bindgen]
-    pub fn mount_public_explanations(
-        hydrate: bool,
-        hue: String,
-        scheme: String,
-    ) -> Result<(), JsValue> {
-        mount(hydrate, 96, hue, scheme)
-    }
-    #[wasm_bindgen]
-    pub fn mount_citations(hydrate: bool, hue: String, scheme: String) -> Result<(), JsValue> {
-        mount(hydrate, 97, hue, scheme)
-    }
-    #[wasm_bindgen]
-    pub fn mount_output(hydrate: bool, hue: String, scheme: String) -> Result<(), JsValue> {
-        mount(hydrate, 101, hue, scheme)
-    }
-    #[wasm_bindgen]
-    pub fn mount_tasks(hydrate: bool, hue: String, scheme: String) -> Result<(), JsValue> {
-        mount(hydrate, 99, hue, scheme)
-    }
-    #[wasm_bindgen]
-    pub fn mount_confirmation(hydrate: bool, hue: String, scheme: String) -> Result<(), JsValue> {
-        mount(hydrate, 98, hue, scheme)
     }
     #[wasm_bindgen]
     pub fn mount_files(hydrate: bool, hue: String, scheme: String) -> Result<(), JsValue> {

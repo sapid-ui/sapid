@@ -1,17 +1,18 @@
 //! Finite HSV picker with a pointer plane and genuine keyboard Slider alternatives.
 use crate::{
     appearance::Common,
-    color_model::Hsva,
+    color_model::{ColorFormat, Hsva, format_color, parse_hex_color},
     composite::{self, Callback, Observers},
     state::{Control, Value},
 };
-use glory::render::{Direction, DragCapture, Event, EventKind, NodeId, Role, Semantics};
-use glory::style::{Color, Length, PointerEvents, Position, Style};
+use glory::render::{
+    Direction, DragCapture, Event, EventKind, FormControl, NodeId, Role, Semantics,
+};
+use glory::style::{Color, Display, Length, LinearGradient, PointerEvents, Position, Style};
 use glory::ui::{Result, Widget};
 use glory::{Cage, Scope, Vary};
 use std::rc::Rc;
 mod pad;
-const CELLS: usize = 16;
 pub const MAX_COLOR_PICKER_KEY_BYTES: usize = 48;
 fn invalid(message: &'static str) -> glory::ui::Error {
     glory::render::Error::InvalidProps(message).into()
@@ -90,6 +91,17 @@ pub struct ColorPicker {
     readonly: Vary<bool>,
     direction: Direction,
     alpha: bool,
+    precision_sliders: bool,
+    picker: bool,
+    full_width: bool,
+    swatches: Vec<String>,
+    swatches_per_row: usize,
+    saturation_label: Vary<String>,
+    brightness_label: Vary<String>,
+    hue_label: Vary<String>,
+    alpha_label: Vary<String>,
+    form_name: Option<Vary<String>>,
+    form_format: ColorFormat,
     side: f64,
     change: Option<Box<dyn FnMut(Hsva)>>,
     commit: Option<Box<dyn FnMut(Hsva)>>,
@@ -105,6 +117,17 @@ pub fn color_picker(key: impl Into<String>) -> ColorPicker {
         readonly: false.into(),
         direction: Direction::Ltr,
         alpha: true,
+        precision_sliders: false,
+        picker: true,
+        full_width: false,
+        swatches: Vec::new(),
+        swatches_per_row: 7,
+        saturation_label: "Saturation".into(),
+        brightness_label: "Brightness".into(),
+        hue_label: "Hue".into(),
+        alpha_label: "Opacity".into(),
+        form_name: None,
+        form_format: ColorFormat::Hexa,
         side: 240.,
         change: None,
         commit: None,
@@ -167,6 +190,56 @@ impl ColorPicker {
         self.alpha = value;
         self
     }
+    /// Show the keyboard precision controls for saturation and brightness.
+    /// Compact picker popovers use the two-dimensional plane instead.
+    pub fn show_precision_sliders(mut self, value: bool) -> Self {
+        self.precision_sliders = value;
+        self
+    }
+    /// Show the continuous picker. Disable it to expose only declared swatches.
+    pub fn show_picker(mut self, value: bool) -> Self {
+        self.picker = value;
+        self
+    }
+    /// Stretch the picker root to its parent's width while retaining finite channel geometry.
+    pub fn full_width(mut self, value: bool) -> Self {
+        self.full_width = value;
+        self
+    }
+    pub fn swatches(mut self, values: impl IntoIterator<Item = impl Into<String>>) -> Self {
+        self.swatches = values.into_iter().map(Into::into).collect();
+        self
+    }
+    pub fn swatches_per_row(mut self, value: usize) -> Self {
+        self.swatches_per_row = value;
+        self
+    }
+    pub fn saturation_label(mut self, value: impl Into<Vary<String>>) -> Self {
+        self.saturation_label = value.into();
+        self
+    }
+    pub fn brightness_label(mut self, value: impl Into<Vary<String>>) -> Self {
+        self.brightness_label = value.into();
+        self
+    }
+    pub fn hue_label(mut self, value: impl Into<Vary<String>>) -> Self {
+        self.hue_label = value.into();
+        self
+    }
+    pub fn alpha_label(mut self, value: impl Into<Vary<String>>) -> Self {
+        self.alpha_label = value.into();
+        self
+    }
+    /// Publish the current color through a real hidden successful control.
+    /// The picker keeps its original HSVA value; only the submitted snapshot is formatted.
+    pub fn form_name(mut self, value: impl Into<Vary<String>>) -> Self {
+        self.form_name = Some(value.into());
+        self
+    }
+    pub fn form_format(mut self, value: ColorFormat) -> Self {
+        self.form_format = value;
+        self
+    }
     /// Intrinsic plane side; custom outer style does not turn the plane into a zero-height box.
     pub fn plane_size(mut self, value: f64) -> Self {
         self.side = value;
@@ -212,6 +285,25 @@ impl Widget for ColorPicker {
         if !self.side.is_finite() || !(128. ..=512.).contains(&self.side) {
             return Err(invalid("color plane side requires 128..=512 pixels"));
         }
+        if self.swatches.len() > 64 || !(1..=16).contains(&self.swatches_per_row) {
+            return Err(invalid(
+                "color picker requires at most 64 swatches and 1..=16 swatches per row",
+            ));
+        }
+        if !self.picker && self.swatches.is_empty() {
+            return Err(invalid(
+                "swatches-only color picker requires at least one swatch",
+            ));
+        }
+        let swatches = self
+            .swatches
+            .iter()
+            .map(|value| {
+                parse_hex_color(value)
+                    .map(|color| (value.clone(), color))
+                    .map_err(|_| invalid("color picker swatches require hexadecimal colors"))
+            })
+            .collect::<Result<Vec<_>>>()?;
         let id = composite::id("color-picker", &self.key, "root", "root")?;
         let control = std::mem::replace(
             &mut self.value,
@@ -226,6 +318,13 @@ impl Widget for ColorPicker {
         })?;
         let name = self.common.name.take().unwrap_or_else(|| "Color".into());
         let name = composite::validated(scope, &name, |value| validate_name(value))?;
+        let saturation_label =
+            composite::validated(scope, &self.saturation_label, |value| validate_name(value))?;
+        let brightness_label =
+            composite::validated(scope, &self.brightness_label, |value| validate_name(value))?;
+        let hue_label = composite::validated(scope, &self.hue_label, |value| validate_name(value))?;
+        let alpha_label =
+            composite::validated(scope, &self.alpha_label, |value| validate_name(value))?;
         let state = Rc::new(PickerState {
             owner: scope.id(),
             control,
@@ -259,10 +358,15 @@ impl Widget for ColorPicker {
             .common
             .appearance(scope, "sapid-color-picker", Style::new());
         let side = self.side;
+        let full_width = self.full_width;
         let style = scope.bond(move || {
             let mut value = style.get();
             if value.width.is_none() {
-                value.width = Some(Length::Px(side));
+                value.width = Some(if full_width {
+                    Length::Percent(100.)
+                } else {
+                    Length::Px(side)
+                });
             }
             crate::appearance::merge(composite::column(8.), value)
         });
@@ -285,6 +389,49 @@ impl Widget for ColorPicker {
         }
         root.show_in(scope)?;
         let parent = scope.child_in(reference.get().ok_or(glory::ui::Error::Gone)?)?;
+        if let Some(form_name) = self.form_name.take() {
+            let form_name = composite::validated(scope, &form_name, |value| validate_name(value))?;
+            let form_state = state.clone();
+            let form_format = self.form_format;
+            glory::ui::input()
+                .class("sapid-color-picker-form-proxy")
+                .value(scope.bond(move || {
+                    format_color(
+                        form_state
+                            .current()
+                            .to_rgba()
+                            .expect("validated color picker form value"),
+                        form_format,
+                    )
+                }))
+                .enabled(self.common.enabled.clone())
+                .style(Style::new().display(Display::None))
+                .semantics(scope.bond(move || {
+                    Some(Box::new(Semantics {
+                        form_control: Some(FormControl {
+                            name: form_name.get(),
+                            value: None,
+                        }),
+                        ..Default::default()
+                    }))
+                }))
+                .show_in(&parent)?;
+        }
+        if !self.picker {
+            show_swatches(
+                &parent,
+                scope,
+                state,
+                swatches,
+                self.swatches_per_row,
+                side,
+                self.common.theme.clone(),
+                self.common.enabled.clone(),
+                self.readonly.clone(),
+            )?;
+            scope.retain(parent)?;
+            return Ok(());
+        }
         let pad_ref = scope.cage(None);
         let driver = pad::Pad::new(scope, state.clone(), pad_ref)?;
         let enabled = self.common.enabled.clone();
@@ -317,40 +464,62 @@ impl Widget for ColorPicker {
             })
             .show_in(&parent)?;
         let plane = scope.child_in(pad_ref.get().ok_or(glory::ui::Error::Gone)?)?;
-        for row in 0..CELLS {
-            for column in 0..CELLS {
-                let read = state.clone();
-                let direction = self.direction;
-                glory::ui::view()
-                    .class("sapid-color-plane-cell")
-                    .style(scope.bond(move || {
-                        let hue = read.current().hue;
-                        let value = Hsva {
-                            hue,
-                            saturation: column as f64 / (CELLS - 1) as f64,
-                            value: 1. - row as f64 / (CELLS - 1) as f64,
-                            alpha: 1.,
-                        }
-                        .to_rgba()
-                        .expect("validated color cell");
-                        surface(value)
-                            .position(Position::Absolute)
-                            .left(Length::Percent(
-                                (if direction == Direction::Rtl {
-                                    CELLS - column - 1
-                                } else {
-                                    column
-                                }) as f64
-                                    * 100.
-                                    / CELLS as f64,
-                            ))
-                            .top(Length::Percent(row as f64 * 100. / CELLS as f64))
-                            .width(Length::Percent(100. / CELLS as f64))
-                            .height(Length::Percent(100. / CELLS as f64))
-                            .pointer_events(PointerEvents::None)
-                    }))
-                    .show_in(&plane)?;
-            }
+        let hue = state.clone();
+        glory::ui::view()
+            .class("sapid-color-plane-hue")
+            .style(scope.bond(move || {
+                surface(
+                    Hsva {
+                        hue: hue.current().hue,
+                        saturation: 1.,
+                        value: 1.,
+                        alpha: 1.,
+                    }
+                    .to_rgba()
+                    .expect("validated color plane hue"),
+                )
+                .position(Position::Absolute)
+                .left(Length::Percent(0.))
+                .top(Length::Percent(0.))
+                .width(Length::Percent(100.))
+                .height(Length::Percent(100.))
+                .pointer_events(PointerEvents::None)
+            }))
+            .show_in(&plane)?;
+        let horizontal_stops = if self.direction == Direction::Rtl {
+            vec![Color(255, 255, 255, 0), Color(255, 255, 255, 255)]
+        } else {
+            vec![Color(255, 255, 255, 255), Color(255, 255, 255, 0)]
+        };
+        for (class, gradient) in [
+            (
+                "sapid-color-plane-saturation",
+                LinearGradient {
+                    angle: 90.,
+                    stops: horizontal_stops,
+                },
+            ),
+            (
+                "sapid-color-plane-value",
+                LinearGradient {
+                    angle: 180.,
+                    stops: vec![Color(0, 0, 0, 0), Color(0, 0, 0, 255)],
+                },
+            ),
+        ] {
+            glory::ui::view()
+                .class(class)
+                .style(
+                    Style::new()
+                        .background_image(gradient)
+                        .position(Position::Absolute)
+                        .left(Length::Percent(0.))
+                        .top(Length::Percent(0.))
+                        .width(Length::Percent(100.))
+                        .height(Length::Percent(100.))
+                        .pointer_events(PointerEvents::None),
+                )
+                .show_in(&plane)?;
         }
         let read = state.clone();
         let marker_border = self.common.theme.control_thumb;
@@ -382,7 +551,12 @@ impl Widget for ColorPicker {
                     .pointer_events(PointerEvents::None)
             }))
             .show_in(&plane)?;
-        for index in [1, 2] {
+        for index in if self.precision_sliders {
+            &[1, 2][..]
+        } else {
+            &[][..]
+        } {
+            let index = *index;
             let value = channel(state.clone(), scope, index);
             let changed = state.clone();
             let committed = state.clone();
@@ -391,9 +565,9 @@ impl Widget for ColorPicker {
             let observe_range = state.clone();
             let observe_drag = state.clone();
             let label = if index == 1 {
-                "Saturation"
+                saturation_label
             } else {
-                "Brightness"
+                brightness_label
             };
             let mut slider = crate::slider(format!("{}-{index}", self.key))
                 .value(value)
@@ -440,6 +614,7 @@ impl Widget for ColorPicker {
         let observe_drag = state.clone();
         let mut hue = crate::hue_slider(format!("{}-h", self.key))
             .value(channel(state.clone(), scope, 0))
+            .name(hue_label)
             .theme(self.common.theme.clone())
             .size(self.common.size)
             .style(Style::new().width(Length::Percent(100.)))
@@ -486,6 +661,7 @@ impl Widget for ColorPicker {
             let observe_drag = state.clone();
             let mut alpha = crate::alpha_slider(format!("{}-a", self.key))
                 .value(channel(state.clone(), scope, 3))
+                .name(alpha_label)
                 .color(color)
                 .theme(self.common.theme.clone())
                 .size(self.common.size)
@@ -518,8 +694,70 @@ impl Widget for ColorPicker {
             }
             alpha.show_in(&parent)?;
         }
+        if !swatches.is_empty() {
+            show_swatches(
+                &parent,
+                scope,
+                state,
+                swatches,
+                self.swatches_per_row,
+                side,
+                self.common.theme.clone(),
+                self.common.enabled.clone(),
+                self.readonly.clone(),
+            )?;
+        }
         scope.retain(plane)?;
         scope.retain(parent)?;
         Ok(())
     }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn show_swatches(
+    parent: &Scope,
+    scope: &Scope,
+    state: Rc<PickerState>,
+    swatches: Vec<(String, Color)>,
+    per_row: usize,
+    width: f64,
+    theme: crate::Theme,
+    enabled: Vary<bool>,
+    readonly: Vary<bool>,
+) -> Result {
+    let mut children: Vec<Box<dyn Widget>> = Vec::with_capacity(swatches.len());
+    let side = ((width - 6. * (per_row.saturating_sub(1)) as f64) / per_row as f64).clamp(8., 128.);
+    for (label, color) in swatches {
+        let next = Hsva::from_rgba(color);
+        let select = state.clone();
+        let weak = scope.downgrade();
+        let ready = {
+            let enabled = enabled.clone();
+            let readonly = readonly.clone();
+            scope.bond(move || enabled.get() && !readonly.get())
+        };
+        children.push(Box::new(
+            crate::color_swatch(color)
+                .theme(theme.clone())
+                .class("sapid-color-picker-swatch")
+                .side(side)
+                .name(label)
+                .enabled(ready)
+                .interactive(true)
+                .on_press(move || {
+                    if let Err(error) = select.propose(next, true)
+                        && let Some(scope) = weak.upgrade()
+                    {
+                        scope.report_error(error)
+                    }
+                }),
+        ));
+    }
+    crate::group()
+        .theme(theme)
+        .class("sapid-color-picker-swatches")
+        .gap(6.)
+        .wrap(glory::style::FlexWrap::Wrap)
+        .fill(children)
+        .show_in(parent)
 }

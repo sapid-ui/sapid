@@ -3,7 +3,7 @@
 The current per-work-item source is the [explicit capability ledger](widget-capabilities.md),
 generated with the [interactive gallery](../examples/web/gallery.html) from
 `docs/capability-matrix.json` and the canonical inventory. It distinguishes tested,
-model-only, rejected and pending states for all 149 work items. The family table
+model-only, rejected and pending states for all 137 work items. The family table
 and gate history below preserve earlier snapshots; newer native Layer and other
 capabilities supersede their older refusals only where the explicit ledger and
 canonical evidence say so.

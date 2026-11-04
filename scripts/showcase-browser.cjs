@@ -1,9 +1,8 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
-const { chromium } = require(process.env.SAPID_PLAYWRIGHT || 'D:/Works/glory-rs/glory/tests/playwright/node_modules/playwright');
-process.env.TEMP = process.env.TMP = 'D:/BuildCache/sapid/tmp';
-const output = 'D:/BuildCache/sapid';
+const { chromium, base, outputPath, outputRoot, writeReport } = require('./showcase-browser-env.cjs');
+const output = outputRoot;
 (async () => {
   let browser;
   const report = { base: process.env.SAPID_SHOWCASE_BASE || 'http://127.0.0.1:8795', reports: [], errors: [] };

@@ -60,6 +60,108 @@ pub struct CartesianOptions {
     pub hidden: BTreeSet<String>,
     pub brush: Option<ChartBrush>,
     pub domain: Option<ChartDomain>,
+    pub reference_lines: Vec<ChartReferenceLine>,
+    pub reference_areas: Vec<ChartReferenceArea>,
+    pub reference_dots: Vec<ChartReferenceDot>,
+}
+pub const MAX_CHART_REFERENCES: usize = 16;
+#[derive(Clone, Debug, PartialEq)]
+pub enum ChartReferenceAxis {
+    Category(String),
+    Value(f64),
+}
+#[derive(Clone, Debug, PartialEq)]
+pub struct ChartReferenceLine {
+    pub axis: ChartReferenceAxis,
+    pub label: Option<String>,
+    pub color: Option<Color>,
+}
+impl ChartReferenceLine {
+    pub fn category(key: impl Into<String>) -> Self {
+        Self {
+            axis: ChartReferenceAxis::Category(key.into()),
+            label: None,
+            color: None,
+        }
+    }
+    pub fn value(value: f64) -> Self {
+        Self {
+            axis: ChartReferenceAxis::Value(value),
+            label: None,
+            color: None,
+        }
+    }
+    pub fn label(mut self, value: impl Into<String>) -> Self {
+        self.label = Some(value.into());
+        self
+    }
+    pub fn color(mut self, value: Color) -> Self {
+        self.color = Some(value);
+        self
+    }
+}
+#[derive(Clone, Debug, PartialEq)]
+pub struct ChartReferenceArea {
+    pub categories: Option<(String, String)>,
+    pub values: Option<(f64, f64)>,
+    pub label: Option<String>,
+    pub color: Option<Color>,
+}
+impl ChartReferenceArea {
+    pub fn new() -> Self {
+        Self {
+            categories: None,
+            values: None,
+            label: None,
+            color: None,
+        }
+    }
+    pub fn categories(mut self, first: impl Into<String>, last: impl Into<String>) -> Self {
+        self.categories = Some((first.into(), last.into()));
+        self
+    }
+    pub fn values(mut self, min: f64, max: f64) -> Self {
+        self.values = Some((min, max));
+        self
+    }
+    pub fn label(mut self, value: impl Into<String>) -> Self {
+        self.label = Some(value.into());
+        self
+    }
+    pub fn color(mut self, value: Color) -> Self {
+        self.color = Some(value);
+        self
+    }
+}
+impl Default for ChartReferenceArea {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+#[derive(Clone, Debug, PartialEq)]
+pub struct ChartReferenceDot {
+    pub category: String,
+    pub value: f64,
+    pub label: Option<String>,
+    pub color: Option<Color>,
+}
+impl ChartReferenceDot {
+    pub fn new(category: impl Into<String>, value: f64) -> Self {
+        Self {
+            category: category.into(),
+            value,
+            label: None,
+            color: None,
+        }
+    }
+    pub fn label(mut self, value: impl Into<String>) -> Self {
+        self.label = Some(value.into());
+        self
+    }
+    pub fn color(mut self, value: Color) -> Self {
+        self.color = Some(value);
+        self
+    }
 }
 #[derive(Clone, Debug, PartialEq)]
 pub struct ChartPath {
@@ -88,6 +190,13 @@ pub struct ChartLabel {
     pub y: f64,
 }
 #[derive(Clone, Debug, PartialEq)]
+pub struct ChartReferenceLabel {
+    pub key: String,
+    pub text: String,
+    pub x: f64,
+    pub y: f64,
+}
+#[derive(Clone, Debug, PartialEq)]
 pub struct CartesianScene {
     pub frame: ChartFrame,
     pub domain: ChartDomain,
@@ -95,6 +204,7 @@ pub struct CartesianScene {
     pub locations: Vec<ChartLocation>,
     pub ticks: Vec<ChartTick>,
     pub labels: Vec<ChartLabel>,
+    pub reference_labels: Vec<ChartReferenceLabel>,
     pub clipped_values: usize,
 }
 fn path(
@@ -230,6 +340,25 @@ impl CartesianScene {
         };
         let band = (right - left) / count.max(1) as f64;
         let x = |index: usize| left + (index - first) as f64 * band + band / 2.;
+        let reference_count = options.reference_lines.len()
+            + options.reference_areas.len()
+            + options.reference_dots.len();
+        if reference_count > MAX_CHART_REFERENCES {
+            return Err(ChartError::Budget);
+        }
+        let category = |key: &str| {
+            data.categories
+                .iter()
+                .position(|entry| entry.key == key)
+                .ok_or(ChartError::Key)
+        };
+        let valid_label = |value: &Option<String>| {
+            if value.as_ref().is_some_and(|value| !label(value)) {
+                Err(ChartError::Label)
+            } else {
+                Ok(())
+            }
+        };
         let ticks = domain
             .ticks(5)?
             .into_iter()
@@ -256,6 +385,139 @@ impl CartesianScene {
             None,
             Some(stroke(theme.grid, 1.)),
         )?];
+        let mut reference_labels = Vec::new();
+        for (index, area) in options.reference_areas.iter().enumerate() {
+            valid_label(&area.label)?;
+            if area.categories.is_none() && area.values.is_none() {
+                return Err(ChartError::Schema);
+            }
+            let (x1, x2) = if let Some((start, finish)) = &area.categories {
+                let start = category(start)?;
+                let finish = category(finish)?;
+                if start > finish {
+                    return Err(ChartError::Schema);
+                }
+                let start = start.max(first);
+                let finish = finish.min(end.saturating_sub(1));
+                if start > finish {
+                    continue;
+                }
+                (x(start) - band / 2., x(finish) + band / 2.)
+            } else {
+                (left, right)
+            };
+            let (y1, y2) = if let Some((min, max)) = area.values {
+                if !min.is_finite()
+                    || !max.is_finite()
+                    || min.abs() > MAX_CHART_VALUE
+                    || max.abs() > MAX_CHART_VALUE
+                    || min > max
+                {
+                    return Err(ChartError::Values);
+                }
+                (y(max)?, y(min)?)
+            } else {
+                (top, bottom)
+            };
+            let mut color = area.color.unwrap_or(theme.series[0]);
+            color.3 = color.3.min(64);
+            paths.push(path(
+                frame,
+                format!("reference-area-{index}"),
+                None,
+                rectangle(x1, y1, x2 - x1, y2 - y1).to_vec(),
+                Some(color),
+                None,
+            )?);
+            if let Some(text) = &area.label {
+                reference_labels.push(ChartReferenceLabel {
+                    key: format!("area-{index}"),
+                    text: text.clone(),
+                    x: x1 + 4.,
+                    y: y1 + 4.,
+                });
+            }
+        }
+        for (index, line) in options.reference_lines.iter().enumerate() {
+            valid_label(&line.label)?;
+            let (commands, label_x, label_y) = match &line.axis {
+                ChartReferenceAxis::Category(key) => {
+                    let category = category(key)?;
+                    if category < first || category >= end {
+                        continue;
+                    }
+                    let x = x(category);
+                    (
+                        vec![
+                            Cmd::Move(Point::new(x, top)),
+                            Cmd::Line(Point::new(x, bottom)),
+                        ],
+                        x + 4.,
+                        top + 4.,
+                    )
+                }
+                ChartReferenceAxis::Value(value) => {
+                    if !value.is_finite() || value.abs() > MAX_CHART_VALUE {
+                        return Err(ChartError::Values);
+                    }
+                    let y = y(*value)?;
+                    (
+                        vec![
+                            Cmd::Move(Point::new(left, y)),
+                            Cmd::Line(Point::new(right, y)),
+                        ],
+                        left + 4.,
+                        y + 4.,
+                    )
+                }
+            };
+            paths.push(path(
+                frame,
+                format!("reference-line-{index}"),
+                None,
+                commands,
+                None,
+                Some(stroke(line.color.unwrap_or(theme.grid), 2.)),
+            )?);
+            if let Some(text) = &line.label {
+                reference_labels.push(ChartReferenceLabel {
+                    key: format!("line-{index}"),
+                    text: text.clone(),
+                    x: label_x,
+                    y: label_y,
+                });
+            }
+        }
+        let mut reference_dot_paths = Vec::new();
+        for (index, dot) in options.reference_dots.iter().enumerate() {
+            valid_label(&dot.label)?;
+            let category = category(&dot.category)?;
+            if !dot.value.is_finite() || dot.value.abs() > MAX_CHART_VALUE {
+                return Err(ChartError::Values);
+            }
+            if category < first || category >= end {
+                continue;
+            }
+            let x = x(category);
+            let y = y(dot.value)?;
+            let color = dot.color.unwrap_or(theme.series[0]);
+            reference_dot_paths.push(path(
+                frame,
+                format!("reference-dot-{index}"),
+                None,
+                rectangle(x - 4., y - 4., 8., 8.).to_vec(),
+                Some(color),
+                None,
+            )?);
+            if let Some(text) = &dot.label {
+                reference_labels.push(ChartReferenceLabel {
+                    key: format!("dot-{index}"),
+                    text: text.clone(),
+                    x: x + 6.,
+                    y: y - 10.,
+                });
+            }
+        }
         let labels = (first..end)
             .filter(|index| {
                 (*index - first).is_multiple_of(count.div_ceil(8).max(1)) || *index + 1 == end
@@ -431,6 +693,7 @@ impl CartesianScene {
                 bar_index += 1;
             }
         }
+        paths.extend(reference_dot_paths);
         Ok(Self {
             frame,
             domain,
@@ -438,6 +701,7 @@ impl CartesianScene {
             locations,
             ticks,
             labels,
+            reference_labels,
             clipped_values,
         })
     }
@@ -682,6 +946,79 @@ mod tests {
                 Err(ChartError::Geometry)
             );
         }
+    }
+    #[test]
+    fn finite_reference_layers_validate_and_follow_the_current_brush() {
+        let d = data(6, 1);
+        let scene = build(
+            &d,
+            CartesianOptions {
+                brush: Some(ChartBrush { first: 1, last: 3 }),
+                reference_areas: vec![
+                    ChartReferenceArea::new()
+                        .categories("c1", "c3")
+                        .values(0., 1.)
+                        .label("Window"),
+                ],
+                reference_lines: vec![
+                    ChartReferenceLine::category("c0").label("Outside"),
+                    ChartReferenceLine::value(0.5).label("Target"),
+                ],
+                reference_dots: vec![ChartReferenceDot::new("c2", 0.5).label("Peak")],
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert!(
+            scene
+                .paths
+                .iter()
+                .any(|path| path.key == "reference-area-0")
+        );
+        assert!(
+            scene
+                .paths
+                .iter()
+                .any(|path| path.key == "reference-line-1")
+        );
+        assert!(scene.paths.iter().any(|path| path.key == "reference-dot-0"));
+        assert!(
+            !scene
+                .paths
+                .iter()
+                .any(|path| path.key == "reference-line-0")
+        );
+        assert_eq!(
+            scene
+                .reference_labels
+                .iter()
+                .map(|label| label.text.as_str())
+                .collect::<Vec<_>>(),
+            ["Window", "Target", "Peak"]
+        );
+
+        assert_eq!(
+            build(
+                &d,
+                CartesianOptions {
+                    reference_dots: vec![ChartReferenceDot::new("missing", 1.)],
+                    ..Default::default()
+                }
+            ),
+            Err(ChartError::Key)
+        );
+        assert_eq!(
+            build(
+                &d,
+                CartesianOptions {
+                    reference_lines: (0..=MAX_CHART_REFERENCES)
+                        .map(|_| ChartReferenceLine::value(1.))
+                        .collect(),
+                    ..Default::default()
+                }
+            ),
+            Err(ChartError::Budget)
+        );
     }
     #[test]
     fn svg_export_validates_mutated_public_geometry_and_contains_no_business_markup() {

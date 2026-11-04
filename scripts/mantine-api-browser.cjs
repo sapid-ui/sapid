@@ -1,10 +1,8 @@
 // Real-browser checks for audit batches A1–A3. No UI is built in JavaScript.
 const fs = require('node:fs');
 const assert = require('node:assert/strict');
-process.env.TEMP = process.env.TMP = 'D:/BuildCache/sapid/tmp';
-const {chromium} = require(process.env.SAPID_PLAYWRIGHT || 'D:/Works/glory-rs/glory/tests/playwright/node_modules/playwright');
-const base = process.env.SAPID_SHOWCASE_BASE || 'http://127.0.0.1:8795';
-const output = 'D:/BuildCache/sapid';
+const { chromium, base, outputPath, outputRoot, writeReport } = require('./showcase-browser-env.cjs');
+const output = outputRoot;
 
 (async () => {
   const report = {reports: [], errors: []};
@@ -27,7 +25,7 @@ const output = 'D:/BuildCache/sapid';
         };
 
         // A1: visible options, groups, selection admission and a focus-preserving clear.
-        let demo = await go('P4-08', 'multi-select');
+        let demo = await go('multi-select', 'multi-select');
         const tools = demo.getByRole('combobox', {name: 'Tools', exact: true});
         const field = demo.locator('.sapid-field').filter({has: page.getByRole('combobox', {name: 'Tools', exact: true})});
         const popup = page.getByRole('listbox', {name: 'Tools', exact: true});
@@ -84,7 +82,7 @@ const output = 'D:/BuildCache/sapid';
         report.reports.push({suite: `multi-select-policy-${suffix}`, status: 'passed'});
 
         // A2: a reactive hint is an attribute, never an editor/property replacement.
-        demo = await go('P0-02', 'textfield');
+        demo = await go('text-input', 'textfield');
         const input = demo.getByRole('textbox', {name: 'Your name', exact: true});
         assert.equal(await input.getAttribute('placeholder'), 'Ada Lovelace');
         await input.fill('😀 Rust');
@@ -120,7 +118,7 @@ const output = 'D:/BuildCache/sapid';
         report.reports.push({suite: `placeholder-editor-${suffix}`, status: 'passed'});
 
         // A3: use actual variant builders rather than showcase-only style overrides.
-        demo = await go('P0-01', 'button');
+        demo = await go('button', 'button');
         const light = demo.getByRole('button', {name: 'Light variant', exact: true});
         const outline = demo.getByRole('button', {name: 'Outline variant', exact: true});
         const subtle = demo.getByRole('button', {name: 'Subtle variant', exact: true});

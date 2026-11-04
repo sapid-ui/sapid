@@ -69,6 +69,34 @@ macro_rules! text_input_methods {
             self.input = self.input.invalid(value);
             self
         }
+        pub fn success(mut self, value: impl Into<glory::Vary<bool>>) -> Self {
+            self.input = self.input.success(value);
+            self
+        }
+        pub fn loading(mut self, value: impl Into<glory::Vary<bool>>) -> Self {
+            self.input = self.input.loading(value);
+            self
+        }
+        pub fn loading_position(mut self, value: crate::InputSectionPosition) -> Self {
+            self.input = self.input.loading_position(value);
+            self
+        }
+        pub fn left_section(mut self, value: impl glory::ui::IntoChildren) -> Self {
+            self.input = self.input.left_section(value);
+            self
+        }
+        pub fn right_section(mut self, value: impl glory::ui::IntoChildren) -> Self {
+            self.input = self.input.right_section(value);
+            self
+        }
+        pub fn left_section_width(mut self, value: f64) -> Self {
+            self.input = self.input.left_section_width(value);
+            self
+        }
+        pub fn right_section_width(mut self, value: f64) -> Self {
+            self.input = self.input.right_section_width(value);
+            self
+        }
         pub fn value(mut self, value: impl Into<glory::Vary<String>>) -> Self {
             self.input = self.input.value(value);
             self

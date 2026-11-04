@@ -177,20 +177,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let environment = glory::ssr::snapshot(
                 sapid_web_example::environment_form::environment_form(theme.clone()),
             )?;
-            let messages = glory::ssr::snapshot(sapid_web_example::messages_form::messages_form(
-                theme.clone(),
-            ))?;
-            let message_scroller = glory::ssr::snapshot(
-                sapid_web_example::message_scroller_form::message_scroller_form(theme.clone()),
-            )?;
-            let prompt =
-                glory::ssr::snapshot(sapid_web_example::prompt_form::prompt_form(theme.clone()))?;
-            let questionnaire = glory::ssr::snapshot(
-                sapid_web_example::questionnaire_form::questionnaire_form(theme.clone()),
-            )?;
-            let model_suggestions = glory::ssr::snapshot(
-                sapid_web_example::model_suggestions_form::model_suggestions_form(theme.clone()),
-            )?;
             let responsive = glory::ssr::snapshot(
                 sapid_web_example::responsive_form::responsive_form(theme.clone()),
             )?;
@@ -238,19 +224,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let lightbox = glory::ssr::snapshot(sapid_web_example::lightbox_form::lightbox_form(
                 theme.clone(),
             ))?;
-            let public_explanations = glory::ssr::snapshot(
-                sapid_web_example::chat_evidence_form::chat_evidence_form(theme.clone(), false),
-            )?;
-            let tasks =
-                glory::ssr::snapshot(sapid_web_example::tasks_form::tasks_form(theme.clone()))?;
-            let confirmation = glory::ssr::snapshot(
-                sapid_web_example::confirmation_form::confirmation_form(theme.clone()),
-            )?;
-            let output =
-                glory::ssr::snapshot(sapid_web_example::output_form::output_form(theme.clone()))?;
-            let citations = glory::ssr::snapshot(
-                sapid_web_example::chat_evidence_form::chat_evidence_form(theme.clone(), true),
-            )?;
             let tree_select = glory::ssr::snapshot(
                 sapid_web_example::tree_choices_form::tree_choices_form(theme.clone(), false),
             )?;
@@ -331,12 +304,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             })?;
             let resource_schedule = glory::ssr::snapshot_with(|scope| {
                 sapid_web_example::resource_schedule_form::form(scope, theme.clone()).0
-            })?;
-            let trace = glory::ssr::snapshot_with(|scope| {
-                sapid_web_example::trace_form::form(scope, theme.clone(), false).0
-            })?;
-            let stack_trace = glory::ssr::snapshot_with(|scope| {
-                sapid_web_example::trace_form::form(scope, theme.clone(), true).0
             })?;
             let time_input = glory::ssr::snapshot_with(|scope| {
                 sapid_web_example::time_input_form::form(scope, theme.clone()).0
@@ -445,12 +412,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     "resource-schedule-hydrate",
                     include_str!("../../resource-schedule.html"),
                     resource_schedule,
-                ),
-                ("trace-hydrate", include_str!("../../trace.html"), trace),
-                (
-                    "stack-trace-hydrate",
-                    include_str!("../../stack-trace.html"),
-                    stack_trace,
                 ),
                 (
                     "time-input-hydrate",
@@ -584,27 +545,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 ),
                 ("tour-hydrate", include_str!("../../tour.html"), tour),
                 (
-                    "questionnaire-hydrate",
-                    include_str!("../../questionnaire.html"),
-                    questionnaire,
-                ),
-                (
-                    "model-suggestions-hydrate",
-                    include_str!("../../model-suggestions.html"),
-                    model_suggestions,
-                ),
-                ("prompt-hydrate", include_str!("../../prompt.html"), prompt),
-                (
-                    "message-scroller-hydrate",
-                    include_str!("../../message-scroller.html"),
-                    message_scroller,
-                ),
-                (
-                    "messages-hydrate",
-                    include_str!("../../messages.html"),
-                    messages,
-                ),
-                (
                     "environment-hydrate",
                     include_str!("../../environment.html"),
                     environment,
@@ -658,23 +598,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 ),
                 ("tree-hydrate", include_str!("../../tree.html"), tree),
                 ("charts-hydrate", include_str!("../../charts.html"), charts),
-                (
-                    "public-explanations-hydrate",
-                    include_str!("../../public-explanations.html"),
-                    public_explanations,
-                ),
-                (
-                    "citations-hydrate",
-                    include_str!("../../citations.html"),
-                    citations,
-                ),
-                ("output-hydrate", include_str!("../../output.html"), output),
-                ("tasks-hydrate", include_str!("../../tasks.html"), tasks),
-                (
-                    "confirmation-hydrate",
-                    include_str!("../../confirmation.html"),
-                    confirmation,
-                ),
                 (
                     "rich-editor-hydrate",
                     include_str!("../../rich-editor.html"),

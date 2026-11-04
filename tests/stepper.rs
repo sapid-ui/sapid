@@ -16,7 +16,13 @@ fn nodes(app: &App) -> Vec<NodeId> {
     result
 }
 fn button(app: &App, label: &str) -> NodeId {
-    nodes(app).into_iter().find(|id|matches!(&app.tree().node(*id).unwrap().descriptor.view().props.clone(),Props::Button(p) if p.label==label)).unwrap_or_else(||panic!("missing {label}"))
+    nodes(app)
+        .into_iter()
+        .find(|id| {
+            let view = app.tree().node(*id).unwrap().descriptor.view().to_owned();
+            matches!(view.props, Props::Button(_)) && view.name.as_deref() == Some(label)
+        })
+        .unwrap_or_else(|| panic!("missing {label}"))
 }
 fn active(app: &App) -> Option<NodeId> {
     nodes(app).into_iter().find(|id| {
@@ -188,19 +194,19 @@ fn explicit_status_overrides_derived_completion_and_exposes_descriptive_error_te
             )
             .collect::<Vec<_>>()
     };
-    assert!(
-        captions()
-            .iter()
-            .any(|text| text.contains("Error · Email rejected"))
-    );
+    assert!(matches!(
+        &app.tree().node(button(&app, "1. one")).unwrap().descriptor.view().props,
+        Props::Button(button) if button.label == "!"
+    ));
+    assert!(captions().iter().any(|text| text == "Email rejected"));
     assert!(captions().iter().any(|text| text.contains("Optional")));
     status.revise(|v| *v = None);
     app.flush().unwrap();
-    assert!(
-        captions()
-            .iter()
-            .any(|text| text.contains("Completed · Email rejected"))
-    );
+    assert!(matches!(
+        &app.tree().node(button(&app, "1. one")).unwrap().descriptor.view().props,
+        Props::Button(button) if button.label == "✓"
+    ));
+    assert!(!captions().iter().any(|text| text == "Pending"));
 }
 #[test]
 fn completion_stage_is_explicit_and_has_no_current_header() {
@@ -407,4 +413,48 @@ fn cancelled_async_form_validation_cannot_advance_a_step() {
     assert!(executor.poll_one());
     app.flush().unwrap();
     assert_eq!(active.get(), 1);
+}
+
+#[test]
+fn step_headers_use_icon_text_columns_instead_of_mixed_debug_rows() {
+    let app = App::memory();
+    app.mount(
+        stepper("layout").default_active(1).steps([
+            step("account").label("Account"),
+            step("details")
+                .label("Details")
+                .description("Optional review note")
+                .optional(true),
+            step("review").label("Review"),
+        ]),
+    )
+    .unwrap();
+    for id in nodes(&app) {
+        let view = app.tree().node(id).unwrap().descriptor.view().to_owned();
+        if view
+            .classes
+            .iter()
+            .any(|class| class == "sapid-stepper-text")
+        {
+            assert_eq!(
+                view.style.flex_direction,
+                Some(glory::style::FlexDirection::Column)
+            );
+        }
+        if view
+            .classes
+            .iter()
+            .any(|class| class == "sapid-stepper-headers")
+        {
+            assert_eq!(view.style.width, Some(glory::style::Length::Percent(100.0)));
+        }
+        if view
+            .classes
+            .iter()
+            .any(|class| class == "sapid-stepper-trigger")
+        {
+            assert_eq!(view.style.width, Some(glory::style::Length::Px(36.0)));
+            assert_eq!(view.style.height, Some(glory::style::Length::Px(36.0)));
+        }
+    }
 }

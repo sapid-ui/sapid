@@ -1,6 +1,6 @@
 use glory::prelude::*;
 use glory::render::{DragPhase, Event, EventKind, NodeId, RangeCommand, SliderValue};
-use sapid::{RangeThumb, range_slider};
+use sapid::{RangeThumb, SliderMark, range_slider};
 use std::{cell::RefCell, rc::Rc};
 fn range(app: &App, id: NodeId) -> SliderValue {
     app.tree()
@@ -19,6 +19,261 @@ fn key(app: &App, id: NodeId, command: RangeCommand) {
     app.dispatch(id, Event::Range { from: id, command })
         .unwrap();
 }
+fn class_count(app: &App, class: &str) -> usize {
+    let mut pending = app.tree().roots().to_vec();
+    let mut count = 0;
+    while let Some(id) = pending.pop() {
+        let tree = app.tree();
+        let node = tree.node(id).unwrap();
+        count += usize::from(
+            node.descriptor
+                .view()
+                .classes
+                .iter()
+                .any(|value| value == class),
+        );
+        pending.extend(node.children.iter().copied());
+    }
+    count
+}
+
+#[test]
+fn restricted_marks_keep_both_thumbs_on_declared_values_and_respect_the_gap() {
+    let app = App::memory();
+    let lower = app.scope().cage(None);
+    let upper = app.scope().cage(None);
+    app.mount(
+        range_slider("marks")
+            .collision(sapid::RangeCollision::Clamp)
+            .default_value([20., 80.])
+            .minimum_gap(20.)
+            .marks([
+                SliderMark::new(0., "0"),
+                SliderMark::new(20., "20"),
+                SliderMark::new(80., "80"),
+                SliderMark::new(100., "100"),
+            ])
+            .restrict_to_marks(true)
+            .thumb_ref(RangeThumb::Lower, lower)
+            .thumb_ref(RangeThumb::Upper, upper),
+    )
+    .unwrap();
+    assert_eq!(class_count(&app, "sapid-range-slider-mark"), 4);
+    assert_eq!(class_count(&app, "sapid-range-slider-mark-label"), 4);
+    key(&app, lower.get().unwrap(), RangeCommand::Set(59.));
+    assert_eq!(range(&app, lower.get().unwrap()).range.value, 20.);
+    key(&app, lower.get().unwrap(), RangeCommand::Increase);
+    assert_eq!(range(&app, lower.get().unwrap()).range.value, 20.);
+    key(&app, upper.get().unwrap(), RangeCommand::Decrease);
+    assert_eq!(range(&app, upper.get().unwrap()).range.value, 80.);
+    key(&app, upper.get().unwrap(), RangeCommand::Increase);
+    assert_eq!(range(&app, upper.get().unwrap()).range.value, 100.);
+}
+
+#[test]
+fn invalid_range_marks_and_non_mark_restricted_values_are_rejected_atomically() {
+    for widget in [
+        range_slider("empty").restrict_to_marks(true),
+        range_slider("order").marks([SliderMark::unlabeled(80.), SliderMark::unlabeled(20.)]),
+        range_slider("value")
+            .default_value([20., 75.])
+            .marks([SliderMark::unlabeled(20.), SliderMark::unlabeled(80.)])
+            .restrict_to_marks(true),
+    ] {
+        let app = App::memory();
+        assert!(app.mount(widget).is_err());
+        assert!(app.tree().is_empty());
+    }
+    for maximum in [-1., 5., 101., f64::INFINITY] {
+        let app = App::memory();
+        assert!(
+            app.mount(
+                range_slider("invalid-maximum-gap")
+                    .minimum_gap(10.)
+                    .maximum_gap(maximum)
+            )
+            .is_err()
+        );
+        assert!(app.tree().is_empty());
+    }
+    for domain in [
+        [0., 0.],
+        [100., 0.],
+        [f64::NAN, 100.],
+        [10., 100.],
+        [0., 90.],
+    ] {
+        let app = App::memory();
+        assert!(
+            app.mount(range_slider("invalid-domain").domain(domain))
+                .is_err()
+        );
+        assert!(app.tree().is_empty());
+    }
+}
+#[test]
+fn maximum_gap_allows_existing_wide_values_to_narrow_and_hidden_marks_still_snap() {
+    let app = App::memory();
+    let lower = app.scope().cage(None);
+    let upper = app.scope().cage(None);
+    app.mount(
+        range_slider("maximum-gap")
+            .collision(sapid::RangeCollision::Clamp)
+            .default_value([20., 80.])
+            .maximum_gap(50.)
+            .marks([
+                SliderMark::new(0., "0"),
+                SliderMark::unlabeled(20.).hidden(true),
+                SliderMark::unlabeled(30.).hidden(true),
+                SliderMark::unlabeled(70.).hidden(true),
+                SliderMark::unlabeled(80.).hidden(true),
+                SliderMark::new(100., "100"),
+            ])
+            .restrict_to_marks(true)
+            .thumb_ref(RangeThumb::Lower, lower)
+            .thumb_ref(RangeThumb::Upper, upper),
+    )
+    .unwrap();
+    assert_eq!(class_count(&app, "sapid-range-slider-mark"), 2);
+    assert_eq!(class_count(&app, "sapid-range-slider-mark-label"), 2);
+    let low = lower.get().unwrap();
+    let high = upper.get().unwrap();
+    assert_eq!(range(&app, low).range.min, 20.);
+    assert_eq!(range(&app, high).range.max, 80.);
+    key(&app, low, RangeCommand::Decrease);
+    key(&app, high, RangeCommand::Increase);
+    assert_eq!(range(&app, low).range.value, 20.);
+    assert_eq!(range(&app, high).range.value, 80.);
+    key(&app, low, RangeCommand::Increase);
+    assert_eq!(range(&app, low).range.value, 30.);
+    assert_eq!(range(&app, high).range.max, 80.);
+    key(&app, low, RangeCommand::Decrease);
+    assert_eq!(range(&app, low).range.value, 30.);
+}
+
+#[test]
+fn value_labels_follow_dragging_support_always_on_formatting_and_can_be_disabled() {
+    let app = App::memory();
+    let lower = app.scope().cage(None);
+    app.mount(
+        range_slider("labels")
+            .value_text([Some("25 °C".into()), Some("75 °C".into())])
+            .thumb_ref(RangeThumb::Lower, lower),
+    )
+    .unwrap();
+    assert_eq!(class_count(&app, "sapid-range-slider-value-label"), 2);
+    let label_opacities = || {
+        let mut pending = app.tree().roots().to_vec();
+        let mut values = Vec::new();
+        while let Some(id) = pending.pop() {
+            let tree = app.tree();
+            let node = tree.node(id).unwrap();
+            if node
+                .descriptor
+                .view()
+                .classes
+                .iter()
+                .any(|class| class == "sapid-range-slider-value-label")
+            {
+                values.push(node.descriptor.view().style.opacity);
+            }
+            pending.extend(node.children.iter().copied());
+        }
+        values
+    };
+    assert_eq!(label_opacities(), [Some(0.), Some(0.)]);
+    let low = lower.get().unwrap();
+    app.dispatch(
+        low,
+        Event::Drag {
+            from: low,
+            phase: DragPhase::Start,
+            x: 10.,
+            y: 10.,
+        },
+    )
+    .unwrap();
+    app.flush().unwrap();
+    assert!(label_opacities().contains(&Some(1.)));
+    app.dispatch(
+        low,
+        Event::Drag {
+            from: low,
+            phase: DragPhase::Cancel,
+            x: 10.,
+            y: 10.,
+        },
+    )
+    .unwrap();
+    app.flush().unwrap();
+    assert_eq!(label_opacities(), [Some(0.), Some(0.)]);
+
+    let always = App::memory();
+    always
+        .mount(range_slider("always").value_labels_always_on(true))
+        .unwrap();
+    assert_eq!(class_count(&always, "sapid-range-slider-value-label"), 2);
+    let hidden = App::memory();
+    hidden
+        .mount(range_slider("hidden").show_value_labels(false))
+        .unwrap();
+    assert_eq!(class_count(&hidden, "sapid-range-slider-value-label"), 0);
+}
+
+#[test]
+fn default_push_moves_the_other_thumb_atomically_and_hold_rejects_overlap() {
+    let pushed = App::memory();
+    let pushed_value = pushed.scope().cage([25., 65.]);
+    let pushed_lower = pushed.scope().cage(None);
+    let pushed_upper = pushed.scope().cage(None);
+    pushed
+        .mount(
+            range_slider("push")
+                .value(pushed_value)
+                .minimum_gap(20.)
+                .maximum_gap(40.)
+                .thumb_ref(RangeThumb::Lower, pushed_lower)
+                .thumb_ref(RangeThumb::Upper, pushed_upper)
+                .on_value_change(move |next| pushed_value.revise(|value| *value = next)),
+        )
+        .unwrap();
+    key(&pushed, pushed_lower.get().unwrap(), RangeCommand::Minimum);
+    assert_eq!(pushed_value.get(), [0., 40.]);
+    key(&pushed, pushed_upper.get().unwrap(), RangeCommand::Maximum);
+    assert_eq!(pushed_value.get(), [60., 100.]);
+
+    let held = App::memory();
+    let held_value = held.scope().cage([25., 65.]);
+    let held_lower = held.scope().cage(None);
+    held.mount(
+        range_slider("hold")
+            .value(held_value)
+            .minimum_gap(20.)
+            .push_on_overlap(false)
+            .thumb_ref(RangeThumb::Lower, held_lower)
+            .on_value_change(move |next| held_value.revise(|value| *value = next)),
+    )
+    .unwrap();
+    key(&held, held_lower.get().unwrap(), RangeCommand::Maximum);
+    assert_eq!(held_value.get(), [25., 65.]);
+
+    let marked = App::memory();
+    let marked_value = marked.scope().cage([20., 40.]);
+    let marked_lower = marked.scope().cage(None);
+    marked
+        .mount(
+            range_slider("marked-push")
+                .value(marked_value)
+                .minimum_gap(20.)
+                .marks([0., 20., 40., 60., 80., 100.].map(SliderMark::unlabeled))
+                .restrict_to_marks(true)
+                .thumb_ref(RangeThumb::Lower, marked_lower)
+                .on_value_change(move |next| marked_value.revise(|value| *value = next)),
+        )
+        .unwrap();
+    key(&marked, marked_lower.get().unwrap(), RangeCommand::Increase);
+    assert_eq!(marked_value.get(), [40., 60.]);
+}
 #[test]
 fn local_pair_clamps_neighbours_keeps_tab_order_and_unfreezes_singleton_thumb() {
     let app = App::memory();
@@ -26,6 +281,7 @@ fn local_pair_clamps_neighbours_keeps_tab_order_and_unfreezes_singleton_thumb() 
     let upper = app.scope().cage(None);
     app.mount(
         range_slider("local")
+            .collision(sapid::RangeCollision::Clamp)
             .minimum_gap(10.)
             .thumb_ref(RangeThumb::Lower, lower)
             .thumb_ref(RangeThumb::Upper, upper),
@@ -89,6 +345,7 @@ fn controlled_commit_only_two_thumb_events_accumulate_without_overwriting_the_ot
     let upper = app.scope().cage(None);
     app.mount(
         range_slider("controlled")
+            .collision(sapid::RangeCollision::Clamp)
             .value(value)
             .minimum_gap(10.)
             .thumb_ref(RangeThumb::Lower, lower)
@@ -115,6 +372,7 @@ fn controlled_rejection_and_invalid_source_use_accepted_bounds_and_typed_order()
     let observers = calls.clone();
     app.mount(
         range_slider("rejected")
+            .collision(sapid::RangeCollision::Clamp)
             .value(value)
             .minimum_gap(10.)
             .thumb_ref(RangeThumb::Lower, lower)
@@ -153,6 +411,11 @@ fn invalid_initial_pairs_gaps_steps_and_unbounded_names_create_no_nodes() {
     ] {
         let app = App::memory();
         assert!(app.mount(widget).is_err());
+        assert!(app.tree().is_empty());
+    }
+    for scale in [f64::NAN, f64::INFINITY, 1e13] {
+        let app = App::memory();
+        assert!(app.mount(range_slider("bad-scale").scale(scale)).is_err());
         assert!(app.tree().is_empty());
     }
 }
@@ -269,6 +532,7 @@ fn pending_track_geometry_is_canceled_on_domain_changes_and_owner_retirement() {
 fn ssr_has_two_named_sliders_with_neighbour_limits_and_no_separator() {
     let html = glory::ssr::render(
         range_slider("ssr")
+            .collision(sapid::RangeCollision::Clamp)
             .minimum_gap(10.)
             .labels(["Lower amount".into(), "Upper amount".into()]),
     )
@@ -281,12 +545,29 @@ fn ssr_has_two_named_sliders_with_neighbour_limits_and_no_separator() {
 }
 
 #[test]
+fn finite_scale_changes_visual_and_accessible_text_without_changing_raw_values() {
+    let html = glory::ssr::render(
+        range_slider("scaled")
+            .scale(10.)
+            .value_labels_always_on(true),
+    )
+    .unwrap();
+    assert!(html.contains("aria-valuenow=\"25\""));
+    assert!(html.contains("aria-valuenow=\"75\""));
+    assert!(html.contains("aria-valuetext=\"250\""));
+    assert!(html.contains("aria-valuetext=\"750\""));
+    assert!(html.contains(">250<"));
+    assert!(html.contains(">750<"));
+}
+
+#[test]
 fn decimal_gap_boundaries_round_inwards_and_never_publish_a_too_small_distance() {
     let app = App::memory();
     let lower = app.scope().cage(None);
     let upper = app.scope().cage(None);
     app.mount(
         range_slider("decimal")
+            .collision(sapid::RangeCollision::Clamp)
             .min(0.)
             .max(1.)
             .step(0.1)

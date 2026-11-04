@@ -1,9 +1,7 @@
 const fs = require('node:fs');
 const assert = require('node:assert/strict');
-process.env.TEMP = process.env.TMP = 'D:/BuildCache/sapid/tmp';
-const { chromium } = require(process.env.SAPID_PLAYWRIGHT || 'D:/Works/glory-rs/glory/tests/playwright/node_modules/playwright');
-const base = process.env.SAPID_SHOWCASE_BASE || 'http://127.0.0.1:8795';
-const output = process.env.SAPID_PALETTE_REPORT || 'D:/BuildCache/sapid/palette-order-browser.json';
+const { chromium, base, outputPath, outputRoot, writeReport } = require('./showcase-browser-env.cjs');
+const output = process.env.SAPID_PALETTE_REPORT || outputPath('palette-order-browser.json');
 (async () => {
   const browser = await chromium.launch({ headless: true });
   const report = { base, checks: [], errors: [] };
@@ -48,7 +46,7 @@ const output = process.env.SAPID_PALETTE_REPORT || 'D:/BuildCache/sapid/palette-
     };
     for (const width of [1440, 390]) {
       await page.setViewportSize({ width, height: 1000 });
-      for (const entry of ['showcase.html?widget=P0-01', 'ssr-button-blue-dark.html']) {
+      for (const entry of ['showcase.html?widget=button', 'ssr-button-blue-dark.html']) {
         await page.goto(`${base}/${entry}`);
         await ready();
         await page.waitForFunction(() => document.querySelectorAll('.site-palette').length === 10);

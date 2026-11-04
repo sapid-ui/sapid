@@ -331,3 +331,28 @@ fn four_themes_ssr_finite_document_unstyled_and_owner_cleanup() {
     drop(app);
     assert!(controller.reset(doc("dead")).is_err());
 }
+
+#[test]
+fn placeholder_and_subtle_variant_are_finite_component_features() {
+    let html = glory::ssr::render(
+        rich_text_editor()
+            .placeholder("Start writing...")
+            .subtle(true),
+    )
+    .unwrap();
+    assert!(html.contains("sapid-rich-editor-shell-subtle"));
+    assert!(html.contains("sapid-rich-text-editor-subtle"));
+    assert!(html.contains("sapid-rich-editor-placeholder"));
+    assert!(html.contains("Start writing..."));
+    assert!(html.contains("sapid-button-subtle"));
+
+    let html = glory::ssr::render(
+        rich_text_editor()
+            .default_document(doc("Existing content"))
+            .placeholder("Hidden placeholder"),
+    )
+    .unwrap();
+    assert!(!html.contains("Hidden placeholder"));
+
+    assert!(glory::ssr::render(rich_text_editor().placeholder("x".repeat(4097))).is_err());
+}

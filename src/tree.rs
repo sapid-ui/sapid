@@ -7,7 +7,8 @@ use crate::{
     tree_model::*,
 };
 use glory::render::{
-    Direction, Event, EventKind, FocusMode, NodeId, Role, Semantics, TreeCommand, TreeNavigation,
+    Direction, DragPhase, Event, EventKind, FocusMode, NodeId, Query, QueryValue, Role, Semantics,
+    TreeCommand, TreeNavigation,
 };
 use glory::style::{Align, BorderStyle, Display, Edges, FlexDirection, Length, Overflow, Style};
 use glory::ui::{Result, WeakScope, Widget};
@@ -29,6 +30,204 @@ fn selection(value: &BTreeSet<String>, mode: TreeSelectionMode) -> Result {
         return Err(error(TreeError::State));
     }
     Ok(())
+}
+fn check_indicator(
+    scope: &Scope,
+    theme: crate::Theme,
+    checked: Vary<BTreeMap<String, glory::render::TreeCheckState>>,
+    key: String,
+    enabled: Vary<bool>,
+) -> impl Widget {
+    let style_checked = checked.clone();
+    let style_enabled = enabled.clone();
+    let style_key = key.clone();
+    let style_theme = theme.clone();
+    let style = scope.bond(move || {
+        let state = style_checked
+            .get()
+            .get(&style_key)
+            .copied()
+            .unwrap_or(glory::render::TreeCheckState::Unchecked);
+        let active = state != glory::render::TreeCheckState::Unchecked;
+        let disabled = !style_enabled.get();
+        Style {
+            display: Some(Display::Flex),
+            align: Some(Align::Center),
+            justify: Some(glory::style::Justify::Center),
+            width: Some(Length::Px(18.)),
+            height: Some(Length::Px(18.)),
+            min_width: Some(Length::Px(18.)),
+            shrink: Some(0.),
+            padding: Some(Edges::all(0.)),
+            border_width: Some(Edges::all(1.)),
+            border_style: Some(BorderStyle::Solid),
+            border_color: Some(if active {
+                style_theme.accent
+            } else {
+                style_theme.border
+            }),
+            background: Some(if disabled {
+                style_theme.disabled
+            } else if active {
+                style_theme.accent
+            } else {
+                style_theme.input
+            }),
+            radius: Some(style_theme.radius),
+            pointer_events: Some(glory::style::PointerEvents::None),
+            ..Style::new()
+        }
+    });
+    let drawing = scope.bond(move || {
+        let values = checked.get();
+        let state = values
+            .get(&key)
+            .copied()
+            .unwrap_or(glory::render::TreeCheckState::Unchecked);
+        let p = glory::render::GraphicPoint::new;
+        let commands = match state {
+            glory::render::TreeCheckState::Checked => vec![
+                glory::render::PathCommand::Move(p(5., 12.)),
+                glory::render::PathCommand::Line(p(10., 17.)),
+                glory::render::PathCommand::Line(p(19., 7.)),
+            ],
+            glory::render::TreeCheckState::Mixed => vec![
+                glory::render::PathCommand::Move(p(6., 12.)),
+                glory::render::PathCommand::Line(p(18., 12.)),
+            ],
+            glory::render::TreeCheckState::Unchecked => Vec::new(),
+        };
+        glory::render::GraphicProps {
+            width: 24.,
+            height: 24.,
+            commands,
+            stroke: Some(glory::render::GraphicStroke {
+                color: if enabled.get() {
+                    theme.on_accent
+                } else {
+                    theme.disabled_text
+                },
+                width: 2.,
+                cap: glory::render::StrokeCap::Round,
+            }),
+            alternative: None,
+            ..Default::default()
+        }
+    });
+    glory::ui::view()
+        .class("sapid-tree-check sapid-tree-check-indicator")
+        .style(style)
+        .fill(
+            glory::ui::graphic()
+                .class("sapid-tree-check-icon")
+                .drawing(drawing)
+                .style(
+                    Style::new()
+                        .width(Length::Px(12.))
+                        .height(Length::Px(12.))
+                        .pointer_events(glory::style::PointerEvents::None),
+                ),
+        )
+}
+fn guide_element(
+    class: &str,
+    direction: Direction,
+    offset: f64,
+    horizontal: bool,
+    last: bool,
+    color: glory::style::Color,
+) -> Box<dyn Widget> {
+    let (left, right) = if direction == Direction::Rtl {
+        (None, Some(Length::Px(offset)))
+    } else {
+        (Some(Length::Px(offset)), None)
+    };
+    Box::new(
+        glory::ui::view()
+            .class(format!("sapid-tree-guide {class}"))
+            .style(Style {
+                position: Some(glory::style::Position::Absolute),
+                top: Some(if horizontal {
+                    Length::Percent(50.)
+                } else {
+                    // Absolute insets start inside the row's 1px border.
+                    // Include that border so adjacent row segments meet.
+                    Length::Px(-1.)
+                }),
+                left,
+                right,
+                bottom: (!horizontal).then_some(if last {
+                    Length::Percent(50.)
+                } else {
+                    Length::Px(-1.)
+                }),
+                width: Some(if horizontal {
+                    Length::Px(10.)
+                } else {
+                    Length::Px(0.)
+                }),
+                height: if horizontal {
+                    Some(Length::Px(0.))
+                } else {
+                    None
+                },
+                border_width: Some(if horizontal {
+                    Edges {
+                        top: 1.,
+                        ..Edges::all(0.)
+                    }
+                } else {
+                    Edges {
+                        left: 1.,
+                        ..Edges::all(0.)
+                    }
+                }),
+                border_style: Some(BorderStyle::Solid),
+                border_color: Some(color),
+                pointer_events: Some(glory::style::PointerEvents::None),
+                ..Style::new()
+            }),
+    )
+}
+fn guides(row: &TreeRow, direction: Direction, color: glory::style::Color) -> Vec<Box<dyn Widget>> {
+    if row.level <= 1 {
+        return Vec::new();
+    }
+    let mut result = row
+        .line_guides
+        .iter()
+        .enumerate()
+        .filter(|(_, show)| **show)
+        .map(|(index, _)| {
+            guide_element(
+                "sapid-tree-guide-line",
+                direction,
+                8. + (index + 1) as f64 * 20. - 10.,
+                false,
+                false,
+                color,
+            )
+        })
+        .collect::<Vec<_>>();
+    let offset = 8. + f64::from(row.level - 1) * 20. - 10.;
+    let last = row.position + 1 == row.count;
+    result.push(guide_element(
+        "sapid-tree-branch-vertical",
+        direction,
+        offset,
+        false,
+        last,
+        color,
+    ));
+    result.push(guide_element(
+        "sapid-tree-branch-horizontal",
+        direction,
+        offset,
+        true,
+        false,
+        color,
+    ));
+    result
 }
 fn accept_model(scope: &Scope, source: Vary<Vec<TreeNode>>) -> Result<Cage<Rc<TreeModel>>> {
     let read = || {
@@ -371,6 +570,8 @@ impl State {
     }
 }
 type LabelFactory = Rc<RefCell<Box<dyn FnMut(Vary<TreeNode>) -> Box<dyn Widget>>>>;
+type DropCallback = Rc<RefCell<Box<dyn FnMut(TreeDrop)>>>;
+type AllowDrop = Rc<RefCell<Box<dyn FnMut(&TreeDrop) -> bool>>>;
 pub struct Tree {
     common: Common,
     key: String,
@@ -392,6 +593,10 @@ pub struct Tree {
     intent: Option<Box<dyn FnMut(String)>>,
     popup: Option<TreePopup>,
     columns: bool,
+    with_lines: bool,
+    empty_message: Option<String>,
+    drag_drop: Option<DropCallback>,
+    allow_drop: Option<AllowDrop>,
 }
 pub(crate) struct TreePopup {
     pub id: glory::render::SemanticId,
@@ -421,6 +626,10 @@ pub fn tree(key: impl Into<String>) -> Tree {
         intent: None,
         popup: None,
         columns: false,
+        with_lines: true,
+        empty_message: None,
+        drag_drop: None,
+        allow_drop: None,
     }
 }
 pub fn file_tree(
@@ -513,6 +722,14 @@ impl Tree {
         self.height = Some(value);
         self
     }
+    pub fn with_lines(mut self, value: bool) -> Self {
+        self.with_lines = value;
+        self
+    }
+    pub fn empty_message(mut self, value: impl Into<String>) -> Self {
+        self.empty_message = Some(value.into());
+        self
+    }
     pub fn file_icons(mut self, value: bool) -> Self {
         self.file_icons = value;
         self
@@ -526,9 +743,27 @@ impl Tree {
         }))));
         self
     }
+    /// Enable finite pointer reordering. The component only proposes a drop;
+    /// applications publish the returned declaration with `move_tree_node`.
+    pub fn on_drag_drop(mut self, callback: impl FnMut(TreeDrop) + 'static) -> Self {
+        self.drag_drop = Some(Rc::new(RefCell::new(Box::new(callback))));
+        self
+    }
+    /// Reject a proposed before/inside/after target before the drop callback.
+    pub fn allow_drop(mut self, callback: impl FnMut(&TreeDrop) -> bool + 'static) -> Self {
+        self.allow_drop = Some(Rc::new(RefCell::new(Box::new(callback))));
+        self
+    }
 }
 impl Widget for Tree {
     fn build(&mut self, scope: &Scope) -> Result {
+        if self
+            .empty_message
+            .as_ref()
+            .is_some_and(|value| value.len() > 256 || value.contains(['\0', '\r']))
+        {
+            return Err(error(TreeError::Label));
+        }
         let id = if let Some(popup) = &self.popup {
             popup.id.clone()
         } else {
@@ -548,9 +783,10 @@ impl Widget for Tree {
                 })
             })
             .transpose()?;
-        if self
-            .height
-            .is_some_and(|height| !height.is_finite() || height <= 0. || height > 16384.)
+        if self.allow_drop.is_some() && self.drag_drop.is_none()
+            || self
+                .height
+                .is_some_and(|height| !height.is_finite() || height <= 0. || height > 16384.)
             || self.follows && self.mode != TreeSelectionMode::Single
         {
             return Err(error(TreeError::State));
@@ -713,7 +949,8 @@ impl Widget for Tree {
             }
         })?;
         let reference = self.common.node_ref.unwrap_or_else(|| scope.cage(None));
-        let mut base = composite::column(2.)
+        // Branch and ancestor guides span consecutive rows, including in Tree.
+        let mut base = composite::column(0.)
             .padding(Edges::all(4.))
             .min_width(Length::Px(0.));
         if !self.common.unstyled {
@@ -857,10 +1094,22 @@ impl Widget for Tree {
         let fields = scope.child_in(field_ref.get().ok_or(glory::ui::Error::Gone)?)?;
         root.show_in(&fields)?;
         let area = scope.child_in(reference.get().ok_or(glory::ui::Error::Gone)?)?;
+        if let Some(message) = self.empty_message.take() {
+            let empty = rows.map(Vec::is_empty);
+            glory::ui::when(empty, move || {
+                glory::ui::text()
+                    .class("sapid-tree-empty")
+                    .content(message.clone())
+            })
+            .show_in(&area)?;
+        }
         let theme = self.common.theme.clone();
         let unstyled = self.common.unstyled;
+        let with_lines = self.with_lines;
         let renderer = self.label.clone();
         let icons = self.file_icons;
+        let drag_drop = self.drag_drop.take();
+        let allow_drop = self.allow_drop.take();
         glory::ui::each(rows)
             .key(|row| row.key.clone())
             .children(move |entry| {
@@ -868,6 +1117,8 @@ impl Widget for Tree {
                 let state = state.clone();
                 let theme = theme.clone();
                 let renderer = renderer.clone();
+                let drag_drop = drag_drop.clone();
+                let allow_drop = allow_drop.clone();
                 glory::ui::widget(move |scope| {
                     let key = row.with(|row| row.key.clone());
                     let reference = scope.cage(None);
@@ -919,6 +1170,11 @@ impl Widget for Tree {
                                         .unwrap_or(glory::render::TreeCheckState::Unchecked)
                                 })
                             }),
+                            // Keep the host's threshold drag path so the Drop event
+                            // is dispatched to the row under the pointer. Immediate
+                            // capture deliberately keeps Drop on the origin and is
+                            // appropriate for sliders/splitters, not tree targets.
+                            drag_capture: None,
                             disabled: node.disabled || !enabled.get(),
                             ..Default::default()
                         }))
@@ -934,6 +1190,13 @@ impl Widget for Tree {
                             FocusMode::Programmatic
                         }
                     });
+                    let disclosure_color = theme.muted;
+                    let check_theme = theme.clone();
+                    let guide = if columns || unstyled || !with_lines {
+                        Vec::new()
+                    } else {
+                        row.with(|row| guides(row, direction, theme.border))
+                    };
                     let paint = scope.bond(move || {
                         let level = row.with(|row| row.level);
                         let selected = selected.with(|set| set.contains(&paint_key));
@@ -941,7 +1204,14 @@ impl Widget for Tree {
                         let inset = if columns {
                             8.
                         } else {
-                            8. + f64::from(level - 1) * 20.
+                            let mut inset = 8. + f64::from(level - 1) * 20.;
+                            if level > 1 {
+                                inset += 5.;
+                            }
+                            if value.with(|node| node.kind == TreeKind::Leaf) {
+                                inset += 6.;
+                            }
+                            inset
                         };
                         let mut style = Style::new()
                             .display(Display::Flex)
@@ -965,6 +1235,9 @@ impl Widget for Tree {
                                 }
                             });
                         style.align = Some(Align::Center);
+                        if !columns {
+                            style.position = Some(glory::style::Position::Relative);
+                        }
                         if columns {
                             let position = row.with(|row| row.position);
                             style = style
@@ -998,9 +1271,13 @@ impl Widget for Tree {
                     });
                     let s = state.clone();
                     let click_key = key.clone();
-                    glory::ui::view()
+                    let mut item = glory::ui::view()
                         .role(Role::TreeItem)
-                        .class("sapid-tree-item")
+                        .class(if drag_drop.is_some() {
+                            "sapid-tree-item sapid-tree-draggable"
+                        } else {
+                            "sapid-tree-item"
+                        })
                         .name(value.map(|node| node.label.clone()))
                         .node_ref(reference)
                         .semantics(semantics)
@@ -1012,8 +1289,77 @@ impl Widget for Tree {
                             }
                             s.report(s.request_focus(click_key.clone(), true));
                             s.report(s.select(click_key.clone(), false));
-                        })
-                        .show_in(scope)?;
+                        });
+                    if let Some(dropped) = drag_drop.clone() {
+                        let s = state.clone();
+                        let target_key = key.clone();
+                        let target_reference = reference;
+                        let allowed = allow_drop.clone();
+                        let weak = scope.downgrade();
+                        item = item.on(EventKind::Drag, move |event| {
+                            let Event::Drag {
+                                from,
+                                phase: DragPhase::Drop,
+                                x: _,
+                                y,
+                            } = event
+                            else {
+                                return;
+                            };
+                            let Some(scope) = weak.upgrade() else { return };
+                            let Some(dragged) = s.mounted.borrow().nodes.get(&from).cloned() else {
+                                return;
+                            };
+                            let Ok(Some(target_node)) = target_reference.try_get() else {
+                                return;
+                            };
+                            let target = target_key.clone();
+                            let model = s.model;
+                            let dropped = dropped.clone();
+                            let allowed = allowed.clone();
+                            let result = scope.request(Query::Bounds(target_node), move |result| {
+                                let Ok(QueryValue::Bounds(bounds)) = result else {
+                                    return;
+                                };
+                                if bounds.height <= 0. || !bounds.height.is_finite() {
+                                    return;
+                                }
+                                let ratio = ((y - bounds.y) / bounds.height).clamp(0., 1.);
+                                let branch = model.with(|model| {
+                                    model
+                                        .index(&target)
+                                        .and_then(|index| model.nodes().get(index))
+                                        .is_some_and(|node| node.kind == TreeKind::Branch)
+                                });
+                                let position = if ratio < 0.25 {
+                                    TreeDropPosition::Before
+                                } else if ratio > 0.75 {
+                                    TreeDropPosition::After
+                                } else if branch {
+                                    TreeDropPosition::Inside
+                                } else if ratio < 0.5 {
+                                    TreeDropPosition::Before
+                                } else {
+                                    TreeDropPosition::After
+                                };
+                                let proposal =
+                                    TreeDrop::new(dragged.clone(), target.clone(), position);
+                                let valid = model
+                                    .with(|model| move_tree_node(model.nodes(), &proposal).is_ok());
+                                if valid
+                                    && allowed
+                                        .as_ref()
+                                        .is_none_or(|allowed| (allowed.borrow_mut())(&proposal))
+                                {
+                                    (dropped.borrow_mut())(proposal);
+                                }
+                            });
+                            if let Err(error) = result {
+                                scope.report_error(error);
+                            }
+                        });
+                    }
+                    item.show_in(scope)?;
                     let node = reference.get().ok_or(glory::ui::Error::Gone)?;
                     {
                         let mut mounted = state.mounted.borrow_mut();
@@ -1030,16 +1376,20 @@ impl Widget for Tree {
                         }
                     })?;
                     let content = scope.child_in(node)?;
+                    for guide in guide {
+                        guide.show_in(&content)?;
+                    }
                     if let Some(checked) = checked {
-                        let check_key = key.clone();
-                        glory::ui::text()
-                            .class("sapid-tree-check")
-                            .content(checked.map(move |values| match values.get(&check_key) {
-                                Some(glory::render::TreeCheckState::Checked) => "☑".into(),
-                                Some(glory::render::TreeCheckState::Mixed) => "⊟".into(),
-                                _ => "☐".into(),
-                            }))
-                            .show_in(&content)?;
+                        let enabled = state.enabled.clone();
+                        let check_enabled = value.map(move |node| enabled.get() && !node.disabled);
+                        check_indicator(
+                            scope,
+                            check_theme,
+                            checked.into(),
+                            key.clone(),
+                            check_enabled.into(),
+                        )
+                        .show_in(&content)?;
                     }
                     let s = state.clone();
                     let toggle_key = key.clone();
@@ -1053,16 +1403,72 @@ impl Widget for Tree {
                             .unstyled()
                             .focus(FocusMode::Programmatic)
                             .class("sapid-tree-disclosure")
-                            .label(expanded.map({
-                                let key = key.clone();
-                                move |set| {
-                                    if set.contains(&key) {
-                                        "−".into()
-                                    } else {
-                                        "+".into()
-                                    }
-                                }
-                            }))
+                            .style(Style {
+                                display: Some(Display::Flex),
+                                align: Some(Align::Center),
+                                justify: Some(glory::style::Justify::Center),
+                                width: Some(Length::Px(16.)),
+                                height: Some(Length::Px(16.)),
+                                min_width: Some(Length::Px(16.)),
+                                shrink: Some(0.),
+                                padding: Some(Edges::all(0.)),
+                                margin: Some(Edges::all(0.)),
+                                border_width: Some(Edges::all(0.)),
+                                background: Some(glory::style::Color(0, 0, 0, 0)),
+                                color: (!unstyled).then_some(disclosure_color),
+                                ..Style::new()
+                            })
+                            .fill(
+                                glory::ui::group().fill(
+                                    glory::ui::graphic()
+                                        .class("sapid-theme-icon-graphic")
+                                        .drawing(expanded.map({
+                                            let key = key.clone();
+                                            move |set| {
+                                                let p = glory::render::GraphicPoint::new;
+                                                let commands = if set.contains(&key) {
+                                                    vec![
+                                                        glory::render::PathCommand::Move(p(6., 9.)),
+                                                        glory::render::PathCommand::Line(p(
+                                                            12., 15.,
+                                                        )),
+                                                        glory::render::PathCommand::Line(p(
+                                                            18., 9.,
+                                                        )),
+                                                    ]
+                                                } else {
+                                                    vec![
+                                                        glory::render::PathCommand::Move(p(9., 6.)),
+                                                        glory::render::PathCommand::Line(p(
+                                                            15., 12.,
+                                                        )),
+                                                        glory::render::PathCommand::Line(p(
+                                                            9., 18.,
+                                                        )),
+                                                    ]
+                                                };
+                                                glory::render::GraphicProps {
+                                                    width: 24.,
+                                                    height: 24.,
+                                                    commands,
+                                                    stroke: Some(glory::render::GraphicStroke {
+                                                        color: disclosure_color,
+                                                        width: 2.,
+                                                        cap: glory::render::StrokeCap::Round,
+                                                    }),
+                                                    alternative: None,
+                                                    ..Default::default()
+                                                }
+                                            }
+                                        }))
+                                        .style(Style {
+                                            width: Some(Length::Px(14.)),
+                                            height: Some(Length::Px(14.)),
+                                            pointer_events: Some(glory::style::PointerEvents::None),
+                                            ..Style::new()
+                                        }),
+                                ),
+                            )
                             .name(value.map(|node| format!("Toggle {}", node.label)))
                             .enabled(value.map(move |node| enabled.get() && !node.disabled))
                             .on_press(move || {

@@ -1,5 +1,5 @@
 //! A focus-preserving listbox over intrinsic combobox/option refinements.
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
 
 use glory::render::{
     ChoiceCommand, ComboboxKind, Event, EventKind, FocusMode, FormControl, Layer, LayerFocus,
@@ -24,6 +24,33 @@ enum Entry {
     Option(NativeOption),
     Group(NativeOptionGroup),
 }
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct SelectOptionContent {
+    pub leading: Option<String>,
+    pub description: Option<String>,
+    pub trailing: Option<String>,
+}
+impl SelectOptionContent {
+    pub fn leading(mut self, value: impl Into<String>) -> Self {
+        self.leading = Some(value.into());
+        self
+    }
+    pub fn description(mut self, value: impl Into<String>) -> Self {
+        self.description = Some(value.into());
+        self
+    }
+    pub fn trailing(mut self, value: impl Into<String>) -> Self {
+        self.trailing = Some(value.into());
+        self
+    }
+}
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum SelectCheckPosition {
+    Hidden,
+    #[default]
+    Left,
+    Right,
+}
 pub struct Select {
     common: Common,
     key: String,
@@ -40,6 +67,11 @@ pub struct Select {
     required: Vary<bool>,
     readonly: Vary<bool>,
     invalid: Vary<bool>,
+    loading: Vary<bool>,
+    option_content: BTreeMap<String, SelectOptionContent>,
+    check_position: SelectCheckPosition,
+    max_dropdown_height: f64,
+    popup_placement: glory::render::AnchorPlacement,
 }
 pub fn select(key: impl Into<String>) -> Select {
     Select {
@@ -58,6 +90,14 @@ pub fn select(key: impl Into<String>) -> Select {
         required: false.into(),
         readonly: false.into(),
         invalid: false.into(),
+        loading: false.into(),
+        option_content: BTreeMap::new(),
+        check_position: SelectCheckPosition::Left,
+        max_dropdown_height: 288.0,
+        popup_placement: glory::render::AnchorPlacement::new(
+            glory::render::AnchorSide::Bottom,
+            glory::render::AnchorAlign::Start,
+        ),
     }
 }
 impl Select {
@@ -119,6 +159,36 @@ impl Select {
     }
     pub fn invalid(mut self, value: impl Into<Vary<bool>>) -> Self {
         self.invalid = value.into();
+        self
+    }
+    pub fn loading(mut self, value: impl Into<Vary<bool>>) -> Self {
+        self.loading = value.into();
+        self
+    }
+    pub fn option_content(mut self, key: impl Into<String>, content: SelectOptionContent) -> Self {
+        if self.option_content.len() <= 1024 {
+            self.option_content.insert(key.into(), content);
+        }
+        self
+    }
+    pub fn check_position(mut self, value: SelectCheckPosition) -> Self {
+        self.check_position = value;
+        self
+    }
+    pub fn with_check_icon(mut self, value: bool) -> Self {
+        self.check_position = if value {
+            SelectCheckPosition::Left
+        } else {
+            SelectCheckPosition::Hidden
+        };
+        self
+    }
+    pub fn max_dropdown_height(mut self, value: f64) -> Self {
+        self.max_dropdown_height = value;
+        self
+    }
+    pub fn popup_placement(mut self, value: glory::render::AnchorPlacement) -> Self {
+        self.popup_placement = value;
         self
     }
     pub fn option(mut self, value: NativeOption) -> Self {
@@ -328,8 +398,11 @@ impl Widget for Select {
     fn build(&mut self, scope: &Scope) -> Result {
         if self.count > 1024
             || self.entries.len() > 1056
+            || self.option_content.len() > 1024
             || self.placeholder.len() > 256
             || self.placeholder.contains(['\0', '\r'])
+            || !self.max_dropdown_height.is_finite()
+            || !(80.0..=4096.0).contains(&self.max_dropdown_height)
         {
             return Err(
                 glory::render::Error::InvalidProps("select configuration exceeds budget").into(),
@@ -362,6 +435,26 @@ impl Widget for Select {
             ..Default::default()
         });
         config.validate()?;
+        for (key, content) in &self.option_content {
+            let known = config
+                .options()
+                .any(|(option, _)| option.key.as_str() == key);
+            let valid_text = |value: &Option<String>| {
+                value.as_ref().is_none_or(|value| {
+                    !value.is_empty() && value.len() <= 256 && !value.contains(['\0', '\r', '\n'])
+                })
+            };
+            if !known
+                || !valid_text(&content.leading)
+                || !valid_text(&content.description)
+                || !valid_text(&content.trailing)
+            {
+                return Err(glory::render::Error::InvalidProps(
+                    "select option content requires a known key and bounded single-line text",
+                )
+                .into());
+            }
+        }
         let form_name = composite::form_name(scope, &self.form_name)?;
         let value = std::mem::take(&mut self.value).mount(scope);
         let check = config.clone();
@@ -438,6 +531,7 @@ impl Widget for Select {
         let trigger_name = trigger_id.clone();
         let listbox_name = panel_id.clone();
         let key = self.key.clone();
+        let loading_state = self.loading.clone();
         let trigger_metadata = scope.bond(move || {
             let mut value = trigger_meta.get().unwrap_or_default();
             value.id = Some(trigger_name.clone());
@@ -446,6 +540,7 @@ impl Widget for Select {
             value.popup = Some(PopupKind::Listbox);
             value.controls = Some(listbox_name.clone());
             value.expanded = Some(button_state.visible.get());
+            value.busy = Some(loading_state.get());
             value.typeahead = true;
             value.active_descendant = if button_state.visible.get() {
                 button_state
@@ -470,6 +565,19 @@ impl Widget for Select {
         .enabled(enabled.clone())
         .semantics(trigger_metadata)
         .node_ref(trigger_ref);
+        let loading_state = self.loading.clone();
+        let loading_text = scope.bond(move || {
+            if loading_state.get() {
+                "…".to_owned()
+            } else {
+                String::new()
+            }
+        });
+        trigger = trigger.fill(
+            glory::ui::text()
+                .class("sapid-select-loading")
+                .content(loading_text),
+        );
         let controller = state.clone();
         let weak = scope.downgrade();
         trigger = trigger.on(EventKind::Activate, move |event| {
@@ -551,13 +659,12 @@ impl Widget for Select {
         let content = scope.child_in(root)?;
         trigger.show_in(&content)?;
         let panel_label = trigger_id.clone();
+        let panel_metadata = metadata.clone();
+        let placement = self.popup_placement;
         let layer = Layer {
             modal: false,
             focus: LayerFocus::Preserve,
-            placement: LayerPlacement::Anchor(glory::render::AnchorPlacement::new(
-                glory::render::AnchorSide::Bottom,
-                glory::render::AnchorAlign::Start,
-            )),
+            placement: LayerPlacement::Anchor(placement),
             anchor: Some(trigger_id),
             initial_focus: None,
             return_focus: None,
@@ -568,7 +675,10 @@ impl Widget for Select {
         let panel_meta = scope.bond(move || {
             Some(Box::new(Semantics {
                 id: Some(listbox_name.clone()),
-                labelled_by: Some(panel_label.clone()),
+                labelled_by: panel_metadata
+                    .get()
+                    .and_then(|metadata| metadata.labelled_by)
+                    .or_else(|| Some(panel_label.clone())),
                 navigation: Some(Orientation::Vertical),
                 hidden: !panel_visible.get(),
                 layer: Some(layer.clone()),
@@ -582,7 +692,7 @@ impl Widget for Select {
             .display(Display::Flex)
             .flex_direction(FlexDirection::Column)
             .min_width(Length::Px(180.0))
-            .max_height(Limit::Px(288.0))
+            .max_height(Limit::Px(self.max_dropdown_height))
             .overflow_y(Overflow::Auto);
         if !self.common.unstyled {
             panel_style.background = Some(self.common.theme.surface);
@@ -619,9 +729,13 @@ impl Widget for Select {
                     &state,
                     option,
                     false,
-                    &self.key,
-                    &panel_id,
-                    &self.common,
+                    OptionPresentation {
+                        key: &self.key,
+                        owner: &panel_id,
+                        common: &self.common,
+                        content: self.option_content.get(option.key.as_str()),
+                        check_position: self.check_position,
+                    },
                 )?,
                 SelectEntry::Group(group) => {
                     let reference = scope.cage(None);
@@ -644,9 +758,13 @@ impl Widget for Select {
                             &state,
                             option,
                             group.disabled,
-                            &self.key,
-                            &panel_id,
-                            &self.common,
+                            OptionPresentation {
+                                key: &self.key,
+                                owner: &panel_id,
+                                common: &self.common,
+                                content: self.option_content.get(option.key.as_str()),
+                                check_position: self.check_position,
+                            },
                         )?;
                     }
                     items_scope.retain(group_scope)?;
@@ -767,15 +885,28 @@ impl Widget for Select {
     }
 }
 
+struct OptionPresentation<'a> {
+    key: &'a str,
+    owner: &'a SemanticId,
+    common: &'a Common,
+    content: Option<&'a SelectOptionContent>,
+    check_position: SelectCheckPosition,
+}
+
 fn mount_option(
     scope: &Scope,
     state: &Rc<State>,
     option: &glory::render::SelectOption,
     group_disabled: bool,
-    key: &str,
-    owner: &SemanticId,
-    common: &Common,
+    presentation: OptionPresentation<'_>,
 ) -> Result {
+    let OptionPresentation {
+        key,
+        owner,
+        common,
+        content,
+        check_position,
+    } = presentation;
     let parent = scope;
     let item_scope = parent.child()?;
     let scope = &item_scope;
@@ -791,6 +922,7 @@ fn mount_option(
     )?;
     let selected = state.selected;
     let option_key = option.key.as_str().to_owned();
+    let check_key = option_key.clone();
     let semantic_owner = owner.clone();
     let metadata = scope.bond(move || {
         Some(Box::new(Semantics {
@@ -830,7 +962,7 @@ fn mount_option(
         }
         value
     });
-    glory::ui::button()
+    let mut option_button = glory::ui::button()
         .label(option.label.clone())
         .focus(FocusMode::Programmatic)
         .class(format!("sapid-select-option {}", common.theme.class()))
@@ -860,8 +992,60 @@ fn mount_option(
             {
                 scope.report_error(error);
             }
-        })
-        .show_in(scope)?;
+        });
+    if content.is_some() || check_position != SelectCheckPosition::Hidden {
+        let checked = scope.bond(move || {
+            if selected.get().as_deref() == Some(check_key.as_str()) {
+                "✓".to_owned()
+            } else {
+                String::new()
+            }
+        });
+        let check = || {
+            glory::ui::text()
+                .class("sapid-select-option-check")
+                .content(checked)
+                .style(Style::new().width(Length::Px(16.0)))
+        };
+        let mut row: Vec<Box<dyn Widget>> = Vec::with_capacity(4);
+        if check_position == SelectCheckPosition::Left {
+            row.push(Box::new(check()));
+        }
+        if let Some(value) = content.and_then(|value| value.leading.as_ref()) {
+            row.push(Box::new(
+                glory::ui::text()
+                    .class("sapid-select-option-leading")
+                    .content(value.clone()),
+            ));
+        }
+        row.push(Box::new(
+            glory::ui::text()
+                .class("sapid-select-option-row sapid-select-option-label")
+                .content(option.label.clone()),
+        ));
+        if let Some(value) = content.and_then(|value| value.description.as_ref()) {
+            row.push(Box::new(
+                glory::ui::text()
+                    .class("sapid-select-option-description")
+                    .content(value.clone()),
+            ));
+        }
+        if let Some(value) = content.and_then(|value| value.trailing.as_ref()) {
+            row.push(Box::new(
+                glory::ui::text()
+                    .class("sapid-select-option-trailing")
+                    .content(value.clone()),
+            ));
+        }
+        if check_position == SelectCheckPosition::Right {
+            row.push(Box::new(check()));
+        }
+        option_button = option_button
+            .label("")
+            .name(option.label.clone())
+            .fill(glory::ui::group().fill(row));
+    }
+    option_button.show_in(scope)?;
     parent.retain(item_scope)?;
     Ok(())
 }
@@ -903,7 +1087,8 @@ mod tests {
                 let tree = app.tree();
                 let d = tree.node(*id).unwrap().descriptor.view();
                 d.semantics.as_ref().is_some_and(|s| s.option.is_some())
-                    && matches!(d.props,Props::Button(button) if button.label==key)
+                    && (matches!(d.props,Props::Button(button) if button.label==key)
+                        || d.name.as_deref() == Some(key))
             })
             .unwrap()
     }
@@ -1361,5 +1546,97 @@ mod tests {
         app.pump().unwrap();
         assert_eq!(selected.get(), Some("b".into()));
         assert_eq!(*proposals.borrow(), [Some("b".into())]);
+    }
+
+    #[test]
+    fn finite_option_content_loading_check_position_and_dropdown_geometry_are_real() {
+        let app = App::memory();
+        app.mount(
+            select("presented")
+                .default_open(true)
+                .default_value(Some("a".into()))
+                .loading(true)
+                .check_position(SelectCheckPosition::Right)
+                .max_dropdown_height(180.0)
+                .popup_placement(glory::render::AnchorPlacement::new(
+                    glory::render::AnchorSide::Top,
+                    glory::render::AnchorAlign::End,
+                ))
+                .options([
+                    crate::select_option("a", "Alpha"),
+                    crate::select_option("b", "Beta"),
+                ])
+                .option_content(
+                    "a",
+                    SelectOptionContent::default()
+                        .leading("A")
+                        .description("First option")
+                        .trailing("⌘1"),
+                ),
+        )
+        .unwrap();
+        let class_count = |class: &str| {
+            nodes(&app)
+                .into_iter()
+                .filter(|id| {
+                    app.tree()
+                        .node(*id)
+                        .unwrap()
+                        .descriptor
+                        .view()
+                        .classes
+                        .iter()
+                        .any(|value| value == class)
+                })
+                .count()
+        };
+        assert_eq!(class_count("sapid-select-loading"), 1);
+        assert_eq!(class_count("sapid-select-option-leading"), 1);
+        assert_eq!(class_count("sapid-select-option-description"), 1);
+        assert_eq!(class_count("sapid-select-option-trailing"), 1);
+        assert_eq!(class_count("sapid-select-option-check"), 2);
+        let panel = nodes(&app)
+            .into_iter()
+            .find(|id| app.tree().node(*id).unwrap().descriptor.view().role == Some(Role::Listbox))
+            .unwrap();
+        let tree = app.tree();
+        let view = tree.node(panel).unwrap().descriptor.view();
+        assert_eq!(view.style.max_height, Some(Limit::Px(180.0)));
+        let LayerPlacement::Anchor(placement) = &view
+            .semantics
+            .as_ref()
+            .unwrap()
+            .layer
+            .as_ref()
+            .unwrap()
+            .placement
+        else {
+            panic!("anchor placement")
+        };
+        assert_eq!(placement.side, glory::render::AnchorSide::Top);
+        assert_eq!(placement.align, glory::render::AnchorAlign::End);
+    }
+
+    #[test]
+    fn option_content_and_dropdown_height_reject_invalid_configuration_before_nodes() {
+        let app = App::memory();
+        assert!(
+            app.mount(
+                select("unknown-content")
+                    .option(crate::select_option("a", "Alpha"))
+                    .option_content("missing", SelectOptionContent::default().description("No")),
+            )
+            .is_err()
+        );
+        assert_eq!(app.stats().nodes, 0);
+        assert!(
+            app.mount(
+                select("bad-height")
+                    .option(crate::select_option("a", "Alpha"))
+                    .max_dropdown_height(20.0),
+            )
+            .is_err()
+        );
+        assert_eq!(app.stats().nodes, 0);
     }
 }

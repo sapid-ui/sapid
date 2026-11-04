@@ -170,6 +170,33 @@ impl CivilDate {
     pub fn weekday(self) -> Weekday {
         Weekday::ALL[(self.ordinal() % 7) as usize]
     }
+    /// ISO-8601 week number (Monday start, week one contains January 4).
+    pub fn iso_week_number(self) -> u8 {
+        fn weeks_in_year(year: u16) -> i32 {
+            let first = CivilDate {
+                year,
+                month: 1,
+                day: 1,
+            };
+            let weekday = i32::from(first.weekday().index_from(Weekday::Monday));
+            if weekday == 3 || (weekday == 2 && is_leap_year(year)) {
+                53
+            } else {
+                52
+            }
+        }
+
+        let day_of_year = i32::try_from(self.ordinal() - days_before_year(self.year) + 1)
+            .expect("civil day of year fits i32");
+        let weekday = i32::from(self.weekday().index_from(Weekday::Monday)) + 1;
+        let mut week = (day_of_year - weekday + 10) / 7;
+        if week < 1 {
+            week = weeks_in_year(self.year.saturating_sub(1).max(1));
+        } else if week > weeks_in_year(self.year) {
+            week = 1;
+        }
+        week as u8
+    }
     pub fn checked_add_days(self, days: i32) -> DateResult<Self> {
         let ordinal = i64::from(self.ordinal()) + i64::from(days);
         if !(0..=i64::from(MAX_ORDINAL)).contains(&ordinal) {
@@ -752,6 +779,13 @@ mod tests {
         assert_eq!(d("2000-02-29").day(), 29);
         assert_eq!(d("2024-02-29").weekday(), Weekday::Thursday);
         assert!(CivilDate::parse_iso(&"1".repeat(1_000_000)).is_err());
+    }
+    #[test]
+    fn iso_week_numbers_cross_calendar_years_without_a_date_cache() {
+        assert_eq!(d("2020-12-31").iso_week_number(), 53);
+        assert_eq!(d("2021-01-01").iso_week_number(), 53);
+        assert_eq!(d("2021-01-04").iso_week_number(), 1);
+        assert_eq!(d("2024-02-29").iso_week_number(), 9);
     }
     #[test]
     fn full_gregorian_cycle_roundtrips_and_every_supported_month_boundary_is_ordered() {

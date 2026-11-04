@@ -1,6 +1,6 @@
 use glory::prelude::*;
 use glory::render::{Event, NodeId, Props, RangeCommand};
-use glory::style::{Color, Length};
+use glory::style::{Color, LinearGradient};
 use sapid::{alpha_slider, hue_slider};
 use std::{cell::RefCell, rc::Rc};
 fn value(app: &App, id: NodeId) -> f64 {
@@ -62,7 +62,8 @@ fn hue_local_same_tick_proposals_keep_fractional_precision_and_true_slider_role(
         app.tree().node(id).unwrap().descriptor.view().props,
         Props::View
     ));
-    assert_eq!(classes(&app, "sapid-color-slider-segment").len(), 120);
+    assert_eq!(classes(&app, "sapid-color-slider-overlay").len(), 1);
+    assert!(classes(&app, "sapid-color-slider-segment").is_empty());
     key(&app, id, RangeCommand::Maximum);
     app.flush().unwrap();
     assert_eq!(value(&app, id), 360.);
@@ -125,46 +126,39 @@ fn alpha_trail_keeps_real_transparency_checker_and_rgb_source_updates() {
     .unwrap();
     assert_eq!(value(&app, reference.get().unwrap()), 0.123456789);
     assert_eq!(source.get(), 0.123456789);
-    assert_eq!(classes(&app, "sapid-alpha-checker-cell").len(), 64);
-    let mut segments = classes(&app, "sapid-color-slider-segment");
-    let left = |id: &NodeId| match app.tree().node(*id).unwrap().descriptor.view().style.left {
-        Some(Length::Percent(v)) => v,
-        _ => panic!("left"),
-    };
-    segments.sort_by(|a, b| left(a).partial_cmp(&left(b)).unwrap());
+    assert_eq!(classes(&app, "sapid-alpha-slider-background").len(), 1);
+    assert!(classes(&app, "sapid-alpha-checker-cell").is_empty());
+    let overlays = classes(&app, "sapid-color-slider-overlay");
+    assert_eq!(overlays.len(), 1);
+    assert!(classes(&app, "sapid-color-slider-segment").is_empty());
     assert_eq!(
         app.tree()
-            .node(segments[0])
+            .node(overlays[0])
             .unwrap()
             .descriptor
             .view()
             .style
-            .background,
-        Some(Color(10, 20, 30, 0))
-    );
-    assert_eq!(
-        app.tree()
-            .node(*segments.last().unwrap())
-            .unwrap()
-            .descriptor
-            .view()
-            .style
-            .background,
-        Some(Color(10, 20, 30, 255))
+            .background_image,
+        Some(LinearGradient {
+            angle: 90.,
+            stops: vec![Color(0, 0, 0, 0), Color(10, 20, 30, 255)],
+        })
     );
     color.revise(|old| *old = Color(40, 50, 60, 77));
     app.flush().unwrap();
     assert_eq!(
         app.tree()
-            .node(*segments.last().unwrap())
+            .node(overlays[0])
             .unwrap()
             .descriptor
             .view()
             .style
-            .background,
-        Some(Color(40, 50, 60, 255))
+            .background_image,
+        Some(LinearGradient {
+            angle: 90.,
+            stops: vec![Color(0, 0, 0, 0), Color(40, 50, 60, 255)],
+        })
     );
-    assert_eq!(classes(&app, "sapid-color-slider-segment").len(), 64);
 }
 #[test]
 fn field_label_readonly_disabled_and_snapshot_stay_on_actual_control() {
@@ -263,8 +257,10 @@ fn ssr_emits_actual_slider_numbers_and_bounded_color_trails() {
     assert!(html.contains("aria-valuenow=\"123.456789\""));
     assert!(html.contains("aria-valuemax=\"360\""));
     assert_eq!(
-        html.matches("class=\"sapid-color-slider-segment\"").count(),
-        120
+        html.matches("class=\"sapid-color-slider-overlay\"").count(),
+        1
     );
+    assert!(html.contains("background-image:linear-gradient(90deg,"));
+    assert!(!html.contains("sapid-color-slider-segment"));
     assert!(!html.contains("sapid-slider-fill"));
 }

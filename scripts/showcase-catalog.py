@@ -16,14 +16,15 @@ inventory = json.loads((ROOT / "docs/widget-inventory.json").read_text(encoding=
 ledger = json.loads((ROOT / "docs/capability-matrix.json").read_text(encoding="utf-8"))
 tasks = inventory["tasks"]
 records = {entry["id"]: entry for entry in ledger["tasks"]}
-if len(tasks) != 149 or len(records) != 149 or {t["id"] for t in tasks} != set(records):
-    raise SystemExit("catalogue requires all 149 canonical tasks and explicit ledger entries")
+if len(tasks) != 137 or len(records) != 137 or {t["id"] for t in tasks} != set(records):
+    raise SystemExit("catalogue requires all 137 canonical tasks and explicit ledger entries")
 
 EXTRA_PAGES = {"P0-08": "drawer", "P2-09": "actions", "P10-07": "json-viewer"}
 CORE = {f"P0-{i:02}": name for i, name in enumerate([
     "button", "text_field", "checkbox", "collapsible", "accordion", "tabs", "dialog", "drawer", "popover"
 ], 1)} | {"P0-14": "catalogue", "P2-08": "icon_actions", "P3-10": "pills", "P4-08": "multi_select", "P4-09": "tags"}
 FOCUSED_GROUPS = {
+    "layout_controls": ["P3-04", "P6-07", "P6-08"],
     "fields": ["P1-01", "P1-02", "P1-03", "P1-04", "P1-05", "P1-06"],
     "choices": ["P0-10", "P2-01", "P2-02", "P2-03", "P2-05", "P2-06"],
     "responsive": ["P3-02", "P3-03"],
@@ -38,11 +39,16 @@ FOCUSED_GROUPS = {
     "measurement": ["P7-02", "P7-03", "P5-08"],
     "copy_button": ["P10-03"],
     "file_button": ["P10-01"],
+    "rich_editor": ["P10-08"],
     "toolbar": ["P2-07", "P6-10"],
-    "model_suggestions": ["P13-05", "P13-06"],
+    "charts": ["P11-01", "P11-02", "P11-03", "P11-04", "P11-05", "P11-06", "P11-07", "P11-08"],
+    "schedule": ["P12-01"],
 }
 FOCUSED = {identity: family for family, identities in FOCUSED_GROUPS.items() for identity in identities}
 FOCUSED_NAMES = {
+    "P3-04": "focused_aspect_ratio",
+    "P6-07": "focused_scroll_area",
+    "P6-08": "focused_splitter",
     "P0-10": "focused_collection",
     "P1-01": "focused_field",
     "P1-02": "focused_field_error",
@@ -84,8 +90,24 @@ FOCUSED_NAMES = {
     "P7-05": "focused_rating",
     "P10-01": "focused_file_button",
     "P10-03": "focused_copy_button",
-    "P13-05": "focused_model_selector",
-    "P13-06": "focused_suggestion",
+    "P10-08": "focused_rich_editor",
+    "P11-01": "focused_chart",
+    "P11-02": "focused_cartesian_charts",
+    "P11-03": "focused_polar_charts",
+    "P11-04": "focused_point_charts",
+    "P11-05": "focused_shape_charts",
+    "P11-06": "focused_matrix_charts",
+    "P11-07": "focused_range_charts",
+    "P11-08": "focused_hierarchy_charts",
+    "P12-01": "focused_schedule",
+}
+FOCUSED_DISPLAY = {
+    "P12-05-resourcesschedule": ("focused_resources_schedule", "resources_schedule"),
+    "P12-02": ("focused_dayview", "schedule_timelines"),
+    "P12-02-weekview": ("focused_weekview", "schedule_timelines"),
+    "P12-03": ("focused_monthview", "schedule_calendars"),
+    "P12-03-yearview": ("focused_yearview", "schedule_calendars"),
+    "P12-03-mobilemonthview": ("focused_mobilemonthview", "schedule_calendars"),
 }
 if set(FOCUSED_NAMES) != set(FOCUSED):
     raise SystemExit("every focused demo requires an explicit semantic module name")
@@ -97,10 +119,6 @@ SPECIAL = {
     "json-viewer": ("json_tree_example", "json_tree_example", "theme", False),
     "tree-select": ("tree_choices_form", "tree_choices_form", "theme, false", False),
     "cascader": ("tree_choices_form", "tree_choices_form", "theme, true", False),
-    "trace": ("trace_form", "form", "scope, theme.clone(), false", True),
-    "stack-trace": ("trace_form", "form", "scope, theme.clone(), true", True),
-    "public-explanations": ("chat_evidence_form", "chat_evidence_form", "theme, false", False),
-    "citations": ("chat_evidence_form", "chat_evidence_form", "theme, true", False),
 }
 for index, page in enumerate(["polar-charts", "point-charts", "shape-charts", "matrix-charts", "range-charts", "hierarchy-charts"]):
     SPECIAL[page] = ("plots_form", "plots_form", f"theme, {index}", False)
@@ -270,20 +288,6 @@ LEADS = {
         "Read upcoming events as a chronological agenda.",
         "Compare availability and events across multiple resources.",
     ],
-    "P13": [
-        "Present conversation messages with bubbles, markers and supporting metadata.",
-        "Browse long conversations while preserving the reader's position.",
-        "Compose a message with suggestions, attachments and explicit send actions.",
-        "Guide users through typed questions with step-by-step validation.",
-        "Choose from an application-provided catalogue of models and providers.",
-        "Offer contextual suggestions that users can explicitly choose.",
-        "Request confirmation at a checkpoint before an application action continues.",
-        "Present plans, tasks and queues with explicit application-owned status.",
-        "Show application-published reasoning summaries and completed steps.",
-        "Attach source links, context and inline citations to displayed content.",
-        "Inspect public execution traces, tool results and stack information.",
-        "Read windowed terminal output and structured test results.",
-    ],
 }
 DESCRIPTIONS = {
     f"{phase}-{number:02}": description
@@ -292,22 +296,39 @@ DESCRIPTIONS = {
 }
 if set(DESCRIPTIONS) != set(records):
     raise SystemExit("reader introductions must describe every canonical work item")
+DISPLAY_DESCRIPTIONS = {
+    "Center": "Center content horizontally and vertically, with an optional inline layout.",
+    "Container": "Constrain content width and center it within the available space.",
+    "Space": "Add explicit horizontal or vertical space between layout elements.",
+    "Box": "Compose arbitrary content in a themed layout box with typed styles.",
+    "Transition": "Review Sapid's explicit motion environment and conditional mounting; a general Transition builder is not yet available.",
+}
 
 def group(task):
     phase, number = task["id"].split("-")
     n = int(number)
+    overrides = {
+        "P0-04": "Miscellaneous", "P0-11": "Miscellaneous", "P0-13": "Miscellaneous",
+        "P3-06": "Navigation", "P3-12": "Miscellaneous",
+        "P6-07": "Miscellaneous", "P6-10": "Miscellaneous", "P6-12": "Data display",
+        "P6-13": "Overlays", "P6-14": "Miscellaneous", "P7-06": "Data display",
+        "P8-03": "Navigation", "P10-01": "Inputs", "P10-03": "Buttons",
+    }
+    if task["id"] in overrides:
+        return overrides[task["id"]]
     if phase == "P0":
-        return {1: "Buttons", 2: "Inputs", 3: "Inputs", 4: "Data display", 5: "Data display", 6: "Navigation", 7: "Overlays", 8: "Overlays", 9: "Overlays", 10: "Navigation", 11: "Overlays", 12: "Extensions", 13: "Typography", 14: "Extensions"}[n]
+        return {1: "Buttons", 2: "Inputs", 3: "Inputs", 5: "Data display", 6: "Navigation", 7: "Overlays", 8: "Overlays", 9: "Overlays", 10: "Navigation", 12: "Extensions", 14: "Extensions"}[n]
     if phase == "P1": return "Inputs"
     if phase == "P2": return "Buttons" if n in (4, 7, 8, 9) else "Inputs"
     if phase == "P3":
-        return "Layout" if n <= 4 else "Typography" if n in (5, 6, 7, 8, 9, 16) else "Data display"
+        return "Layout" if n <= 4 else "Typography" if n in (5, 7, 8, 9, 16) else "Data display"
     if phase == "P4": return "Combobox" if 4 <= n <= 9 else "Navigation"
     if phase == "P5": return "Overlays" if n in (1, 2, 3, 4, 12, 13, 14, 15) else "Feedback"
-    if phase == "P6": return "Layout" if n in (7, 8, 9) else "Navigation"
+    if phase == "P6": return "Layout" if n in (8, 9) else "Navigation"
     if phase == "P7": return "Inputs"
     if phase == "P8": return "Combobox" if n in (4, 5) else "Data display"
-    return {"P9": "Dates", "P10": "Extensions", "P11": "Charts", "P12": "Dates", "P13": "Chat"}[phase]
+    if phase == "P10": return "Extensions"
+    return {"P9": "Dates", "P11": "Charts", "P12": "Dates"}[phase]
 
 
 def target(page):
@@ -392,11 +413,367 @@ def focused_bundle(identity, family):
     controls = ''
     if 'super::controls' in body:
         controls = (WEB / "src/focused_demos/controls.rs").read_text(encoding="utf-8")
+        if family == "layout_controls":
+            # Fit the source panel's lexical budget by including the controls
+            # the layout demos actually call.
+            used = set(re.findall(r"super::controls::(\w+)\(", body))
+            functions = re.findall(r"(?ms)^(pub fn (\w+)\(.*?^})", controls)
+            imports = "use glory::prelude::*;\nuse glory::style::FlexWrap;\nuse sapid::Theme;\n\n"
+            controls = imports + "\n\n".join(function for function, name in functions if name in used)
         controls = '\n\n#[allow(dead_code, unused_imports)]\nmod controls {\n' + controls + '\n}'
     return formatted('use glory::prelude::*;\n\npub fn demo(theme: sapid::Theme) -> impl Widget {\n    '
                      + f'focused::demo_for("{identity}", theme)\n'
                      + '}' + controls + '\n\n#[allow(dead_code, unused_imports)]\nmod focused {\n'
                      + body + '\n}\n')
+
+
+MANTINE_FACTS = json.loads((ROOT / "docs/mantine-api-audit.json").read_text(encoding="utf-8"))
+MANTINE_GROUPS = {
+    "Layout": ["AppShell", "AspectRatio", "Center", "Container", "Flex", "Grid", "Group", "SimpleGrid", "Space", "Splitter", "Stack"],
+    "Inputs": ["AlphaSlider", "AngleSlider", "Checkbox", "Chip", "ColorInput", "ColorPicker", "Fieldset", "FileInput", "HueSlider", "Input", "JsonInput", "MaskInput", "NativeSelect", "NumberInput", "PasswordInput", "PinInput", "Radio", "RangeSlider", "Rating", "SegmentedControl", "Slider", "Switch", "Textarea", "TextInput"],
+    "Combobox": ["Autocomplete", "Cascader", "Combobox", "ComboboxPopover", "MultiSelect", "Pill", "PillsInput", "Select", "TagsInput", "TreeSelect"],
+    "Buttons": ["ActionIcon", "Button", "CloseButton", "CopyButton", "FileButton", "Toggle", "UnstyledButton"],
+    "Navigation": ["Anchor", "Breadcrumbs", "Burger", "NavLink", "Pagination", "Stepper", "TableOfContents", "Tabs", "Tree"],
+    "Feedback": ["Alert", "EmptyState", "Loader", "Notification", "Progress", "RingProgress", "SemiCircleProgress", "Skeleton"],
+    "Overlays": ["ActionBar", "Affix", "Dialog", "Drawer", "FloatingIndicator", "FloatingWindow", "HoverCard", "LoadingOverlay", "Menu", "Menubar", "Modal", "Overlay", "Popover", "Tooltip", "Tour"],
+    "Data display": ["Accordion", "Avatar", "BackgroundImage", "Badge", "Card", "ColorSwatch", "DataList", "Image", "Indicator", "Kbd", "NumberFormatter", "OverflowList", "RollingNumber", "Spoiler", "ThemeIcon", "Timeline"],
+    "Typography": ["Blockquote", "Code", "Highlight", "List", "Mark", "Table", "Text", "Title", "Typography"],
+    "Miscellaneous": ["Box", "Collapse", "Divider", "FocusTrap", "Marquee", "Paper", "Portal", "ScrollArea", "Scroller", "Toolbar", "Transition", "VisuallyHidden"],
+}
+MANTINE_ORDER = {
+    name: (group_index, item_index)
+    for group_index, (group, names) in enumerate(MANTINE_GROUPS.items())
+    for item_index, name in enumerate(names)
+}
+MANTINE_BY_TASK = {}
+for item in MANTINE_FACTS["entries"]:
+    MANTINE_BY_TASK.setdefault(item["task"], []).append(item)
+NAMED_DEMO_TASKS = {task for task, items in MANTINE_BY_TASK.items() if len(items) > 1} | {
+    "P3-07", "P3-13", "P4-05", "P4-06", "P4-07", "P6-06", "P8-01", "P8-04", "P8-05", "P10-06",
+}
+PRESERVE_PRIMARY = {"P0-01", "P2-08", "P3-10", "P4-09", "P5-11", "P6-07", "P12-01"}
+SOURCE_GROUPS = {
+    "mantine-charts": "Charts",
+    "mantine-dates": "Dates",
+    "mantine-schedule": "Dates",
+    "mantine-code": "Extensions",
+    "mantine-extensions": "Extensions",
+}
+
+
+def public_slug(name):
+    name = re.sub(r"([a-z0-9])([A-Z])", r"\1-\2", name)
+    return re.sub(r"[^a-zA-Z0-9]+", "-", name).strip("-").lower()
+
+
+def display_items(task):
+    items = MANTINE_BY_TASK.get(task["id"], [])
+    if not items:
+        return []
+    items = sorted(items, key=lambda item: MANTINE_ORDER.get(item["name"], (99, 99)))
+    result = []
+    for index, item in enumerate(items):
+        legacy_suffix = re.sub(r"[^a-z0-9]+", "-", item["name"].lower()).strip("-")
+        identity = task["id"] if index == 0 else f"{task['id']}-{legacy_suffix}"
+        order = MANTINE_ORDER.get(item["name"], (99, 99))
+        category = (list(MANTINE_GROUPS)[order[0]] if order[0] < len(MANTINE_GROUPS)
+                    else SOURCE_GROUPS[item["source"]])
+        result.append((identity, item["name"], category))
+    return result
+
+
+def named_source(body, name, family):
+    chart = family == "charts"
+    indent = 12 if chart else 8
+    marker = "        return match id {" if chart else "    match name {"
+    function_start = body.index("pub fn demo_for")
+    start = body.index(marker, function_start)
+    prefix = body[:function_start]
+    pattern = re.compile(r"(?m)^" + " " * indent + r"\"[^\"]+\"(?:\s*\|\s*\"[^\"]+\")*\s*=>")
+    arms = list(pattern.finditer(body, start))
+    default = re.search(r"(?m)^" + " " * indent + r"_ => unreachable!", body[start:])
+    if not arms or not default:
+        raise SystemExit(f"cannot isolate named demo {name}")
+    end = start + default.start()
+    selected = []
+    for index, arm in enumerate(arms):
+        arm_end = arms[index + 1].start() if index + 1 < len(arms) else end
+        labels = re.findall(r"\"([^\"]+)\"", arm[0].split("=>")[0])
+        if name in labels:
+            selected.append(body[arm.start():arm_end])
+    if not selected:
+        raise SystemExit(f"no named demo branch for {name}")
+    selected_source = "".join(selected)
+    declarations = list(re.finditer(
+        r"(?m)^(?:pub\s+)?(?:fn|const|static)\s+([A-Za-z_][A-Za-z0-9_]*)", prefix
+    ))
+    if declarations:
+        header = prefix[:declarations[0].start()]
+        items = []
+        for index, declaration in enumerate(declarations):
+            item_end = declarations[index + 1].start() if index + 1 < len(declarations) else len(prefix)
+            items.append((declaration[1], prefix[declaration.start():item_end]))
+        required = set()
+        pending = selected_source
+        if chart and "proportions()" in selected_source:
+            pending += "values()"
+        while True:
+            added = False
+            for identifier, item in items:
+                if identifier not in required and re.search(rf"\b{re.escape(identifier)}\b", pending):
+                    required.add(identifier)
+                    pending += item
+                    added = True
+            if not added:
+                break
+        prefix = header + "".join(item for identifier, item in items if identifier in required)
+    variable = "id" if chart else "name"
+    signature = "id: &str, theme: sapid::Theme" if chart else "name: &str, theme: Theme"
+    proportions = "    let proportions = || values(&[(\"a\", \"Product A\", 42.), (\"b\", \"Product B\", 31.), (\"c\", \"Product C\", 18.), (\"other\", \"Other\", 9.)]);\n" if chart and "proportions()" in selected_source else ""
+    return (prefix + f"pub fn demo_for({signature}) -> Box<dyn Widget> {{\n" + proportions
+            + f"    match {variable} {{\n" + selected_source
+            + " " * indent + f"_ => unreachable!(\"unsupported named demo: {{{variable}}}\"),\n    }}\n}}\n")
+
+
+def named_bundle(name, task):
+    family = "charts" if task.startswith("P11-") else "mantine_pages"
+    body = (WEB / f"src/focused_demos/{family}.rs").read_text(encoding="utf-8")
+    body = named_source(body, name, family)
+    controls = ''
+    if 'super::controls' in body:
+        controls = (WEB / "src/focused_demos/controls.rs").read_text(encoding="utf-8")
+        controls = '\n\n#[allow(dead_code, unused_imports)]\nmod controls {\n' + controls + '\n}\n'
+    return formatted('use glory::prelude::*;\n\npub fn demo(theme: sapid::Theme) -> impl Widget {\n    '
+                     + f'focused::demo_for({literal(name)}, theme)\n'
+                     + '}' + controls + '\n\n#[allow(dead_code, unused_imports)]\nmod focused {\n'
+                     + body + '\n}\n')
+
+
+def api_sources(task):
+    paths = []
+    for value in task["evidence"]["implementation"]:
+        path = value.split(" (")[0]
+        if path.endswith(".rs") and (ROOT / path).is_file() and not path.startswith("examples/"):
+            paths.append(path)
+    return sorted(set(paths))
+
+
+API_INFRASTRUCTURE = {
+    "blue_light", "blue_dark", "green_light", "green_dark", "light", "dark", "new", "validate",
+    "from_default", "from_palette", "palette", "with_tokens", "stylesheet", "typography", "colors",
+    "build", "build_and_mount", "as_str", "is_finite", "resolve", "validate_input_placeholder",
+}
+API_TYPES = {
+    "TextInput": ["TextField"], "Input": ["Field"],
+    "Collapse": ["Collapsible"], "Modal": ["Dialog"], "FocusTrap": ["FocusScope"],
+    "List": ["TextList"], "Divider": ["Separator"], "Spotlight": ["Command"],
+    "Loader": ["Spinner"], "Dialog": ["FloatingDialog"], "Modals manager": ["ModalsManager"],
+    "Dropzone": ["FileInput"], "Rich text editor": ["RichTextEditor"],
+    "MiniCalendar": ["Calendar"],
+    "MonthPicker": ["PeriodPicker"], "YearPicker": ["PeriodPicker"],
+    "MonthPickerInput": ["PeriodPickerInput"], "YearPickerInput": ["PeriodPickerInput"],
+    "RingProgress": ["Progress"], "SemiCircleProgress": ["Progress"],
+    "Chart / ChartTheme / Legend / Tooltip": ["Chart"],
+    "ComboboxPopover": ["Popover"],
+    "UnstyledButton": ["Button"],
+    "Notifications system": ["Toaster"],
+    "DateTimePicker": ["DateTimePicker", "DateTimeRangePicker"],
+    "InlineDateTimePicker": ["InlineDateTimePicker", "InlineDateTimeRangePicker"],
+    "DayView": ["Schedule"], "WeekView": ["Schedule"], "MonthView": ["Schedule"],
+    "YearView": ["Schedule"], "MobileMonthView": ["Schedule"], "AgendaView": ["Schedule"],
+    "Schedule": ["Schedule"],
+    "ResourcesDayView": ["ResourceSchedule"], "ResourcesWeekView": ["ResourceSchedule"],
+    "ResourcesMonthView": ["ResourceSchedule"], "ResourcesSchedule": ["ResourceSchedule"],
+    "Recurring events": ["ScheduleRecurrence"], "Events data": ["ScheduleEvent"],
+    **{name: ["Chart"] for name in ["AreaChart", "BarChart", "LineChart", "CompositeChart"]},
+    **{name: ["Plot"] for name in [
+        "DonutChart", "PieChart", "RadialBarChart", "CandlestickChart", "ScatterChart", "BubbleChart",
+        "FunnelChart", "RadarChart", "Sparkline", "Heatmap", "WaffleChart", "MatrixChart", "BarsList",
+        "BulletChart", "GaugeChart", "Treemap", "SunburstChart", "SankeyChart",
+    ]},
+}
+API_PATHS = {
+    "ColorInput": ["src/color_input.rs"],
+    "ColorPicker": ["src/color_picker/mod.rs"],
+    "Pill": ["src/display.rs"], "Badge": ["src/display.rs"],
+    "PillsInput": ["src/pills_input.rs"], "TagsInput": ["src/tags_input.rs"],
+    "Button": ["src/button.rs"], "UnstyledButton": ["src/button.rs"],
+    "Card": ["src/display.rs"], "Paper": ["src/display.rs"],
+    "Code": ["src/document.rs"], "Highlight": ["src/document.rs"], "Mark": ["src/document.rs"],
+    "Text": ["src/typography.rs"], "Title": ["src/typography.rs"], "Typography": ["src/typography.rs"],
+    "FocusTrap": ["src/focus_scope.rs"], "Portal": ["src/portal.rs"],
+    "RollingNumber": ["src/rolling_number.rs"], "Marquee": ["src/marquee.rs"],
+    "DateTimePicker": ["src/date_time_picker_input.rs", "src/date_time_range_picker.rs"],
+    "InlineDateTimePicker": ["src/date_time_picker.rs", "src/date_time_range_picker.rs"],
+    "DayView": ["src/schedule/mod.rs"], "WeekView": ["src/schedule/mod.rs"],
+    "MonthView": ["src/schedule/mod.rs"], "YearView": ["src/schedule/mod.rs"],
+    "MobileMonthView": ["src/schedule/mod.rs"], "AgendaView": ["src/schedule/mod.rs"],
+    "Schedule": ["src/schedule/mod.rs"],
+    "ResourcesDayView": ["src/schedule/resources/mod.rs"],
+    "ResourcesWeekView": ["src/schedule/resources/mod.rs"],
+    "ResourcesMonthView": ["src/schedule/resources/mod.rs"],
+    "ResourcesSchedule": ["src/schedule/resources/mod.rs"],
+    "Recurring events": ["src/schedule_recurrence.rs"], "Events data": ["src/schedule_model.rs"],
+    **{name: ["src/chart_widget.rs"] for name in ["AreaChart", "BarChart", "LineChart", "CompositeChart"]},
+    **{name: ["src/plot_widget.rs"] for name in [
+        "DonutChart", "PieChart", "RadialBarChart", "CandlestickChart", "ScatterChart", "BubbleChart",
+        "FunnelChart", "RadarChart", "Sparkline", "Heatmap", "WaffleChart", "MatrixChart", "BarsList",
+        "BulletChart", "GaugeChart", "Treemap", "SunburstChart", "SankeyChart",
+    ]},
+}
+LAYOUT_NAMES = {"Box", "Flex", "Group", "Stack", "Center", "Container", "Space"}
+
+
+def rust_signatures(text):
+    signatures = set()
+    for match in re.finditer(r"pub fn ([a-z_0-9]+)(?:<[^>{}]*>)?\s*\(", text):
+        if match[1] in API_INFRASTRUCTURE:
+            continue
+        segment = text[match.start():]
+        boundary = segment.find("{")
+        if boundary < 0:
+            continue
+        signature = re.sub(r"\s+", " ", segment[:boundary].strip()).replace("$crate::", "crate::")
+        if "-> Self" in signature or re.search(r"->\s*[A-Z][A-Za-z0-9_]*$", signature):
+            signatures.add(signature)
+    return signatures
+
+
+def braced_block(text, start):
+    opening = text.find("{", start)
+    if opening < 0:
+        return ""
+    depth = 0
+    for index in range(opening, len(text)):
+        if text[index] == "{": depth += 1
+        elif text[index] == "}":
+            depth -= 1
+            if depth == 0: return text[opening:index + 1]
+    return ""
+
+
+def macro_definition(text, name):
+    match = re.search(r"macro_rules!\s+" + re.escape(name) + r"\s*\{", text)
+    return braced_block(text, match.start()) if match else ""
+
+
+def implementation_surface(text, widget_type):
+    pattern = re.compile(r"\bimpl(?:\s*<[^>{}]*>)?\s+" + re.escape(widget_type)
+                         + r"(?:\s*<[^>{}]*>)?\s*\{")
+    blocks = [braced_block(text, match.start()) for match in pattern.finditer(text)]
+    generated = []
+    for macro in ["overlay", "inline_text", "methods"]:
+        if re.search(r"\b" + macro + r"!\s*\(\s*" + re.escape(widget_type) + r"\s*[,)]", text):
+            generated.append(macro_definition(text, macro))
+    return "\n".join(block for block in blocks + generated if block)
+
+
+def expand_macros(body, text):
+    support = {"common_methods": ROOT / "src/appearance.rs", "text_input_methods": ROOT / "src/text_input.rs"}
+    result = [body]
+    for name in set(re.findall(r"\b([a-z_0-9]+)!\s*\(\s*\)", body)):
+        definition = macro_definition(text, name)
+        if not definition and name in support:
+            definition = macro_definition(support[name].read_text(encoding="utf-8"), name)
+        if definition: result.append(definition)
+    for match in re.finditer(
+        r"\bsource_method!\s*\(\s*([a-z_0-9]+)\s*,\s*[a-z_0-9]+\s*,\s*([^\)]+?)\s*\)",
+        body,
+    ):
+        method, value_type = match.groups()
+        value_type = re.sub(r"\s+", " ", value_type.strip())
+        result.append(
+            f"pub fn {method}(mut self, value: impl Into<Vary<{value_type}>>) -> Self {{"
+        )
+    return "\n".join(result)
+
+
+def api_surface(task, item):
+    name = item["name"]
+    paths = API_PATHS.get(name, api_sources(task))
+    types = API_TYPES.get(name, [name])
+    builders, classes, signatures = set(), set(), set()
+    factory = re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower().replace(" ", "_")
+    for path in paths:
+        text = (ROOT / path).read_text(encoding="utf-8")
+        if re.search(r"pub fn " + re.escape(factory) + r"\s*\(", text): builders.add(factory)
+        if name in LAYOUT_NAMES:
+            body = macro_definition(text, "methods")
+            if name in {"Flex", "Group", "Stack"}: body += macro_definition(text, "flex_methods")
+            if name == "Container": body += implementation_surface(text, "Container")
+            if name == "Center": body += implementation_surface(text, "Center")
+        else:
+            body = "\n".join(implementation_surface(text, widget_type) for widget_type in types)
+            body = expand_macros(body, text)
+        signatures.update(rust_signatures(body))
+        classes.update(re.findall(r"\b(sapid-[a-z0-9-]+)", body))
+        for widget_type in types:
+            type_factory = re.sub(r"(?<!^)(?=[A-Z])", "_", widget_type).lower()
+            if re.search(r"pub fn " + re.escape(type_factory) + r"\s*\(", text):
+                builders.add(type_factory)
+            base = re.sub(r"(?<!^)(?=[A-Z])", "-", widget_type).lower()
+            classes.update(value for value in re.findall(r"\b(sapid-[a-z0-9-]+)", text)
+                           if value == f"sapid-{base}" or value.startswith(f"sapid-{base}-"))
+    builders.update(match[1] for signature in signatures
+                    if (match := re.match(r"pub fn ([a-z_0-9]+)", signature)))
+    return sorted(builders), sorted(classes), sorted(signatures)
+
+
+def api_entry(task, item, display_id):
+    builders, classes, signatures = api_surface(task, item)
+    builder_values = ", ".join(literal(value) for value in builders)
+    signature_values = ", ".join(literal(value) for value in signatures)
+    class_values = ", ".join(literal(value) for value in classes)
+    return (
+        f"    ApiEntry {{ id: {literal(display_id)}, builders: &[{builder_values}], "
+        f"signatures: &[{signature_values}], classes: &[{class_values}] }},"
+    )
+
+
+def api_catalog(tasks):
+    task_map = {task["id"]: task for task in tasks}
+    body = "\n".join(api_entry(task_map[item["task"]], item, display_id)
+                     for task in tasks if task["id"] in MANTINE_BY_TASK
+                     for (display_id, _, _), item in zip(display_items(task), sorted(
+                         MANTINE_BY_TASK[task["id"]], key=lambda value: MANTINE_ORDER.get(value["name"], (99, 99)))))
+    return """//! Generated Rust builder API metadata; edit sources and run showcase-catalog.py.
+#[derive(Clone, Copy, Debug)]
+pub struct ApiEntry {
+    pub id: &'static str,
+    pub builders: &'static [&'static str],
+    pub signatures: &'static [&'static str],
+    pub classes: &'static [&'static str],
+}
+#[rustfmt::skip]
+pub const ENTRIES: &[ApiEntry] = &[
+""" + body + """
+];
+
+pub fn find(id: &str) -> Option<&'static ApiEntry> {
+    ENTRIES.iter().find(|entry| entry.id == id)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn button_has_real_rust_builder_api() {
+        let entry = find("P0-01").unwrap();
+        assert!(entry.builders.contains(&"button"));
+        assert!(entry.builders.contains(&"left_section"));
+        assert!(entry.signatures.iter().any(|signature| signature.contains("compact")));
+        assert!(!entry.builders.contains(&"blue_dark"));
+        assert!(entry.classes.contains(&"sapid-button"));
+        assert!(find("unknown").is_none());
+        assert!(!find("P7-08").unwrap().builders.contains(&"plane_size"));
+        assert!(find("P7-08-colorpicker").unwrap().builders.contains(&"plane_size"));
+        let range = find("P7-03").unwrap();
+        for method in ["min", "max", "step", "minimum_gap", "labels", "value_text"] {
+            assert!(range.builders.contains(&method), "missing macro builder {method}");
+        }
+    }
+}
+"""
 
 
 pages = {}
@@ -405,39 +782,67 @@ outputs = {}
 modules = {}
 for task in tasks:
     identity = task["id"]
+    if identity not in MANTINE_BY_TASK:
+        continue
     page = EXTRA_PAGES.get(identity) or next(iter(records[identity]["pages"]), None)
     if not page: raise SystemExit(f"missing explicit demo for {identity}")
-    if identity in CORE:
-        key = 'core_' + CORE[identity]
-        code = (WEB / f"src/showcase_demos/{key}.rs").read_text(encoding="utf-8")
-        code = code.split('\n#[allow(dead_code, unused_imports)]\nmod controls {', 1)[0].rstrip()
-        if 'controls::' in code:
-            controls = (WEB / "src/focused_demos/controls.rs").read_text(encoding="utf-8")
-            code += '\n\n#[allow(dead_code, unused_imports)]\nmod controls {\n' + controls + '\n}\n'
-        code = formatted(code)
-    elif identity in FOCUSED:
-        key = FOCUSED_NAMES[identity]
-        code = focused_bundle(identity, FOCUSED[identity])
-    else:
-        key = page.replace('-', '_')
-        pages[page] = key
-        code = bundle(page)
-    if len(code.encode()) > 65_536: raise SystemExit(f"source exceeds CodeHighlight budget: {identity}")
-    outputs[WEB / f"src/showcase_demos/{key}.rs"] = code
-    modules[key] = code
+    shared_code = None
+    if identity not in NAMED_DEMO_TASKS or identity in PRESERVE_PRIMARY:
+        if identity in CORE:
+            key = 'core_' + CORE[identity]
+            code = (WEB / f"src/showcase_demos/{key}.rs").read_text(encoding="utf-8")
+            code = code.split('\n#[allow(dead_code, unused_imports)]\nmod controls {', 1)[0].rstrip()
+            if 'controls::' in code:
+                controls = (WEB / "src/focused_demos/controls.rs").read_text(encoding="utf-8")
+                code += '\n\n#[allow(dead_code, unused_imports)]\nmod controls {\n' + controls + '\n}\n'
+            shared_code = (key, formatted(code))
+        elif identity in FOCUSED:
+            shared_code = (FOCUSED_NAMES[identity], focused_bundle(identity, FOCUSED[identity]))
+        else:
+            key = page.replace('-', '_')
+            pages[page] = key
+            shared_code = (key, bundle(page))
     description = DESCRIPTIONS[identity]
-    values = [("id", identity), ("name", task["name"]), ("group", group(task)),
-              ("description", description), ("example", page),
-              ("web", records[identity]["web"]["state"]),
-              ("native", records[identity]["native"]["state"]),
-              ("native_note", records[identity]["native"]["notes"])]
-    entries.append("    Entry { " + ", ".join(f"{key}: {literal(value)}" for key, value in values)
-                   + f', code: include_str!("showcase_demos/{key}.rs"), build: crate::showcase_demos::{key}_widget' + " },")
+    for display_id, display_name, display_group in display_items(task):
+        if display_id in FOCUSED_DISPLAY:
+            key, family = FOCUSED_DISPLAY[display_id]
+            code = focused_bundle(display_id, family)
+        elif shared_code is None or (identity in PRESERVE_PRIMARY and display_id != identity):
+            slug = re.sub(r"[^a-z0-9]+", "_", display_name.lower()).strip("_")
+            key = "focused_" + slug
+            code = named_bundle(display_name, identity)
+        else:
+            key, code = shared_code
+        if len(code.encode()) > 65_536: raise SystemExit(f"source exceeds CodeHighlight budget: {display_id}")
+        outputs[WEB / f"src/showcase_demos/{key}.rs"] = code
+        modules[key] = code
+        slug = public_slug(display_name)
+        values = [("id", display_id), ("slug", slug), ("task", identity), ("name", display_name), ("group", display_group),
+                  ("description", DISPLAY_DESCRIPTIONS.get(display_name, description)), ("example", page),
+                  ("web", records[identity]["web"]["state"]),
+                  ("native", records[identity]["native"]["state"]),
+                  ("native_note", records[identity]["native"]["notes"])]
+        entries.append((display_group, display_name, display_id, "    Entry { " + ", ".join(f"{key}: {literal(value)}" for key, value in values)
+                       + f', code: include_str!("showcase_demos/{key}.rs"), build: crate::showcase_demos::{key}_widget' + " },"))
+
+GROUP_ORDER = list(MANTINE_GROUPS) + ["Charts", "Dates", "Extensions"]
+entries = sorted(entries, key=lambda row: (
+    GROUP_ORDER.index(row[0]),
+    MANTINE_ORDER.get(row[1], (99, 999))[1],
+    row[2],
+))
+core_names = [name for _, name, _, _ in entries[:121]]
+expected_core = [name for names in MANTINE_GROUPS.values() for name in names]
+if core_names != expected_core:
+    raise SystemExit("Core navigation names or order drifted from the Mantine catalogue")
+entries = [row[3] for row in entries]
 
 catalog = '''//! Generated by `python scripts/showcase-catalog.py`; edit canonical inventory or demo sources.
 #[derive(Clone, Copy, Debug)]
 pub struct Entry {
     pub id: &'static str,
+    pub slug: &'static str,
+    pub task: &'static str,
     pub name: &'static str,
     pub group: &'static str,
     pub description: &'static str,
@@ -454,7 +859,11 @@ pub const ENTRIES: &[Entry] = &[
 ''' + "\n".join(entries) + '''
 ];
 
-pub fn find(id: &str) -> Option<&'static Entry> {
+pub fn find(slug: &str) -> Option<&'static Entry> {
+    ENTRIES.iter().find(|entry| entry.slug == slug)
+}
+
+pub fn find_by_id(id: &str) -> Option<&'static Entry> {
     ENTRIES.iter().find(|entry| entry.id == id)
 }
 
@@ -464,10 +873,12 @@ mod tests {
 
     #[test]
     fn catalogue_covers_every_work_item_once_with_real_rust_examples() {
-        assert_eq!(ENTRIES.len(), 149);
+        assert_eq!(ENTRIES.len(), 181);
         for (index, entry) in ENTRIES.iter().enumerate() {
             assert!(ENTRIES[..index].iter().all(|other| other.id != entry.id));
-            assert_eq!(find(entry.id).unwrap().name, entry.name);
+            assert!(ENTRIES[..index].iter().all(|other| other.slug != entry.slug));
+            assert_eq!(find_by_id(entry.id).unwrap().name, entry.name);
+            assert_eq!(find(entry.slug).unwrap().id, entry.id);
             assert!(
                 !entry.name.is_empty()
                     && !entry.group.is_empty()
@@ -485,7 +896,15 @@ for key in sorted(modules):
     registry += f"pub fn {key}_widget(theme: sapid::Theme) -> Box<dyn Widget> {{ Box::new({key}::demo(theme)) }}\n"
 outputs[WEB / "src/showcase_demos/mod.rs"] = formatted(registry)
 outputs[CATALOG] = formatted(catalog)
+outputs[WEB / "src/showcase_api.rs"] = formatted(api_catalog(tasks))
 stale = []
+previous = {path.stem for path in (WEB / "src/showcase_demos").glob("*.rs")} - {"mod"}
+for retired in previous - set(modules):
+    path = WEB / f"src/showcase_demos/{retired}.rs"
+    if args.check:
+        stale.append(path.relative_to(ROOT).as_posix())
+    elif path.is_file():
+        path.unlink()
 for path, content in outputs.items():
     if args.check:
         if not path.is_file() or path.read_text(encoding="utf-8") != content:

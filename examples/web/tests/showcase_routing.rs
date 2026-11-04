@@ -3,9 +3,9 @@ use sapid_web_example::showcase_navigation::{self as navigation, Route, SSR_PAGE
 
 #[test]
 fn query_targets_round_trip_through_glory_without_losing_unicode_or_fragment_encoding() {
-    let mut route = Route::new("P0-01".into(), &sapid::Theme::green_dark());
+    let mut route = Route::new("button".into(), &sapid::Theme::green_dark());
     route.palette = "custom-中文 & preview".into();
-    route.return_to = "P0-02".into();
+    route.return_to = "text-input".into();
     route.edit = Some("custom-中文 & preview".into());
     route.fragment = "composition/中文".into();
     let location = Location::parse(&format!("/{}", route.url())).unwrap();
@@ -34,7 +34,7 @@ fn ssr_aliases_and_query_overrides_share_the_browser_decoder() {
         }
     }
     let location = Location::parse(
-        "/ssr-button-blue-dark.html?widget=P0-02&theme=green&scheme=light&unknown=kept#usage",
+        "/ssr-button-blue-dark.html?widget=text-input&theme=green&scheme=light&unknown=kept#usage",
     )
     .unwrap();
     let route = Route::from_location(&location);
@@ -45,7 +45,7 @@ fn ssr_aliases_and_query_overrides_share_the_browser_decoder() {
             &*route.scheme,
             &*route.fragment
         ),
-        ("P0-02", "green", "light", "usage")
+        ("text-input", "green", "light", "usage")
     );
     assert_eq!(
         location.query().required::<String>("unknown").unwrap(),

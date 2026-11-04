@@ -13,7 +13,7 @@ stepper("checkout")
     .default_active(0);
 ```
 
-The root is a named Group. Step headers are actual Button controls inside List/ListItem semantics. Only the current header receives `Current::Step` (`aria-current="step"` on HTML and `AriaCurrent::Step` on AccessKit). Progress does not claim tab or selected semantics. Each header describes its ordinal, status, optional marker, and supplied description through a stable text relation. Orientation changes layout; keyboard activation remains native Enter/Space and Tab.
+The root is a named Group. Step headers are actual Button controls inside List/ListItem semantics. Only the current header receives `Current::Step` (`aria-current="step"` on HTML and `AriaCurrent::Step` on AccessKit). Progress does not claim tab or selected semantics. Each trigger shows a step number, completed check, or error mark while preserving its full accessible name. Independent title and description columns replace mixed status rows; Optional appears only when configured, and no synthetic Pending text is rendered. Orientation changes layout; keyboard activation remains native Enter/Space and Tab.
 
 `active` is a zero-based controlled input; `default_active` supplies local state only without it. Exactly the step count represents the explicit completed stage, with no current header. `.completed(factory)` supplies its content and `.completed_label(...)` names it. Initial out-of-range state fails before nodes are created; dynamic invalid values report an error while preserving the accepted step and selection bounds. External source changes are silent. Header requests use the accepted state, including after rejected or pending source writes.
 
@@ -49,6 +49,6 @@ The captured active version also protects against an application moving away and
 
 ## Evidence
 
-`tests/stepper.rs` has 13 passing cases for local/controlled values, skip boundaries, accepted-state rejection, disabled controls, status/error descriptions, completion, finite construction, stable relations, Owner policies, SSR, and synchronous/cancelled asynchronous form barriers. `examples/native/tests/stepper.rs` passes two tests covering four-theme real layout, controlled rejection, actual panel focus, kept engine identities, completion, and repeated Unmount retirement/recreation with the fixed Apace fork.
+`tests/stepper.rs` has 14 passing cases for local/controlled values, skip boundaries, accepted-state rejection, disabled controls, status/error descriptions, completion, finite construction, stable relations, Owner policies, SSR, and synchronous/cancelled asynchronous form barriers. `examples/native/tests/stepper.rs` passes two tests covering four-theme real layout, controlled rejection, actual panel focus, kept engine identities, completion, and repeated Unmount retirement/recreation with the fixed Apace fork.
 
 Chrome 155.0.8059.84 completed 9 reports with no errors in `D:/BuildCache/sapid/stepper-browser.json`: four-theme CSR/hydration, current/list/description semantics, optional/error/completion states, explicit skip, mouse/Enter/Space, controlled rejection, native disabled headers, sync/async FormState barriers, cancelled late-result rejection, actual panel focus, KeepMounted draft/identity, AX list, dirty hydration with caret/focus preservation, and Owner retirement. Screenshots are `stepper-*.png` in the same directory.

@@ -3,15 +3,30 @@ use crate::appearance::{Common, common_methods};
 use crate::composite::{self, Callback};
 use crate::state::{Control, Dirty, Value};
 use crate::{
-    DateSelection, DateTimeBounds, DateTimeDraft, DateTimeOutcome, DateTimeParts, DateTimePolicy,
-    DateTimeStatus, DatesProvider, FieldControl, LocalDateTime, LocalTime, TimeFormat,
-    TimeGridSpec, TimePickerDraft, TimePickerStatus,
+    DatePickerLevel, DateSelection, DateTimeBounds, DateTimeDraft, DateTimeOutcome, DateTimeParts,
+    DateTimePolicy, DateTimeStatus, DatesProvider, FieldControl, LocalDateTime, LocalTime,
+    TimeFormat, TimeGridSpec, TimePickerDraft, TimePickerStatus, YearMonth,
 };
 use glory::render::{Direction, NodeId, Role};
 use glory::style::{Display, FlexDirection};
 use glory::ui::{Result, WeakScope, Widget};
 use glory::{Cage, Scope, Vary};
 use std::{cell::Cell, rc::Rc};
+pub const MAX_DATE_TIME_PRESETS: usize = 32;
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DateTimePreset {
+    pub label: String,
+    pub value: LocalDateTime,
+}
+impl DateTimePreset {
+    pub fn new(label: impl Into<String>, value: LocalDateTime) -> Self {
+        Self {
+            label: label.into(),
+            value,
+        }
+    }
+}
 fn invalid() -> glory::ui::Error {
     glory::render::Error::InvalidProps("invalid finite date/time picker configuration").into()
 }
@@ -38,6 +53,7 @@ struct Controller {
     accepted: Cage<Snapshot>,
     input: glory::Bond<Snapshot>,
     policy: DateTimePolicy,
+    default_time: Option<LocalTime>,
     parts: Cage<DateTimeParts>,
     time_status: Cell<TimePickerStatus>,
     status: Cage<DateTimeStatus>,
@@ -173,7 +189,26 @@ impl Controller {
             return Err(invalid());
         };
         self.next()?;
-        self.parts.try_revise(|p| p.date = date)?;
+        self.parts.try_revise(|p| {
+            p.date = date;
+            if date.is_some() && p.time.is_none() {
+                p.time = self.default_time;
+            }
+        })?;
+        if date.is_some() && self.time_status.get() == TimePickerStatus::Empty {
+            self.time_status.set(
+                self.default_time
+                    .map_or(TimePickerStatus::Empty, TimePickerStatus::Valid),
+            );
+        }
+        self.propose()
+    }
+    fn preset(&self, value: LocalDateTime) -> Result {
+        self.ensure()?;
+        if !self.writable()? {
+            return Ok(());
+        }
+        self.reset_parts(Some(value))?;
         self.propose()
     }
     fn time_draft(&self, draft: TimePickerDraft) -> Result {
@@ -268,9 +303,26 @@ pub struct InlineDateTimePicker {
     bounds: Vary<DateTimeBounds>,
     revision: Vary<u64>,
     format: TimeFormat,
+    default_time: Option<LocalTime>,
+    presets: Vec<DateTimePreset>,
+    time_presets: Option<crate::TimePickerPresets>,
+    time_dropdown: bool,
+    time_reverse_controls: bool,
+    time_max_dropdown_height: f64,
+    time_steps: [u8; 3],
     readonly: Vary<bool>,
     field: Option<FieldControl>,
     direction: Direction,
+    month: Option<Vary<YearMonth>>,
+    default_month: Option<YearMonth>,
+    level: Option<Vary<DatePickerLevel>>,
+    default_level: DatePickerLevel,
+    max_level: DatePickerLevel,
+    columns: u8,
+    columns_to_scroll: Option<u8>,
+    hide_outside_dates: bool,
+    hide_weekdays: bool,
+    week_numbers: bool,
     grid: Option<TimeGridSpec>,
     refs: [Option<Cage<Option<NodeId>>>; 3],
     calendar_ref: Option<Cage<Option<NodeId>>>,
@@ -279,6 +331,8 @@ pub struct InlineDateTimePicker {
     drafted: Option<Box<dyn FnMut(DateTimeDraft)>>,
     committed: Option<Box<dyn FnMut(Option<DateTimeOutcome>)>>,
     rejected: Option<Box<dyn FnMut(DateTimeStatus)>>,
+    month_changed: Option<Box<dyn FnMut(YearMonth)>>,
+    level_changed: Option<Box<dyn FnMut(DatePickerLevel)>>,
 }
 pub fn inline_date_time_picker(
     key: impl Into<String>,
@@ -294,9 +348,26 @@ pub fn inline_date_time_picker(
         bounds: DateTimeBounds::default().into(),
         revision: 0.into(),
         format: TimeFormat::default(),
+        default_time: None,
+        presets: Vec::new(),
+        time_presets: None,
+        time_dropdown: false,
+        time_reverse_controls: false,
+        time_max_dropdown_height: 240.,
+        time_steps: [1; 3],
         readonly: false.into(),
         field: None,
         direction: Direction::Ltr,
+        month: None,
+        default_month: None,
+        level: None,
+        default_level: DatePickerLevel::Month,
+        max_level: DatePickerLevel::Decade,
+        columns: 1,
+        columns_to_scroll: None,
+        hide_outside_dates: false,
+        hide_weekdays: false,
+        week_numbers: false,
         grid: None,
         refs: [None; 3],
         calendar_ref: None,
@@ -305,6 +376,8 @@ pub fn inline_date_time_picker(
         drafted: None,
         committed: None,
         rejected: None,
+        month_changed: None,
+        level_changed: None,
     }
 }
 impl InlineDateTimePicker {
@@ -331,6 +404,34 @@ impl InlineDateTimePicker {
         self.format = v;
         self
     }
+    pub fn default_time(mut self, value: LocalTime) -> Self {
+        self.default_time = Some(value);
+        self
+    }
+    pub fn presets(mut self, values: impl IntoIterator<Item = DateTimePreset>) -> Self {
+        self.presets = values.into_iter().take(MAX_DATE_TIME_PRESETS + 1).collect();
+        self
+    }
+    pub fn time_presets(mut self, value: impl Into<crate::TimePickerPresets>) -> Self {
+        self.time_presets = Some(value.into());
+        self
+    }
+    pub fn time_dropdown(mut self, value: bool) -> Self {
+        self.time_dropdown = value;
+        self
+    }
+    pub fn reverse_time_controls(mut self, value: bool) -> Self {
+        self.time_reverse_controls = value;
+        self
+    }
+    pub fn max_time_dropdown_height(mut self, value: f64) -> Self {
+        self.time_max_dropdown_height = value;
+        self
+    }
+    pub fn time_steps(mut self, hour: u8, minute: u8, second: u8) -> Self {
+        self.time_steps = [hour, minute, second];
+        self
+    }
     pub fn readonly(mut self, v: impl Into<Vary<bool>>) -> Self {
         self.readonly = v.into();
         self
@@ -344,6 +445,46 @@ impl InlineDateTimePicker {
     }
     pub fn direction(mut self, v: Direction) -> Self {
         self.direction = v;
+        self
+    }
+    pub fn month(mut self, value: impl Into<Vary<YearMonth>>) -> Self {
+        self.month = Some(value.into());
+        self
+    }
+    pub fn default_month(mut self, value: YearMonth) -> Self {
+        self.default_month = Some(value);
+        self
+    }
+    pub fn level(mut self, value: impl Into<Vary<DatePickerLevel>>) -> Self {
+        self.level = Some(value.into());
+        self
+    }
+    pub fn default_level(mut self, value: DatePickerLevel) -> Self {
+        self.default_level = value;
+        self
+    }
+    pub fn max_level(mut self, value: DatePickerLevel) -> Self {
+        self.max_level = value;
+        self
+    }
+    pub fn number_of_columns(mut self, value: u8) -> Self {
+        self.columns = value;
+        self
+    }
+    pub fn columns_to_scroll(mut self, value: u8) -> Self {
+        self.columns_to_scroll = Some(value);
+        self
+    }
+    pub fn hide_outside_dates(mut self, value: bool) -> Self {
+        self.hide_outside_dates = value;
+        self
+    }
+    pub fn hide_weekdays(mut self, value: bool) -> Self {
+        self.hide_weekdays = value;
+        self
+    }
+    pub fn with_week_numbers(mut self, value: bool) -> Self {
+        self.week_numbers = value;
         self
     }
     pub fn grid(mut self, v: TimeGridSpec) -> Self {
@@ -386,6 +527,14 @@ impl InlineDateTimePicker {
         self.rejected = Some(Box::new(v));
         self
     }
+    pub fn on_month_change(mut self, value: impl FnMut(YearMonth) + 'static) -> Self {
+        self.month_changed = Some(Box::new(value));
+        self
+    }
+    pub fn on_level_change(mut self, value: impl FnMut(DatePickerLevel) + 'static) -> Self {
+        self.level_changed = Some(Box::new(value));
+        self
+    }
 }
 impl Widget for InlineDateTimePicker {
     fn build(&mut self, scope: &Scope) -> Result {
@@ -395,6 +544,24 @@ impl Widget for InlineDateTimePicker {
                 .key
                 .bytes()
                 .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
+            || self.presets.len() > MAX_DATE_TIME_PRESETS
+            || self.columns == 0
+            || self.columns > crate::MAX_DATE_PICKER_COLUMNS
+            || self
+                .columns_to_scroll
+                .is_some_and(|value| value == 0 || value > crate::MAX_DATE_PICKER_COLUMNS)
+            || self.presets.iter().any(|preset| {
+                preset.label.trim().is_empty()
+                    || preset.label.len() > 120
+                    || preset.label.contains(['\0', '\r', '\n'])
+            })
+            || !self.time_max_dropdown_height.is_finite()
+            || !(80.0..=1200.0).contains(&self.time_max_dropdown_height)
+            || self
+                .time_steps
+                .iter()
+                .enumerate()
+                .any(|(index, step)| *step == 0 || *step > if index == 0 { 24 } else { 59 })
         {
             return Err(invalid());
         }
@@ -422,6 +589,23 @@ impl Widget for InlineDateTimePicker {
             revision: revision.get(),
         });
         let format = self.format;
+        if let Some(value) = self.default_time {
+            format.validate(value).map_err(|_| invalid())?;
+        }
+        for preset in &self.presets {
+            if format.validate(preset.value.time()).is_err() {
+                return Err(invalid());
+            }
+        }
+        let mut preset_values = self
+            .presets
+            .iter()
+            .map(|preset| preset.value)
+            .collect::<Vec<_>>();
+        preset_values.sort_unstable();
+        if preset_values.windows(2).any(|pair| pair[0] == pair[1]) {
+            return Err(invalid());
+        }
         let accepted = composite::validated(scope, &source.into(), move |s: &Snapshot| {
             let provider = s.bounds.provider(s.provider).map_err(|_| invalid())?;
             if s.value.is_some_and(|v| {
@@ -443,6 +627,7 @@ impl Widget for InlineDateTimePicker {
             accepted,
             input: source,
             policy: self.policy.clone(),
+            default_time: self.default_time,
             parts: scope.cage(DateTimeParts::from_local(initial.value)),
             time_status: Cell::new(initial.value.map_or(TimePickerStatus::Empty, |v| {
                 TimePickerStatus::Valid(v.time())
@@ -516,7 +701,31 @@ impl Widget for InlineDateTimePicker {
         .size(self.common.size)
         .name("Date")
         .allow_deselect(true)
+        .default_level(self.default_level)
+        .max_level(self.max_level)
+        .number_of_columns(self.columns)
+        .hide_outside_dates(self.hide_outside_dates)
+        .hide_weekdays(self.hide_weekdays)
+        .with_week_numbers(self.week_numbers)
         .on_value_change(move |v| s.report(s.date(v)));
+        if let Some(value) = self.columns_to_scroll {
+            calendar = calendar.columns_to_scroll(value);
+        }
+        if let Some(value) = self.month.take() {
+            calendar = calendar.month(value);
+        }
+        if let Some(value) = self.default_month {
+            calendar = calendar.default_month(value);
+        }
+        if let Some(value) = self.level.take() {
+            calendar = calendar.level(value);
+        }
+        if let Some(callback) = self.month_changed.take() {
+            calendar = calendar.on_month_change(callback);
+        }
+        if let Some(callback) = self.level_changed.take() {
+            calendar = calendar.on_level_change(callback);
+        }
         if let Some(r) = self.calendar_ref {
             calendar = calendar.node_ref(r);
         }
@@ -524,6 +733,40 @@ impl Widget for InlineDateTimePicker {
             calendar = calendar.unstyled();
         }
         calendar.show_in(&content)?;
+        if !self.presets.is_empty() {
+            let mut buttons: Vec<Box<dyn Widget>> = Vec::with_capacity(self.presets.len());
+            for preset in std::mem::take(&mut self.presets) {
+                let choose = state.clone();
+                let label = preset.label;
+                let value = preset.value;
+                let selected = accepted.map(move |snapshot| snapshot.value == Some(value));
+                let enabled = accepted.map(move |snapshot| {
+                    snapshot.enabled && !snapshot.readonly && snapshot.bounds.contains(value)
+                });
+                let mut button = crate::toggle()
+                    .theme(self.common.theme.clone())
+                    .size(self.common.size)
+                    .class("sapid-date-time-preset")
+                    .label(label)
+                    .pressed(selected)
+                    .enabled(enabled)
+                    .on_pressed_change(move |pressed| {
+                        if pressed {
+                            choose.report(choose.preset(value));
+                        }
+                    });
+                if self.common.unstyled {
+                    button = button.unstyled();
+                }
+                buttons.push(Box::new(button));
+            }
+            crate::group()
+                .theme(self.common.theme.clone())
+                .class("sapid-date-time-presets")
+                .gap(6.)
+                .fill(buttons)
+                .show_in(&content)?;
+        }
         let parts = state.parts;
         let ontime = state.clone();
         let drafted = state.clone();
@@ -537,6 +780,16 @@ impl Widget for InlineDateTimePicker {
             .size(self.common.size)
             .on_draft_change(move |v| drafted.report(drafted.time_draft(v)))
             .on_value_change(move |v| ontime.report(ontime.time(v)));
+        time = time
+            .with_dropdown(self.time_dropdown)
+            .reverse_time_controls_list(self.time_reverse_controls)
+            .max_dropdown_content_height(self.time_max_dropdown_height)
+            .hour_step(self.time_steps[0])
+            .minute_step(self.time_steps[1])
+            .second_step(self.time_steps[2]);
+        if let Some(value) = self.time_presets.take() {
+            time = time.presets(value);
+        }
         if let Some(v) = self.grid {
             time = time.grid(v);
         }

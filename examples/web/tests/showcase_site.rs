@@ -14,21 +14,25 @@ fn nodes(app: &App) -> Vec<NodeId> {
 }
 
 #[test]
-fn catalogue_has_exactly_149_unique_routes_and_real_example_sources() {
+fn catalogue_has_exactly_181_unique_routes_and_real_example_sources() {
     let mut ids = std::collections::BTreeSet::new();
-    assert_eq!(ENTRIES.len(), 149);
+    let mut slugs = std::collections::BTreeSet::new();
+    assert_eq!(ENTRIES.len(), 181);
     for entry in ENTRIES {
         assert!(ids.insert(entry.id), "duplicate {}", entry.id);
+        assert!(slugs.insert(entry.slug), "duplicate {}", entry.slug);
         assert!(!entry.name.is_empty() && !entry.description.is_empty());
         assert!(!entry.code.trim().is_empty(), "missing source {}", entry.id);
-        assert!(showcase::route(entry.id, &Theme::blue_light()).contains(entry.id));
+        let route = showcase::route(entry.slug, &Theme::blue_light());
+        assert!(route.contains(&format!("widget={}", entry.slug)));
+        assert!(!route.contains(&format!("widget={}", entry.id)));
     }
 }
 
 #[test]
 fn docs_navigation_is_live_semantic_links_and_mobile_menu_is_rust_state() {
     let app = App::memory();
-    app.mount(showcase::site(Theme::blue_light(), "P0-01".into()))
+    app.mount(showcase::site(Theme::blue_light(), "button".into()))
         .unwrap();
     let all = nodes(&app);
     let navigation: Vec<_> = all
@@ -45,7 +49,7 @@ fn docs_navigation_is_live_semantic_links_and_mobile_menu_is_rust_state() {
                 .any(|c| c == "site-nav-link")
         })
         .collect();
-    assert_eq!(navigation.len(), 149);
+    assert_eq!(navigation.len(), 181);
     assert!(navigation.iter().all(|id| matches!(
         app.tree().node(*id).unwrap().descriptor.view().props,
         Props::Link(_)
@@ -92,7 +96,7 @@ fn docs_navigation_is_live_semantic_links_and_mobile_menu_is_rust_state() {
 #[test]
 fn documentation_tab_switches_directly_to_host_support() {
     let app = App::memory();
-    app.mount(showcase::site(Theme::blue_light(), "P0-01".into()))
+    app.mount(showcase::site(Theme::blue_light(), "button".into()))
         .unwrap();
     let capabilities = nodes(&app)
         .into_iter()
@@ -114,6 +118,35 @@ fn documentation_tab_switches_directly_to_host_support() {
 }
 
 #[test]
+fn props_and_styles_tabs_expose_only_real_sapid_rust_api() {
+    let app = App::memory();
+    app.mount(showcase::site(Theme::blue_light(), "button".into()))
+        .unwrap();
+    for (label, expected) in [
+        ("Properties", "Button properties"),
+        ("Styles API", "Widget classes"),
+    ] {
+        let tab = nodes(&app)
+            .into_iter()
+            .find(|id| {
+                matches!(
+                    app.tree().node(*id).unwrap().descriptor.view().props,
+                    Props::Button(button) if button.label == label
+                )
+            })
+            .unwrap();
+        app.dispatch(tab, Event::Activate).unwrap();
+        app.flush().unwrap();
+        assert!(nodes(&app).into_iter().any(|id| {
+            matches!(
+                app.tree().node(id).unwrap().descriptor.view().props,
+                Props::Text(text) if text.content == expected
+            )
+        }));
+    }
+}
+
+#[test]
 fn representative_ssr_documents_render_in_all_themes_without_frames() {
     for theme in [
         Theme::blue_light(),
@@ -121,7 +154,7 @@ fn representative_ssr_documents_render_in_all_themes_without_frames() {
         Theme::green_light(),
         Theme::green_dark(),
     ] {
-        for id in ["", "P0-01", "P0-02", "P9-01", "P13-01"] {
+        for id in ["", "button", "text-input", "mini-calendar", "area-chart"] {
             let html = glory::ssr::snapshot(showcase::site(theme.clone(), id.into()))
                 .unwrap()
                 .html;
@@ -153,6 +186,11 @@ fn every_displayed_source_builds_its_preview_and_fits_the_highlighter() {
     for entry in ENTRIES {
         assert!(entry.code.contains("pub fn demo("), "{}", entry.id);
         assert!(
+            !entry.code.to_ascii_lowercase().contains("mantine"),
+            "{} exposes a comparison-source brand in user-facing example code",
+            entry.id
+        );
+        assert!(
             !entry.code.contains("crate::"),
             "{} must be self-contained",
             entry.id
@@ -177,55 +215,89 @@ fn every_displayed_source_builds_its_preview_and_fits_the_highlighter() {
 #[test]
 fn focused_guides_render_their_own_widget_content() {
     let cases = [
-        ("P0-10", "Choose a fruit"),
         ("P1-01", "Email address"),
-        ("P1-02", "Work email"),
         ("P1-03", "Personal information"),
         ("P1-04", "Autosizes from three to six lines"),
         ("P1-05", "Account password"),
-        ("P1-06", "Addons and actions"),
-        ("P2-01", "Permissions"),
         ("P2-02", "Notifications"),
         ("P2-03", "Delivery"),
         ("P2-05", "Billing interval"),
         ("P2-06", "Languages"),
-        ("P2-07", "Text alignment"),
         ("P3-02", "Centered content"),
-        ("P3-03", "Grid 1"),
-        ("P3-07", "Getting started"),
+        ("P3-03", "Grid item 1"),
+        ("P3-07", "With icons"),
         ("P3-08", "Sapid design principles"),
-        ("P3-09", "Marked text"),
-        ("P3-11", "Project settings"),
+        ("P3-09", "let answer = 42;"),
+        ("P3-09-highlight", "important"),
+        ("P3-09-mark", "Marked text"),
+        ("P3-11", "Norway Fjord Adventures"),
         ("P3-12", "Account details"),
         ("P3-16", "to open search"),
         ("P3-18", "Project metadata"),
         ("P3-19", "Release progress"),
         ("P3-20", "12.5%"),
-        ("P5-01", "Delete this draft?"),
         ("P5-03", "Save draft"),
         ("P5-04", "About Ada"),
-        ("P5-05", "Changes saved"),
+        ("P5-05", "Alert title"),
         ("P5-10", "sapid-skeleton"),
         ("P5-12", "Background sync"),
         ("P7-01", "Amount"),
         ("P7-02", "Volume"),
         ("P7-03", "Price range"),
         ("P7-05", "Product rating"),
-        ("P10-01", "No files selected"),
+        ("P10-01", "Choose files"),
         ("P10-03", "Copy code"),
         ("P5-08", "File upload"),
         ("P6-01", "Semantic widgets"),
         ("P6-02", "Example pages"),
-        ("P6-10", "Editing tools"),
-        ("P13-05", "application-provided model catalogue"),
-        ("P13-06", "Suggested actions"),
+        ("P6-10", "Formatting"),
+        ("P11-02", "Reference annotations"),
+        ("P11-02-barchart", "Reference annotations"),
+        ("P11-02-linechart", "Reference annotations"),
+        ("P11-02-compositechart", "Reference annotations"),
+        ("P11-03", "Donut chart"),
+        ("P11-03-piechart", "Pie chart"),
+        ("P11-04", "Candlestick chart"),
+        ("P11-04-scatterchart", "Scatter chart"),
+        ("P11-05", "Funnel chart"),
+        ("P11-05-radarchart", "Radar chart"),
+        ("P11-06", "Heatmap"),
+        ("P11-06-matrixchart", "Matrix chart"),
+        ("P11-06-wafflechart", "Waffle chart"),
+        ("P11-07", "Bars list"),
+        ("P11-07-bulletchart", "Bullet chart"),
+        ("P11-08", "Treemap"),
+        ("P11-08-sankeychart", "Sankey chart"),
     ];
     for (id, expected) in cases {
-        let entry = sapid_web_example::showcase_catalog::find(id).unwrap();
+        let entry = sapid_web_example::showcase_catalog::find_by_id(id).unwrap();
         let html = glory::ssr::snapshot((entry.build)(Theme::blue_light()))
             .unwrap_or_else(|error| panic!("{id}: {error}"))
             .html;
         assert!(html.contains(expected), "{id} must render {expected:?}");
+    }
+}
+
+#[test]
+fn chart_guides_do_not_mount_the_shared_acceptance_workbench() {
+    let charts = ENTRIES.iter().filter(|entry| entry.group == "Charts");
+    assert_eq!(charts.clone().count(), 22);
+    for entry in charts {
+        let id = entry.id;
+        let html = glory::ssr::snapshot((entry.build)(Theme::blue_light()))
+            .unwrap()
+            .html;
+        assert!(!html.contains("Accept chart proposals"), "{id}");
+        assert!(!html.contains("Accept plot proposals"), "{id}");
+        assert!(!html.contains("Toggle chart owner"), "{id}");
+        assert!(!html.contains("Toggle plot owner"), "{id}");
+        assert!(!html.contains("chart-mode-Line"), "{id}");
+        assert!(!html.contains("plot-secondary"), "{id}");
+        assert_eq!(
+            html.matches("site-chart-card").count(),
+            if entry.task == "P11-02" { 4 } else { 1 },
+            "{id}"
+        );
     }
 }
 
@@ -236,19 +308,18 @@ fn playground_helpers_are_embedded_only_when_the_preview_uses_them() {
         ("P0-02", true),
         ("P0-03", true),
         ("P0-07", false),
-        ("P0-10", true),
         ("P2-08", false),
         ("P3-07", false),
         ("P7-05", true),
     ] {
-        let entry = sapid_web_example::showcase_catalog::find(id).unwrap();
+        let entry = sapid_web_example::showcase_catalog::find_by_id(id).unwrap();
         assert_eq!(entry.code.contains("mod controls {"), expected, "{id}");
     }
 }
 
 #[test]
 fn number_input_size_slider_updates_the_actual_preview() {
-    let entry = sapid_web_example::showcase_catalog::find("P7-01").unwrap();
+    let entry = sapid_web_example::showcase_catalog::find("number-input").unwrap();
     let app = App::memory();
     app.mount((entry.build)(Theme::blue_light())).unwrap();
     let size = nodes(&app)
@@ -360,12 +431,14 @@ fn route_changes_preserve_one_editor_workspace_without_retaining_old_views() {
         d.set_text(Layer::Base, Target::Role(0), "#1".into());
     });
     state.editor.layer.revise(|v| *v = Layer::Dark);
-    let mut next = Page::builtin(Theme::green_light(), "P0-01".into());
+    let mut next = Page::builtin(Theme::green_light(), "button".into());
     next.revision = 1;
+    next.shell_revision = 1;
     state.page.revise(|v| *v = next);
     app.flush().unwrap();
     let mut next = Page::builtin(Theme::green_dark(), "theme-studio".into());
     next.revision = 2;
+    next.shell_revision = 2;
     state.page.revise(|v| *v = next);
     app.flush().unwrap();
     assert_eq!(
@@ -385,4 +458,66 @@ fn route_changes_preserve_one_editor_workspace_without_retaining_old_views() {
     assert_eq!(app.stats().handlers, 0);
     drop(app);
     assert!(state.editor.draft.try_get().is_err());
+}
+
+#[test]
+fn document_navigation_preserves_sidebar_and_updates_current_link() {
+    use sapid_web_example::showcase_navigation::{Page, State, app as route_app};
+    let app = App::memory();
+    let state = State::new(
+        app.scope(),
+        Page::builtin(Theme::blue_light(), "alert".into()),
+        Vec::new(),
+        false,
+    );
+    app.mount(route_app(state)).unwrap();
+    let sidebar = nodes(&app)
+        .into_iter()
+        .find(|id| {
+            app.tree()
+                .node(*id)
+                .unwrap()
+                .descriptor
+                .view()
+                .classes
+                .iter()
+                .any(|class| class == "site-sidebar")
+        })
+        .unwrap();
+    for (revision, widget) in [(1, "skeleton"), (2, "loading-overlay"), (3, "alert")] {
+        state.page.revise(|page| {
+            page.route.widget = widget.into();
+            page.revision = revision;
+        });
+        app.flush().unwrap();
+        assert!(app.tree().node(sidebar).is_ok());
+        let current = nodes(&app)
+            .into_iter()
+            .filter(|id| {
+                app.tree()
+                    .node(*id)
+                    .unwrap()
+                    .descriptor
+                    .view()
+                    .classes
+                    .iter()
+                    .any(|class| class == "site-nav-link")
+                    && app
+                        .tree()
+                        .node(*id)
+                        .unwrap()
+                        .descriptor
+                        .view()
+                        .classes
+                        .iter()
+                        .any(|class| class == "is-active")
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(current.len(), 1);
+        assert!(
+            matches!(app.tree().node(current[0]).unwrap().descriptor.view().props, Props::Link(link) if link.target.contains(widget))
+        );
+    }
+    app.clear().unwrap();
+    assert_eq!(app.stats().nodes, 0);
 }

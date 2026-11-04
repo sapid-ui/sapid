@@ -360,12 +360,8 @@ pub mod data_table_server_form;
 pub mod date_picker_form;
 
 pub mod charts_form;
-pub mod chat_evidence_form;
-pub mod confirmation_form;
 pub mod lightbox_form;
-pub mod output_form;
 pub mod plots_form;
-pub mod tasks_form;
 pub mod tree_choices_form;
 pub mod tree_form;
 
@@ -381,26 +377,19 @@ pub mod schedule_calendar_form;
 pub mod schedule_form;
 pub mod schedule_timeline_form;
 pub mod showcase;
+pub mod showcase_api;
 pub mod showcase_catalog;
 pub mod showcase_examples;
 pub mod showcase_home;
 pub mod showcase_host;
 pub mod time_picker_form;
-pub mod trace_form;
 
 pub mod focus_scope_form;
 pub mod focus_scope_pages;
 
-pub mod message_scroller_form;
-pub mod messages_form;
-pub mod prompt_form;
-pub mod questionnaire_form;
-
 pub mod carousel_form;
 
 pub mod rich_editor_form;
-
-pub mod model_suggestions_form;
 
 pub mod showcase_demos;
 

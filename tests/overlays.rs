@@ -1,7 +1,8 @@
 use glory::render::{DismissReason, Event, LayerPlacement, NodeId, Semantics};
 use glory::ui::App;
 use sapid::{
-    AnchorAlign, AnchorPlacement, AnchorSide, ContentPolicy, DrawerSide, dialog, drawer, popover,
+    AnchorAlign, AnchorArrow, AnchorArrowPosition, AnchorPlacement, AnchorSide, ContentPolicy,
+    DrawerSide, PopoverWidth, dialog, drawer, popover,
 };
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -63,6 +64,35 @@ fn shared_layer_state_relations_and_local_dismissals() {
     assert!(metadata(&app, panel).hidden);
     assert_eq!(*calls.borrow(), [true, false]);
     assert_eq!(nodes(&app, "sapid-dialog")[0], panel);
+}
+
+#[test]
+fn full_screen_dialog_keeps_modal_protocol_and_fills_the_viewport_contract() {
+    use glory::style::{Length, Limit};
+    let app = App::memory();
+    app.mount(
+        dialog("full")
+            .title("Full screen editor")
+            .default_open(true)
+            .full_screen(true)
+            .content(|| glory::ui::text().content("Scrollable content")),
+    )
+    .unwrap();
+    let panel = nodes(&app, "sapid-dialog-full-screen")[0];
+    let tree = app.tree();
+    let view = tree.node(panel).unwrap().descriptor.view();
+    assert_eq!(view.style.width, Some(Length::Percent(100.)));
+    assert_eq!(view.style.height, Some(Length::Percent(100.)));
+    assert_eq!(view.style.max_width, Some(Limit::None));
+    assert_eq!(view.style.max_height, Some(Limit::None));
+    assert_eq!(view.style.radius, Some(0.));
+    let semantics = view.semantics.as_deref().unwrap();
+    assert!(!semantics.hidden);
+    assert!(semantics.layer.as_ref().unwrap().modal);
+    assert_eq!(
+        semantics.layer.as_ref().unwrap().placement,
+        LayerPlacement::Center
+    );
 }
 #[test]
 fn controlled_rejection_and_external_state_changes_are_silent() {
@@ -217,6 +247,47 @@ fn drawer_edges_popover_alignment_and_dismiss_policy_use_typed_metadata() {
         ))
     );
     assert!(l.anchor.is_some());
+}
+
+#[test]
+fn popover_width_offset_and_arrow_are_finite_host_contracts() {
+    let app = App::memory();
+    app.mount(
+        popover("geometry")
+            .width(PopoverWidth::Target)
+            .offset(15.0)
+            .arrow(AnchorArrow {
+                size: 10.0,
+                radius: 2.0,
+                offset: 12.0,
+                position: AnchorArrowPosition::Side,
+            }),
+    )
+    .unwrap();
+    let layer = metadata(&app, nodes(&app, "sapid-popover")[0])
+        .layer
+        .unwrap();
+    let LayerPlacement::Anchor(placement) = layer.placement else {
+        panic!("popover must remain anchored");
+    };
+    assert!(placement.match_width);
+    assert_eq!(placement.gap, 15.0);
+    assert_eq!(placement.arrow.unwrap().size, 10.0);
+
+    assert!(
+        App::memory()
+            .mount(popover("invalid-width").width(PopoverWidth::Px(f64::NAN)))
+            .is_err()
+    );
+    assert!(
+        App::memory()
+            .mount(popover("invalid-arrow").arrow(AnchorArrow {
+                size: 4.0,
+                radius: 3.0,
+                ..AnchorArrow::default()
+            }))
+            .is_err()
+    );
 }
 #[test]
 fn content_policy_retires_or_preserves_child_owners_and_hidden_events() {

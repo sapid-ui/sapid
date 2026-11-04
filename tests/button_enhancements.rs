@@ -58,6 +58,58 @@ fn five_sizes_share_control_tokens_and_icon_dimensions() {
 }
 
 #[test]
+fn compact_buttons_reduce_height_and_vertical_padding_without_changing_size_tokens() {
+    for (size, height, padding) in [
+        (Size::ExtraSmall, 16.0, 1.0),
+        (Size::Small, 22.0, 2.0),
+        (Size::Medium, 28.0, 3.0),
+        (Size::Large, 34.0, 4.0),
+        (Size::ExtraLarge, 42.0, 4.0),
+    ] {
+        let app = App::memory();
+        app.mount(button().size(size).compact(true).label("Save"))
+            .unwrap();
+        let tree = app.tree();
+        let style = tree.node(root(&app)).unwrap().descriptor.view().style;
+        assert_eq!(style.min_height, Some(Length::Px(height)));
+        let actual = style.padding.unwrap();
+        assert_eq!(actual.top, padding);
+        assert_eq!(actual.bottom, padding);
+    }
+}
+
+#[test]
+fn reactive_compact_updates_the_same_button_in_place() {
+    let app = App::memory();
+    let compact = app.scope().cage(true);
+    app.mount(button().compact(compact).label("Save")).unwrap();
+    let id = root(&app);
+    assert_eq!(
+        app.tree()
+            .node(id)
+            .unwrap()
+            .descriptor
+            .view()
+            .style
+            .min_height,
+        Some(Length::Px(28.0))
+    );
+    compact.revise(|value| *value = false);
+    app.flush().unwrap();
+    assert_eq!(root(&app), id);
+    assert_eq!(
+        app.tree()
+            .node(id)
+            .unwrap()
+            .descriptor
+            .view()
+            .style
+            .min_height,
+        Some(Length::Px(36.0))
+    );
+}
+
+#[test]
 fn added_button_variants_survive_loading_disabled_and_style_overrides() {
     for theme in [
         sapid::Theme::blue_light(),

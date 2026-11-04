@@ -63,6 +63,48 @@ fn button(app: &App, label: &str) -> NodeId {
     all(app).into_iter().find(|id|matches!(app.tree().node(*id).unwrap().descriptor.view().props,Props::Button(v)if v.label==label)).unwrap()
 }
 #[test]
+fn calendar_presentation_options_hide_headings_bound_previews_and_mark_explicit_today() {
+    let app = App::memory();
+    app.mount(
+        month_view("presentation", data())
+            .with_header(false)
+            .with_weekdays(false)
+            .show_outside_days(false)
+            .max_events_per_day(1)
+            .today(d("2024-02-29")),
+    )
+    .unwrap();
+    assert!(class(&app, "sapid-schedule-header").is_empty());
+    assert!(class(&app, "sapid-schedule-weekday-row").is_empty());
+    assert_eq!(class(&app, "sapid-agenda-event").len(), 2);
+    assert_eq!(class(&app, "sapid-schedule-more").len(), 2);
+    let slots = class(&app, "sapid-schedule-period-slot");
+    let outside = slots[0];
+    assert!(matches!(
+        app.tree().node(outside).unwrap().descriptor.view().props,
+        Props::Button(value) if value.label.is_empty()
+    ));
+    let today = named(&app, "Thursday, February 29, 2024, 5 events");
+    assert_eq!(
+        app.tree()
+            .node(today)
+            .unwrap()
+            .descriptor
+            .view()
+            .style
+            .border_width,
+        Some(glory::style::Edges::all(2.))
+    );
+
+    let rejected = App::memory();
+    assert!(
+        rejected
+            .mount(month_view("bad-limit", data()).max_events_per_day(0))
+            .is_err()
+    );
+    assert!(rejected.tree().roots().is_empty());
+}
+#[test]
 fn exact_calendar_windows_handle_leap_lengths_and_reject_unrepresentable_exclusive_ends() {
     assert_eq!(
         ScheduleWindow::month(d("2024-02-10").year_month())

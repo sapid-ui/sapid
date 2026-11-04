@@ -16,6 +16,33 @@ use std::{
     cell::{Cell, RefCell},
     rc::Rc,
 };
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct SliderMark {
+    pub value: f64,
+    pub label: Option<String>,
+    pub hidden: bool,
+}
+impl SliderMark {
+    pub fn new(value: f64, label: impl Into<String>) -> Self {
+        Self {
+            value,
+            label: Some(label.into()),
+            hidden: false,
+        }
+    }
+    pub fn unlabeled(value: f64) -> Self {
+        Self {
+            value,
+            label: None,
+            hidden: false,
+        }
+    }
+    pub fn hidden(mut self, value: bool) -> Self {
+        self.hidden = value;
+        self
+    }
+}
 fn invalid(message: &'static str) -> glory::ui::Error {
     glory::render::Error::InvalidProps(message).into()
 }
@@ -25,6 +52,8 @@ struct Snapshot {
     enabled: bool,
     readonly: bool,
     mapping: Mapping,
+    marks: Rc<[SliderMark]>,
+    restrict_to_marks: bool,
 }
 impl Snapshot {
     fn validate(&self) -> Result {
@@ -32,6 +61,37 @@ impl Snapshot {
         self.range.validate()?;
         self.mapping
             .validate(self.range.range, self.range.step, self.range.page_step)?;
+        let mut previous = None;
+        for mark in self.marks.iter() {
+            if !mark.value.is_finite()
+                || mark.value < self.range.range.min
+                || mark.value > self.range.range.max
+                || previous.is_some_and(|value| value >= mark.value)
+                || mark.label.as_ref().is_some_and(|label| {
+                    label.is_empty() || label.len() > 256 || label.contains(['\0', '\r', '\n'])
+                })
+            {
+                return Err(invalid(
+                    "slider marks must be sorted, unique, inside the range and have optional 1..=256 byte single-line labels",
+                ));
+            }
+            previous = Some(mark.value);
+        }
+        if self.restrict_to_marks && self.marks.is_empty() {
+            return Err(invalid(
+                "slider restricted selection requires at least one mark",
+            ));
+        }
+        if self.restrict_to_marks
+            && !self
+                .marks
+                .iter()
+                .any(|mark| mark.value == self.range.range.value)
+        {
+            return Err(invalid(
+                "slider restricted value must equal one declared mark",
+            ));
+        }
         if [self.range.range.min, self.range.range.max]
             .into_iter()
             .any(|v| v.abs() > 1e12)
@@ -58,6 +118,17 @@ impl Snapshot {
     fn snap(&self, value: f64) -> f64 {
         let range = self.range.range;
         let value = value.clamp(range.min, range.max);
+        if self.restrict_to_marks {
+            return self
+                .marks
+                .iter()
+                .min_by(|left, right| {
+                    (left.value - value)
+                        .abs()
+                        .total_cmp(&(right.value - value).abs())
+                })
+                .map_or(value, |mark| mark.value);
+        }
         if value == range.min || value == range.max {
             return value;
         }
@@ -203,17 +274,36 @@ impl Controller {
             state.range.range.value
         };
         let range = state.range.range;
-        let value = state.mapping.key(
-            current,
-            command,
-            range,
-            state.range.step,
-            state.range.page_step,
-        );
-        let value = if state.mapping.retains_increment(command) {
-            value
+        let value = if state.restrict_to_marks {
+            match command {
+                RangeCommand::Minimum => state.marks.first().map_or(current, |mark| mark.value),
+                RangeCommand::Maximum => state.marks.last().map_or(current, |mark| mark.value),
+                RangeCommand::Increase | RangeCommand::PageIncrease => state
+                    .marks
+                    .iter()
+                    .find(|mark| mark.value > current)
+                    .map_or(current, |mark| mark.value),
+                RangeCommand::Decrease | RangeCommand::PageDecrease => state
+                    .marks
+                    .iter()
+                    .rev()
+                    .find(|mark| mark.value < current)
+                    .map_or(current, |mark| mark.value),
+                RangeCommand::Set(value) => state.snap(value),
+            }
         } else {
-            state.snap(value)
+            let value = state.mapping.key(
+                current,
+                command,
+                range,
+                state.range.step,
+                state.range.page_step,
+            );
+            if state.mapping.retains_increment(command) {
+                value
+            } else {
+                state.snap(value)
+            }
         };
         if value != current {
             self.propose(value)?;
@@ -393,6 +483,8 @@ pub struct Slider {
     thumb_color: Option<Vary<glory::style::Color>>,
     mapping: Mapping,
     default_text: bool,
+    marks: Vec<SliderMark>,
+    restrict_to_marks: bool,
 }
 pub fn slider(key: impl Into<String>) -> Slider {
     Slider {
@@ -418,6 +510,8 @@ pub fn slider(key: impl Into<String>) -> Slider {
         thumb_color: None,
         mapping: Mapping::Linear,
         default_text: false,
+        marks: Vec::new(),
+        restrict_to_marks: false,
     }
 }
 impl Slider {
@@ -501,6 +595,14 @@ impl Slider {
     }
     pub fn page_step(mut self, value: impl Into<Vary<f64>>) -> Self {
         self.page = Some(value.into());
+        self
+    }
+    pub fn marks(mut self, values: impl IntoIterator<Item = SliderMark>) -> Self {
+        self.marks = values.into_iter().collect();
+        self
+    }
+    pub fn restrict_to_marks(mut self, value: bool) -> Self {
+        self.restrict_to_marks = value;
         self
     }
     pub fn value_text(mut self, value: impl Into<Vary<Option<String>>>) -> Self {
@@ -604,6 +706,12 @@ impl Widget for Slider {
         let axis = self.axis;
         let direction = self.direction;
         let default_text = self.default_text;
+        if self.marks.len() > 64 {
+            return Err(invalid("slider supports at most 64 marks"));
+        }
+        let marks: Rc<[SliderMark]> = std::mem::take(&mut self.marks).into();
+        let restrict_to_marks = self.restrict_to_marks;
+        let read_marks = marks.clone();
         let read = move || -> Result<Snapshot> {
             let step = step.try_get()?;
             let page = page
@@ -623,6 +731,8 @@ impl Widget for Slider {
                     value_text: None,
                 },
                 mapping,
+                marks: read_marks.clone(),
+                restrict_to_marks,
                 enabled: enabled.try_get()?,
                 readonly: field_metadata.try_with(|metadata| {
                     metadata.as_ref().is_some_and(|metadata| metadata.readonly)
@@ -716,6 +826,9 @@ impl Widget for Slider {
         let horizontal = axis == Orientation::Horizontal;
         let focused = scope.cage(false);
         let focus_ring = self.common.theme.focus_ring;
+        let has_mark_labels = marks
+            .iter()
+            .any(|mark| !mark.hidden && mark.label.is_some());
         let base = Style::new()
             .position(Position::Relative)
             .width(Length::Px(if mapping == Mapping::Angle {
@@ -723,7 +836,7 @@ impl Widget for Slider {
             } else if horizontal {
                 240.0
             } else {
-                size
+                size + if has_mark_labels { 24.0 } else { 0.0 }
             }))
             .height(Length::Px(if mapping == Mapping::Angle {
                 size * 3. + 12.
@@ -932,6 +1045,78 @@ impl Widget for Slider {
                 style
             }))
             .show_in(&parent)?;
+        let mark_label_color = self.common.theme.muted;
+        for mark in marks.iter().cloned() {
+            if mark.hidden {
+                continue;
+            }
+            let marker_state = accepted;
+            let marker = glory::ui::view()
+                .class("sapid-slider-mark")
+                .style(scope.bond(move || {
+                    let state = marker_state.get();
+                    let fraction = ((mark.value - state.range.range.min)
+                        / (state.range.range.max - state.range.range.min)
+                        * 100.0)
+                        .clamp(0.0, 100.0);
+                    let mut style = Style::new()
+                        .position(Position::Absolute)
+                        .width(Length::Px(8.0))
+                        .height(Length::Px(8.0));
+                    if horizontal {
+                        style.left = Some(Length::Percent(if direction == Direction::Rtl {
+                            100.0 - fraction
+                        } else {
+                            fraction
+                        }));
+                        style.top = Some(Length::Px(size / 2.0 - 4.0));
+                        style.margin = Some(Edges {
+                            top: 0.0,
+                            right: 0.0,
+                            bottom: 0.0,
+                            left: -4.0,
+                        });
+                    } else {
+                        style.bottom = Some(Length::Percent(fraction));
+                        style.left = Some(Length::Px(size / 2.0 - 4.0));
+                    }
+                    if !unstyled {
+                        style.background = Some(track_color);
+                        style.radius = Some(4.0);
+                    }
+                    style
+                }));
+            marker.show_in(&parent)?;
+            if let Some(label) = mark.label {
+                let label_state = accepted;
+                glory::ui::text()
+                    .class("sapid-slider-mark-label")
+                    .content(label)
+                    .style(scope.bond(move || {
+                        let state = label_state.get();
+                        let fraction = ((mark.value - state.range.range.min)
+                            / (state.range.range.max - state.range.range.min)
+                            * 100.0)
+                            .clamp(0.0, 100.0);
+                        let mut style = Style::new().position(Position::Absolute);
+                        if horizontal {
+                            style.left = Some(Length::Percent(if direction == Direction::Rtl {
+                                100.0 - fraction
+                            } else {
+                                fraction
+                            }));
+                            style.top = Some(Length::Px(size));
+                        } else {
+                            style.bottom = Some(Length::Percent(fraction));
+                            style.left = Some(Length::Px(size));
+                        }
+                        style.font_size = Some(11.0);
+                        style.color = Some(mark_label_color);
+                        style
+                    }))
+                    .show_in(&parent)?;
+            }
+        }
         scope.retain(parent)?;
         Ok(())
     }

@@ -229,12 +229,12 @@ impl State {
         }
         Ok(())
     }
-    fn rows(&self, index: usize, all: bool) -> Vec<AgendaRow> {
+    fn rows(&self, index: usize, all: bool, limit: usize) -> Vec<AgendaRow> {
         self.prepared.with(|p| {
             let cell = &p.cells[index];
             cell.indices
                 .iter()
-                .take(if all { MAX_SCHEDULE_OCCURRENCES } else { 3 })
+                .take(if all { MAX_SCHEDULE_OCCURRENCES } else { limit })
                 .map(|i| p.events[*i].clone())
                 .collect()
         })
@@ -250,6 +250,10 @@ pub(super) struct Config {
     pub unstyled: bool,
     pub size: crate::Size,
     pub grid_ref: Option<Cage<Option<NodeId>>>,
+    pub with_weekdays: bool,
+    pub show_outside_days: bool,
+    pub today: Option<CivilDate>,
+    pub max_events_per_day: usize,
 }
 pub(super) fn build(scope: &Scope, root: Rc<Controller>, config: Config) -> Result {
     let Config {
@@ -262,12 +266,16 @@ pub(super) fn build(scope: &Scope, root: Rc<Controller>, config: Config) -> Resu
         unstyled,
         size,
         grid_ref,
+        with_weekdays,
+        show_outside_days,
+        today,
+        max_events_per_day,
     } = config;
     let data = root.accepted;
     let prepared = scope.bond(move || data.with(|d| prepare(d, view, week_start)));
     let columns = if view == ScheduleView::Year { 3 } else { 7 };
     let count = if view == ScheduleView::Year { 12 } else { 42 };
-    let header_rows = usize::from(view != ScheduleView::Year);
+    let header_rows = usize::from(view != ScheduleView::Year && with_weekdays);
     let initial = prepared.with(|p| p.cells.iter().position(|c| c.span.is_some()).unwrap());
     let state = Rc::new(State {
         root: root.clone(),
@@ -407,6 +415,9 @@ pub(super) fn build(scope: &Scope, root: Rc<Controller>, config: Config) -> Resu
                 locale,
                 theme: theme.clone(),
                 unstyled,
+                show_outside_days,
+                today,
+                max_events_per_day,
             }
             .show_in(&row_scope)?;
         }
@@ -421,7 +432,7 @@ pub(super) fn build(scope: &Scope, root: Rc<Controller>, config: Config) -> Resu
                 AgendaDay {
                     date: c.date.unwrap(),
                     label: locale.date_label(c.date.unwrap()),
-                    rows: s.rows(index, true),
+                    rows: s.rows(index, true, max_events_per_day),
                 }
             })
         });
@@ -489,6 +500,9 @@ struct CalendarCell {
     locale: DateLocale,
     theme: crate::Theme,
     unstyled: bool,
+    show_outside_days: bool,
+    today: Option<CivilDate>,
+    max_events_per_day: usize,
 }
 impl Widget for CalendarCell {
     fn build(&mut self, scope: &Scope) -> Result {
@@ -498,6 +512,9 @@ impl Widget for CalendarCell {
         let locale = self.locale;
         let theme = self.theme.clone();
         let unstyled = self.unstyled;
+        let show_outside_days = self.show_outside_days;
+        let today = self.today;
+        let max_events_per_day = self.max_events_per_day;
         let state = self.state.clone();
         let flags = state.root.flags;
         let selection = state.root.selection.source.clone();
@@ -534,8 +551,11 @@ impl Widget for CalendarCell {
         let content = child(scope, cell)?;
         let labels = scope.bond(move || {
             p.with(|p| {
-                p.cells[index]
-                    .date
+                let cell = &p.cells[index];
+                if !show_outside_days && cell.span.is_none() {
+                    return String::new();
+                }
+                cell.date
                     .map(|d| {
                         if view == ScheduleView::Year {
                             format!("{} {}", locale.month_name(d.year_month()), d.year())
@@ -548,8 +568,11 @@ impl Widget for CalendarCell {
         });
         let names = scope.bond(move || {
             p.with(|p| {
-                p.cells[index]
-                    .date
+                let cell = &p.cells[index];
+                if !show_outside_days && cell.span.is_none() {
+                    return "Outside civil date domain".into();
+                }
+                cell.date
                     .map(|d| {
                         if view == ScheduleView::Year {
                             format!(
@@ -576,7 +599,7 @@ impl Widget for CalendarCell {
         glory::ui::button().class("sapid-schedule-period-slot").label(labels).name(names).node_ref(reference)
             .enabled(scope.bond(move||flags.with(|f|f.enabled)&&p.with(|p|p.cells[index].span.is_some())))
             .focus(scope.bond(move||if focused.get()==index{FocusMode::TabStop}else{FocusMode::Programmatic}))
-            .style(scope.bond(move||{let mut style=Style::new().width(Length::Percent(100.)).height(Length::Px(if view==ScheduleView::MobileMonth{48.}else{36.})).padding(Edges::all(2.));if !unstyled{let active=chosen.with(|v|matches!(v,Some(ScheduleSelection::Slot{interval,resource:None})if p.with(|p|p.cells[index].span==Some(*interval))));style.background=Some(if active{t.accent_soft}else{t.surface});style.color=Some(if !p.with(|p|p.cells[index].span.is_some()) || !flags.with(|f|f.enabled) {t.disabled_text}else if active{t.accent_text}else{t.foreground});style=style.border_width(Edges::all(1.)).border_style(BorderStyle::Solid).border_color(if reference.get().is_some_and(|id|physical.get()==Some(id)){t.accent}else{t.border});}style}))
+            .style(scope.bond(move||{let mut style=Style::new().width(Length::Percent(100.)).height(Length::Px(if view==ScheduleView::MobileMonth{48.}else{36.})).padding(Edges::all(2.));if !unstyled{let active=chosen.with(|v|matches!(v,Some(ScheduleSelection::Slot{interval,resource:None})if p.with(|p|p.cells[index].span==Some(*interval))));let is_today=today.is_some_and(|today|p.with(|p|p.cells[index].date==Some(today)));style.background=Some(if active{t.accent_soft}else if is_today{t.input}else{t.surface});style.color=Some(if !p.with(|p|p.cells[index].span.is_some()) || !flags.with(|f|f.enabled) {t.disabled_text}else if active{t.accent_text}else{t.foreground});style=style.border_width(Edges::all(if is_today{2.}else{1.})).border_style(BorderStyle::Solid).border_color(if reference.get().is_some_and(|id|physical.get()==Some(id))||is_today{t.accent}else{t.border});}style}))
             .on(EventKind::Activate,move|e|{s.report(s.activate(index));s.root.activated.emit(s.root.owner,e);})
             .on(EventKind::FocusChanged,move|e|{if let Event::FocusChanged(active)=e{f.report(f.focus(index,active));}}).show_in(&content)?;
         if view != ScheduleView::Month {
@@ -614,7 +637,7 @@ impl Widget for CalendarCell {
             let expanded = state.expanded;
             let rows = scope.bond(move || {
                 let all = expanded.get() == Some(index);
-                s.rows(index, all)
+                s.rows(index, all, max_events_per_day)
             });
             let root = state.root.clone();
             let event_theme = theme.clone();
@@ -650,7 +673,8 @@ impl Widget for CalendarCell {
                     ..Default::default()
                 }))
             });
-            let has_more = scope.bond(move || p.with(|p| p.cells[index].indices.len() > 3));
+            let has_more =
+                scope.bond(move || p.with(|p| p.cells[index].indices.len() > max_events_per_day));
             let more_name = scope.bond(move || {
                 p.with(|p| format!("Show events for {}", p.cells[index].date.unwrap()))
             });

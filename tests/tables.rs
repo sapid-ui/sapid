@@ -191,3 +191,109 @@ fn row_group_span_grid_maps_explicit_coordinates_and_headers_without_cycles() {
     }
     assert_eq!(seen, 6);
 }
+
+fn styles_for(app: &App, class: &str) -> Vec<glory::style::Style> {
+    let tree = app.tree();
+    let mut pending = tree.roots().to_vec();
+    let mut result = Vec::new();
+    while let Some(id) = pending.pop() {
+        let node = tree.node(id).unwrap();
+        if node
+            .descriptor
+            .view()
+            .classes
+            .iter()
+            .any(|value| value == class)
+        {
+            result.push(node.descriptor.view().style.clone());
+        }
+        pending.extend(node.children.iter().copied());
+    }
+    result
+}
+
+#[test]
+fn table_exposes_sticky_spacing_border_and_numeric_presentation() {
+    let app = App::memory();
+    app.mount(
+        table("presentation")
+            .sticky_header(true)
+            .sticky_header_offset(glory::style::Length::Px(60.0))
+            .horizontal_spacing(20.0)
+            .vertical_spacing(4.0)
+            .with_table_border(true)
+            .with_column_borders(true)
+            .with_row_borders(true)
+            .highlight_on_hover(true)
+            .tabular_nums(true)
+            .striped_pattern(sapid::TableStripe::Even)
+            .head(
+                table_head().row(table_row("head").cell(table_header_cell("value").text("Value"))),
+            )
+            .body(
+                table_body()
+                    .row(table_row("first").cell(table_cell("value").text("1")))
+                    .row(table_row("second").cell(table_cell("value").text("2"))),
+            ),
+    )
+    .unwrap();
+    let root = app.tree();
+    assert!(root.roots().iter().any(|id| {
+        let view = root.node(*id).unwrap().descriptor.view();
+        view.classes.contains(&"sapid-table-hover".to_owned())
+            && view
+                .classes
+                .contains(&"sapid-table-tabular-nums".to_owned())
+            && view.style.border_width == Some(glory::style::Edges::all(1.0))
+    }));
+    let cells = styles_for(&app, "sapid-table-cell");
+    let sticky = cells
+        .iter()
+        .find(|style| style.position == Some(glory::style::Position::Sticky))
+        .expect("sticky header cell");
+    assert_eq!(sticky.top, Some(glory::style::Length::Px(60.0)));
+    assert_eq!(
+        sticky.padding,
+        Some(glory::style::Edges {
+            top: 4.0,
+            bottom: 4.0,
+            left: 20.0,
+            right: 20.0
+        })
+    );
+    assert_eq!(
+        sticky.border_width,
+        Some(glory::style::Edges {
+            top: 0.0,
+            bottom: 1.0,
+            left: 1.0,
+            right: 1.0
+        })
+    );
+    let rows = styles_for(&app, "sapid-table-row");
+    assert_eq!(rows.len(), 3);
+    assert!(
+        rows.iter()
+            .any(|style| style.background == Some(sapid::Theme::blue_light().accent_soft))
+    );
+}
+
+#[test]
+fn caption_can_follow_the_table_and_invalid_spacing_is_rejected() {
+    let html = glory::ssr::render(
+        table("caption-order")
+            .caption("Bottom caption")
+            .caption_side(sapid::TableCaptionSide::Bottom)
+            .body(table_body().row(table_row("row").cell(table_cell("value").text("1")))),
+    )
+    .unwrap();
+    assert!(html.find("<caption").unwrap() > html.find("<tbody").unwrap());
+    for spacing in [-1.0, f64::NAN] {
+        let app = App::memory();
+        assert!(
+            app.mount(table("invalid").horizontal_spacing(spacing))
+                .is_err()
+        );
+        assert!(app.tree().is_empty());
+    }
+}

@@ -1,6 +1,8 @@
 #![cfg(feature = "dates")]
 use glory::prelude::*;
-use glory::render::{InputProps, NodeId, Props};
+use glory::render::{
+    DismissReason, InputEdit, InputEditIntent, InputProps, NodeId, Props, Semantics, TextSelection,
+};
 use sapid::prelude::*;
 use std::{cell::RefCell, rc::Rc};
 fn t(s: &str) -> LocalTime {
@@ -52,6 +54,30 @@ fn button(app: &App, name: &str) -> NodeId {
             let d = tree.node(*id).unwrap().descriptor.view();
             matches!(d.props,Props::Button(p)if p.label==name) || d.name.as_deref() == Some(name)
         })
+        .unwrap()
+}
+fn nodes(app: &App, class: &str) -> Vec<NodeId> {
+    all(app)
+        .into_iter()
+        .filter(|id| {
+            app.tree().node(*id).is_ok_and(|node| {
+                node.descriptor
+                    .view()
+                    .classes
+                    .iter()
+                    .any(|item| item == class)
+            })
+        })
+        .collect()
+}
+fn semantics(app: &App, id: NodeId) -> Semantics {
+    *app.tree()
+        .node(id)
+        .unwrap()
+        .descriptor
+        .view()
+        .semantics
+        .clone()
         .unwrap()
 }
 #[test]
@@ -124,7 +150,7 @@ fn noon_midnight_afternoon_toggle_and_second_segments_keep_full_wall_clock_preci
             .on_value_change(move |next| v.revise(|old| *old = next)),
     )
     .unwrap();
-    let toggle = button(&app, "Afternoon (PM)");
+    let toggle = button(&app, "AM/PM");
     assert_eq!(props(&app, h.get().unwrap()).value, "12");
     app.dispatch(toggle, Event::Activate).unwrap();
     app.flush().unwrap();
@@ -394,4 +420,499 @@ fn explicit_segment_steps_use_real_spin_protocol_and_reject_zero_before_building
     let bad = App::memory();
     assert!(bad.mount(time_picker("bad-step").minute_step(0)).is_err());
     assert_eq!(bad.stats().nodes, 0);
+}
+
+#[test]
+fn clearable_uses_the_controlled_value_protocol_and_respects_control_state() {
+    let app = App::memory();
+    let value = app.scope().cage(Some(t("10:20")));
+    let readonly = app.scope().cage(false);
+    let calls = app.scope().cage(0usize);
+    app.mount(
+        time_picker("clearable")
+            .value(value)
+            .readonly(readonly)
+            .clearable(true)
+            .clear_label("Clear appointment time")
+            .on_value_change(move |next| {
+                value.revise(|old| *old = next);
+                calls.revise(|count| *count += 1);
+            }),
+    )
+    .unwrap();
+    let clear = button(&app, "Clear appointment time");
+    app.dispatch(clear, Event::Activate).unwrap();
+    app.flush().unwrap();
+    assert_eq!(value.get(), None);
+    assert_eq!(calls.get(), 1);
+    assert!(!all(&app).contains(&clear));
+
+    value.revise(|value| *value = Some(t("11:30")));
+    readonly.revise(|value| *value = true);
+    app.flush().unwrap();
+    let clear = button(&app, "Clear appointment time");
+    assert!(!app.tree().enabled(clear));
+    assert!(!app.dispatch(clear, Event::Activate).unwrap());
+    assert_eq!(value.get(), Some(t("11:30")));
+
+    let refused = App::memory();
+    let fixed = refused.scope().cage(Some(t("09:00")));
+    let proposals = refused.scope().cage(0usize);
+    refused
+        .mount(
+            time_picker("clear-refused")
+                .value(fixed)
+                .clearable(true)
+                .on_value_change(move |_| proposals.revise(|count| *count += 1)),
+        )
+        .unwrap();
+    let clear = button(&refused, "Clear time");
+    refused.dispatch(clear, Event::Activate).unwrap();
+    refused.flush().unwrap();
+    assert_eq!(fixed.get(), Some(t("09:00")));
+    assert_eq!(proposals.get(), 1);
+    assert_eq!(
+        props(
+            &refused,
+            all(&refused)
+                .into_iter()
+                .find(|id| {
+                    refused
+                        .tree()
+                        .node(*id)
+                        .is_ok_and(|node| node.descriptor.view().name.as_deref() == Some("Hour"))
+                })
+                .unwrap()
+        )
+        .value,
+        "09"
+    );
+
+    let partial = App::memory();
+    let partial_value = partial.scope().cage(None);
+    let partial_hour = partial.scope().cage(None);
+    partial
+        .mount(
+            time_picker("clear-partial")
+                .value(partial_value)
+                .hour_ref(partial_hour)
+                .clearable(true)
+                .on_value_change(move |next| partial_value.revise(|old| *old = next)),
+        )
+        .unwrap();
+    let hour = partial_hour.get().unwrap();
+    assert_eq!(
+        partial
+            .tree()
+            .node(hour)
+            .unwrap()
+            .descriptor
+            .view()
+            .semantics
+            .as_ref()
+            .unwrap()
+            .placeholder
+            .as_deref(),
+        Some("--")
+    );
+    edit(&partial, hour, "7");
+    partial.flush().unwrap();
+    assert_eq!(partial_value.get(), None);
+    let clear = button(&partial, "Clear time");
+    partial.dispatch(clear, Event::Activate).unwrap();
+    partial.flush().unwrap();
+    assert_eq!(props(&partial, hour).value, "");
+    assert!(!all(&partial).contains(&clear));
+
+    let invalid = App::memory();
+    assert!(
+        invalid
+            .mount(
+                time_picker("bad-clear-label")
+                    .clearable(true)
+                    .clear_label("bad\nlabel")
+            )
+            .is_err()
+    );
+    assert_eq!(invalid.stats().nodes, 0);
+}
+
+#[test]
+fn preset_popup_is_anchored_selects_through_the_value_protocol_and_optionally_closes() {
+    let app = App::memory();
+    let hour = app.scope().cage(None);
+    let value = app.scope().cage(Some(t("09:00")));
+    let open = app.scope().cage(false);
+    let open_calls = Rc::new(RefCell::new(Vec::new()));
+    let opened = open_calls.clone();
+    app.mount(
+        time_picker("presets")
+            .hour_ref(hour)
+            .value(value)
+            .open(open)
+            .presets(vec![t("09:00"), t("12:30"), t("17:45")])
+            .close_on_preset_select(true)
+            .on_value_change(move |next| value.revise(|old| *old = next))
+            .on_open_change(move |next| {
+                open.revise(|old| *old = next);
+                opened.borrow_mut().push(next);
+            }),
+    )
+    .unwrap();
+    let trigger = nodes(&app, "sapid-time-picker-preset-trigger")[0];
+    let panel = nodes(&app, "sapid-popover")[0];
+    let relation = semantics(&app, trigger);
+    assert_eq!(relation.controls, semantics(&app, panel).id);
+    assert_eq!(relation.expanded, Some(false));
+    assert!(semantics(&app, panel).hidden);
+
+    app.dispatch(hour.get().unwrap(), Event::FocusChanged(true))
+        .unwrap();
+    app.flush().unwrap();
+    assert!(!semantics(&app, panel).hidden);
+    assert_eq!(semantics(&app, trigger).expanded, Some(true));
+    app.dispatch(button(&app, "12:30"), Event::Activate)
+        .unwrap();
+    app.flush().unwrap();
+    assert_eq!(value.get(), Some(t("12:30")));
+    assert!(semantics(&app, panel).hidden);
+    assert_eq!(*open_calls.borrow(), [true, false]);
+}
+
+#[test]
+fn grouped_presets_format_selected_and_unavailable_items_and_support_dismissal() {
+    let app = App::memory();
+    let hour = app.scope().cage(None);
+    let value = app.scope().cage(Some(t("13:15:00")));
+    let open = app.scope().cage(false);
+    app.mount(
+        time_picker("grouped-presets")
+            .format(TimeFormat::new(
+                HourCycle::H12,
+                TimePrecision::Second,
+                DateLocale::En,
+            ))
+            .hour_ref(hour)
+            .value(value)
+            .open(open)
+            .bounds(TimeBounds::new(Some(t("08:00:00")), Some(t("18:00:00"))).unwrap())
+            .disable_time(t("13:15:00"))
+            .presets(vec![
+                TimePickerPresetGroup::new("Morning", [t("07:00:00"), t("09:30:00")]),
+                TimePickerPresetGroup::new("Afternoon", [t("13:15:00"), t("17:45:00")]),
+            ])
+            .on_value_change(move |next| value.revise(|old| *old = next))
+            .on_open_change(move |next| open.revise(|old| *old = next)),
+    )
+    .unwrap();
+    app.dispatch(hour.get().unwrap(), Event::FocusChanged(true))
+        .unwrap();
+    app.flush().unwrap();
+    assert_eq!(nodes(&app, "sapid-time-picker-preset-group-label").len(), 2);
+    assert!(!app.tree().enabled(button(&app, "07:00:00 AM")));
+    assert!(!app.tree().enabled(button(&app, "01:15:00 PM")));
+    assert!(app.tree().enabled(button(&app, "05:45:00 PM")));
+    let selected = semantics(&app, button(&app, "01:15:00 PM"));
+    assert_eq!(selected.pressed, Some(true));
+    let panel = nodes(&app, "sapid-popover")[0];
+    app.dispatch(panel, Event::Dismiss(DismissReason::Escape))
+        .unwrap();
+    app.flush().unwrap();
+    assert!(semantics(&app, panel).hidden);
+}
+
+#[test]
+fn preset_admission_and_controlled_open_refusal_are_finite_and_transactional() {
+    let refused = App::memory();
+    let hour = refused.scope().cage(None);
+    let open = refused.scope().cage(false);
+    let proposals = refused.scope().cage(0usize);
+    refused
+        .mount(
+            time_picker("refused-presets")
+                .hour_ref(hour)
+                .open(open)
+                .presets(vec![t("09:00")])
+                .on_open_change(move |_| proposals.revise(|count| *count += 1)),
+        )
+        .unwrap();
+    refused
+        .dispatch(hour.get().unwrap(), Event::FocusChanged(true))
+        .unwrap();
+    refused.flush().unwrap();
+    assert_eq!(proposals.get(), 1);
+    assert!(!open.get());
+    assert!(semantics(&refused, nodes(&refused, "sapid-popover")[0]).hidden);
+
+    for widget in [
+        time_picker("duplicate-presets").presets(vec![t("09:00"), t("09:00")]),
+        time_picker("empty-presets").presets(Vec::<LocalTime>::new()),
+        time_picker("grid-and-presets")
+            .grid(TimeGridSpec::new(t("09:00"), t("10:00"), 1800, 2).unwrap())
+            .presets(vec![t("09:00")]),
+    ] {
+        let invalid = App::memory();
+        assert!(invalid.mount(widget).is_err());
+        assert_eq!(invalid.stats().nodes, 0);
+    }
+    let too_many = App::memory();
+    assert!(
+        too_many
+            .mount(
+                time_picker("too-many-presets")
+                    .presets(vec![t("09:00"); MAX_TIME_PICKER_PRESETS + 1])
+            )
+            .is_err()
+    );
+    assert_eq!(too_many.stats().nodes, 0);
+}
+
+#[test]
+fn segment_labels_period_labels_focus_boundary_and_popup_geometry_are_configurable() {
+    let app = App::memory();
+    let root = app.scope().cage(None);
+    let hour = app.scope().cage(None);
+    let focused = app.scope().cage(0usize);
+    let blurred = app.scope().cage(0usize);
+    let placement = AnchorPlacement {
+        side: AnchorSide::Top,
+        align: AnchorAlign::Start,
+        gap: 6.,
+        viewport_padding: 10.,
+        flip: false,
+        shift: true,
+        ..AnchorPlacement::default()
+    };
+    app.mount(
+        time_picker("labels-placement")
+            .node_ref(root)
+            .hour_ref(hour)
+            .format(TimeFormat::new(
+                HourCycle::H12,
+                TimePrecision::Second,
+                DateLocale::En,
+            ))
+            .hour_label("Hours")
+            .minute_label("Minutes")
+            .second_label("Seconds")
+            .period_label("Period")
+            .period_labels("पूर्वाह्न", "अपराह्न")
+            .presets(vec![t("09:00:00")])
+            .popup_placement(placement)
+            .popup_width(360.)
+            .on_focus(move || focused.revise(|count| *count += 1))
+            .on_blur(move || blurred.revise(|count| *count += 1)),
+    )
+    .unwrap();
+    let hour = hour.get().unwrap();
+    assert_eq!(
+        app.tree()
+            .node(hour)
+            .unwrap()
+            .descriptor
+            .view()
+            .name
+            .as_deref(),
+        Some("Hours")
+    );
+    let period = button(&app, "Period");
+    let tree = app.tree();
+    let Props::Button(period_props) = tree.node(period).unwrap().descriptor.view().props else {
+        panic!()
+    };
+    assert_eq!(period_props.label, "पूर्वाह्न");
+    drop(tree);
+    let panel = nodes(&app, "sapid-popover")[0];
+    assert_eq!(
+        semantics(&app, panel).layer.unwrap().placement,
+        glory::render::LayerPlacement::Anchor(placement)
+    );
+    assert_eq!(
+        app.tree()
+            .node(panel)
+            .unwrap()
+            .descriptor
+            .view()
+            .style
+            .width,
+        Some(glory::style::Length::Px(360.))
+    );
+    app.dispatch(hour, Event::FocusChanged(true)).unwrap();
+    app.flush().unwrap();
+    assert_eq!(focused.get(), 1);
+    app.dispatch(hour, Event::FocusChanged(false)).unwrap();
+    app.flush().unwrap();
+    assert_eq!(blurred.get(), 1);
+
+    let invalid = App::memory();
+    assert!(
+        invalid
+            .mount(
+                time_picker("bad-popup-width")
+                    .presets(vec![t("09:00")])
+                    .popup_width(20.)
+            )
+            .is_err()
+    );
+    assert_eq!(invalid.stats().nodes, 0);
+}
+
+#[test]
+fn paste_split_populates_all_segments_with_default_and_custom_bounded_parsers() {
+    fn paste(app: &App, node: NodeId, value: &str) {
+        let end = value.encode_utf16().count();
+        app.dispatch(
+            node,
+            Event::InputEdit(InputEdit::Value {
+                value: value.into(),
+                revision: props(app, node).revision,
+                selection: TextSelection {
+                    start: end,
+                    end,
+                    ..Default::default()
+                },
+                before: Some(TextSelection::default()),
+                intent: InputEditIntent::Insert,
+                composing: false,
+            }),
+        )
+        .unwrap();
+    }
+    let app = App::memory();
+    let hour = app.scope().cage(None);
+    let minute = app.scope().cage(None);
+    let second = app.scope().cage(None);
+    let value = app.scope().cage(None);
+    app.mount(
+        time_picker("paste")
+            .format(TimeFormat::new(
+                HourCycle::H24,
+                TimePrecision::Second,
+                DateLocale::En,
+            ))
+            .hour_ref(hour)
+            .minute_ref(minute)
+            .second_ref(second)
+            .value(value)
+            .on_value_change(move |next| value.revise(|old| *old = next)),
+    )
+    .unwrap();
+    paste(&app, hour.get().unwrap(), "17:33:43");
+    app.flush().unwrap();
+    assert_eq!(value.get(), Some(t("17:33:43")));
+    assert_eq!(props(&app, minute.get().unwrap()).value, "33");
+    assert_eq!(props(&app, second.get().unwrap()).value, "43");
+
+    let custom = App::memory();
+    let custom_hour = custom.scope().cage(None);
+    let custom_value = custom.scope().cage(None);
+    custom
+        .mount(
+            time_picker("custom-paste")
+                .hour_ref(custom_hour)
+                .value(custom_value)
+                .paste_split(|pasted| match pasted {
+                    "noon" => LocalTime::new(12, 0, 0).ok(),
+                    _ => None,
+                })
+                .on_value_change(move |next| custom_value.revise(|old| *old = next)),
+        )
+        .unwrap();
+    paste(&custom, custom_hour.get().unwrap(), "noon");
+    custom.flush().unwrap();
+    assert_eq!(custom_value.get(), Some(t("12:00")));
+
+    let disabled = App::memory();
+    let disabled_hour = disabled.scope().cage(None);
+    disabled
+        .mount(
+            time_picker("paste-disabled")
+                .hour_ref(disabled_hour)
+                .handle_paste(false),
+        )
+        .unwrap();
+    assert!(
+        disabled
+            .tree()
+            .node(disabled_hour.get().unwrap())
+            .unwrap()
+            .descriptor
+            .view()
+            .semantics
+            .as_ref()
+            .unwrap()
+            .input_edit
+            .is_none()
+    );
+}
+
+#[test]
+fn dropdown_renders_segment_columns_and_selects_through_the_same_controlled_protocol() {
+    let app = App::memory();
+    let hour = app.scope().cage(None);
+    let value = app.scope().cage(None);
+    app.mount(
+        time_picker("dropdown")
+            .hour_ref(hour)
+            .value(value)
+            .with_dropdown(true)
+            .minute_step(15)
+            .max_dropdown_content_height(180.)
+            .on_value_change(move |next| value.revise(|old| *old = next)),
+    )
+    .unwrap();
+    app.dispatch(hour.get().unwrap(), Event::FocusChanged(true))
+        .unwrap();
+    app.flush().unwrap();
+    assert_eq!(nodes(&app, "sapid-time-picker-control-column").len(), 2);
+    let controls = nodes(&app, "sapid-time-picker-controls");
+    assert_eq!(controls.len(), 1);
+    assert_eq!(
+        app.tree()
+            .node(controls[0])
+            .unwrap()
+            .descriptor
+            .view()
+            .style
+            .max_height,
+        Some(glory::style::Limit::Px(180.))
+    );
+    app.dispatch(button(&app, "18"), Event::Activate).unwrap();
+    app.dispatch(button(&app, "30"), Event::Activate).unwrap();
+    app.flush().unwrap();
+    assert_eq!(value.get(), Some(t("18:30")));
+
+    let twelve = App::memory();
+    let twelve_hour = twelve.scope().cage(None);
+    twelve
+        .mount(
+            time_picker("dropdown-twelve")
+                .hour_ref(twelve_hour)
+                .format(TimeFormat::new(
+                    HourCycle::H12,
+                    TimePrecision::Second,
+                    DateLocale::En,
+                ))
+                .with_dropdown(true)
+                .reverse_time_controls_list(true),
+        )
+        .unwrap();
+    twelve
+        .dispatch(twelve_hour.get().unwrap(), Event::FocusChanged(true))
+        .unwrap();
+    twelve.flush().unwrap();
+    assert_eq!(nodes(&twelve, "sapid-time-picker-control-column").len(), 4);
+    assert_eq!(nodes(&twelve, "sapid-time-picker-period-control").len(), 2);
+
+    let invalid = App::memory();
+    assert!(
+        invalid
+            .mount(
+                time_picker("bad-dropdown-height")
+                    .with_dropdown(true)
+                    .max_dropdown_content_height(20.)
+            )
+            .is_err()
+    );
+    assert_eq!(invalid.stats().nodes, 0);
 }

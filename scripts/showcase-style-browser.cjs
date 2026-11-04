@@ -1,10 +1,8 @@
 // Visual and interaction regressions for shared tag/icon/choice styling.
 const fs = require('node:fs');
 const assert = require('node:assert/strict');
-process.env.TEMP = process.env.TMP = 'D:/BuildCache/sapid/tmp';
-const { chromium } = require(process.env.SAPID_PLAYWRIGHT || 'D:/Works/glory-rs/glory/tests/playwright/node_modules/playwright');
-const base = process.env.SAPID_SHOWCASE_BASE || 'http://127.0.0.1:8795';
-const output = 'D:/BuildCache/sapid';
+const { chromium, base, outputPath, outputRoot, writeReport } = require('./showcase-browser-env.cjs');
+const output = outputRoot;
 
 (async () => {
   const report = { reports: [], errors: [] };
@@ -19,15 +17,15 @@ const output = 'D:/BuildCache/sapid';
       for (const width of [1440, 360]) for (const hydrate of [false, true]) {
         await page.setViewportSize({ width, height: 1000 });
         for (const [id, name, selector] of [
-          ['P4-08', 'multi-select', '.sapid-multi-select-tag'],
-          ['P4-09', 'tags', '.sapid-tags-input-tag,.sapid-pill-input-tag'],
-          ['P3-10', 'pills', '.sapid-pill'],
-          ['P2-08', 'actions', '.sapid-action-icon'],
+          ['multi-select', 'multi-select', '.sapid-multi-select-tag'],
+          ['pills-input', 'tags', '.sapid-tags-input-tag,.sapid-pill-input-tag'],
+          ['pill', 'pills', '.sapid-pill'],
+          ['action-icon', 'actions', '.sapid-action-icon'],
         ]) {
           const suite = `${name}-${theme}-${scheme}-${width}-${hydrate ? 'hydrate' : 'csr'}`;
           await page.goto(`${base}/${hydrate ? `ssr-${name}-${theme}-${scheme}.html` : `showcase.html?widget=${id}&theme=${theme}&scheme=${scheme}`}`);
           await page.waitForFunction(() => window.ready === true);
-          const demo = page.locator('.site-demo');
+          const demo = page.locator('.site-demo').filter({ has: page.locator(selector) }).first();
           const subject = name === 'multi-select' ? demo.locator('.sapid-field').filter({has:page.getByRole('combobox',{name:'Countries',exact:true})}) : demo;
           assert.equal(await demo.locator('button:not([class*="sapid-"])').count(), 0, `${suite}: public demo uses styled actions`);
           if (name === 'multi-select') {
@@ -53,7 +51,7 @@ const output = 'D:/BuildCache/sapid';
           }
           assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `${suite}: no page overflow`);
           if (!hydrate && theme === 'blue' && scheme === 'light') {
-            await page.locator('.site-preview').screenshot({ path: `${output}/style-${name}-${width}.png` });
+            await demo.screenshot({ path: `${output}/style-${name}-${width}.png` });
           }
           if (name === 'multi-select') {
             if (width === 1440) assert.equal(new Set(boxes.map(box => Math.round(box.y))).size, 1, `${suite}: tags share a row`);

@@ -1,6 +1,6 @@
 use glory::prelude::*;
 use glory::render::{Event, EventKind, InputProps, NodeId, Props, RangeCommand, Role, Semantics};
-use sapid::{Hsva, color_input, color_picker};
+use sapid::{ColorEyeDropper, ColorFormat, Hsva, color_input, color_picker};
 use std::{cell::RefCell, rc::Rc};
 fn nodes(app: &App, class: &str) -> Vec<NodeId> {
     let tree = app.tree();
@@ -72,6 +72,7 @@ fn local_picker_has_four_true_keyboard_sliders_and_bounded_passive_plane() {
     app.mount(
         color_picker("local")
             .name("Precise color")
+            .show_precision_sliders(true)
             .node_ref(root)
             .default_value(Hsva {
                 hue: 120.123456789,
@@ -90,7 +91,10 @@ fn local_picker_has_four_true_keyboard_sliders_and_bounded_passive_plane() {
             .role,
         Some(Role::Group)
     );
-    assert_eq!(nodes(&app, "sapid-color-plane-cell").len(), 256);
+    assert_eq!(nodes(&app, "sapid-color-plane-hue").len(), 1);
+    assert_eq!(nodes(&app, "sapid-color-plane-saturation").len(), 1);
+    assert_eq!(nodes(&app, "sapid-color-plane-value").len(), 1);
+    assert!(nodes(&app, "sapid-color-plane-cell").is_empty());
     assert_eq!(
         metadata(&app, nodes(&app, "sapid-color-plane")[0]).drag_capture,
         Some(glory::render::DragCapture::Press)
@@ -107,6 +111,78 @@ fn local_picker_has_four_true_keyboard_sliders_and_bounded_passive_plane() {
     key(&app, slider(&app, "Brightness"), RangeCommand::Maximum);
     assert_eq!(number(&app, slider(&app, "Brightness")), 1.);
 }
+
+#[test]
+fn standalone_picker_supports_swatches_only_full_width_and_atomic_selection() {
+    let app = App::memory();
+    let source = app.scope().cage(Hsva::default());
+    let commits = app.scope().cage(0_u32);
+    let root = app.scope().cage(None);
+    app.mount(
+        color_picker("palette")
+            .value(source)
+            .show_picker(false)
+            .full_width(true)
+            .swatches(["#ff0000", "#00ff00", "#0000ff"])
+            .swatches_per_row(3)
+            .node_ref(root)
+            .on_value_change(move |next| source.revise(|value| *value = next))
+            .on_value_commit(move |_| commits.revise(|value| *value += 1)),
+    )
+    .unwrap();
+
+    assert!(nodes(&app, "sapid-color-plane").is_empty());
+    assert_eq!(nodes(&app, "sapid-color-picker-swatches").len(), 1);
+    let swatches = nodes(&app, "sapid-color-picker-swatch");
+    assert_eq!(swatches.len(), 3);
+    assert_eq!(
+        app.tree()
+            .node(root.get().unwrap())
+            .unwrap()
+            .descriptor
+            .view()
+            .style
+            .width,
+        Some(glory::style::Length::Percent(100.))
+    );
+
+    app.dispatch(swatches[1], Event::Activate).unwrap();
+    assert_eq!(
+        source.get().to_rgba().unwrap(),
+        glory::style::Color(0, 255, 0, 255)
+    );
+    assert_eq!(commits.get(), 1);
+}
+
+#[test]
+fn picker_channel_labels_are_configurable_on_the_real_keyboard_controls() {
+    let app = App::memory();
+    app.mount(
+        color_picker("labels")
+            .show_precision_sliders(true)
+            .saturation_label("Color intensity")
+            .brightness_label("Light output")
+            .hue_label("Color angle")
+            .alpha_label("Transparency"),
+    )
+    .unwrap();
+    for name in [
+        "Color intensity",
+        "Light output",
+        "Color angle",
+        "Transparency",
+    ] {
+        assert_eq!(
+            app.tree()
+                .node(slider(&app, name))
+                .unwrap()
+                .descriptor
+                .view()
+                .role,
+            Some(Role::Slider)
+        );
+    }
+}
 #[test]
 fn controlled_refusal_emits_one_change_then_commit_and_never_mutates_source() {
     let app = App::memory();
@@ -116,6 +192,7 @@ fn controlled_refusal_emits_one_change_then_commit_and_never_mutates_source() {
     let b = log.clone();
     app.mount(
         color_picker("controlled")
+            .show_precision_sliders(true)
             .value(source)
             .on_value_change(move |v| a.borrow_mut().push(("change", v)))
             .on_value_commit(move |v| b.borrow_mut().push(("commit", v))),
@@ -142,6 +219,7 @@ fn commit_only_accepted_changes_accumulate_across_channels_in_one_tick() {
     });
     app.mount(
         color_picker("accepted")
+            .show_precision_sliders(true)
             .value(source)
             .on_value_commit(move |next| source.revise(|value| *value = next)),
     )
@@ -167,6 +245,7 @@ fn readonly_and_disabled_preserve_values_and_refuse_generic_drag_and_range_obser
         let seen = observed.clone();
         app.mount(
             color_picker("blocked")
+                .show_precision_sliders(true)
                 .readonly(readonly)
                 .enabled(readonly)
                 .on_value_change(move |_| *seen.borrow_mut() += 1),
@@ -213,13 +292,27 @@ fn malformed_hex_remains_editable_and_error_link_recovers_with_same_input_identi
     assert_eq!(input(&app, id).value, "#g");
     assert!(metadata(&app, id).invalid);
     assert_eq!(metadata(&app, id).error_message, metadata(&app, error).id);
-    edit(&app, id, "#1234");
+    edit(&app, id, "#123456");
     assert!(!metadata(&app, id).invalid);
     assert!(metadata(&app, error).hidden);
     assert_eq!(nodes(&app, "sapid-color-editor")[0], id);
     edit(&app, id, "");
     assert_eq!(input(&app, id).value, "");
     assert!(!metadata(&app, id).invalid);
+}
+
+#[test]
+fn color_input_popup_keeps_the_continuous_picker_and_every_declared_swatch() {
+    let app = App::memory();
+    app.mount(
+        color_input("complete-popup")
+            .default_open(true)
+            .swatches(["#fa5252", "#12b886", "#228be6"]),
+    )
+    .unwrap();
+    assert_eq!(nodes(&app, "sapid-color-picker").len(), 1);
+    assert_eq!(nodes(&app, "sapid-color-swatch").len(), 4);
+    assert_eq!(nodes(&app, "sapid-color-picker-swatch").len(), 0);
 }
 #[test]
 fn hex_controlled_refusal_keeps_source_and_typed_change_precedes_generic_observer() {
@@ -253,6 +346,26 @@ fn finite_keys_dimensions_and_drafts_are_rejected_before_unbounded_construction(
         );
     }
     assert!(App::memory().mount(color_picker("x".repeat(49))).is_err());
+    assert!(
+        App::memory()
+            .mount(color_picker("bad-label").hue_label(" "))
+            .is_err()
+    );
+    assert!(
+        App::memory()
+            .mount(color_picker("empty-palette").show_picker(false))
+            .is_err()
+    );
+    assert!(
+        App::memory()
+            .mount(color_picker("bad-palette").swatches(["not-a-color"]))
+            .is_err()
+    );
+    assert!(
+        App::memory()
+            .mount(color_picker("too-many-columns").swatches_per_row(17))
+            .is_err()
+    );
     assert!(App::memory().mount(color_input("x".repeat(47))).is_err());
     assert!(
         App::memory()
@@ -263,7 +376,7 @@ fn finite_keys_dimensions_and_drafts_are_rejected_before_unbounded_construction(
     app.mount(color_picker("no-alpha").show_alpha(false).unstyled())
         .unwrap();
     assert_eq!(nodes(&app, "sapid-alpha-slider").len(), 0);
-    assert_eq!(nodes(&app, "sapid-color-plane-cell").len(), 256);
+    assert!(nodes(&app, "sapid-color-plane-cell").is_empty());
 }
 #[test]
 fn disabled_capture_still_delivers_terminal_cancel_cleanup_to_generic_observers() {
@@ -341,16 +454,86 @@ fn composition_and_field_readonly_disable_the_live_popup_picker_channels() {
     app.mount(color_input("compose").default_open(true))
         .unwrap();
     let editor = nodes(&app, "sapid-color-editor")[0];
-    let sat = slider(&app, "Saturation");
-    assert!(!metadata(&app, sat).disabled);
+    assert!(nodes(&app, "sapid-popover-trigger").is_empty());
+    assert!(nodes(&app, "sapid-color-input-preview").len() == 1);
+    let hue = slider(&app, "Hue");
+    assert!(!metadata(&app, hue).disabled);
     app.dispatch(editor, Event::Composition { active: true })
         .unwrap();
     app.flush().unwrap();
-    assert!(metadata(&app, sat).disabled);
+    assert!(metadata(&app, hue).disabled);
     app.dispatch(editor, Event::Composition { active: false })
         .unwrap();
     app.flush().unwrap();
-    assert!(!metadata(&app, sat).disabled);
+    assert!(!metadata(&app, hue).disabled);
     app.clear().unwrap();
     assert_eq!(app.stats().nodes, 0);
+}
+
+#[test]
+fn standalone_picker_formats_a_live_real_input_form_proxy_without_losing_hsva() {
+    let app = App::memory();
+    let source = app.scope().cage(Hsva {
+        hue: 120.123456789,
+        saturation: 0.5,
+        value: 0.75,
+        alpha: 0.4,
+    });
+    app.mount(
+        color_picker("submitted")
+            .value(source)
+            .form_name("accent")
+            .form_format(ColorFormat::Rgba)
+            .on_value_change(move |next| source.revise(|value| *value = next)),
+    )
+    .unwrap();
+    let proxy = nodes(&app, "sapid-color-picker-form-proxy")[0];
+    assert_eq!(
+        metadata(&app, proxy)
+            .form_control
+            .as_ref()
+            .map(|control| (control.name.as_str(), control.value.as_deref())),
+        Some(("accent", None))
+    );
+    assert_eq!(input(&app, proxy).value, "rgba(96, 191, 96, 0.40)");
+    key(&app, slider(&app, "Hue"), RangeCommand::Maximum);
+    app.flush().unwrap();
+    assert_eq!(source.get().hue, 360.0);
+    assert_eq!(input(&app, proxy).value, "rgba(191, 96, 96, 0.40)");
+}
+
+#[test]
+fn color_input_uses_only_the_explicit_eye_dropper_service_and_commits_its_result() {
+    let executor = Rc::new(glory::core::executor::Executor::new(8));
+    let app = App::with_host(executor.clone(), glory::render::memory::Memory::new);
+    let changes = app.scope().cage(0_u32);
+    let commits = app.scope().cage(0_u32);
+    app.mount(
+        color_input("eyedropper")
+            .eye_dropper(ColorEyeDropper::new(|| async {
+                Ok(Some(glory::style::Color(18, 184, 134, 255)))
+            }))
+            .eye_dropper_label("Sample a color")
+            .eye_dropper_icon(glory::ui::text().content("E"))
+            .on_value_change(move |_| changes.revise(|value| *value += 1))
+            .on_commit(move |_| commits.revise(|value| *value += 1)),
+    )
+    .unwrap();
+    let button = nodes(&app, "sapid-color-input-eye-dropper")[0];
+    assert_eq!(
+        app.tree()
+            .node(button)
+            .unwrap()
+            .descriptor
+            .view()
+            .name
+            .as_deref(),
+        Some("Sample a color")
+    );
+    app.dispatch(button, Event::Activate).unwrap();
+    assert!(executor.poll_one());
+    app.flush().unwrap();
+    let editor = nodes(&app, "sapid-color-editor")[0];
+    assert_eq!(input(&app, editor).value, "#12b886");
+    assert_eq!((changes.get(), commits.get()), (1, 1));
 }

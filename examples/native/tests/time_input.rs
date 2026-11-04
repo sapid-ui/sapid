@@ -249,3 +249,64 @@ fn native_twelve_hour_chinese_seconds_readonly_disabled_and_unstyled_keep_real_e
     assert!(r.get().is_none());
     assert_eq!(app.stats().queries, 0);
 }
+
+#[test]
+fn native_time_input_placeholder_uses_the_real_hint_layout_and_hides_on_edit() {
+    for theme in [
+        Theme::blue_light(),
+        Theme::blue_dark(),
+        Theme::green_light(),
+        Theme::green_dark(),
+    ] {
+        let host = WindowApp::new();
+        host.renderer().set_viewport(420, 120, 1.).unwrap();
+        let app = host.app();
+        let reference = app.scope().cage(None);
+        host.mount(
+            time_input("native-placeholder")
+                .theme(theme)
+                .name("Meeting time")
+                .placeholder("Select a time")
+                .node_ref(reference),
+        )
+        .unwrap();
+        app.settle(16).unwrap();
+        let id = reference.get().unwrap();
+        let engine = host
+            .renderer()
+            .engine_id(id, glory::html::Part::Main)
+            .unwrap();
+        host.renderer().inspect(|dom| {
+            let input = dom
+                .get_node(engine)
+                .unwrap()
+                .element_data()
+                .unwrap()
+                .text_input_data()
+                .unwrap();
+            assert!(input.placeholder_shown());
+            assert!(input.placeholder_layout().is_some());
+            assert!(input.editor.raw_text().is_empty());
+        });
+        edit(app, id, "09:30", 5, 0, InputEditIntent::Replace);
+        app.settle(16).unwrap();
+        host.renderer().inspect(|dom| {
+            let input = dom
+                .get_node(engine)
+                .unwrap()
+                .element_data()
+                .unwrap()
+                .text_input_data()
+                .unwrap();
+            assert!(!input.placeholder_shown());
+            assert_eq!(input.editor.raw_text(), "09:30");
+        });
+        assert_eq!(
+            host.renderer()
+                .engine_id(id, glory::html::Part::Main)
+                .unwrap(),
+            engine
+        );
+        app.clear().unwrap();
+    }
+}

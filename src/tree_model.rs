@@ -53,6 +53,33 @@ pub enum TreeSelectionMode {
     Single,
     Multiple,
 }
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TreeDropPosition {
+    Before,
+    Inside,
+    After,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TreeDrop {
+    pub dragged: String,
+    pub target: String,
+    pub position: TreeDropPosition,
+}
+impl TreeDrop {
+    pub fn new(
+        dragged: impl Into<String>,
+        target: impl Into<String>,
+        position: TreeDropPosition,
+    ) -> Self {
+        Self {
+            dragged: dragged.into(),
+            target: target.into(),
+            position,
+        }
+    }
+}
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TreeError {
     Nodes,
@@ -107,6 +134,7 @@ pub struct TreeRow {
     pub position: u16,
     pub count: u16,
     pub parent: Option<usize>,
+    pub line_guides: Vec<bool>,
 }
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TreeModel {
@@ -280,9 +308,16 @@ impl TreeModel {
             .iter()
             .enumerate()
             .rev()
-            .map(|(position, index)| (*index, position, self.roots.len()))
+            .map(|(position, index)| (*index, position, self.roots.len(), Vec::new()))
             .collect::<Vec<_>>();
-        while let Some((index, position, count)) = stack.pop() {
+        while let Some((index, position, count, line_guides)) = stack.pop() {
+            let child_guides = if self.levels[index] >= 2 {
+                let mut guides = line_guides.clone();
+                guides.push(position + 1 < count);
+                guides
+            } else {
+                Vec::new()
+            };
             result.push(TreeRow {
                 key: self.nodes[index].key.clone(),
                 index,
@@ -290,20 +325,137 @@ impl TreeModel {
                 position: position as u16,
                 count: count as u16,
                 parent: self.parents[index],
+                line_guides,
             });
             if expanded.contains(&self.nodes[index].key) {
                 let children = &self.children[index];
-                stack.extend(
-                    children
-                        .iter()
-                        .enumerate()
-                        .rev()
-                        .map(|(position, child)| (*child, position, children.len())),
-                );
+                stack.extend(children.iter().enumerate().rev().map(|(position, child)| {
+                    (*child, position, children.len(), child_guides.clone())
+                }));
             }
         }
         Ok(result)
     }
+}
+
+/// Return every currently declared branch key. Applications can publish this
+/// set to a controlled Tree to implement a bounded "expand all" action.
+pub fn expanded_tree_branches(nodes: &[TreeNode]) -> Result<BTreeSet<String>, TreeError> {
+    TreeModel::validate(nodes)?;
+    Ok(nodes
+        .iter()
+        .filter(|node| node.kind == TreeKind::Branch)
+        .map(|node| node.key.clone())
+        .collect())
+}
+
+/// Case-insensitive label/key filtering that retains every matching node's
+/// current ancestors. The returned declaration remains bounded and valid.
+pub fn filter_tree_nodes(nodes: &[TreeNode], query: &str) -> Result<Vec<TreeNode>, TreeError> {
+    let model = TreeModel::new(nodes.iter().cloned())?;
+    let query = query.trim();
+    if query.len() > MAX_TREE_LABEL_BYTES || query.contains(['\0', '\r']) {
+        return Err(TreeError::State);
+    }
+    if query.is_empty() {
+        return Ok(nodes.to_vec());
+    }
+    let query = query.to_lowercase();
+    let mut retained = BTreeSet::new();
+    for (index, node) in model.nodes.iter().enumerate() {
+        if node.label.to_lowercase().contains(&query) || node.key.to_lowercase().contains(&query) {
+            let mut current = Some(index);
+            while let Some(index) = current {
+                retained.insert(index);
+                current = model.parents[index];
+            }
+        }
+    }
+    let filtered = model
+        .nodes
+        .iter()
+        .enumerate()
+        .filter(|(index, _)| retained.contains(index))
+        .map(|(_, node)| node.clone())
+        .collect::<Vec<_>>();
+    TreeModel::validate(&filtered)?;
+    Ok(filtered)
+}
+
+/// Move one complete current subtree before, after or inside another node.
+/// The result is canonical preorder and the source slice is never mutated.
+pub fn move_tree_node(nodes: &[TreeNode], movement: &TreeDrop) -> Result<Vec<TreeNode>, TreeError> {
+    if !valid_tree_key(&movement.dragged) || !valid_tree_key(&movement.target) {
+        return Err(TreeError::Key);
+    }
+    let model = TreeModel::new(nodes.iter().cloned())?;
+    let dragged = model.index(&movement.dragged).ok_or(TreeError::Path)?;
+    let target = model.index(&movement.target).ok_or(TreeError::Path)?;
+    if dragged == target {
+        return Err(TreeError::Path);
+    }
+    let mut ancestor = Some(target);
+    while let Some(index) = ancestor {
+        if index == dragged {
+            return Err(TreeError::Path);
+        }
+        ancestor = model.parents[index];
+    }
+    let new_parent = match movement.position {
+        TreeDropPosition::Inside => {
+            if model.nodes[target].kind != TreeKind::Branch {
+                return Err(TreeError::Parent);
+            }
+            Some(target)
+        }
+        TreeDropPosition::Before | TreeDropPosition::After => model.parents[target],
+    };
+    let mut roots = model.roots.clone();
+    let mut children = model.children.clone();
+    let old_siblings = model.parents[dragged].map_or(&mut roots, |parent| &mut children[parent]);
+    let old_position = old_siblings
+        .iter()
+        .position(|index| *index == dragged)
+        .ok_or(TreeError::Path)?;
+    old_siblings.remove(old_position);
+    let new_siblings = new_parent.map_or(&mut roots, |parent| &mut children[parent]);
+    let insertion = match movement.position {
+        TreeDropPosition::Inside => new_siblings.len(),
+        TreeDropPosition::Before => new_siblings
+            .iter()
+            .position(|index| *index == target)
+            .ok_or(TreeError::Path)?,
+        TreeDropPosition::After => {
+            new_siblings
+                .iter()
+                .position(|index| *index == target)
+                .ok_or(TreeError::Path)?
+                + 1
+        }
+    };
+    new_siblings.insert(insertion, dragged);
+
+    fn append(
+        index: usize,
+        parent: Option<&str>,
+        model: &TreeModel,
+        children: &[Vec<usize>],
+        result: &mut Vec<TreeNode>,
+    ) {
+        let mut node = model.nodes[index].clone();
+        node.parent = parent.map(str::to_owned);
+        let key = node.key.clone();
+        result.push(node);
+        for child in &children[index] {
+            append(*child, Some(&key), model, children, result);
+        }
+    }
+    let mut result = Vec::with_capacity(nodes.len());
+    for root in roots {
+        append(root, None, &model, &children, &mut result);
+    }
+    TreeModel::validate(&result)?;
+    Ok(result)
 }
 
 /// FileTree is an explicit data adapter, with no filesystem or transport access.
@@ -405,6 +557,46 @@ mod tests {
             (2, 1, 2, Some(0))
         );
         assert_eq!(model.index("lib"), Some(2));
+    }
+    #[test]
+    fn second_level_guides_continue_only_through_non_last_ancestors() {
+        let model = TreeModel::new([
+            TreeNode::new("electronics", "Electronics").kind(TreeKind::Branch),
+            TreeNode::new("phones", "Phones")
+                .parent("electronics")
+                .kind(TreeKind::Branch),
+            TreeNode::new("iphone", "iPhone").parent("phones"),
+            TreeNode::new("samsung", "Samsung Galaxy").parent("phones"),
+            TreeNode::new("laptops", "Laptops")
+                .parent("electronics")
+                .kind(TreeKind::Branch),
+            TreeNode::new("macbook", "MacBook").parent("laptops"),
+            TreeNode::new("headphones", "Headphones").parent("electronics"),
+            TreeNode::new("vegetables", "Vegetables")
+                .parent("electronics")
+                .kind(TreeKind::Branch),
+            TreeNode::new("broccoli", "Broccoli").parent("vegetables"),
+        ])
+        .unwrap();
+        let rows = model
+            .visible(&BTreeSet::from([
+                "electronics".into(),
+                "phones".into(),
+                "laptops".into(),
+                "vegetables".into(),
+            ]))
+            .unwrap();
+        let guides = |key: &str| {
+            rows.iter()
+                .find(|row| row.key == key)
+                .map(|row| row.line_guides.clone())
+                .unwrap()
+        };
+        assert!(guides("phones").is_empty());
+        assert_eq!(guides("iphone"), [true]);
+        assert_eq!(guides("samsung"), [true]);
+        assert_eq!(guides("macbook"), [true]);
+        assert_eq!(guides("broccoli"), [false]);
     }
     #[test]
     fn cycles_missing_and_unloaded_parents_are_rejected() {
@@ -509,5 +701,85 @@ mod tests {
         let mut bad = child;
         bad.parent = None;
         assert_eq!(file_tree_nodes([root, bad]), Err(TreeError::Path));
+    }
+
+    #[test]
+    fn finite_filter_retains_ancestors_and_expand_all_returns_loaded_branches() {
+        let data = vec![
+            TreeNode::new("src", "Source").kind(TreeKind::Branch),
+            TreeNode::new("components", "Components")
+                .parent("src")
+                .kind(TreeKind::Branch),
+            TreeNode::new("button", "Button.rs").parent("components"),
+            TreeNode::new("hooks", "Hooks").parent("src"),
+            TreeNode::new("remote", "Remote").kind(TreeKind::Lazy),
+        ];
+        assert_eq!(
+            expanded_tree_branches(&data).unwrap(),
+            BTreeSet::from(["components".into(), "src".into()])
+        );
+        assert_eq!(
+            filter_tree_nodes(&data, "button")
+                .unwrap()
+                .into_iter()
+                .map(|node| node.key)
+                .collect::<Vec<_>>(),
+            ["src", "components", "button"]
+        );
+        assert_eq!(filter_tree_nodes(&data, "missing").unwrap(), []);
+        assert_eq!(
+            filter_tree_nodes(&data, &"q".repeat(MAX_TREE_LABEL_BYTES + 1)),
+            Err(TreeError::State)
+        );
+    }
+
+    #[test]
+    fn finite_move_preserves_subtrees_and_rejects_cycles_or_leaf_children() {
+        let data = vec![
+            TreeNode::new("pages", "Pages").kind(TreeKind::Branch),
+            TreeNode::new("index", "index.tsx").parent("pages"),
+            TreeNode::new("about", "about.tsx").parent("pages"),
+            TreeNode::new("components", "Components").kind(TreeKind::Branch),
+            TreeNode::new("header", "Header.tsx").parent("components"),
+        ];
+        let moved = move_tree_node(
+            &data,
+            &TreeDrop::new("index", "components", TreeDropPosition::Inside),
+        )
+        .unwrap();
+        assert_eq!(
+            moved
+                .iter()
+                .map(|node| (node.key.as_str(), node.parent.as_deref()))
+                .collect::<Vec<_>>(),
+            [
+                ("pages", None),
+                ("about", Some("pages")),
+                ("components", None),
+                ("header", Some("components")),
+                ("index", Some("components")),
+            ]
+        );
+        assert_eq!(
+            move_tree_node(
+                &data,
+                &TreeDrop::new("pages", "index", TreeDropPosition::Inside)
+            ),
+            Err(TreeError::Path)
+        );
+        assert_eq!(
+            move_tree_node(
+                &data,
+                &TreeDrop::new("header", "about", TreeDropPosition::Inside)
+            ),
+            Err(TreeError::Parent)
+        );
+        let before = move_tree_node(
+            &data,
+            &TreeDrop::new("components", "pages", TreeDropPosition::Before),
+        )
+        .unwrap();
+        assert_eq!(before[0].key, "components");
+        assert_eq!(before[1].key, "header");
     }
 }
