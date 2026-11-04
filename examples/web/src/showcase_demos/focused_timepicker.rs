@@ -21,7 +21,7 @@ mod focused {
     pub fn demo_for(name: &str, theme: Theme) -> Box<dyn Widget> {
         match name {
             "TimePicker" => Box::new(
-                time_picker("mantine-time-picker")
+                time_picker("showcase-time-picker")
                     .theme(theme)
                     .name("Appointment time")
                     .default_value(Some(LocalTime::new(10, 30, 0).unwrap())),

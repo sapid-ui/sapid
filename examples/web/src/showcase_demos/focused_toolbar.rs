@@ -28,7 +28,7 @@ mod focused {
     pub fn demo_for(name: &str, theme: Theme) -> Box<dyn Widget> {
         match name {
             "Toolbar" => Box::new(
-                toolbar("mantine-toolbar")
+                toolbar("showcase-toolbar")
                     .theme(theme.clone())
                     .name("Editor toolbar")
                     .group(toolbar_group(&theme, "editor-actions")),

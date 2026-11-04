@@ -38,6 +38,9 @@ mod focused {
         view().class("site-chart-grid").fill(cards)
     }
 
+    fn bars(key: &str) -> Chart {
+        bar_chart(key)
+    }
     pub fn demo_for(id: &str, theme: sapid::Theme) -> Box<dyn Widget> {
         match id {
             "BarsList" => Box::new(grid(vec![card(

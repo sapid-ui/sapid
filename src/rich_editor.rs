@@ -1,11 +1,13 @@
 //! Optional finite rich editing. The document is data, never HTML markup.
 use crate::appearance::{Common, common_methods, merge, observe};
-use crate::composite::Callback;
+use crate::composite::{self, Callback};
 use glory::render::{
     self, Action, Event, EventKind, NodeId, Query, QueryToken, QueryValue, RichCommand,
     RichDocument, RichFormat, RichMarks, RichSelection, RichSnapshot, Semantics,
 };
-use glory::style::{Display, FlexDirection, Length, Overflow, Style, WhiteSpace};
+use glory::style::{
+    Display, FlexDirection, Length, Overflow, PointerEvents, Position, Style, WhiteSpace,
+};
 use glory::ui::{Result, Widget};
 use glory::{Cage, Scope, Vary};
 use std::{cell::RefCell, collections::VecDeque, rc::Rc};
@@ -410,6 +412,8 @@ pub struct RichTextEditor {
     initial: Rc<RichDocument>,
     readonly: Vary<bool>,
     toolbar: bool,
+    subtle: bool,
+    placeholder: Vary<String>,
     controller_ref: Option<Cage<Option<EditorController>>>,
     changed: Option<Box<dyn FnMut(Rc<RichDocument>)>>,
 }
@@ -424,6 +428,8 @@ pub fn rich_text_editor() -> RichTextEditor {
         initial: Rc::new(RichDocument::default()),
         readonly: false.into(),
         toolbar: true,
+        subtle: false,
+        placeholder: String::new().into(),
         controller_ref: None,
         changed: None,
     }
@@ -446,6 +452,14 @@ impl RichTextEditor {
         self.toolbar = value;
         self
     }
+    pub fn subtle(mut self, value: bool) -> Self {
+        self.subtle = value;
+        self
+    }
+    pub fn placeholder(mut self, value: impl Into<Vary<String>>) -> Self {
+        self.placeholder = value.into();
+        self
+    }
     pub fn controller_ref(mut self, value: Cage<Option<EditorController>>) -> Self {
         self.controller_ref = Some(value);
         self
@@ -463,6 +477,9 @@ impl Widget for RichTextEditor {
             self.initial.clone()
         };
         initial.validate()?;
+        let placeholder = composite::validated(scope, &self.placeholder, |value| {
+            render::validate_input_placeholder(value, true).map_err(Into::into)
+        })?;
         let reference = self.common.node_ref.unwrap_or_else(|| scope.cage(None));
         let state = Rc::new(State {
             scope: scope.downgrade(),
@@ -491,7 +508,11 @@ impl Widget for RichTextEditor {
         })?;
         let parent = scope.cage(None);
         glory::ui::view()
-            .class("sapid-rich-editor-shell")
+            .class(if self.subtle {
+                "sapid-rich-editor-shell sapid-rich-editor-shell-subtle"
+            } else {
+                "sapid-rich-editor-shell"
+            })
             .style(
                 Style::new()
                     .display(Display::Flex)
@@ -536,6 +557,11 @@ impl Widget for RichTextEditor {
                 let mut button = crate::button()
                     .label(label)
                     .theme(self.common.theme.clone())
+                    .variant(if self.subtle {
+                        crate::ButtonVariant::Subtle
+                    } else {
+                        crate::ButtonVariant::Primary
+                    })
                     .enabled(active)
                     .on_press(move || {
                         if let Err(error) = current.toggle(command)
@@ -559,6 +585,11 @@ impl Widget for RichTextEditor {
                 let mut button = crate::button()
                     .label(label)
                     .theme(self.common.theme.clone())
+                    .variant(if self.subtle {
+                        crate::ButtonVariant::Subtle
+                    } else {
+                        crate::ButtonVariant::Primary
+                    })
                     .enabled(available)
                     .on_press(move || {
                         if let Err(error) = current.format(RichFormat::Block(kind))
@@ -574,11 +605,45 @@ impl Widget for RichTextEditor {
             }
             toolbar.show_in(&content)?;
         }
+        let editor_parent = scope.cage(None);
+        glory::ui::view()
+            .class("sapid-rich-editor-content")
+            .style(Style::new().position(Position::Relative))
+            .node_ref(editor_parent)
+            .show_in(&content)?;
+        let editor_scope = scope.child_in(editor_parent.get().ok_or(glory::ui::Error::Gone)?)?;
+        let accepted = state.accepted;
+        let visible_placeholder = scope.bond(move || {
+            !placeholder.get().is_empty()
+                && accepted.with(|document| document.plain_text().is_empty())
+        });
+        let placeholder_text = placeholder;
+        let placeholder_color = self.common.theme.muted;
+        glory::ui::when(visible_placeholder, move || {
+            glory::ui::text()
+                .class("sapid-rich-editor-placeholder")
+                .content(placeholder_text)
+                .style(Style {
+                    color: Some(placeholder_color),
+                    ..Style::new()
+                        .position(Position::Absolute)
+                        .left(Length::Px(12.))
+                        .top(Length::Px(10.))
+                        .pointer_events(PointerEvents::None)
+                })
+        })
+        .show_in(&editor_scope)?;
         let mut base = self.common.theme.control(self.common.size);
         base.height = Some(Length::Auto);
-        let (classes, custom) = self
-            .common
-            .appearance(scope, "sapid-rich-text-editor", base);
+        let (classes, custom) = self.common.appearance(
+            scope,
+            if self.subtle {
+                "sapid-rich-text-editor sapid-rich-text-editor-subtle"
+            } else {
+                "sapid-rich-text-editor"
+            },
+            base,
+        );
         let geometry = Style::new()
             .width(Length::Percent(100.))
             .min_width(Length::Px(0.))
@@ -706,7 +771,7 @@ impl Widget for RichTextEditor {
             let owner = scope.id();
             editor = editor.on(kind, move |event| observe(&mut generic, owner, event));
         }
-        editor.show_in(&content)?;
+        editor.show_in(&editor_scope)?;
         if let Some(source) = self.source.clone() {
             let current = state.clone();
             scope.structural(move || {
@@ -728,6 +793,7 @@ impl Widget for RichTextEditor {
         if let Some(output) = output {
             output.try_revise(|value| *value = Some(controller))?;
         }
+        scope.retain(editor_scope)?;
         scope.retain(content)?;
         scope.retain(state)?;
         Ok(())

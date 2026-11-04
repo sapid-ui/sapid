@@ -1,6 +1,8 @@
 //! Typed paragraphs, headings and explicitly themed rich content.
 use glory::render::{EventKind, NodeId, TextKind};
-use glory::style::{Color, Display, Edges, Family, Overflow, Style, TextOverflow, WhiteSpace};
+use glory::style::{
+    Color, Display, Edges, Family, LinearGradient, Overflow, Style, TextOverflow, WhiteSpace,
+};
 use glory::ui::{IntoChildren, Result, Widget};
 use glory::{Cage, Scope, Vary};
 
@@ -22,6 +24,8 @@ struct Metrics {
     weight: Option<f64>,
     color: Option<Color>,
     truncate: bool,
+    line_clamp: Option<u16>,
+    gradient: Option<LinearGradient>,
 }
 impl Metrics {
     fn apply(&self, mut style: Style) -> Style {
@@ -42,6 +46,12 @@ impl Metrics {
             style.overflow_x = Some(Overflow::Hidden);
             style.white_space = Some(WhiteSpace::NoWrap);
             style.text_overflow = Some(TextOverflow::Ellipsis);
+        }
+        if let Some(lines) = self.line_clamp {
+            style.line_clamp = Some(lines);
+        }
+        if let Some(gradient) = &self.gradient {
+            style.text_gradient = Some(gradient.clone());
         }
         style
     }
@@ -106,6 +116,17 @@ macro_rules! text_methods {
         /// Single-line ellipsis; supply a finite width/max_width via style.
         pub fn truncate(mut self, value: bool) -> Self {
             self.metrics.truncate = value;
+            self
+        }
+        /// Clamp visible text to a bounded number of lines without changing
+        /// the full semantic text value.
+        pub fn line_clamp(mut self, lines: u16) -> Self {
+            self.metrics.line_clamp = Some(lines);
+            self
+        }
+        /// Fill glyphs with a finite linear gradient on supporting hosts.
+        pub fn gradient(mut self, value: LinearGradient) -> Self {
+            self.metrics.gradient = Some(value);
             self
         }
         pub fn selectable(mut self, value: impl Into<Vary<bool>>) -> Self {

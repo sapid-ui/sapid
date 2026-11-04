@@ -578,31 +578,35 @@ fn removable_tree_choices(
         true,
     )
     .expect("tree select example model");
-    group().theme(theme.clone()).gap(8.0).wrap(FlexWrap::Wrap).fill(
-        each(values.map(|values| values.paths().to_vec()))
-            .key(|path| path.leaf().to_owned())
-            .children(move |entry| {
-                let path = entry.value.get();
-                let key = path.leaf().to_owned();
-                let label = model
-                    .tree()
-                    .index(&key)
-                    .map(|index| model.tree().nodes()[index].label.clone())
-                    .unwrap_or_default();
-                let item_model = model.clone();
-                pill()
-                    .theme(theme.clone())
-                    .content(label)
-                    .removable(format!("Remove {key}"))
-                    .on_remove(move || {
-                        values.revise(|current| {
-                            if let Ok(next) = item_model.toggle(current, &key) {
-                                *current = next;
-                            }
+    group()
+        .theme(theme.clone())
+        .gap(8.0)
+        .wrap(FlexWrap::Wrap)
+        .fill(
+            each(values.map(|values| values.paths().to_vec()))
+                .key(|path| path.leaf().to_owned())
+                .children(move |entry| {
+                    let path = entry.value.get();
+                    let key = path.leaf().to_owned();
+                    let label = model
+                        .tree()
+                        .index(&key)
+                        .map(|index| model.tree().nodes()[index].label.clone())
+                        .unwrap_or_default();
+                    let item_model = model.clone();
+                    pill()
+                        .theme(theme.clone())
+                        .content(label)
+                        .removable(format!("Remove {key}"))
+                        .on_remove(move || {
+                            values.revise(|current| {
+                                if let Ok(next) = item_model.toggle(current, &key) {
+                                    *current = next;
+                                }
+                            })
                         })
-                    })
-            }),
-    )
+                }),
+        )
 }
 
 fn filter_tree_nodes(nodes: &[TreeNode], query: &str) -> Vec<TreeNode> {
@@ -661,9 +665,136 @@ fn tree_select_field(
                 .policy(policy)
                 .default_expanded(tree_expanded())
                 .clearable(true)
-                .placeholder(if multiple { "Pick values" } else { "Pick value" })
+                .placeholder(if multiple {
+                    "Pick values"
+                } else {
+                    "Pick value"
+                })
                 .on_value_change(move |next| value.revise(|current| *current = next))
         })
+}
+
+fn documentation_heading(theme: &Theme, id: &'static str, title: &'static str) -> impl Widget {
+    glory::ui::view()
+        .semantics(Some(Box::new(glory::render::Semantics {
+            id: Some(glory::render::SemanticId::new(id).expect("showcase section id")),
+            ..Default::default()
+        })))
+        .fill(sapid::title(3).theme(theme.clone()).content(title))
+}
+
+fn calendar_demo(theme: Theme) -> impl Widget {
+    widget(move |scope| {
+        let provider = DatesProvider::new(date("2024-02-29"));
+        let custom = scope.cage(DateSelection::Multiple(SelectedDates::new()));
+        let selected = custom;
+        let summary = custom.map(|selection| match selection {
+            DateSelection::Multiple(values) => format!("Selected: {} / 3", values.len()),
+            _ => unreachable!(),
+        });
+        let rendered_day = |date: Vary<CivilDate>| {
+            widget(move |scope| {
+                let date = date.clone();
+                let value = scope.bond(move || {
+                    let date = date.get();
+                    if date.day() == 16 {
+                        format!("{} •", date.day())
+                    } else {
+                        date.day().to_string()
+                    }
+                });
+                glory::ui::text()
+                    .class("site-calendar-rendered-day")
+                    .content(value)
+                    .show_in(scope)
+            })
+        };
+        let children: Vec<Box<dyn Widget>> = vec![
+            Box::new(documentation_heading(&theme, "calendar-usage", "Usage")),
+            Box::new(
+                calendar("calendar-usage-grid", provider)
+                    .theme(theme.clone())
+                    .name("Calendar usage")
+                    .default_month(YearMonth::new(2024, 2).unwrap()),
+            ),
+            Box::new(documentation_heading(
+                &theme,
+                "calendar-custom-picker",
+                "Custom date picker",
+            )),
+            Box::new(
+                calendar("calendar-custom-grid", provider)
+                    .theme(theme.clone())
+                    .name("Pick up to three dates")
+                    .default_month(YearMonth::new(2024, 2).unwrap())
+                    .selection(custom)
+                    .on_value_change(move |date| {
+                        let Some(date) = date else { return };
+                        selected.revise(|selection| {
+                            let DateSelection::Multiple(mut values) = *selection else {
+                                unreachable!()
+                            };
+                            if !values.remove(date) && values.len() < 3 {
+                                values
+                                    .insert(date)
+                                    .expect("showcase selection stays bounded");
+                            }
+                            *selection = DateSelection::Multiple(values);
+                        });
+                    }),
+            ),
+            Box::new(sapid::text().theme(theme.clone()).content(summary)),
+            Box::new(documentation_heading(
+                &theme,
+                "calendar-full-width",
+                "Full width",
+            )),
+            Box::new(
+                calendar("calendar-full-width-grid", provider)
+                    .theme(theme.clone())
+                    .name("Full width calendar")
+                    .default_month(YearMonth::new(2024, 2).unwrap())
+                    .full_width(true),
+            ),
+            Box::new(documentation_heading(
+                &theme,
+                "calendar-static",
+                "Static calendar and custom days",
+            )),
+            Box::new(
+                calendar("calendar-static-grid", provider)
+                    .theme(theme.clone())
+                    .name("Static event calendar")
+                    .default_month(YearMonth::new(2024, 2).unwrap())
+                    .static_mode(true)
+                    .render_day(rendered_day),
+            ),
+            Box::new(documentation_heading(
+                &theme,
+                "calendar-options",
+                "Week numbers and weekday header",
+            )),
+            Box::new(
+                sapid::group().theme(theme.clone()).fill((
+                    calendar("calendar-weeks-grid", provider)
+                        .theme(theme.clone())
+                        .name("Calendar with week numbers")
+                        .default_month(YearMonth::new(2024, 2).unwrap())
+                        .with_week_numbers(true),
+                    calendar("calendar-no-weekdays-grid", provider)
+                        .theme(theme.clone())
+                        .name("Calendar without weekday header")
+                        .default_month(YearMonth::new(2024, 2).unwrap())
+                        .hide_weekdays(true),
+                )),
+            ),
+        ];
+        sapid::stack()
+            .theme(theme.clone())
+            .gap(24.0)
+            .fill(children)
+            .show_in(scope)
+    })
 }
 
 fn tree_select_demo(theme: Theme) -> impl Widget {
@@ -674,11 +805,15 @@ fn tree_select_demo(theme: Theme) -> impl Widget {
         let independent = scope.cage(TreeChoices::default());
         let searched = scope.cage(TreeChoices::default());
         let query = scope.cage(String::new());
-        let expanded = scope.cage(tree_expanded());
-        let filtered = scope.bond(move || filter_tree_nodes(&tree_select_nodes(), &query.get()));
-        let nothing_found = scope.bond(move || filtered.with(Vec::is_empty));
         let controlled_expanded = scope.cage(tree_expanded());
+        let node_theme = theme.clone();
+        let value_theme = theme.clone();
         let children: Vec<Box<dyn Widget>> = vec![
+            Box::new(documentation_heading(
+                &theme,
+                "tree-select-usage",
+                "Usage and single selection",
+            )),
             Box::new(tree_select_field(
                 &theme,
                 "tree-select-single",
@@ -688,58 +823,40 @@ fn tree_select_demo(theme: Theme) -> impl Widget {
                 false,
                 TreeChoicePolicy::Leaves,
             )),
+            Box::new(documentation_heading(
+                &theme,
+                "tree-select-modes",
+                "Multiple and checkbox selection",
+            )),
+            Box::new(sapid::stack().theme(theme.clone()).gap(8.0).fill((
+                tree_select_field(
+                    &theme,
+                    "tree-select-multiple",
+                    "Your favorite items",
+                    "Select several values and remove individual pills.",
+                    multiple,
+                    true,
+                    TreeChoicePolicy::Leaves,
+                ),
+                removable_tree_choices(theme.clone(), multiple, TreeChoicePolicy::Leaves),
+            ))),
             Box::new(
-                sapid::title(3)
-                    .theme(theme.clone())
-                    .content("Multiple selection"),
-            ),
-            Box::new(
-                sapid::stack()
-                    .theme(theme.clone())
-                    .gap(8.0)
-                    .fill((
-                        tree_select_field(
-                            &theme,
-                            "tree-select-multiple",
-                            "Your favorite items",
-                            "Select several values and remove individual pills.",
-                            multiple,
-                            true,
-                            TreeChoicePolicy::Leaves,
-                        ),
-                        removable_tree_choices(
-                            theme.clone(),
-                            multiple,
-                            TreeChoicePolicy::Leaves,
-                        ),
-                    )),
-            ),
-            Box::new(
-                sapid::title(3)
+                sapid::title(4)
                     .theme(theme.clone())
                     .content("Checkbox selection with parent-child cascade"),
             ),
-            Box::new(
-                sapid::stack()
-                    .theme(theme.clone())
-                    .gap(8.0)
-                    .fill((
-                        tree_select_field(
-                            &theme,
-                            "tree-select-cascade",
-                            "Include categories",
-                            "Selecting a branch selects all of its enabled descendants.",
-                            cascade,
-                            true,
-                            TreeChoicePolicy::DescendantLeaves,
-                        ),
-                        removable_tree_choices(
-                            theme.clone(),
-                            cascade,
-                            TreeChoicePolicy::DescendantLeaves,
-                        ),
-                    )),
-            ),
+            Box::new(sapid::stack().theme(theme.clone()).gap(8.0).fill((
+                tree_select_field(
+                    &theme,
+                    "tree-select-cascade",
+                    "Include categories",
+                    "Selecting a branch selects all of its enabled descendants.",
+                    cascade,
+                    true,
+                    TreeChoicePolicy::DescendantLeaves,
+                ),
+                removable_tree_choices(theme.clone(), cascade, TreeChoicePolicy::DescendantLeaves),
+            ))),
             Box::new(tree_select_field(
                 &theme,
                 "tree-select-independent",
@@ -747,56 +864,38 @@ fn tree_select_demo(theme: Theme) -> impl Widget {
                 "Check individual leaves without changing their parent or siblings.",
                 independent,
                 true,
-                TreeChoicePolicy::Leaves,
+                TreeChoicePolicy::AnyNode,
             )),
-            Box::new(
-                sapid::title(3).theme(theme.clone()).content("Search"),
-            ),
-            Box::new(
-                sapid::text_field()
-                    .theme(theme.clone())
-                    .name("Search tree items")
-                    .placeholder("Search items")
-                    .value(query)
-                    .on_value_change(move |next| {
-                        query.revise(|current| *current = next);
-                        searched.revise(|current| *current = TreeChoices::default());
-                        expanded.revise(|current| {
-                            *current = tree_expanded();
-                        });
-                    }),
-            ),
+            Box::new(documentation_heading(
+                &theme,
+                "tree-select-searchable",
+                "Searchable and nothing found",
+            )),
             Box::new(
                 field("tree-select-search")
                     .theme(theme.clone())
                     .label("Filtered items")
-                    .description("Matching items retain their ancestors.")
+                    .description("Type in the control; matching items retain their ancestors.")
                     .control(move |field| {
                         tree_select("tree-select-search")
                             .field(field)
                             .class("site-tree-select-search")
-                            .nodes(filtered)
+                            .nodes(tree_select_nodes())
                             .value(searched)
-                            .expanded(expanded)
+                            .search(query)
+                            .searchable(true)
+                            .nothing_found_message("Nothing found...")
+                            .default_expanded(tree_expanded())
                             .placeholder("Pick a matching item")
-                            .on_value_change(move |next| {
-                                searched.revise(|current| *current = next)
-                            })
-                            .on_expanded_change(move |next| {
-                                expanded.revise(|current| *current = next)
-                            })
+                            .on_value_change(move |next| searched.revise(|current| *current = next))
+                            .on_search_change(move |next| query.revise(|current| *current = next))
                     }),
             ),
-            Box::new(when(nothing_found, || {
-                text()
-                    .class("site-tree-select-empty")
-                    .content("Nothing found")
-            })),
-            Box::new(
-                sapid::title(3)
-                    .theme(theme.clone())
-                    .content("Controlled expansion"),
-            ),
+            Box::new(documentation_heading(
+                &theme,
+                "tree-select-expanded",
+                "Controlled expansion and clearable",
+            )),
             Box::new(
                 field("tree-select-expansion")
                     .theme(theme.clone())
@@ -814,25 +913,92 @@ fn tree_select_demo(theme: Theme) -> impl Widget {
                             })
                     }),
             ),
-            Box::new(group().theme(theme.clone()).fill((
-                sapid::button()
-                    .theme(theme.clone())
-                    .label("Expand all")
-                    .on_press(move || {
-                        controlled_expanded.revise(|current| {
-                            *current = tree_expanded();
-                        })
-                    }),
-                sapid::button()
-                    .theme(theme.clone())
-                    .label("Collapse all")
-                    .on_press(move || controlled_expanded.revise(|current| current.clear())),
-            ))),
             Box::new(
-                sapid::title(3)
-                    .theme(theme.clone())
-                    .content("Disabled, read only and error"),
+                group().theme(theme.clone()).fill((
+                    sapid::button()
+                        .theme(theme.clone())
+                        .label("Expand all")
+                        .on_press(move || {
+                            controlled_expanded.revise(|current| {
+                                *current = tree_expanded();
+                            })
+                        }),
+                    sapid::button()
+                        .theme(theme.clone())
+                        .label("Collapse all")
+                        .on_press(move || controlled_expanded.revise(|current| current.clear())),
+                )),
             ),
+            Box::new(documentation_heading(
+                &theme,
+                "tree-select-limits",
+                "Selection limit and hidden picked items",
+            )),
+            Box::new(
+                tree_select("tree-select-limited")
+                    .theme(theme.clone())
+                    .name("Pick up to 2 items")
+                    .nodes(tree_select_nodes())
+                    .multiple(true)
+                    .searchable(true)
+                    .hide_picked(true)
+                    .max_values(2)
+                    .default_expanded(tree_expanded())
+                    .placeholder("Pick values"),
+            ),
+            Box::new(documentation_heading(
+                &theme,
+                "tree-select-rendering",
+                "Custom node and selected value rendering",
+            )),
+            Box::new(
+                tree_select("tree-select-rendered")
+                    .theme(theme.clone())
+                    .name("Rendered categories")
+                    .nodes(tree_select_nodes())
+                    .multiple(true)
+                    .default_value(tree_choice("headphones"))
+                    .default_expanded(tree_expanded())
+                    .render_node(move |node| {
+                        group().theme(node_theme.clone()).gap(6.0).fill((
+                            theme_icon(Icon::ChevronRight)
+                                .theme(node_theme.clone())
+                                .size(Size::ExtraSmall)
+                                .variant(ThemeIconVariant::Soft),
+                            text().content(node.with(|node| node.label.clone())),
+                        ))
+                    })
+                    .render_value(move |node| {
+                        badge()
+                            .theme(value_theme.clone())
+                            .content(node.with(|node| node.label.clone()))
+                    }),
+            ),
+            Box::new(documentation_heading(
+                &theme,
+                "tree-select-dropdown",
+                "Dropdown size, position and connecting lines",
+            )),
+            Box::new(
+                tree_select("tree-select-dropdown")
+                    .theme(theme.clone())
+                    .name("Compact dropdown without lines")
+                    .nodes(tree_select_nodes())
+                    .default_expanded(tree_expanded())
+                    .with_lines(false)
+                    .popup_width(220.)
+                    .max_dropdown_height(180.)
+                    .popup_placement(glory::render::AnchorPlacement {
+                        side: glory::render::AnchorSide::Top,
+                        flip: false,
+                        ..glory::render::AnchorPlacement::default()
+                    }),
+            ),
+            Box::new(documentation_heading(
+                &theme,
+                "tree-select-states",
+                "Disabled, read only and error",
+            )),
             Box::new(
                 tree_select("tree-select-disabled")
                     .theme(theme.clone())
@@ -915,21 +1081,66 @@ fn combobox_demo(theme: Theme) -> impl Widget {
     widget(move |scope| {
         let value = scope.cage(None::<String>);
         let search = scope.cage(String::new());
-        field("combobox-framework")
+        stack()
             .theme(theme.clone())
-            .label("Your favorite framework")
-            .description("Type to filter options, then choose a suggestion.")
-            .control(move |field| {
-                combobox("combobox-framework")
-                    .field(field)
-                    .value(value)
-                    .search(search)
-                    .options(framework_options())
-                    .empty_message("Nothing found")
-                    .placeholder("Search or pick value")
-                    .on_value_change(move |next| value.revise(|current| *current = next))
-                    .on_search_change(move |next| search.revise(|current| *current = next))
-            })
+            .gap(20.0)
+            .fill((
+                field("combobox-framework")
+                    .theme(theme.clone())
+                    .label("Your favorite framework")
+                    .description("Type to filter options, then choose a suggestion.")
+                    .control(move |field| {
+                        combobox("combobox-framework")
+                            .field(field)
+                            .value(value)
+                            .search(search)
+                            .options(framework_options())
+                            .empty_message("Nothing found")
+                            .placeholder("Search or pick value")
+                            .on_value_change(move |next| value.revise(|current| *current = next))
+                            .on_search_change(move |next| search.revise(|current| *current = next))
+                    }),
+                field("combobox-prefix-limit")
+                    .theme(theme.clone())
+                    .label("Prefix filter with visible limit")
+                    .description("Four declarations match A, but only two results are mounted.")
+                    .control(move |field| {
+                        combobox("combobox-prefix-limit")
+                            .field(field)
+                            .default_search("a")
+                            .default_open(true)
+                            .filter(ComboboxFilter::Prefix)
+                            .limit(2)
+                            .loading(true)
+                            .loading_left(true)
+                            .options([
+                                select_option("angular", "Angular"),
+                                select_option("astro", "Astro"),
+                                select_option("alpine", "Alpine"),
+                                select_option("ark", "Ark UI"),
+                                select_option("react", "React"),
+                            ])
+                    }),
+                field("combobox-groups")
+                    .theme(theme.clone())
+                    .label("Grouped options")
+                    .description(
+                        "Groups preserve declaration order and disabled options are skipped.",
+                    )
+                    .control(move |field| {
+                        combobox("combobox-groups")
+                            .field(field)
+                            .group(select_group("Frontend").options([
+                                select_option("vue", "Vue"),
+                                select_option("svelte", "Svelte"),
+                            ]))
+                            .group(select_group("Backend").options([
+                                select_option("axum", "Axum"),
+                                select_option("django", "Django").disabled(true),
+                            ]))
+                            .placeholder("Search grouped options")
+                    }),
+            ))
             .show_in(scope)
     })
 }
@@ -954,9 +1165,7 @@ fn autocomplete_demo(theme: Theme) -> impl Widget {
                         value.revise(|current| *current = next);
                         selected.revise(|current| *current = None);
                     })
-                    .on_option_select(move |next| {
-                        selected.revise(|current| *current = Some(next))
-                    })
+                    .on_option_select(move |next| selected.revise(|current| *current = Some(next)))
             })
             .show_in(scope)
     })
@@ -991,14 +1200,12 @@ fn cascader_demo(theme: Theme) -> impl Widget {
                             .class("site-cascader-item")
                             .nodes(tree_select_nodes())
                             .value(value)
-                                    .default_expanded(std::collections::BTreeSet::from([
-                                "electronics".to_owned(),
+                            .default_expanded(std::collections::BTreeSet::from([
+                                "electronics".to_owned()
                             ]))
                             .clearable(true)
                             .placeholder("Pick value")
-                            .on_value_change(move |next| {
-                                value.revise(|current| *current = next)
-                            })
+                            .on_value_change(move |next| value.revise(|current| *current = next))
                     }),
                 sapid::text().theme(theme.clone()).content(selected),
                 sapid::title(3)
@@ -1065,61 +1272,55 @@ pub fn demo_for(name: &str, theme: Theme) -> Box<dyn Widget> {
         ),
         "Box" => Box::new(tile(&theme, "A themed box with arbitrary child content")),
         "Grid" => Box::new(
-            grid("mantine-grid")
+            grid("showcase-grid")
                 .theme(theme.clone())
                 .columns(3)
                 .gap(12.0)
                 .items((1..=6).map(|index| {
-                    grid_item(format!("mantine-grid-{index}"))
+                    grid_item(format!("showcase-grid-{index}"))
                         .theme(theme.clone())
                         .span(if index == 1 { 2 } else { 1 })
                         .fill(tile(&theme, &format!("Grid item {index}")))
                 })),
         ),
         "SimpleGrid" => Box::new(
-            simple_grid("mantine-simple-grid")
+            simple_grid("showcase-simple-grid")
                 .theme(theme.clone())
                 .columns(3)
                 .gap(12.0)
                 .items((1..=6).map(|index| {
-                    grid_item(format!("mantine-simple-grid-{index}"))
+                    grid_item(format!("showcase-simple-grid-{index}"))
                         .theme(theme.clone())
                         .fill(tile(&theme, &format!("Item {index}")))
                 })),
         ),
         "AlphaSlider" => Box::new(
-            alpha_slider("mantine-alpha")
+            alpha_slider("showcase-alpha")
                 .theme(theme)
                 .name("Opacity")
                 .default_value(0.65)
                 .color(Color(34, 139, 230, 255)),
         ),
         "HueSlider" => Box::new(
-            hue_slider("mantine-hue")
+            hue_slider("showcase-hue")
                 .theme(theme)
                 .name("Hue")
                 .default_value(210.0),
         ),
         "ColorInput" => Box::new(widget(move |scope| {
-            let value = scope.cage("#228be6".to_owned());
-            field("mantine-color-input")
-                .theme(theme.clone())
-                .label("Accent color")
-                .description("Enter a hex color, including an optional alpha channel.")
-                .control(move |field| {
-                    color_input("mantine-color-input")
-                        .field(field)
-                        .value(value)
-                        .on_value_change(move |next| value.revise(|current| *current = next))
-                })
-                .show_in(scope)
+            let hex = scope.cage("#228be6".to_owned());
+            field("showcase-color-input").theme(theme.clone()).label("Input label").description("Input description").control(move |field| {
+                    color_input("showcase-color-input").field(field).value(hex)
+                        .on_value_change(move |next| hex.revise(|current| *current = next))
+                }).show_in(scope)
         })),
         "ColorPicker" => Box::new(widget(move |scope| {
             let value = scope.cage(Hsva { hue: 210.0, saturation: 0.8, value: 0.9, alpha: 1.0 });
-            color_picker("mantine-color-picker")
+            color_picker("showcase-color-picker")
                 .theme(theme.clone())
                 .name("Accent color")
                 .value(value)
+                .show_precision_sliders(false)
                 .on_value_change(move |next| value.revise(|current| *current = next))
                 .show_in(scope)
         })),
@@ -1137,7 +1338,7 @@ pub fn demo_for(name: &str, theme: Theme) -> Box<dyn Widget> {
                 .configuration(FileConfig { multiple: true, ..Default::default() }),
         ),
         "ComboboxPopover" => Box::new(
-            popover("mantine-combobox-popover")
+            popover("showcase-combobox-popover")
                 .theme(theme.clone())
                 .label("Choose a framework")
                 .title("Framework suggestions")
@@ -1148,15 +1349,70 @@ pub fn demo_for(name: &str, theme: Theme) -> Box<dyn Widget> {
                     ))
                 }),
         ),
-        "Popover" => Box::new(
-            popover("mantine-popover")
+        "Popover" => Box::new(widget(move |scope| {
+            let controlled = scope.cage(false);
+            let controlled_copy = controlled;
+            sapid::stack()
                 .theme(theme.clone())
-                .label("Toggle popover")
-                .title("Popover title")
-                .content(move || {
-                    sapid::text().theme(theme.clone()).content("Additional information stays beside its trigger.")
-                }),
-        ),
+                .gap(18.0)
+                .fill((
+                    sapid::text().theme(theme.clone()).content("Basic usage"),
+                    popover("showcase-popover-basic")
+                        .theme(theme.clone())
+                        .class("showcase-popover-basic")
+                        .label("Toggle popover")
+                        .title("Popover title")
+                        .content({
+                            let theme = theme.clone();
+                            move || sapid::text().theme(theme.clone()).content("Additional information stays beside its trigger.")
+                        }),
+                    sapid::text().theme(theme.clone()).content("Same width as target"),
+                    popover("showcase-popover-target-width")
+                        .theme(theme.clone())
+                        .class("showcase-popover-target-width")
+                        .label("Open matching panel")
+                        .width(PopoverWidth::Target)
+                        .trigger_content(|| text().content("A deliberately wide target control"))
+                        .content({
+                            let theme = theme.clone();
+                            move || sapid::text().theme(theme.clone()).content("This panel follows the live trigger width.")
+                        }),
+                    sapid::text().theme(theme.clone()).content("Arrow, offset and placement"),
+                    popover("showcase-popover-arrow")
+                        .theme(theme.clone())
+                        .class("showcase-popover-arrow")
+                        .label("Open positioned panel")
+                        .placement(AnchorPlacement {
+                            side: AnchorSide::Top,
+                            align: AnchorAlign::End,
+                            gap: 12.0,
+                            arrow: Some(AnchorArrow {
+                                size: 10.0,
+                                radius: 2.0,
+                                offset: 14.0,
+                                position: AnchorArrowPosition::Side,
+                            }),
+                            ..AnchorPlacement::default()
+                        })
+                        .content({
+                            let theme = theme.clone();
+                            move || sapid::text().theme(theme.clone()).content("The arrow follows the side selected after collision handling.")
+                        }),
+                    sapid::text().theme(theme.clone()).content("Controlled state"),
+                    popover("showcase-popover-controlled")
+                        .theme(theme.clone())
+                        .class("showcase-popover-controlled")
+                        .label("Toggle controlled popover")
+                        .open(controlled)
+                        .on_open_change(move |next| controlled_copy.revise(|value| *value = next))
+                        .dismiss_on_outside(false)
+                        .content({
+                            let theme = theme.clone();
+                            move || sapid::text().theme(theme.clone()).content("Outside clicks are disabled; use the close action or Escape.")
+                        }),
+                ))
+                .show_in(scope)
+        })),
         "Pill" => Box::new(
             group().theme(theme.clone()).fill((
                 pill().theme(theme.clone()).content("Rust"),
@@ -1178,14 +1434,14 @@ pub fn demo_for(name: &str, theme: Theme) -> Box<dyn Widget> {
                     values: vec!["Rust".into(), "WebAssembly".into()],
                     search: String::new(),
                 });
-                field("mantine-token-input")
+                field("showcase-token-input")
                     .theme(theme.clone())
                     .label(if pills { "Labels" } else { "Skills" })
                     .description("Press Enter to add a value. Backspace removes the last value when search is empty.")
                     .control(move |field| {
                         let input: Box<dyn Widget> = if pills {
                             Box::new(
-                                pills_input("mantine-pills-input")
+                                pills_input("showcase-pills-input")
                                     .field(field)
                                     .state(state)
                                     .placeholder("Add a value")
@@ -1193,7 +1449,7 @@ pub fn demo_for(name: &str, theme: Theme) -> Box<dyn Widget> {
                             )
                         } else {
                             Box::new(
-                                tags_input("mantine-tags-input")
+                                tags_input("showcase-tags-input")
                                     .field(field)
                                     .state(state)
                                     .placeholder("Add a value")
@@ -1246,7 +1502,7 @@ pub fn demo_for(name: &str, theme: Theme) -> Box<dyn Widget> {
         "Progress" | "RingProgress" | "SemiCircleProgress" => progress_example(name, theme),
         "ActionBar" => Box::new(widget(move |scope| {
             let count = scope.cage(2usize);
-            action_bar("mantine-action-bar")
+            action_bar("showcase-action-bar")
                 .theme(theme.clone())
                 .name("Selected item actions")
                 .selected_count(count)
@@ -1254,7 +1510,7 @@ pub fn demo_for(name: &str, theme: Theme) -> Box<dyn Widget> {
                 .show_in(scope)
         })),
         "Toolbar" => Box::new(
-            toolbar("mantine-toolbar")
+            toolbar("showcase-toolbar")
                 .theme(theme.clone())
                 .name("Editor toolbar")
                 .group(toolbar_group(&theme, "editor-actions")),
@@ -1301,22 +1557,76 @@ pub fn demo_for(name: &str, theme: Theme) -> Box<dyn Widget> {
             )),
         ),
         "BackgroundImage" => Box::new(
-            background_image(media("image-pattern.png"))
-                .theme(theme.clone())
-                .name("Pattern background")
-                .width(Length::Px(360.0))
-                .height(Length::Px(180.0))
-                .fill(sapid::text().theme(theme).content("Content over a background image")),
+            sapid::stack().theme(theme.clone()).gap(12.0).fill((
+                sapid::text().theme(theme.clone()).content("Usage"),
+                background_image(media("image-pattern.png"))
+                    .theme(theme.clone())
+                    .class("showcase-background-image")
+                    .name("Pattern background")
+                    .width(Length::Px(360.0))
+                    .height(Length::Px(180.0))
+                    .fill(sapid::text().theme(theme).content("Content over a background image")),
+            )),
         ),
-        "Image" => Box::new(
-            image(media("image-pattern.png"))
-                .theme(theme)
-                .alt("Abstract color pattern")
-                .fallback_src(media("image-fallback.png"))
-                .width(Length::Px(320.0))
-                .height(Length::Px(180.0))
-                .fit(ObjectFit::Cover),
-        ),
+        "Image" => {
+            let pattern = media("image-pattern.png");
+            let fallback = media("image-fallback.png");
+            Box::new(sapid::stack().theme(theme.clone()).gap(14.0).fill((
+                sapid::text().theme(theme.clone()).content("Usage"),
+                image(pattern.clone())
+                    .theme(theme.clone())
+                    .class("showcase-image-usage")
+                    .alt("Abstract color pattern")
+                    .width(Length::Px(320.0)),
+                sapid::text().theme(theme.clone()).content("Image height"),
+                image(pattern.clone())
+                    .theme(theme.clone())
+                    .class("showcase-image-height")
+                    .alt("Fixed height color pattern")
+                    .width(Length::Px(320.0))
+                    .height(Length::Px(160.0)),
+                sapid::text().theme(theme.clone()).content("Image fit"),
+                image(pattern.clone())
+                    .theme(theme.clone())
+                    .class("showcase-image-fit")
+                    .alt("Contained color pattern")
+                    .width(Length::Px(320.0))
+                    .height(Length::Px(160.0))
+                    .fit(ObjectFit::Contain),
+                sapid::text().theme(theme.clone()).content("Fallback image"),
+                image(media("image-invalid.png"))
+                    .theme(theme.clone())
+                    .class("showcase-image-fallback")
+                    .alt("Fallback color pattern")
+                    .fallback_src(fallback.clone())
+                    .width(Length::Px(320.0))
+                    .height(Length::Px(160.0))
+                    .fit(ObjectFit::Cover),
+                sapid::text().theme(theme.clone()).content("Responsive source and loading"),
+                image(pattern.clone())
+                    .theme(theme)
+                    .class("showcase-image-responsive")
+                    .alt("Responsive color pattern")
+                    .srcset([
+                        ImageCandidate { source: pattern, width: 320 },
+                        ImageCandidate { source: fallback, width: 960 },
+                    ])
+                    .sizes([
+                        ImageSizeHint {
+                            max_viewport_width: Some(600),
+                            slot: ImageSlotSize::ViewportWidth(100),
+                        },
+                        ImageSizeHint {
+                            max_viewport_width: None,
+                            slot: ImageSlotSize::Pixels(480),
+                        },
+                    ])
+                    .loading(ImageLoading::Lazy)
+                    .width(Length::Px(480.0))
+                    .height(Length::Px(180.0))
+                    .fit(ObjectFit::Cover),
+            )))
+        }
         "Card" => Box::new(
             card()
                 .theme(theme.clone())
@@ -1443,17 +1753,50 @@ pub fn demo_for(name: &str, theme: Theme) -> Box<dyn Widget> {
         "Cascader" => Box::new(cascader_demo(theme)),
         "TreeSelect" => Box::new(tree_select_demo(theme)),
         "Text" => Box::new(
-            sapid::stack().theme(theme.clone()).gap(10.0).fill((
+            sapid::stack().theme(theme.clone()).gap(14.0).fill((
+                sapid::text().theme(theme.clone()).content("Usage"),
                 sapid::text().theme(theme.clone()).content("Default text"),
                 sapid::text().theme(theme.clone()).variant(TextVariant::Lead).content("Lead text"),
-                sapid::text().theme(theme).variant(TextVariant::Muted).content("Muted text"),
+                sapid::text().theme(theme.clone()).variant(TextVariant::Muted).content("Muted text"),
+                sapid::text().theme(theme.clone()).content("Single-line truncate"),
+                sapid::text()
+                    .theme(theme.clone())
+                    .class("showcase-text-truncate")
+                    .truncate(true)
+                    .style(Style::new().width(Length::Px(320.0)))
+                    .content("This sentence is deliberately too long for the available single line width."),
+                sapid::text().theme(theme.clone()).content("Line clamp"),
+                sapid::text()
+                    .theme(theme.clone())
+                    .class("showcase-text-clamp")
+                    .line_clamp(2)
+                    .style(Style::new().width(Length::Px(340.0)))
+                    .content("This paragraph demonstrates a real two-line clamp. The complete value remains in the text node for copying and accessibility even though additional visual lines are clipped by the host."),
+                sapid::text().theme(theme.clone()).content("Gradient"),
+                sapid::text()
+                    .theme(theme)
+                    .class("showcase-text-gradient")
+                    .font_size(30.0)
+                    .weight(700.0)
+                    .gradient(glory::style::LinearGradient {
+                        angle: 90.0,
+                        stops: vec![Color(30, 110, 240, 255), Color(190, 40, 210, 255)],
+                    })
+                    .content("Gradient text"),
             )),
         ),
         "Title" => Box::new(
-            sapid::stack().theme(theme.clone()).gap(8.0).fill((
+            sapid::stack().theme(theme.clone()).gap(12.0).fill((
                 title(1).theme(theme.clone()).content("Heading level 1"),
                 title(2).theme(theme.clone()).content("Heading level 2"),
-                title(3).theme(theme).content("Heading level 3"),
+                title(3).theme(theme.clone()).content("Heading level 3"),
+                sapid::text().theme(theme.clone()).content("Line clamp"),
+                title(2)
+                    .theme(theme)
+                    .class("showcase-title-clamp")
+                    .line_clamp(2)
+                    .style(Style::new().width(Length::Px(360.0)))
+                    .content("A heading can be constrained to two lines while retaining its complete semantic name and heading level."),
             )),
         ),
         "Typography" => Box::new(
@@ -1477,7 +1820,7 @@ pub fn demo_for(name: &str, theme: Theme) -> Box<dyn Widget> {
             )).show_in(scope)
         })),
         "Portal" => Box::new(widget(move |scope| {
-            let context = portal_context(scope, "mantine-portal")?;
+            let context = portal_context(scope, "showcase-portal")?;
             let content_theme = theme.clone();
             view().fill((
                 portal_target(&context, "destination").fill(tile(&theme, "Portal destination")),
@@ -1500,10 +1843,10 @@ pub fn demo_for(name: &str, theme: Theme) -> Box<dyn Widget> {
                     }
                 };
                 let area: Box<dyn Widget> = if horizontal {
-                    Box::new(scroller("mantine-scroller").area(|area| area.theme(theme.clone())).content(content))
+                    Box::new(scroller("showcase-scroller").area(|area| area.theme(theme.clone())).content(content))
                 } else {
                     Box::new(
-                        scroll_area("mantine-scroll-area")
+                        scroll_area("showcase-scroll-area")
                             .theme(theme.clone())
                             .name("Scrollable content")
                             .content(content),
@@ -1513,7 +1856,7 @@ pub fn demo_for(name: &str, theme: Theme) -> Box<dyn Widget> {
             }))
         }
         "Notification" => Box::new(
-            notification("mantine-notification")
+            notification("showcase-notification")
                 .theme(theme)
                 .title("Changes saved")
                 .content("Your changes are stored on this device.")
@@ -1529,7 +1872,7 @@ pub fn demo_for(name: &str, theme: Theme) -> Box<dyn Widget> {
                         let _ = handle.show(notification_request("saved", "Changes saved", "Your changes are stored on this device."));
                     }
                 }),
-                toaster("mantine-notifications")
+                toaster("showcase-notifications")
                     .theme(theme.clone())
                     .capacity(8)
                     .visible_limit(4)
@@ -1538,56 +1881,76 @@ pub fn demo_for(name: &str, theme: Theme) -> Box<dyn Widget> {
             )).show_in(scope)
         })),
         "DatePicker" => Box::new(
-            date_picker("mantine-date-picker", DatesProvider::new(date("2024-02-29")))
-                .theme(theme)
-                .name("Appointment date")
-                .default_value(DateSelection::Single(Some(date("2024-02-29")))),
-        ),
-        "DatePickerInput" => Box::new(
-            date_picker_input("mantine-date-picker-input", DatesProvider::new(date("2024-02-29")))
+            date_picker("showcase-date-picker", DatesProvider::new(date("2024-02-29")))
                 .theme(theme)
                 .name("Appointment date")
                 .default_value(DateSelection::Single(Some(date("2024-02-29"))))
-                .trigger_label("Choose appointment date"),
+                .presets([
+                    DatePickerPreset::new(
+                        "Yesterday",
+                        DateSelection::Single(Some(date("2024-02-28"))),
+                    ),
+                    DatePickerPreset::new(
+                        "Today",
+                        DateSelection::Single(Some(date("2024-02-29"))),
+                    ),
+                ]),
+        ),
+        "DatePickerInput" => Box::new(
+            date_picker_input("showcase-date-picker-input", DatesProvider::new(date("2024-02-29")))
+                .theme(theme)
+                .name("Appointment date")
+                .default_value(DateSelection::Single(Some(date("2024-02-29"))))
+                .trigger_label("Choose appointment date")
+                .presets([
+                    DatePickerPreset::new(
+                        "Yesterday",
+                        DateSelection::Single(Some(date("2024-02-28"))),
+                    ),
+                    DatePickerPreset::new(
+                        "Today",
+                        DateSelection::Single(Some(date("2024-02-29"))),
+                    ),
+                ]),
         ),
         "DateTimePicker" => Box::new(
-            date_time_picker("mantine-date-time", DatesProvider::new(date("2024-02-29")), DateTimePolicy::Civil)
+            date_time_picker("showcase-date-time", DatesProvider::new(date("2024-02-29")), DateTimePolicy::Civil)
                 .theme(theme)
                 .name("Appointment date and time")
                 .default_value(Some(datetime("2024-02-29T10:20"))),
         ),
         "InlineDateTimePicker" => Box::new(
-            inline_date_time_picker("mantine-inline-date-time", DatesProvider::new(date("2024-02-29")), DateTimePolicy::Civil)
+            inline_date_time_picker("showcase-inline-date-time", DatesProvider::new(date("2024-02-29")), DateTimePolicy::Civil)
                 .theme(theme)
                 .name("Inline appointment")
                 .default_value(Some(datetime("2024-02-29T10:20"))),
         ),
         "MonthPicker" => Box::new(
-            month_picker("mantine-month", DatesProvider::new(date("2024-02-29")))
+            month_picker("showcase-month", DatesProvider::new(date("2024-02-29")))
                 .theme(theme)
                 .name("Billing month")
                 .default_value(MonthSelection::Single(Some(YearMonth::new(2024, 2).unwrap()))),
         ),
         "MonthPickerInput" => Box::new(
-            month_picker_input("mantine-month-input", DatesProvider::new(date("2024-02-29")))
+            month_picker_input("showcase-month-input", DatesProvider::new(date("2024-02-29")))
                 .theme(theme)
                 .name("Billing month")
                 .default_value(MonthSelection::Single(Some(YearMonth::new(2024, 2).unwrap()))),
         ),
         "YearPicker" => Box::new(
-            year_picker("mantine-year", DatesProvider::new(date("2024-02-29")))
+            year_picker("showcase-year", DatesProvider::new(date("2024-02-29")))
                 .theme(theme)
                 .name("Billing year")
                 .default_value(YearSelection::Single(Some(CivilYear::new(2024).unwrap()))),
         ),
         "YearPickerInput" => Box::new(
-            year_picker_input("mantine-year-input", DatesProvider::new(date("2024-02-29")))
+            year_picker_input("showcase-year-input", DatesProvider::new(date("2024-02-29")))
                 .theme(theme)
                 .name("Billing year")
                 .default_value(YearSelection::Single(Some(CivilYear::new(2024).unwrap()))),
         ),
         "TimeInput" => Box::new(
-            time_input("mantine-time-input")
+            time_input("showcase-time-input")
                 .theme(theme)
                 .name("Appointment time")
                 .default_value(Some(LocalTime::new(10, 30, 0).unwrap())),
@@ -1598,64 +1961,61 @@ pub fn demo_for(name: &str, theme: Theme) -> Box<dyn Widget> {
                 .empty_label("No time selected"),
         ),
         "TimePicker" => Box::new(
-            time_picker("mantine-time-picker")
+            time_picker("showcase-time-picker")
                 .theme(theme)
                 .name("Appointment time")
                 .default_value(Some(LocalTime::new(10, 30, 0).unwrap())),
         ),
         "TimeGrid" => Box::new(
-            time_grid("mantine-time-grid")
+            time_grid("showcase-time-grid")
                 .theme(theme)
                 .name("Available times")
                 .default_value(Some(LocalTime::new(10, 30, 0).unwrap())),
         ),
         "MiniCalendar" => Box::new(
-            mini_calendar("mantine-mini-calendar", DatesProvider::new(date("2024-02-29")))
+            mini_calendar("showcase-mini-calendar", DatesProvider::new(date("2024-02-29")))
                 .theme(theme)
                 .name("Compact calendar")
                 .default_value(Some(date("2024-02-29"))),
         ),
         "Calendar" => Box::new(
-            calendar("mantine-calendar", DatesProvider::new(date("2024-02-29")))
-                .theme(theme)
-                .name("Choose a date")
-                .default_value(Some(date("2024-02-29"))),
+            calendar_demo(theme),
         ),
         "Schedule" => Box::new(
-            schedule("mantine-schedule", schedule_data(ScheduleWindow::days(date("2024-02-29"), 1).unwrap()))
+            schedule("showcase-schedule", schedule_data(ScheduleWindow::days(date("2024-02-29"), 1).unwrap()))
                 .theme(theme)
                 .name("Schedule")
                 .viewport_height(360.0),
         ),
         "AgendaView" => Box::new(
-            agenda_view("mantine-agenda", schedule_data(ScheduleWindow::days(date("2024-02-26"), 7).unwrap()))
+            agenda_view("showcase-agenda", schedule_data(ScheduleWindow::days(date("2024-02-26"), 7).unwrap()))
                 .theme(theme)
                 .name("Upcoming events"),
         ),
         "DayView" => Box::new(
-            day_view("mantine-day", schedule_data(ScheduleWindow::days(date("2024-02-29"), 1).unwrap()))
+            day_view("showcase-day", schedule_data(ScheduleWindow::days(date("2024-02-29"), 1).unwrap()))
                 .theme(theme)
                 .name("Day schedule")
                 .viewport_height(400.0),
         ),
         "WeekView" => Box::new(
-            week_view("mantine-week", schedule_data(ScheduleWindow::days(date("2024-02-26"), 7).unwrap()))
+            week_view("showcase-week", schedule_data(ScheduleWindow::days(date("2024-02-26"), 7).unwrap()))
                 .theme(theme)
                 .name("Week schedule")
                 .viewport_height(400.0),
         ),
         "MonthView" => Box::new(
-            month_view("mantine-month-view", schedule_data(ScheduleWindow::month(YearMonth::new(2024, 2).unwrap()).unwrap()))
+            month_view("showcase-month-view", schedule_data(ScheduleWindow::month(YearMonth::new(2024, 2).unwrap()).unwrap()))
                 .theme(theme)
                 .name("Month schedule"),
         ),
         "YearView" => Box::new(
-            year_view("mantine-year-view", schedule_data(ScheduleWindow::year(CivilYear::new(2024).unwrap()).unwrap()))
+            year_view("showcase-year-view", schedule_data(ScheduleWindow::year(CivilYear::new(2024).unwrap()).unwrap()))
                 .theme(theme)
                 .name("Year schedule"),
         ),
         "MobileMonthView" => Box::new(
-            mobile_month_view("mantine-mobile-month", schedule_data(ScheduleWindow::month(YearMonth::new(2024, 2).unwrap()).unwrap()))
+            mobile_month_view("showcase-mobile-month", schedule_data(ScheduleWindow::month(YearMonth::new(2024, 2).unwrap()).unwrap()))
                 .theme(theme)
                 .name("Mobile month schedule"),
         ),
@@ -1669,10 +2029,10 @@ pub fn demo_for(name: &str, theme: Theme) -> Box<dyn Widget> {
             };
             let data = resource_data(window);
             let widget: Box<dyn Widget> = match name {
-                "ResourcesWeekView" => Box::new(resources_week_view("mantine-resource-week", data).theme(theme).name("Resources this week").viewport_height(400.0)),
-                "ResourcesMonthView" => Box::new(resources_month_view("mantine-resource-month", data).theme(theme).name("Resources this month")),
-                "ResourcesSchedule" => Box::new(resources_schedule("mantine-resources", data).theme(theme).name("Resource schedule").viewport_height(400.0)),
-                _ => Box::new(resources_day_view("mantine-resource-day", data).theme(theme).name("Resources today").viewport_height(400.0)),
+                "ResourcesWeekView" => Box::new(resources_week_view("showcase-resource-week", data).theme(theme).name("Resources this week").viewport_height(400.0)),
+                "ResourcesMonthView" => Box::new(resources_month_view("showcase-resource-month", data).theme(theme).name("Resources this month")),
+                "ResourcesSchedule" => Box::new(resources_schedule("showcase-resources", data).theme(theme).name("Resource schedule").viewport_height(400.0)),
+                _ => Box::new(resources_day_view("showcase-resource-day", data).theme(theme).name("Resources today").viewport_height(400.0)),
             };
             widget
         }
@@ -1692,6 +2052,6 @@ pub fn demo_for(name: &str, theme: Theme) -> Box<dyn Widget> {
                 .item(data_list_item().term("Window").fill(text().content("Finite, application supplied")))
                 .item(data_list_item().term("Resources").fill(text().content("Optional stable resource keys"))),
         ),
-        _ => unreachable!("unsupported named Mantine demo: {name}"),
+        _ => unreachable!("unsupported named demo: {name}"),
     }
 }

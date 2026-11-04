@@ -1,5 +1,8 @@
 //! Finite civil selection values. Multiple selections never contain an unbounded Vec.
-use crate::dates::{CivilDate, CivilRange, DateBounds, DateError};
+use crate::{
+    DateInputFormat,
+    dates::{CivilDate, CivilRange, DateBounds, DateError},
+};
 use std::fmt;
 pub const MAX_SELECTED_DATES: usize = 32;
 pub const MAX_DATE_SELECTION_TEXT_BYTES: usize = MAX_SELECTED_DATES * 11 - 1;
@@ -230,6 +233,34 @@ impl DateSelection {
             }
         }
     }
+    /// Finite presentation spelling for readonly picker inputs. Serialization
+    /// remains the explicit ISO spelling returned by [`Self::format_iso`].
+    pub fn format_display(self, format: DateInputFormat) -> String {
+        match self {
+            Self::Single(value) => value.map(|date| format.format(date)).unwrap_or_default(),
+            Self::Multiple(values) => {
+                let mut text = String::new();
+                for date in values.iter() {
+                    if !text.is_empty() {
+                        text.push_str(", ");
+                    }
+                    text.push_str(&format.format(date));
+                }
+                text
+            }
+            Self::Range(DateRangeSelection::Empty) => String::new(),
+            Self::Range(DateRangeSelection::Start(start)) => {
+                format!("{} –", format.format(start))
+            }
+            Self::Range(DateRangeSelection::Complete(range)) => {
+                format!(
+                    "{} – {}",
+                    format.format(range.start()),
+                    format.format(range.end())
+                )
+            }
+        }
+    }
     pub fn parse_iso(mode: DatePickerMode, text: &str) -> Result<Self, DateSelectionError> {
         if text.len() > MAX_DATE_SELECTION_TEXT_BYTES {
             return Err(DateSelectionError::InvalidText);
@@ -272,6 +303,32 @@ mod tests {
     use std::{cell::Cell, rc::Rc};
     fn d(value: &str) -> CivilDate {
         CivilDate::parse_iso(value).unwrap()
+    }
+    #[test]
+    fn finite_display_formats_cover_single_multiple_and_partial_ranges() {
+        let first = d("2026-11-04");
+        let second = d("2026-11-06");
+        assert_eq!(
+            DateSelection::Single(Some(first)).format_display(DateInputFormat::DayMonthYear),
+            "04/11/2026"
+        );
+        assert_eq!(
+            DateSelection::Multiple(SelectedDates::try_from_iter([second, first]).unwrap())
+                .format_display(DateInputFormat::MonthDayYear),
+            "11/04/2026, 11/06/2026"
+        );
+        assert_eq!(
+            DateSelection::Range(DateRangeSelection::Start(first))
+                .format_display(DateInputFormat::DayMonthYear),
+            "04/11/2026 –"
+        );
+        assert_eq!(
+            DateSelection::Range(DateRangeSelection::Complete(
+                CivilRange::new(first, second).unwrap()
+            ))
+            .format_display(DateInputFormat::MonthDayYear),
+            "11/04/2026 – 11/06/2026"
+        );
     }
     #[test]
     fn multiple_admission_is_fixed_capacity_sorted_unique_and_never_consumes_a_large_iterator() {

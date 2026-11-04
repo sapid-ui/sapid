@@ -397,12 +397,15 @@ pub struct ResourceSchedule {
     selection: Value<Option<ScheduleSelection>>,
     readonly: Vary<bool>,
     view: ResourceScheduleView,
+    view_source: Option<Vary<ResourceScheduleView>>,
+    available_views: Vec<ResourceScheduleView>,
+    view_changed: Option<Box<dyn FnMut(ResourceScheduleView)>>,
     time: ScheduleTimeWindow,
     direction: glory::render::Direction,
     locale: DateLocale,
     column_width: f64,
     viewport_height: f64,
-    axis: ResourceAxis,
+    axis: Option<ResourceAxis>,
     page_capacity: Option<usize>,
     grid_ref: Option<Cage<Option<NodeId>>>,
     viewport_ref: Option<Cage<Option<NodeId>>>,
@@ -421,12 +424,15 @@ pub fn resources_schedule(
         selection: Value::default(),
         readonly: false.into(),
         view: ResourceScheduleView::Day,
+        view_source: None,
+        available_views: vec![],
+        view_changed: None,
         time: ScheduleTimeWindow::default(),
         direction: glory::render::Direction::Ltr,
         locale: DateLocale::En,
         column_width: 160.,
         viewport_height: 520.,
-        axis: ResourceAxis::Columns,
+        axis: None,
         page_capacity: None,
         grid_ref: None,
         viewport_ref: None,
@@ -461,7 +467,7 @@ pub fn resources_month_view(
 impl ResourceSchedule {
     common_methods!();
     pub fn axis(mut self, value: ResourceAxis) -> Self {
-        self.axis = value;
+        self.axis = Some(value);
         self
     }
     /// Defaults to the initial admitted window count. Supply this explicitly
@@ -472,6 +478,22 @@ impl ResourceSchedule {
     }
     pub fn view(mut self, value: ResourceScheduleView) -> Self {
         self.view = value;
+        self
+    }
+    /// Enable the unified resource schedule header with distinct ordered views.
+    pub fn available_views(
+        mut self,
+        value: impl IntoIterator<Item = ResourceScheduleView>,
+    ) -> Self {
+        self.available_views = value.into_iter().take(4).collect();
+        self
+    }
+    pub fn view_value(mut self, value: impl Into<Vary<ResourceScheduleView>>) -> Self {
+        self.view_source = Some(value.into());
+        self
+    }
+    pub fn on_view_change(mut self, callback: impl FnMut(ResourceScheduleView) + 'static) -> Self {
+        self.view_changed = Some(Box::new(callback));
         self
     }
     pub fn time_window(mut self, value: ScheduleTimeWindow) -> Self {
@@ -533,8 +555,226 @@ impl ResourceSchedule {
         self
     }
 }
+
+fn resource_view_name(view: ResourceScheduleView) -> &'static str {
+    match view {
+        ResourceScheduleView::Day => "Day",
+        ResourceScheduleView::Week => "Week",
+        ResourceScheduleView::Month => "Month",
+    }
+}
+
+fn resource_view_matches_window(view: ResourceScheduleView, data: &ResourceScheduleData) -> bool {
+    let window = data.data().window();
+    match view {
+        ResourceScheduleView::Day | ResourceScheduleView::Week => {
+            window.start().time() == crate::schedule_model::midnight()
+                && window.end().time() == crate::schedule_model::midnight()
+                && window.start().date().days_until(window.end().date())
+                    == if view == ResourceScheduleView::Day {
+                        1
+                    } else {
+                        7
+                    }
+        }
+        ResourceScheduleView::Month => ScheduleWindow::month(window.start().date().year_month())
+            .is_ok_and(|expected| expected == window),
+    }
+}
+
+impl ResourceSchedule {
+    fn build_switcher(&mut self, scope: &Scope) -> Result {
+        if self.available_views.is_empty()
+            || self.available_views.len() > 3
+            || self
+                .available_views
+                .iter()
+                .enumerate()
+                .any(|(index, view)| self.available_views[..index].contains(view))
+        {
+            return Err(invalid());
+        }
+        let available = Rc::new(self.available_views.clone());
+        let view_control = Value {
+            source: self.view_source.take(),
+            default: self.view,
+        }
+        .mount(scope);
+        let accepted_view = composite::validated(scope, &view_control.source, {
+            let available = available.clone();
+            move |view| available.contains(view).then_some(()).ok_or_else(invalid)
+        })?;
+        let view_changed = Callback::new(self.view_changed.take());
+        let requested = Callback::new(self.requested.take());
+        let selected = Callback::new(self.selected.take());
+        let editable = self.edited.is_some();
+        let edited = Callback::new(self.edited.take());
+        let selection = std::mem::take(&mut self.selection).mount(scope);
+        let owner = scope.id();
+        let cleanup = (
+            view_changed.clone(),
+            requested.clone(),
+            selected.clone(),
+            edited.clone(),
+        );
+        scope.on_cleanup(move || {
+            cleanup.0.clear();
+            cleanup.1.clear();
+            cleanup.2.clear();
+            cleanup.3.clear();
+        })?;
+
+        let root = self.common.node_ref.unwrap_or_else(|| scope.cage(None));
+        let (class, appearance) = self.common.appearance(
+            scope,
+            "sapid-resource-schedule sapid-resource-schedule-switcher",
+            composite::column(8.),
+        );
+        let mut outer = glory::ui::view()
+            .role(Role::Group)
+            .class(class)
+            .style(appearance)
+            .node_ref(root)
+            .focus(self.common.focus)
+            .name(
+                self.common
+                    .name
+                    .take()
+                    .unwrap_or_else(|| "Resource schedule".to_owned().into()),
+            );
+        for (kind, mut handlers) in std::mem::take(&mut self.common.handlers) {
+            outer = outer.on(kind, move |event| {
+                crate::appearance::observe(&mut handlers, owner, event)
+            });
+        }
+        outer.show_in(scope)?;
+        let content = child(scope, root)?;
+        let header = scope.cage(None);
+        glory::ui::view()
+            .class("sapid-resource-schedule-view-controls")
+            .style(Style::new().display(Display::Flex).gap(8.))
+            .node_ref(header)
+            .show_in(&content)?;
+        let header_scope = child(scope, header)?;
+        let weak = scope.downgrade();
+        for view in available.iter().copied() {
+            let control = view_control.clone();
+            let callback = view_changed.clone();
+            let current = accepted_view;
+            let weak = weak.clone();
+            let mut button = crate::button()
+                .theme(self.common.theme.clone())
+                .size(self.common.size)
+                .label(resource_view_name(view))
+                .variant(crate::ButtonVariant::Secondary)
+                .enabled(self.common.enabled.clone())
+                .on_press(move || {
+                    if current.get() != view {
+                        if let Err(error) = control.accept(&view) {
+                            if let Some(scope) = weak.upgrade() {
+                                scope.report_error(error);
+                            }
+                            return;
+                        }
+                        callback.emit(owner, view);
+                    }
+                });
+            if self.common.unstyled {
+                button = button.unstyled();
+            }
+            button.show_in(&header_scope)?;
+        }
+
+        let data = self.data.clone();
+        let theme = self.common.theme.clone();
+        let enabled = self.common.enabled.clone();
+        let readonly = self.readonly.clone();
+        let time = self.time;
+        let direction = self.direction;
+        let locale = self.locale;
+        let column_width = self.column_width;
+        let viewport_height = self.viewport_height;
+        let axis = self.axis;
+        let page_capacity = self.page_capacity;
+        let size = self.common.size;
+        let unstyled = self.common.unstyled;
+        let selection_source = selection.source.clone();
+        let rows = scope.bond({
+            let data = data.clone();
+            let available = available.clone();
+            move || {
+                let requested = accepted_view.get();
+                let data = data.get();
+                let view = if resource_view_matches_window(requested, &data) {
+                    requested
+                } else {
+                    available
+                        .iter()
+                        .copied()
+                        .find(|view| resource_view_matches_window(*view, &data))
+                        .unwrap_or(requested)
+                };
+                vec![(view, Rc::new(data))]
+            }
+        });
+        glory::ui::each(rows)
+            .key(|(_, data)| Rc::as_ptr(data) as usize)
+            .children(move |entry| {
+                let (view, child_data) = entry
+                    .value
+                    .with_untracked(|(view, data)| (*view, data.as_ref().clone()));
+                let requested = requested.clone();
+                let selected = selected.clone();
+                let selection = selection.clone();
+                let edited = edited.clone();
+                let mut child = resources_schedule(
+                    format!(
+                        "resources-{}",
+                        resource_view_name(view).to_ascii_lowercase()
+                    ),
+                    child_data,
+                )
+                .view(view)
+                .theme(theme.clone())
+                .size(size)
+                .enabled(enabled.clone())
+                .readonly(readonly.clone())
+                .time_window(time)
+                .direction(direction)
+                .locale(locale)
+                .column_width(column_width)
+                .viewport_height(viewport_height)
+                .selection(selection_source.clone())
+                .on_window_request(move |request| requested.emit(owner, request))
+                .on_selection_change(move |value| {
+                    let _ = selection.accept(&Some(value.clone()));
+                    selected.emit(owner, value);
+                });
+                if editable {
+                    child = child.on_edit(move |value| edited.emit(owner, value));
+                }
+                if let Some(value) = axis {
+                    child = child.axis(value);
+                }
+                if let Some(value) = page_capacity {
+                    child = child.resource_page_size(value);
+                }
+                if unstyled {
+                    child = child.unstyled();
+                }
+                child
+            })
+            .show_in(&content)?;
+        scope.retain(header_scope)?;
+        scope.retain(content)
+    }
+}
+
 impl Widget for ResourceSchedule {
     fn build(&mut self, scope: &Scope) -> Result {
+        if !self.available_views.is_empty() {
+            return self.build_switcher(scope);
+        }
         if self.key.is_empty()
             || self.key.len() > 40
             || !self
@@ -550,6 +790,11 @@ impl Widget for ResourceSchedule {
             return Err(invalid());
         }
         let view = self.view;
+        let axis = self.axis.unwrap_or(if view == ResourceScheduleView::Month {
+            ResourceAxis::Rows
+        } else {
+            ResourceAxis::Columns
+        });
         let time = self.time;
         let accepted = snapshot::accept(scope, &self.data, view, time)?;
         let enabled = self.common.enabled.clone();
@@ -614,7 +859,11 @@ impl Widget for ResourceSchedule {
         let root = self.common.node_ref.unwrap_or_else(|| scope.cage(None));
         let (class, appearance) = self.common.appearance(
             scope,
-            "sapid-resource-schedule",
+            match view {
+                ResourceScheduleView::Day => "sapid-resource-schedule sapid-resources-day-view",
+                ResourceScheduleView::Week => "sapid-resource-schedule sapid-resources-week-view",
+                ResourceScheduleView::Month => "sapid-resource-schedule sapid-resources-month-view",
+            },
             Style {
                 color: Some(self.common.theme.foreground),
                 background: Some(self.common.theme.surface),
@@ -728,7 +977,7 @@ impl Widget for ResourceSchedule {
             key: self.key.clone(),
             view,
             time,
-            axis: self.axis,
+            axis,
             locale: self.locale,
             direction: self.direction,
             theme: self.common.theme.clone(),

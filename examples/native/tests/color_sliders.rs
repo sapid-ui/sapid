@@ -99,49 +99,35 @@ fn native_hue_and_alpha_four_themes_have_real_color_pixels_and_shared_control_id
                 .value,
             181.
         );
-        let mut segments = classes(app, "sapid-color-slider-segment");
-        segments.sort_by(|a, b| {
+        let mut overlays = classes(app, "sapid-color-slider-overlay");
+        overlays.sort_by(|a, b| {
             let ar = bounds(app, *a);
             let br = bounds(app, *b);
             ar.y.partial_cmp(&br.y)
                 .unwrap()
                 .then_with(|| ar.x.partial_cmp(&br.x).unwrap())
         });
-        assert_eq!(segments.len(), 184);
-        let hue_sample = segments[30];
-        let hue_rect = bounds(app, hue_sample);
-        let Some(Color(r, g, b, a)) = app
-            .tree()
-            .node(hue_sample)
-            .unwrap()
-            .descriptor
-            .view()
-            .style
-            .background
-        else {
-            panic!("hue")
-        };
-        let alpha_start = bounds(app, segments[120]);
-        let alpha_end = bounds(app, *segments.last().unwrap());
+        assert_eq!(overlays.len(), 2);
+        assert!(classes(app, "sapid-color-slider-segment").is_empty());
+        assert_eq!(classes(app, "sapid-alpha-slider-background").len(), 1);
+        assert!(classes(app, "sapid-alpha-checker-cell").is_empty());
+        let hue_rect = bounds(app, overlays[0]);
+        let alpha_rect = bounds(app, overlays[1]);
         let mut raster = Raster::new();
         raster.draw(host.renderer()).unwrap();
         close(
-            pixel(&raster, hue_rect.x + hue_rect.width / 2., hue_rect.y + 0.5),
-            [r, g, b, a],
+            pixel(&raster, hue_rect.x + 0.1, hue_rect.y + 0.5),
+            [255, 3, 0, 255],
         );
         close(
-            pixel(
-                &raster,
-                alpha_start.x + alpha_start.width / 2.,
-                alpha_start.y + 0.5,
-            ),
+            pixel(&raster, alpha_rect.x + 1., alpha_rect.y + 0.5),
             [checker.0, checker.1, checker.2, checker.3],
         );
         close(
             pixel(
                 &raster,
-                alpha_end.x + alpha_end.width / 2.,
-                alpha_end.y + 0.5,
+                alpha_rect.x + alpha_rect.width - 2.,
+                alpha_rect.y + 0.5,
             ),
             [100, 150, 200, 255],
         );
@@ -151,8 +137,8 @@ fn native_hue_and_alpha_four_themes_have_real_color_pixels_and_shared_control_id
         close(
             pixel(
                 &raster,
-                alpha_end.x + alpha_end.width / 2.,
-                alpha_end.y + 0.5,
+                alpha_rect.x + alpha_rect.width - 2.,
+                alpha_rect.y + 0.5,
             ),
             [200, 50, 100, 255],
         );

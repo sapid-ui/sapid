@@ -35,6 +35,21 @@ remain explicit. Replace it with a loaded Branch and publish children to finish.
 
 `cascader(key)` uses the same typed paths and Tree semantics in physical columns.
 It selects one loaded leaf path; multiple/branch-check policies belong to TreeSelect.
+
+`searchable(true)` changes the trigger to a real single-line editable combobox
+whose popup remains a real Tree. `search`/`on_search_change` can be controlled;
+matching is case-insensitive and retains every required ancestor. The query is
+bounded by the Tree label budget, and `nothing_found_message` is presented when
+the current filtered declaration is empty. `hide_picked(true)` removes accepted
+subtrees from the current popup without retaining a visited-key registry, while
+`max_values` rejects only additions beyond the finite limit.
+
+`render_node` and `render_value` are typed Widget factories. Plain TreeNode labels
+remain the explicit accessible names, so custom badges and icons do not replace
+the value identity. `with_lines`, `max_dropdown_height`, `popup_width` and
+`popup_placement` expose the finite presentation controls shared with other
+anchored components. These APIs do not accept arbitrary DOM, clone an unbounded
+business source or imply portal/animation behavior unsupported by the host.
 Expansion is one complete ancestor chain; changing branches retires the old
 child column. Up/Down/Home/End/typeahead stay in a column. Open/Close use the actual
 parent/child path and respect RTL. Both pointer branch activation and the
@@ -74,7 +89,7 @@ Current validation:
 
 - Six pure model tests: complete/reparented paths, independent/leaf/cascade
   policies, mixed states, current lazy columns and capacity refusal.
-- Seven TreeSelect component tests and six Cascader component tests cover actual
+- Nine TreeSelect component tests and six Cascader component tests cover actual
   semantics/SSR in four themes, successful full paths, controlled refusal,
   same-tick intents/navigation, source admission/recovery, physical column style,
   explicit lazy publication, readonly/disabled and Owner retirement. Ten ordinary

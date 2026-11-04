@@ -30,6 +30,21 @@ fn all(app: &App) -> Vec<NodeId> {
     }
     result
 }
+fn class(app: &App, class: &str) -> Vec<NodeId> {
+    all(app)
+        .into_iter()
+        .filter(|id| {
+            app.tree()
+                .node(*id)
+                .unwrap()
+                .descriptor
+                .view()
+                .classes
+                .iter()
+                .any(|value| value == class)
+        })
+        .collect()
+}
 fn day(app: &App, date: CivilDate) -> NodeId {
     let name = DateLocale::En.date_label(date);
     all(app)
@@ -40,6 +55,144 @@ fn day(app: &App, date: CivilDate) -> NodeId {
             matches!(v.props, Props::Button(_)) && v.name.as_deref() == Some(name.as_str())
         })
         .unwrap()
+}
+
+fn button(app: &App, label: &str) -> NodeId {
+    all(app)
+        .into_iter()
+        .find(|id| {
+            let tree = app.tree();
+            let value = tree.node(*id).unwrap().descriptor.view();
+            matches!(value.props, Props::Button(props) if props.label == label)
+                || matches!(value.props, Props::Button(_)) && value.name.as_deref() == Some(label)
+        })
+        .unwrap_or_else(|| panic!("missing button {label}"))
+}
+
+#[test]
+fn native_week_number_column_is_passive_physical_table_content() {
+    let host = WindowApp::new();
+    host.renderer().set_viewport(720, 580, 1.).unwrap();
+    let app = host.app();
+    host.mount(
+        date_picker("native-week-numbers", DatesProvider::new(d("2024-02-29")))
+            .default_month(YearMonth::new(2024, 2).unwrap())
+            .with_week_numbers(true),
+    )
+    .unwrap();
+    app.settle(16).unwrap();
+
+    let weeks = class(app, "sapid-calendar-week-number");
+    assert_eq!(weeks.len(), 6);
+    let week = weeks
+        .iter()
+        .copied()
+        .find(|id| app.tree().node(*id).unwrap().descriptor.view().name.as_deref() == Some("Week 9"))
+        .unwrap();
+    let week_bounds = bounds(app, week);
+    let day_bounds = bounds(app, day(app, d("2024-02-29")));
+    assert!(week_bounds.width > 20. && week_bounds.height > 30.);
+    assert!(week_bounds.x + week_bounds.width < day_bounds.x);
+    assert!(matches!(
+        app.tree().node(week).unwrap().descriptor.view().props,
+        Props::View
+    ));
+    app.clear().unwrap();
+}
+
+#[test]
+fn native_multi_column_range_has_consecutive_real_grids_and_shared_selection() {
+    let host = WindowApp::new();
+    host.renderer().set_viewport(980, 620, 1.).unwrap();
+    let app = host.app();
+    let value = app
+        .scope()
+        .cage(DateSelection::empty(DatePickerMode::Range));
+    host.mount(
+        date_picker("native-range-columns", DatesProvider::new(d("2024-02-29")))
+            .mode(DatePickerMode::Range)
+            .value(value)
+            .default_month(YearMonth::new(2024, 2).unwrap())
+            .number_of_columns(2)
+            .on_value_change(move |next| value.revise(|current| *current = next)),
+    )
+    .unwrap();
+    app.settle(16).unwrap();
+
+    let february = day(app, d("2024-02-28"));
+    let march = day(app, d("2024-03-02"));
+    let left = bounds(app, february);
+    let right = bounds(app, march);
+    assert!(right.x > left.x + left.width);
+    assert!(left.width > 30. && right.width > 30.);
+
+    app.dispatch(february, Event::Activate).unwrap();
+    app.dispatch(march, Event::Activate).unwrap();
+    app.settle(16).unwrap();
+    assert_eq!(value.get().format_iso(), "2024-02-28/2024-03-02");
+
+    let selected = all(app)
+        .into_iter()
+        .filter(|id| {
+            app.tree()
+                .node(*id)
+                .unwrap()
+                .descriptor
+                .view()
+                .semantics
+                .as_ref()
+                .is_some_and(|semantics| semantics.selected == Some(true))
+        })
+        .count();
+    assert_eq!(selected, 4);
+    app.clear().unwrap();
+}
+
+#[test]
+fn native_range_preset_is_a_real_action_and_closes_only_after_controlled_acceptance() {
+    let host = WindowApp::new();
+    host.renderer().set_viewport(760, 600, 1.).unwrap();
+    let app = host.app();
+    let input = app.scope().cage(None);
+    let value = app
+        .scope()
+        .cage(DateSelection::empty(DatePickerMode::Range));
+    let preset = DateSelection::Range(DateRangeSelection::Complete(
+        CivilRange::new(d("2024-02-26"), d("2024-02-29")).unwrap(),
+    ));
+    host.mount(
+        date_picker_input("native-range-preset", DatesProvider::new(d("2024-02-29")))
+            .mode(DatePickerMode::Range)
+            .default_open(true)
+            .node_ref(input)
+            .value(value)
+            .presets([DatePickerPreset::new("Work week", preset)])
+            .on_value_change(move |next| value.revise(|current| *current = next)),
+    )
+    .unwrap();
+    app.settle(16).unwrap();
+    let action = button(app, "Work week");
+    let action_bounds = bounds(app, action);
+    assert!(action_bounds.width > 20. && action_bounds.height > 20.);
+    app.dispatch(action, Event::Activate).unwrap();
+    app.settle(16).unwrap();
+    assert_eq!(value.get(), preset);
+    assert_eq!(
+        host.renderer()
+            .inspect(|document| document.top_layers().len()),
+        0
+    );
+    let tree = app.tree();
+    let Props::Input(props) = tree
+        .node(input.get().unwrap())
+        .unwrap()
+        .descriptor
+        .view()
+        .props
+    else {
+        panic!()
+    };
+    assert_eq!(props.value, "2024-02-26/2024-02-29");
 }
 
 #[test]

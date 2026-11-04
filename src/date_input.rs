@@ -16,6 +16,72 @@ use std::{
     rc::Rc,
 };
 type Parser = Rc<dyn Fn(&str) -> DateParse>;
+/// Finite, locale-independent date spellings supported by [`DateInput`].
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum DateInputFormat {
+    #[default]
+    Iso,
+    DayMonthYear,
+    MonthDayYear,
+}
+impl DateInputFormat {
+    pub fn format(self, value: CivilDate) -> String {
+        match self {
+            Self::Iso => value.to_string(),
+            Self::DayMonthYear => {
+                format!(
+                    "{:02}/{:02}/{:04}",
+                    value.day(),
+                    value.month(),
+                    value.year()
+                )
+            }
+            Self::MonthDayYear => {
+                format!(
+                    "{:02}/{:02}/{:04}",
+                    value.month(),
+                    value.day(),
+                    value.year()
+                )
+            }
+        }
+    }
+    pub fn parse(self, value: &str) -> DateParse {
+        if self == Self::Iso {
+            return parse_iso_date_draft(value);
+        }
+        if value.is_empty() {
+            return DateParse::Empty;
+        }
+        if value.len() > 10 || !value.is_ascii() {
+            return DateParse::Invalid;
+        }
+        for (index, byte) in value.bytes().enumerate() {
+            if if index == 2 || index == 5 {
+                byte != b'/'
+            } else {
+                !byte.is_ascii_digit()
+            } {
+                return DateParse::Invalid;
+            }
+        }
+        if value.len() < 10 {
+            return DateParse::Incomplete;
+        }
+        let first = value[0..2].parse::<u8>().ok();
+        let second = value[3..5].parse::<u8>().ok();
+        let year = value[6..10].parse::<u16>().ok();
+        let (Some(first), Some(second), Some(year)) = (first, second, year) else {
+            return DateParse::Invalid;
+        };
+        let (month, day) = match self {
+            Self::DayMonthYear => (second, first),
+            Self::MonthDayYear => (first, second),
+            Self::Iso => unreachable!(),
+        };
+        CivilDate::new(year, month, day).map_or(DateParse::Invalid, DateParse::Date)
+    }
+}
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DateInputDraft {
     pub text: String,
@@ -44,6 +110,7 @@ struct Controller {
     draft: Cage<DateInputDraft>,
     dirty: Dirty,
     parser: Parser,
+    format: DateInputFormat,
     pending: RefCell<Option<Pending>>,
     composing: Cell<bool>,
     composition_base: Cell<Option<Option<CivilDate>>>,
@@ -57,8 +124,8 @@ struct Controller {
 fn invalid() -> glory::ui::Error {
     glory::render::Error::InvalidProps("invalid bounded civil date input").into()
 }
-fn text(value: Option<CivilDate>) -> String {
-    value.map(|v| v.to_string()).unwrap_or_default()
+fn text(value: Option<CivilDate>, format: DateInputFormat) -> String {
+    value.map(|v| format.format(v)).unwrap_or_default()
 }
 fn status(value: Option<CivilDate>) -> DateDraftStatus {
     value.map_or(DateDraftStatus::Empty, DateDraftStatus::Valid)
@@ -98,14 +165,14 @@ impl Controller {
         self.ensure()?;
         let value = self.current()?;
         let draft = DateInputDraft {
-            text: text(value),
+            text: text(value, self.format),
             status: reason,
         };
         self.draft.try_revise(|d| *d = draft.clone())?;
         self.draft_changed.emit(self.owner, draft);
         self.ensure()?;
         self.pending.borrow_mut().replace(Pending {
-            text: text(value),
+            text: text(value, self.format),
             status: reason,
             proposal: Some(value),
             baseline: value,
@@ -222,7 +289,7 @@ impl Controller {
         }
         let baseline = self.current()?;
         let draft = DateInputDraft {
-            text: text(next),
+            text: text(next, self.format),
             status: status(next),
         };
         self.draft.try_revise(|old| *old = draft.clone())?;
@@ -292,7 +359,9 @@ pub struct DateInput {
     required: Vary<bool>,
     readonly: Vary<bool>,
     invalid: Vary<bool>,
-    parser: Parser,
+    parser: Option<Parser>,
+    format: DateInputFormat,
+    placeholder: Option<Vary<String>>,
     picker: bool,
     picker_label: Vary<String>,
     picker_title: Vary<String>,
@@ -313,7 +382,9 @@ pub fn date_input(key: impl Into<String>, provider: impl Into<Vary<DatesProvider
         required: false.into(),
         readonly: false.into(),
         invalid: false.into(),
-        parser: Rc::new(parse_iso_date_draft),
+        parser: None,
+        format: DateInputFormat::Iso,
+        placeholder: None,
         picker: true,
         picker_label: "Choose date".into(),
         picker_title: "Choose date".into(),
@@ -358,7 +429,15 @@ impl DateInput {
         self
     }
     pub fn parser(mut self, v: impl Fn(&str) -> DateParse + 'static) -> Self {
-        self.parser = Rc::new(v);
+        self.parser = Some(Rc::new(v));
+        self
+    }
+    pub fn format(mut self, v: DateInputFormat) -> Self {
+        self.format = v;
+        self
+    }
+    pub fn placeholder(mut self, v: impl Into<Vary<String>>) -> Self {
+        self.placeholder = Some(v.into());
         self
     }
     pub fn picker_label(mut self, v: impl Into<Vary<String>>) -> Self {
@@ -406,6 +485,7 @@ impl Widget for DateInput {
             return Err(invalid());
         }
         let error_id = SemanticId::new(format!("{}-date-error", self.key))?;
+        let format = self.format;
         let control = std::mem::take(&mut self.value).mount(scope);
         let value = control.source.clone();
         let provider = self.provider.clone();
@@ -423,6 +503,7 @@ impl Widget for DateInput {
             self.invalid.clone(),
         );
         let form_name = composite::form_name(scope, &self.form_name)?;
+        let placeholder = crate::text_input::placeholder(scope, self.placeholder.take(), false)?;
         let source = scope.bond(move || {
             let mut metadata = metadata.get().map(|s| *s).unwrap_or_default();
             metadata.input_edit = Some(InputEditCapture {
@@ -434,6 +515,7 @@ impl Widget for DateInput {
                     value: None,
                 });
             }
+            metadata.placeholder = placeholder.map(|value| value.get());
             Snapshot {
                 value: value.get(),
                 provider: provider.get(),
@@ -449,7 +531,7 @@ impl Widget for DateInput {
             }
         })?;
         let initial = accepted.try_with(|s| s.value)?;
-        let initial_text = text(initial);
+        let initial_text = text(initial, format);
         let draft = scope.cage(DateInputDraft {
             text: initial_text.clone(),
             status: status(initial),
@@ -463,7 +545,11 @@ impl Widget for DateInput {
             accepted,
             draft,
             dirty: dirty.clone(),
-            parser: self.parser.clone(),
+            parser: self
+                .parser
+                .clone()
+                .unwrap_or_else(|| Rc::new(move |value| format.parse(value))),
+            format,
             pending: RefCell::new(None),
             composing: Cell::new(false),
             composition_base: Cell::new(None),
@@ -571,7 +657,7 @@ impl Widget for DateInput {
                 let external = value != previous;
                 if s.composing.get() {
                     if external && s.composition_base.get() != Some(value) {
-                        scope.set_input_value(node, text(value))?;
+                        scope.set_input_value(node, text(value, s.format))?;
                         previous = value;
                         s.pending.borrow_mut().take();
                     }
@@ -591,7 +677,7 @@ impl Widget for DateInput {
                             }
                         }
                         _ => DateInputDraft {
-                            text: text(value),
+                            text: text(value, s.format),
                             status: status(value),
                         },
                     };

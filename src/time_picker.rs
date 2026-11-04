@@ -6,11 +6,48 @@ use crate::{
     Decimal, FieldControl, HourCycle, LocalTime, MAX_DISABLED_TIMES, NumberValue, TimeBounds,
     TimeFormat, TimeGridSpec, TimeParts, TimePickerDraft, TimePickerStatus, TimePrecision,
 };
-use glory::render::{NodeId, Role};
-use glory::style::{Align, Display, FlexDirection, Length, Style};
+use glory::render::{Event, EventKind, InputEdit, NodeId, PopupKind, Role, Semantics};
+use glory::style::{Align, Display, FlexDirection, Length, Limit, Overflow, Style};
 use glory::ui::{Result, WeakScope, Widget};
 use glory::{Cage, Scope, Vary};
 use std::{cell::Cell, rc::Rc};
+pub const MAX_TIME_PICKER_PRESETS: usize = 96;
+pub const MAX_TIME_PICKER_PRESET_GROUPS: usize = 16;
+pub const MAX_TIME_PICKER_PASTE_BYTES: usize = 32;
+type PasteSplit = Rc<dyn Fn(&str) -> Option<LocalTime>>;
+
+fn default_paste_split(value: &str) -> Option<LocalTime> {
+    LocalTime::parse_iso(value).ok()
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TimePickerPresetGroup {
+    pub label: String,
+    pub values: Vec<LocalTime>,
+}
+impl TimePickerPresetGroup {
+    pub fn new(label: impl Into<String>, values: impl IntoIterator<Item = LocalTime>) -> Self {
+        Self {
+            label: label.into(),
+            values: values.into_iter().collect(),
+        }
+    }
+}
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum TimePickerPresets {
+    Values(Vec<LocalTime>),
+    Groups(Vec<TimePickerPresetGroup>),
+}
+impl From<Vec<LocalTime>> for TimePickerPresets {
+    fn from(value: Vec<LocalTime>) -> Self {
+        Self::Values(value)
+    }
+}
+impl From<Vec<TimePickerPresetGroup>> for TimePickerPresets {
+    fn from(value: Vec<TimePickerPresetGroup>) -> Self {
+        Self::Groups(value)
+    }
+}
 fn invalid() -> glory::ui::Error {
     glory::render::Error::InvalidProps("invalid finite segmented time picker").into()
 }
@@ -65,6 +102,255 @@ struct Controller {
     committed: Callback<Option<LocalTime>>,
     draft_changed: Callback<TimePickerDraft>,
     rejected: Callback<TimePickerStatus>,
+}
+
+#[derive(Clone)]
+struct PopupControl {
+    owner: glory::core::InstanceId,
+    weak: WeakScope,
+    control: Control<bool>,
+    changed: Callback<bool>,
+}
+impl PopupControl {
+    fn propose(&self, value: bool) -> Result {
+        if !self.owner.is_alive() {
+            return Err(glory::ui::Error::Gone);
+        }
+        self.control.accept(&value)?;
+        self.changed.emit(self.owner, value);
+        Ok(())
+    }
+    fn report(&self, result: Result) {
+        if let Err(error) = result
+            && let Some(scope) = self.weak.upgrade()
+        {
+            scope.report_error(error);
+        }
+    }
+}
+
+#[derive(Clone)]
+struct PresetContent {
+    format: TimeFormat,
+    accepted: Cage<Snapshot>,
+    state: Rc<Controller>,
+    popup: PopupControl,
+    close_on_select: bool,
+    theme: crate::Theme,
+    size: crate::Size,
+    unstyled: bool,
+}
+
+#[derive(Clone)]
+struct TimeControlsContent {
+    format: TimeFormat,
+    accepted: Cage<Snapshot>,
+    state: Rc<Controller>,
+    steps: [u8; 3],
+    period_labels: [String; 2],
+    reverse: bool,
+    max_height: f64,
+    theme: crate::Theme,
+    size: crate::Size,
+    unstyled: bool,
+}
+impl TimeControlsContent {
+    fn build(&self) -> Box<dyn Widget> {
+        let displayed = if self.format.precision == TimePrecision::Second {
+            3
+        } else {
+            2
+        };
+        let mut columns: Vec<Box<dyn Widget>> = Vec::with_capacity(displayed + 1);
+        for index in 0..displayed {
+            let (start, end) = if index == 0 && self.format.cycle == HourCycle::H12 {
+                (1_u8, 12_u8)
+            } else if index == 0 {
+                (0, 23)
+            } else {
+                (0, 59)
+            };
+            let mut values = (start..=end)
+                .filter(|value| (value - start) % self.steps[index] == 0)
+                .collect::<Vec<_>>();
+            if self.reverse {
+                values.reverse();
+            }
+            let mut items: Vec<Box<dyn Widget>> = Vec::with_capacity(values.len());
+            for value in values {
+                let choose = self.state.clone();
+                let selected = self.state.parts[index]
+                    .map(move |current| part(current).ok().flatten() == Some(value));
+                let ready = self
+                    .accepted
+                    .map(|snapshot| snapshot.enabled && !snapshot.readonly);
+                let mut button = crate::toggle()
+                    .theme(self.theme.clone())
+                    .size(self.size)
+                    .class("sapid-time-picker-control")
+                    .label(format!("{value:02}"))
+                    .pressed(selected)
+                    .enabled(ready)
+                    .on_pressed_change(move |pressed| {
+                        if pressed {
+                            choose.report(choose.segment(index, number(Some(value)), false));
+                        }
+                    });
+                if self.unstyled {
+                    button = button.unstyled();
+                }
+                items.push(Box::new(button));
+            }
+            columns.push(Box::new(
+                crate::stack()
+                    .theme(self.theme.clone())
+                    .class("sapid-time-picker-control-column")
+                    .gap(4.)
+                    .fill(items),
+            ));
+        }
+        if self.format.cycle == HourCycle::H12 {
+            let mut periods: Vec<(bool, String)> = vec![
+                (false, self.period_labels[0].clone()),
+                (true, self.period_labels[1].clone()),
+            ];
+            if self.reverse {
+                periods.reverse();
+            }
+            let mut items: Vec<Box<dyn Widget>> = Vec::with_capacity(2);
+            for (afternoon, label) in periods {
+                let choose = self.state.clone();
+                let ready = self
+                    .accepted
+                    .map(|snapshot| snapshot.enabled && !snapshot.readonly);
+                let mut button = crate::toggle()
+                    .theme(self.theme.clone())
+                    .size(self.size)
+                    .class("sapid-time-picker-control sapid-time-picker-period-control")
+                    .label(label)
+                    .pressed(self.state.afternoon.map(move |value| *value == afternoon))
+                    .enabled(ready)
+                    .on_pressed_change(move |pressed| {
+                        if pressed {
+                            choose.report(choose.period(afternoon));
+                        }
+                    });
+                if self.unstyled {
+                    button = button.unstyled();
+                }
+                items.push(Box::new(button));
+            }
+            columns.push(Box::new(
+                crate::stack()
+                    .theme(self.theme.clone())
+                    .class("sapid-time-picker-control-column sapid-time-picker-period-column")
+                    .gap(4.)
+                    .fill(items),
+            ));
+        }
+        Box::new(
+            crate::group()
+                .theme(self.theme.clone())
+                .class("sapid-time-picker-controls")
+                .gap(6.)
+                .style(
+                    Style::new()
+                        .max_height(Limit::Px(self.max_height))
+                        .overflow_y(Overflow::Auto),
+                )
+                .fill(columns),
+        )
+    }
+}
+impl PresetContent {
+    fn build(&self, groups: Vec<TimePickerPresetGroup>) -> Box<dyn Widget> {
+        let mut sections: Vec<Box<dyn Widget>> = Vec::with_capacity(groups.len());
+        for (group_index, group) in groups.into_iter().enumerate() {
+            let mut buttons: Vec<Box<dyn Widget>> = Vec::with_capacity(group.values.len());
+            for value in group.values {
+                let label = self
+                    .format
+                    .format(value)
+                    .expect("preset admission validates time precision");
+                let selected = self
+                    .accepted
+                    .map(move |snapshot| snapshot.value == Some(value));
+                let ready = self.accepted.map({
+                    let disabled = self.state.disabled.clone();
+                    move |snapshot| {
+                        snapshot.enabled
+                            && !snapshot.readonly
+                            && snapshot.bounds.contains(value)
+                            && disabled.binary_search(&value).is_err()
+                    }
+                });
+                let choose = self.state.clone();
+                let close = self.popup.clone();
+                let close_on_select = self.close_on_select;
+                let mut button = crate::toggle()
+                    .theme(self.theme.clone())
+                    .size(self.size)
+                    .class("sapid-time-picker-preset")
+                    .label(label)
+                    .pressed(selected)
+                    .enabled(ready)
+                    .on_pressed_change(move |pressed| {
+                        if pressed {
+                            choose.report(choose.choose(Some(value)));
+                            if close_on_select {
+                                close.report(close.propose(false));
+                            }
+                        }
+                    });
+                if self.unstyled {
+                    button = button.unstyled();
+                }
+                buttons.push(Box::new(button));
+            }
+            let columns = if self.format.precision == TimePrecision::Second {
+                2
+            } else {
+                3
+            };
+            let items = buttons
+                .into_iter()
+                .enumerate()
+                .map(|(index, button)| crate::grid_item(format!("preset-{index}")).fill(button));
+            let grid = crate::simple_grid(format!("time-presets-{group_index}"))
+                .theme(self.theme.clone())
+                .size(self.size)
+                .columns(columns)
+                .gap(6.)
+                .items(items);
+            let mut children: Vec<Box<dyn Widget>> = Vec::new();
+            if !group.label.is_empty() {
+                children.push(Box::new(
+                    crate::text()
+                        .class("sapid-time-picker-preset-group-label")
+                        .content(group.label),
+                ));
+            }
+            children.push(Box::new(grid));
+            let mut section = crate::stack()
+                .theme(self.theme.clone())
+                .class("sapid-time-picker-preset-group")
+                .gap(6.)
+                .fill(children);
+            if self.unstyled {
+                section = section.unstyled();
+            }
+            sections.push(Box::new(section));
+        }
+        let mut content = crate::stack()
+            .theme(self.theme.clone())
+            .class("sapid-time-picker-presets")
+            .gap(12.)
+            .fill(sections);
+        if self.unstyled {
+            content = content.unstyled();
+        }
+        Box::new(content)
+    }
 }
 impl Controller {
     fn ensure(&self) -> Result {
@@ -263,13 +549,32 @@ pub struct TimePicker {
     field: Option<FieldControl>,
     form_name: Option<Vary<String>>,
     grid: Option<TimeGridSpec>,
+    presets: Option<TimePickerPresets>,
+    with_dropdown: bool,
+    reverse_time_controls_list: bool,
+    max_dropdown_content_height: f64,
+    open: Value<bool>,
+    close_on_preset_select: bool,
+    popup_placement: crate::AnchorPlacement,
+    popup_width: Option<f64>,
+    clearable: bool,
+    clear_label: String,
     disabled: Vec<LocalTime>,
     references: [Option<Cage<Option<NodeId>>>; 3],
+    placeholders: [Option<Vary<String>>; 3],
+    labels: [Vary<String>; 3],
+    period_label: Vary<String>,
+    period_labels: [String; 2],
+    paste_split: Option<PasteSplit>,
+    paste_requires_separator: bool,
     steps: [u8; 3],
     changed: Option<Box<dyn FnMut(Option<LocalTime>)>>,
     committed: Option<Box<dyn FnMut(Option<LocalTime>)>>,
     draft_changed: Option<Box<dyn FnMut(TimePickerDraft)>>,
     rejected: Option<Box<dyn FnMut(TimePickerStatus)>>,
+    open_changed: Option<Box<dyn FnMut(bool)>>,
+    focused: Option<Box<dyn FnMut(())>>,
+    blurred: Option<Box<dyn FnMut(())>>,
 }
 pub fn time_picker(key: impl Into<String>) -> TimePicker {
     TimePicker {
@@ -285,17 +590,42 @@ pub fn time_picker(key: impl Into<String>) -> TimePicker {
         field: None,
         form_name: None,
         grid: None,
+        presets: None,
+        with_dropdown: false,
+        reverse_time_controls_list: false,
+        max_dropdown_content_height: 240.,
+        open: Value::default(),
+        close_on_preset_select: false,
+        popup_placement: crate::AnchorPlacement::default(),
+        popup_width: None,
+        clearable: false,
+        clear_label: "Clear time".into(),
         disabled: vec![],
         references: [None; 3],
+        placeholders: [Some("--".into()), Some("--".into()), Some("--".into())],
+        labels: ["Hour".into(), "Minute".into(), "Second".into()],
+        period_label: "AM/PM".into(),
+        period_labels: ["AM".into(), "PM".into()],
+        paste_split: Some(Rc::new(default_paste_split)),
+        paste_requires_separator: true,
         steps: [1; 3],
         changed: None,
         committed: None,
         draft_changed: None,
         rejected: None,
+        open_changed: None,
+        focused: None,
+        blurred: None,
     }
 }
 impl TimePicker {
     common_methods!();
+    /// Switches to the typed duration variant. Call this before duration-specific builders.
+    pub fn duration(self) -> crate::DurationPicker {
+        let mut duration = crate::duration_picker(self.key).precision(self.format.precision);
+        duration.common = self.common;
+        duration
+    }
     pub(crate) fn reset_epoch(mut self, v: impl Into<Vary<u64>>) -> Self {
         self.reset_epoch = v.into();
         self
@@ -344,6 +674,56 @@ impl TimePicker {
         self.grid = Some(v);
         self
     }
+    pub fn presets(mut self, value: impl Into<TimePickerPresets>) -> Self {
+        self.presets = Some(value.into());
+        self
+    }
+    pub fn with_dropdown(mut self, value: bool) -> Self {
+        self.with_dropdown = value;
+        self
+    }
+    pub fn reverse_time_controls_list(mut self, value: bool) -> Self {
+        self.reverse_time_controls_list = value;
+        self
+    }
+    pub fn max_dropdown_content_height(mut self, value: f64) -> Self {
+        self.max_dropdown_content_height = value;
+        self
+    }
+    pub fn open(mut self, value: impl Into<Vary<bool>>) -> Self {
+        self.open.source = Some(value.into());
+        self
+    }
+    pub fn default_open(mut self, value: bool) -> Self {
+        self.open.default = value;
+        self
+    }
+    pub fn close_on_preset_select(mut self, value: bool) -> Self {
+        self.close_on_preset_select = value;
+        self
+    }
+    pub fn popup_placement(mut self, value: crate::AnchorPlacement) -> Self {
+        self.popup_placement = value;
+        self
+    }
+    pub fn popup_width(mut self, value: f64) -> Self {
+        self.popup_width = Some(value);
+        self
+    }
+    pub fn on_open_change(mut self, value: impl FnMut(bool) + 'static) -> Self {
+        self.open_changed = Some(Box::new(value));
+        self
+    }
+    /// Shows a finite clear action while the accepted value is non-empty.
+    pub fn clearable(mut self, value: bool) -> Self {
+        self.clearable = value;
+        self
+    }
+    /// Sets the accessible label of the optional clear action.
+    pub fn clear_label(mut self, value: impl Into<String>) -> Self {
+        self.clear_label = value.into();
+        self
+    }
     pub fn disable_time(mut self, v: LocalTime) -> Self {
         if self.disabled.len() <= MAX_DISABLED_TIMES {
             self.disabled.push(v)
@@ -378,6 +758,52 @@ impl TimePicker {
         self.references[2] = Some(v);
         self
     }
+    pub fn hour_placeholder(mut self, value: impl Into<Vary<String>>) -> Self {
+        self.placeholders[0] = Some(value.into());
+        self
+    }
+    pub fn minute_placeholder(mut self, value: impl Into<Vary<String>>) -> Self {
+        self.placeholders[1] = Some(value.into());
+        self
+    }
+    pub fn second_placeholder(mut self, value: impl Into<Vary<String>>) -> Self {
+        self.placeholders[2] = Some(value.into());
+        self
+    }
+    pub fn hour_label(mut self, value: impl Into<Vary<String>>) -> Self {
+        self.labels[0] = value.into();
+        self
+    }
+    pub fn minute_label(mut self, value: impl Into<Vary<String>>) -> Self {
+        self.labels[1] = value.into();
+        self
+    }
+    pub fn second_label(mut self, value: impl Into<Vary<String>>) -> Self {
+        self.labels[2] = value.into();
+        self
+    }
+    pub fn period_label(mut self, value: impl Into<Vary<String>>) -> Self {
+        self.period_label = value.into();
+        self
+    }
+    pub fn period_labels(mut self, am: impl Into<String>, pm: impl Into<String>) -> Self {
+        self.period_labels = [am.into(), pm.into()];
+        self
+    }
+    pub fn paste_split(mut self, value: impl Fn(&str) -> Option<LocalTime> + 'static) -> Self {
+        self.paste_split = Some(Rc::new(value));
+        self.paste_requires_separator = false;
+        self
+    }
+    pub fn handle_paste(mut self, value: bool) -> Self {
+        if !value {
+            self.paste_split = None;
+        } else if self.paste_split.is_none() {
+            self.paste_split = Some(Rc::new(default_paste_split));
+            self.paste_requires_separator = true;
+        }
+        self
+    }
     pub fn on_value_change(mut self, v: impl FnMut(Option<LocalTime>) + 'static) -> Self {
         self.changed = Some(Box::new(v));
         self
@@ -394,6 +820,14 @@ impl TimePicker {
         self.rejected = Some(Box::new(v));
         self
     }
+    pub fn on_focus(mut self, mut value: impl FnMut() + 'static) -> Self {
+        self.focused = Some(Box::new(move |()| value()));
+        self
+    }
+    pub fn on_blur(mut self, mut value: impl FnMut() + 'static) -> Self {
+        self.blurred = Some(Box::new(move |()| value()));
+        self
+    }
 }
 impl Widget for TimePicker {
     fn build(&mut self, scope: &Scope) -> Result {
@@ -404,6 +838,17 @@ impl Widget for TimePicker {
                 .bytes()
                 .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
             || self.disabled.len() > MAX_DISABLED_TIMES
+            || self.clear_label.is_empty()
+            || self.clear_label.len() > 120
+            || self.clear_label.contains(['\0', '\r', '\n'])
+            || self
+                .popup_width
+                .is_some_and(|value| !value.is_finite() || !(80.0..=1200.0).contains(&value))
+            || !self.max_dropdown_content_height.is_finite()
+            || !(80.0..=1200.0).contains(&self.max_dropdown_content_height)
+            || self.period_labels.iter().any(|value| {
+                value.trim().is_empty() || value.len() > 40 || value.contains(['\0', '\r', '\n'])
+            })
             || self
                 .steps
                 .iter()
@@ -412,12 +857,52 @@ impl Widget for TimePicker {
         {
             return Err(invalid());
         }
+        self.popup_placement.validate().map_err(|_| invalid())?;
         let format = self.format;
         if let Some(spec) = self.grid {
             for at in 0..spec.len() {
                 format
                     .validate(spec.at(at).unwrap())
                     .map_err(|_| invalid())?;
+            }
+        }
+        if self.grid.is_some() && self.presets.is_some() {
+            return Err(invalid());
+        }
+        let preset_groups = match self.presets.take() {
+            None => None,
+            Some(TimePickerPresets::Values(values)) => Some(vec![TimePickerPresetGroup {
+                label: String::new(),
+                values,
+            }]),
+            Some(TimePickerPresets::Groups(groups)) => Some(groups),
+        };
+        if let Some(groups) = &preset_groups {
+            let count = groups.iter().map(|group| group.values.len()).sum::<usize>();
+            let mut values = Vec::with_capacity(count);
+            if groups.is_empty()
+                || groups.len() > MAX_TIME_PICKER_PRESET_GROUPS
+                || count == 0
+                || count > MAX_TIME_PICKER_PRESETS
+                || groups.iter().any(|group| {
+                    group.values.is_empty()
+                        || (!group.label.is_empty()
+                            && (group.label.trim().is_empty()
+                                || group.label.len() > 120
+                                || group.label.contains(['\0', '\r', '\n'])))
+                })
+            {
+                return Err(invalid());
+            }
+            for group in groups {
+                for value in &group.values {
+                    format.validate(*value).map_err(|_| invalid())?;
+                    values.push(*value);
+                }
+            }
+            values.sort_unstable();
+            if values.windows(2).any(|pair| pair[0] == pair[1]) {
+                return Err(invalid());
             }
         }
         let enabled = self
@@ -468,6 +953,14 @@ impl Widget for TimePicker {
         disabled.sort_unstable();
         disabled.dedup();
         let disabled = Rc::new(disabled);
+        let popup_control = std::mem::take(&mut self.open).mount(scope);
+        let popup_source = popup_control.source.clone();
+        let popup = PopupControl {
+            owner: scope.id(),
+            weak: scope.downgrade(),
+            control: popup_control,
+            changed: Callback::new(self.open_changed.take()),
+        };
         let state = Rc::new(Controller {
             owner: scope.id(),
             weak: scope.downgrade(),
@@ -524,30 +1017,38 @@ impl Widget for TimePicker {
             self.readonly.clone(),
             self.invalid.clone(),
         );
+        let anchor_id = composite::id("time-picker", &self.key, "trigger", "root")?;
+        let panel_id = composite::id("popover", &format!("{}-presets", self.key), "panel", "root")?;
         let mut widget = glory::ui::view()
             .role(Role::Group)
             .class(class)
             .style(style)
             .node_ref(root)
             .focus(self.common.focus);
+        let focused = Callback::new(self.focused.take());
+        let blurred = Callback::new(self.blurred.take());
+        let focus_owner = scope.id();
+        let focus_callback = focused.clone();
+        let blur_callback = blurred.clone();
+        widget = widget.on(EventKind::FocusWithin, move |event| match event {
+            Event::FocusWithin { focused: true, .. } => focus_callback.emit(focus_owner, ()),
+            Event::FocusWithin { focused: false, .. } => blur_callback.emit(focus_owner, ()),
+            _ => {}
+        });
         if let Some(name) = self.common.name.take() {
             widget = widget.name(name);
-        } else if self.field.is_some() {
-            let group_metadata = metadata.clone();
-            widget = widget.semantics(scope.bond(move || {
-                group_metadata.with(|m| {
-                    m.as_ref().map(|m| {
-                        Box::new(glory::render::Semantics {
-                            labelled_by: m.labelled_by.clone(),
-                            described_by: m.described_by.clone(),
-                            ..Default::default()
-                        })
-                    })
-                })
-            }));
         } else {
             widget = widget.name("Time");
         }
+        let group_metadata = metadata.clone();
+        widget = widget.semantics(scope.bond(move || {
+            let mut value = Semantics::default();
+            if let Some(metadata) = group_metadata.get() {
+                value.labelled_by = metadata.labelled_by.clone();
+                value.described_by = metadata.described_by.clone();
+            }
+            Some(Box::new(value))
+        }));
         for (kind, mut handlers) in std::mem::take(&mut self.common.handlers) {
             let owner = scope.id();
             widget = widget.on(kind, move |e| {
@@ -575,11 +1076,6 @@ impl Widget for TimePicker {
             if index > 0 {
                 glory::ui::text().content(":").show_in(&editors)?;
             }
-            let labels = if format.locale == crate::DateLocale::ZhCn {
-                ["小时", "分钟", "秒"]
-            } else {
-                ["Hour", "Minute", "Second"]
-            };
             let min = if index == 0 && format.cycle == HourCycle::H12 {
                 1
             } else {
@@ -602,7 +1098,7 @@ impl Widget for TimePicker {
             let mut input = crate::number_input()
                 .theme(self.common.theme.clone())
                 .size(self.common.size)
-                .name(labels[index])
+                .name(self.labels[index].clone())
                 .class(match index {
                     0 => "sapid-time-hour",
                     1 => "sapid-time-minute",
@@ -647,18 +1143,49 @@ impl Widget for TimePicker {
                 let suffix = ["hour", "minute", "second"][index];
                 input = input.form_name(scope.bond(move || format!("{}_{suffix}", name.get())));
             }
+            if let Some(placeholder) = self.placeholders[index].take() {
+                input = input.placeholder(placeholder);
+            }
+            if let Some(parser) = self.paste_split.clone() {
+                let pasted = state.clone();
+                let requires_separator = self.paste_requires_separator;
+                input = input.capture_input_edits(MAX_TIME_PICKER_PASTE_BYTES).on(
+                    EventKind::InputEdit,
+                    move |event| {
+                        if let Event::InputEdit(InputEdit::Value {
+                            value,
+                            composing: false,
+                            ..
+                        }) = event
+                            && (!requires_separator || value.contains(':'))
+                            && let Some(value) = parser(&value)
+                        {
+                            pasted.report(pasted.choose(Some(value)));
+                        }
+                    },
+                );
+            }
+            if preset_groups.is_some() || self.with_dropdown {
+                let focus = popup.clone();
+                input = input.on(EventKind::FocusChanged, move |event| {
+                    if matches!(event, Event::FocusChanged(true)) {
+                        focus.report(focus.propose(true));
+                    }
+                });
+            }
             input.show_in(&editors)?;
         }
         if format.cycle == HourCycle::H12 {
             let s = state.clone();
+            let period = state.afternoon;
+            let [am, pm] = self.period_labels.clone();
+            let visible_label =
+                scope.bond(move || if period.get() { pm.clone() } else { am.clone() });
             let mut toggle = crate::toggle()
                 .theme(self.common.theme.clone())
                 .size(self.common.size)
-                .label(if format.locale == crate::DateLocale::ZhCn {
-                    "下午"
-                } else {
-                    "Afternoon (PM)"
-                })
+                .name(self.period_label.clone())
+                .label(visible_label)
                 .pressed(state.afternoon)
                 .enabled(accepted.map(|s| s.enabled && !s.readonly))
                 .on_pressed_change(move |v| s.report(s.period(v)));
@@ -666,6 +1193,67 @@ impl Widget for TimePicker {
                 toggle = toggle.unstyled();
             }
             toggle.show_in(&editors)?;
+        }
+        if self.clearable {
+            let clear = state.clone();
+            let clear_label = self.clear_label.clone();
+            let clear_enabled = accepted.map(|s| s.enabled && !s.readonly);
+            let clear_parts = state.parts;
+            let clear_visible = scope.bond(move || {
+                clear_parts.iter().any(|part| match part.get() {
+                    NumberValue::Empty => false,
+                    NumberValue::Text(value) => !value.is_empty(),
+                    _ => true,
+                })
+            });
+            let theme = self.common.theme.clone();
+            let size = self.common.size;
+            let unstyled = self.common.unstyled;
+            glory::ui::when(clear_visible, move || {
+                let clear = clear.clone();
+                let mut button = crate::button()
+                    .theme(theme.clone())
+                    .size(size)
+                    .variant(crate::ButtonVariant::Subtle)
+                    .compact(true)
+                    .class("sapid-time-picker-clear")
+                    .name(clear_label.clone())
+                    .label(clear_label.clone())
+                    .enabled(clear_enabled)
+                    .on_press(move || clear.report(clear.choose(None)));
+                if unstyled {
+                    button = button.unstyled();
+                }
+                button
+            })
+            .show_in(&editors)?;
+        }
+        if preset_groups.is_some() || self.with_dropdown {
+            let trigger = popup.clone();
+            let trigger_open = popup_source.clone();
+            let trigger_id = anchor_id.clone();
+            let trigger_panel = panel_id.clone();
+            let mut button = glory::ui::button()
+                .label("Choose time")
+                .name("Choose time")
+                .class("sapid-time-picker-preset-trigger")
+                .enabled(accepted.map(|snapshot| snapshot.enabled && !snapshot.readonly))
+                .semantics(scope.bond(move || {
+                    Some(Box::new(Semantics {
+                        id: Some(trigger_id.clone()),
+                        controls: Some(trigger_panel.clone()),
+                        expanded: Some(trigger_open.get()),
+                        popup: Some(PopupKind::Dialog),
+                        ..Default::default()
+                    }))
+                }))
+                .on(EventKind::Activate, move |_| {
+                    trigger.report(trigger.propose(!trigger.control.source.get()));
+                });
+            if !self.common.unstyled {
+                button = button.style(self.common.theme.control(self.common.size));
+            }
+            button.show_in(&editors)?;
         }
         if let Some(spec) = self.grid {
             let s = state.clone();
@@ -685,6 +1273,77 @@ impl Widget for TimePicker {
                 grid = grid.unstyled();
             }
             grid.show_in(&content)?;
+        }
+        if preset_groups.is_some() || self.with_dropdown {
+            let popup_state = popup.clone();
+            let popup_for_content = popup.clone();
+            let picker_state = state.clone();
+            let picker_accepted = accepted;
+            let picker_theme = self.common.theme.clone();
+            let content_theme = picker_theme.clone();
+            let size = self.common.size;
+            let unstyled = self.common.unstyled;
+            let close_on_select = self.close_on_preset_select;
+            let weak = scope.downgrade();
+            let preset_content = PresetContent {
+                format,
+                accepted: picker_accepted,
+                state: picker_state,
+                popup: popup_for_content,
+                close_on_select,
+                theme: content_theme,
+                size,
+                unstyled,
+            };
+            let control_content = TimeControlsContent {
+                format,
+                accepted: picker_accepted,
+                state: state.clone(),
+                steps: self.steps,
+                period_labels: self.period_labels.clone(),
+                reverse: self.reverse_time_controls_list,
+                max_height: self.max_dropdown_content_height,
+                theme: self.common.theme.clone(),
+                size,
+                unstyled,
+            };
+            let with_dropdown = self.with_dropdown;
+            let groups = preset_groups.clone();
+            let mut layer = crate::popover(format!("{}-presets", self.key))
+                .name("Choose time")
+                .show_close(false)
+                .theme(picker_theme)
+                .size(size)
+                .placement(self.popup_placement)
+                .external_trigger(anchor_id)
+                .open(popup_source)
+                .on_open_change(move |value| popup_state.report(popup_state.propose(value)))
+                .content(move || {
+                    let mut sections: Vec<Box<dyn Widget>> = Vec::new();
+                    if with_dropdown {
+                        sections.push(control_content.build());
+                    }
+                    if let Some(groups) = groups.clone() {
+                        sections.push(preset_content.build(groups));
+                    }
+                    Box::new(
+                        crate::stack()
+                            .class("sapid-time-picker-dropdown")
+                            .gap(12.)
+                            .fill(sections),
+                    ) as Box<dyn Widget>
+                });
+            if let Some(width) = self.popup_width {
+                layer = layer.style(Style::new().width(Length::Px(width)));
+            }
+            if self.common.unstyled {
+                layer = layer.unstyled();
+            }
+            layer.show_in(&content).inspect_err(|error| {
+                if let Some(scope) = weak.upgrade() {
+                    scope.report_error(error.clone());
+                }
+            })?;
         }
         let weak = Rc::downgrade(&state);
         let mut previous = initial;
@@ -713,6 +1372,6 @@ impl Widget for TimePicker {
         });
         scope.retain(editors)?;
         scope.retain(content)?;
-        scope.retain(state)
+        scope.retain((state, popup, focused, blurred))
     }
 }

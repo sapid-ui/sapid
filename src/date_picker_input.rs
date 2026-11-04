@@ -3,8 +3,8 @@ use crate::appearance::{Common, common_methods};
 use crate::composite::{self, Callback, ContentPolicy};
 use crate::state::Value;
 use crate::{
-    CivilDate, DatePickerMode, DateSelection, DateSelectionError, DatesProvider, FieldControl,
-    Weekday, YearMonth,
+    CivilDate, DateInputFormat, DatePickerLevel, DatePickerMode, DatePickerPreset, DateSelection,
+    DateSelectionError, DatesProvider, FieldControl, Weekday, YearMonth,
 };
 use glory::render::{Direction, FormControl, NodeId};
 use glory::style::{Align, Display, FlexDirection, Style};
@@ -34,8 +34,18 @@ pub struct DatePickerInput {
     excluded: Vec<CivilDate>,
     weekdays: u8,
     deselect: bool,
+    presets: Vec<DatePickerPreset>,
+    columns: u8,
+    columns_to_scroll: Option<u8>,
+    hide_outside_dates: bool,
+    hide_weekdays: bool,
+    week_numbers: bool,
     month: Option<Vary<YearMonth>>,
     default_month: Option<YearMonth>,
+    level: Option<Vary<DatePickerLevel>>,
+    default_level: DatePickerLevel,
+    max_level: DatePickerLevel,
+    display_format: DateInputFormat,
     trigger_label: Vary<String>,
     title: Vary<String>,
     close_label: Vary<String>,
@@ -46,6 +56,7 @@ pub struct DatePickerInput {
     rejected: Option<Box<dyn FnMut(DateSelectionError)>>,
     open_changed: Option<Box<dyn FnMut(bool)>>,
     month_changed: Option<Box<dyn FnMut(YearMonth)>>,
+    level_changed: Option<Box<dyn FnMut(DatePickerLevel)>>,
 }
 pub fn date_picker_input(
     key: impl Into<String>,
@@ -68,8 +79,18 @@ pub fn date_picker_input(
         excluded: Vec::new(),
         weekdays: 0,
         deselect: false,
+        presets: Vec::new(),
+        columns: 1,
+        columns_to_scroll: None,
+        hide_outside_dates: false,
+        hide_weekdays: false,
+        week_numbers: false,
         month: None,
         default_month: None,
+        level: None,
+        default_level: DatePickerLevel::Month,
+        max_level: DatePickerLevel::Decade,
+        display_format: DateInputFormat::Iso,
         trigger_label: "Choose dates".into(),
         title: "Choose dates".into(),
         close_label: "Close date picker".into(),
@@ -80,6 +101,7 @@ pub fn date_picker_input(
         rejected: None,
         open_changed: None,
         month_changed: None,
+        level_changed: None,
     }
 }
 impl DatePickerInput {
@@ -154,12 +176,57 @@ impl DatePickerInput {
         self.deselect = v;
         self
     }
+    pub fn presets(mut self, values: impl IntoIterator<Item = DatePickerPreset>) -> Self {
+        self.presets = values
+            .into_iter()
+            .take(crate::MAX_DATE_PICKER_PRESETS + 1)
+            .collect();
+        self
+    }
+    pub fn number_of_columns(mut self, value: u8) -> Self {
+        self.columns = value;
+        self
+    }
+    pub fn columns_to_scroll(mut self, value: u8) -> Self {
+        self.columns_to_scroll = Some(value);
+        self
+    }
+    pub fn hide_outside_dates(mut self, value: bool) -> Self {
+        self.hide_outside_dates = value;
+        self
+    }
+    pub fn hide_weekdays(mut self, value: bool) -> Self {
+        self.hide_weekdays = value;
+        self
+    }
+    pub fn with_week_numbers(mut self, value: bool) -> Self {
+        self.week_numbers = value;
+        self
+    }
     pub fn month(mut self, v: impl Into<Vary<YearMonth>>) -> Self {
         self.month = Some(v.into());
         self
     }
     pub fn default_month(mut self, v: YearMonth) -> Self {
         self.default_month = Some(v);
+        self
+    }
+    pub fn level(mut self, value: impl Into<Vary<DatePickerLevel>>) -> Self {
+        self.level = Some(value.into());
+        self
+    }
+    pub fn default_level(mut self, value: DatePickerLevel) -> Self {
+        self.default_level = value;
+        self
+    }
+    pub fn max_level(mut self, value: DatePickerLevel) -> Self {
+        self.max_level = value;
+        self
+    }
+    /// Selects one of the bounded, locale-independent readonly display formats.
+    /// The controlled value remains a typed [`DateSelection`].
+    pub fn display_format(mut self, value: DateInputFormat) -> Self {
+        self.display_format = value;
         self
     }
     pub fn trigger_label(mut self, v: impl Into<Vary<String>>) -> Self {
@@ -202,6 +269,10 @@ impl DatePickerInput {
         self.month_changed = Some(Box::new(v));
         self
     }
+    pub fn on_level_change(mut self, value: impl FnMut(DatePickerLevel) + 'static) -> Self {
+        self.level_changed = Some(Box::new(value));
+        self
+    }
 }
 impl Widget for DatePickerInput {
     fn build(&mut self, scope: &Scope) -> Result {
@@ -213,6 +284,12 @@ impl Widget for DatePickerInput {
                 .bytes()
                 .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
             || self.excluded.len() > crate::MAX_CALENDAR_EXCLUDED_DATES
+            || self.presets.len() > crate::MAX_DATE_PICKER_PRESETS
+            || self.columns == 0
+            || self.columns > crate::MAX_DATE_PICKER_COLUMNS
+            || self
+                .columns_to_scroll
+                .is_some_and(|value| value == 0 || value > crate::MAX_DATE_PICKER_COLUMNS)
         {
             return Err(glory::render::Error::InvalidProps(
                 "invalid date picker input key or exclusions",
@@ -244,17 +321,20 @@ impl Widget for DatePickerInput {
         let rejected = Callback::new(self.rejected.take());
         let opened = Callback::new(self.open_changed.take());
         let month_changed = Callback::new(self.month_changed.take());
+        let level_changed = Callback::new(self.level_changed.take());
         let callbacks = (
             changed.clone(),
             rejected.clone(),
             opened.clone(),
             month_changed.clone(),
+            level_changed.clone(),
         );
         scope.on_cleanup(move || {
             callbacks.0.clear();
             callbacks.1.clear();
             callbacks.2.clear();
             callbacks.3.clear();
+            callbacks.4.clear();
         })?;
         let enabled = self
             .field
@@ -305,12 +385,13 @@ impl Widget for DatePickerInput {
             "sapid-date-picker-display",
             self.common.theme.control(self.common.size),
         );
+        let display_format = self.display_format;
         let mut input = glory::ui::input()
             .class(classes)
             .style(style)
             .enabled(enabled.clone())
             .focus(self.common.focus)
-            .value(scope.bond(move || accepted.with(|s| s.value.format_iso())))
+            .value(scope.bond(move || accepted.with(|s| s.value.format_display(display_format))))
             .semantics(metadata);
         if let Some(name) = self.common.name.take() {
             input = input.name(name);
@@ -332,8 +413,17 @@ impl Widget for DatePickerInput {
         let excluded = std::mem::take(&mut self.excluded);
         let weekdays = self.weekdays;
         let deselect = self.deselect;
+        let presets = std::mem::take(&mut self.presets);
+        let columns = self.columns;
+        let columns_to_scroll = self.columns_to_scroll;
+        let hide_outside_dates = self.hide_outside_dates;
+        let hide_weekdays = self.hide_weekdays;
+        let week_numbers = self.week_numbers;
         let month = self.month.take();
         let default_month = self.default_month;
+        let level = self.level.take();
+        let default_level = self.default_level;
+        let max_level = self.max_level;
         let calendar_ref = self.calendar_ref;
         let calendar_source = value.source.clone();
         let callback_value = value.clone();
@@ -372,6 +462,7 @@ impl Widget for DatePickerInput {
                 let opened = callback_opened.clone();
                 let rejected = rejected.clone();
                 let month_changed = month_changed.clone();
+                let level_changed = level_changed.clone();
                 let mut picker = crate::date_picker(key.clone(), accepted.map(|s| s.provider))
                     .mode(mode)
                     .value(calendar_source.clone())
@@ -379,6 +470,13 @@ impl Widget for DatePickerInput {
                     .readonly(readonly.clone())
                     .direction(direction)
                     .allow_deselect(deselect)
+                    .presets(presets.clone())
+                    .number_of_columns(columns)
+                    .default_level(default_level)
+                    .max_level(max_level)
+                    .hide_outside_dates(hide_outside_dates)
+                    .hide_weekdays(hide_weekdays)
+                    .with_week_numbers(week_numbers)
                     .exclude_dates(excluded.iter().copied())
                     .theme(theme.clone())
                     .size(size)
@@ -400,12 +498,19 @@ impl Widget for DatePickerInput {
                         }
                     })
                     .on_reject(move |e| rejected.emit(owner, e))
-                    .on_month_change(move |m| month_changed.emit(owner, m));
+                    .on_month_change(move |m| month_changed.emit(owner, m))
+                    .on_level_change(move |next| level_changed.emit(owner, next));
+                if let Some(value) = columns_to_scroll {
+                    picker = picker.columns_to_scroll(value);
+                }
                 if let Some(month) = &month {
                     picker = picker.month(month.clone());
                 }
                 if let Some(month) = default_month {
                     picker = picker.default_month(month);
+                }
+                if let Some(level) = &level {
+                    picker = picker.level(level.clone());
                 }
                 if let Some(reference) = calendar_ref {
                     picker = picker.node_ref(reference);

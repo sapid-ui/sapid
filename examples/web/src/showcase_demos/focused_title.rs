@@ -20,12 +20,21 @@ mod focused {
 
     pub fn demo_for(name: &str, theme: Theme) -> Box<dyn Widget> {
         match name {
-            "Title" => Box::new(sapid::stack().theme(theme.clone()).gap(8.0).fill((
+        "Title" => Box::new(
+            sapid::stack().theme(theme.clone()).gap(12.0).fill((
                 title(1).theme(theme.clone()).content("Heading level 1"),
                 title(2).theme(theme.clone()).content("Heading level 2"),
-                title(3).theme(theme).content("Heading level 3"),
-            ))),
-            _ => unreachable!("unsupported named demo: {name}"),
-        }
+                title(3).theme(theme.clone()).content("Heading level 3"),
+                sapid::text().theme(theme.clone()).content("Line clamp"),
+                title(2)
+                    .theme(theme)
+                    .class("showcase-title-clamp")
+                    .line_clamp(2)
+                    .style(Style::new().width(Length::Px(360.0)))
+                    .content("A heading can be constrained to two lines while retaining its complete semantic name and heading level."),
+            )),
+        ),
+        _ => unreachable!("unsupported named demo: {name}"),
+    }
     }
 }

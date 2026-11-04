@@ -1,6 +1,6 @@
 use glory::prelude::*;
 use glory::render::Direction;
-use sapid::{Hsva, Theme, color_input, color_picker};
+use sapid::{ColorFormat, Hsva, Theme, color_input, color_picker};
 pub struct State {
     pub color: Cage<Hsva>,
     pub draft: Cage<String>,
@@ -30,6 +30,7 @@ pub fn form(scope: &Scope, theme: Theme) -> (impl Widget + use<>, State) {
         .enabled(enabled)
         .control(move |field| {
             color_input("accent")
+                .format(ColorFormat::Hexa)
                 .field(field)
                 .value(draft)
                 .on_value_change(move |value| {
@@ -45,6 +46,7 @@ pub fn form(scope: &Scope, theme: Theme) -> (impl Widget + use<>, State) {
             .default_value("Retain 😀 caret")
             .class("picker-notes"),
         color_picker("main")
+            .show_precision_sliders(true)
             .theme(theme.clone())
             .name("Main color")
             .value(color)
@@ -60,6 +62,7 @@ pub fn form(scope: &Scope, theme: Theme) -> (impl Widget + use<>, State) {
             .on_value_commit(move |_| commits.revise(|count| *count += 1)),
         field,
         color_picker("rtl")
+            .show_precision_sliders(true)
             .theme(theme.clone())
             .name("RTL color")
             .direction(Direction::Rtl)

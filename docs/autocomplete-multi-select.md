@@ -40,6 +40,20 @@ successful form name/value and native `required`; there is no hidden Select.
 Open Enter accepts a suggestion or commits unmatched text and closes; closed
 Enter retains native form submission. `on_commit` observes text commits.
 
+Autocomplete additionally exposes `limit(0..=1024)`,
+`select_first_option_on_change(bool)`, `auto_select_on_blur(bool)` and
+`clearable(bool)`. The limit affects only visible matches and retains declared
+identities and free text. First-on-change moves the current option to the first
+enabled visible match so Enter can commit without an ArrowDown. Blur selection
+commits only the current enabled visible option before closing and never runs
+during composition. The named clear button proposes both no selected key and an
+empty search, remains absent for empty/readonly/disabled/composing state, and
+returns focus to the same editor when the host supports focus.
+`loading(Vary<bool>)` adds passive finite loader geometry and publishes busy
+metadata without disabling free-text editing. `loading_position(Left|Right)`
+selects its side; the loader is decorative so the input remains the single
+announced busy control.
+
 `multi_select(key).value(Vary<Vec<String>>).on_value_change(...)` controls
 selected known keys. `search`/`on_search_change` independently control the editor;
 defaults apply only to local sources. Choosing an option toggles its key, proposes

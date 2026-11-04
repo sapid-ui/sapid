@@ -19,6 +19,7 @@ use std::{
 };
 pub const MAX_CALENDAR_EXCLUDED_DATES: usize = 366;
 pub const MAX_CALENDAR_SEARCH_DAYS: usize = 366;
+type DayFactory = Rc<RefCell<Box<dyn FnMut(Vary<CivilDate>) -> Box<dyn Widget>>>>;
 fn invalid() -> glory::ui::Error {
     glory::render::Error::InvalidProps("invalid finite calendar configuration").into()
 }
@@ -60,6 +61,7 @@ struct Controller {
     dirty: Dirty,
     changed: Callback<Option<CivilDate>>,
     month_changed: Callback<YearMonth>,
+    level_control: Callback<()>,
 }
 impl Controller {
     fn ensure(&self) -> Result {
@@ -299,6 +301,7 @@ impl Controller {
         self.live.set(false);
         self.changed.clear();
         self.month_changed.clear();
+        self.level_control.clear();
         self.cursor.borrow_mut().take();
         self.selection_cursor.set(None);
         self.intent.set(None);
@@ -317,9 +320,19 @@ pub struct Calendar {
     excluded: Vec<CivilDate>,
     weekdays: u8,
     allow_deselect: bool,
+    hide_outside_dates: bool,
+    hide_weekdays: bool,
+    week_numbers: bool,
+    full_width: bool,
+    static_mode: bool,
+    render_day: Option<DayFactory>,
+    previous_controls: bool,
+    next_controls: bool,
+    navigation_step: u8,
     mini: bool,
     changed: Option<Box<dyn FnMut(Option<CivilDate>)>>,
     month_changed: Option<Box<dyn FnMut(YearMonth)>>,
+    level_control: Option<Box<dyn FnMut(())>>,
 }
 pub fn calendar(key: impl Into<String>, provider: impl Into<Vary<DatesProvider>>) -> Calendar {
     Calendar {
@@ -335,9 +348,19 @@ pub fn calendar(key: impl Into<String>, provider: impl Into<Vary<DatesProvider>>
         excluded: Vec::new(),
         weekdays: 0,
         allow_deselect: false,
+        hide_outside_dates: false,
+        hide_weekdays: false,
+        week_numbers: false,
+        full_width: false,
+        static_mode: false,
+        render_day: None,
+        previous_controls: true,
+        next_controls: true,
+        navigation_step: 1,
         mini: false,
         changed: None,
         month_changed: None,
+        level_control: None,
     }
 }
 pub fn mini_calendar(key: impl Into<String>, provider: impl Into<Vary<DatesProvider>>) -> Calendar {
@@ -348,7 +371,10 @@ pub fn mini_calendar(key: impl Into<String>, provider: impl Into<Vary<DatesProvi
 }
 impl Calendar {
     common_methods!();
-    pub(crate) fn selection_projection(mut self, value: impl Into<Vary<DateSelection>>) -> Self {
+    /// Supplies the selected-date projection for custom picker behavior.
+    /// Activations are proposed through [`Self::on_value_change`]; the caller
+    /// remains the sole owner of this projection.
+    pub fn selection(mut self, value: impl Into<Vary<DateSelection>>) -> Self {
         self.projection = Some(value.into());
         self
     }
@@ -380,6 +406,44 @@ impl Calendar {
         self.allow_deselect = value;
         self
     }
+    pub fn hide_outside_dates(mut self, value: bool) -> Self {
+        self.hide_outside_dates = value;
+        self
+    }
+    pub fn hide_weekdays(mut self, value: bool) -> Self {
+        self.hide_weekdays = value;
+        self
+    }
+    pub fn with_week_numbers(mut self, value: bool) -> Self {
+        self.week_numbers = value;
+        self
+    }
+    pub fn full_width(mut self, value: bool) -> Self {
+        self.full_width = value;
+        self
+    }
+    pub fn static_mode(mut self, value: bool) -> Self {
+        self.static_mode = value;
+        self
+    }
+    pub fn render_day<W: Widget>(
+        mut self,
+        mut render: impl FnMut(Vary<CivilDate>) -> W + 'static,
+    ) -> Self {
+        self.render_day = Some(Rc::new(RefCell::new(Box::new(move |date| {
+            Box::new(render(date))
+        }))));
+        self
+    }
+    pub(crate) fn navigation_controls(mut self, previous: bool, next: bool) -> Self {
+        self.previous_controls = previous;
+        self.next_controls = next;
+        self
+    }
+    pub(crate) fn navigation_step(mut self, value: u8) -> Self {
+        self.navigation_step = value;
+        self
+    }
     pub fn exclude_dates(mut self, value: impl IntoIterator<Item = CivilDate>) -> Self {
         self.excluded = value
             .into_iter()
@@ -405,11 +469,15 @@ impl Calendar {
         self.month_changed = Some(Box::new(value));
         self
     }
+    pub(crate) fn on_level_control(mut self, mut value: impl FnMut() + 'static) -> Self {
+        self.level_control = Some(Box::new(move |()| value()));
+        self
+    }
 }
-fn row_style(width: f64, height: f64) -> Style {
+fn row_style(width: Length, height: f64) -> Style {
     Style::new()
         .position(Position::Relative)
-        .width(Length::Px(width))
+        .width(width)
         .height(Length::Px(height))
 }
 fn place(scope: &Scope, reference: Cage<Option<NodeId>>) -> Result<Scope> {
@@ -424,6 +492,9 @@ impl Widget for Calendar {
                 .bytes()
                 .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
         {
+            return Err(invalid());
+        }
+        if self.navigation_step == 0 || self.navigation_step > 4 {
             return Err(invalid());
         }
         let id = SemanticId::new(format!("{}-grid", self.key))?;
@@ -497,6 +568,7 @@ impl Widget for Calendar {
         let physical = scope.cage(None);
         let references = std::array::from_fn(|_| scope.cage(None));
         let dirty = Dirty::new(scope);
+        let has_level_control = self.level_control.is_some();
         let state = Rc::new(Controller {
             owner: scope.id(),
             weak: scope.downgrade(),
@@ -518,6 +590,7 @@ impl Widget for Calendar {
             dirty: dirty.clone(),
             changed: Callback::new(self.changed.take()),
             month_changed: Callback::new(self.month_changed.take()),
+            level_control: Callback::new(self.level_control.take()),
         });
         let weak = Rc::downgrade(&state);
         scope.on_cleanup(move || {
@@ -531,8 +604,25 @@ impl Widget for Calendar {
         };
         let gap = 2.;
         let pitch = size + gap;
-        let width = 7. * pitch - gap;
+        let hide_weekdays = self.hide_weekdays;
+        let week_numbers = self.week_numbers;
+        let week_number_width = if week_numbers { size * 0.75 } else { 0. };
+        let week_number_pitch = if week_numbers {
+            week_number_width + gap
+        } else {
+            0.
+        };
+        let width = 7. * pitch - gap + week_number_pitch;
+        let full_width = self.full_width;
+        let display_width = if full_width {
+            Length::Percent(100.)
+        } else {
+            Length::Px(width)
+        };
+        let static_mode = self.static_mode;
+        let render_day = self.render_day.clone();
         let themed = !self.common.unstyled;
+        let hide_outside_dates = self.hide_outside_dates;
         let theme = self.common.theme.clone();
         let direction = self.direction;
         let (classes, appearance) = self.common.appearance(
@@ -556,7 +646,7 @@ impl Widget for Calendar {
             .class(classes)
             .style(scope.bond(move || {
                 let mut style = appearance.get();
-                style.width.get_or_insert(Length::Px(width));
+                style.width.get_or_insert(display_width);
                 style.display.get_or_insert(Display::Flex);
                 style.flex_direction.get_or_insert(FlexDirection::Column);
                 style.gap.get_or_insert(8.);
@@ -575,7 +665,7 @@ impl Widget for Calendar {
                     ..Style::new()
                 }
                 .display(Display::Flex)
-                .width(Length::Px(width))
+                .width(display_width)
                 .height(Length::Px(size)),
             )
             .node_ref(header)
@@ -589,34 +679,66 @@ impl Widget for Calendar {
         );
         let cleanup = activate.clone();
         scope.on_cleanup(move || cleanup.clear())?;
-        for (delta, label) in [
-            (-12, "Previous year"),
+        for (base_delta, label) in [
+            (-12_i32, "Previous year"),
             (-1, "Previous month"),
             (1, "Next month"),
             (12, "Next year"),
         ] {
-            if delta == 1 {
+            if base_delta == 1 {
                 let mini = self.mini;
-                glory::ui::text()
-                    .class("sapid-calendar-month")
-                    .content(scope.bond(move || {
-                        let s = accepted.get();
-                        if mini && s.provider.locale_value() == DateLocale::En {
-                            format!(
-                                "{} {}",
-                                &s.provider.locale_value().month_name(s.month)[..3],
-                                s.month.year()
-                            )
-                        } else {
-                            s.provider.locale_value().month_label(s.month)
-                        }
-                    }))
-                    .style(Style {
-                        font_size: Some(if self.mini { 11. } else { 14. }),
-                        ..Style::new()
-                    })
-                    .show_in(&header_scope)?;
+                let label = scope.bond(move || {
+                    let s = accepted.get();
+                    if mini && s.provider.locale_value() == DateLocale::En {
+                        format!(
+                            "{} {}",
+                            &s.provider.locale_value().month_name(s.month)[..3],
+                            s.month.year()
+                        )
+                    } else {
+                        s.provider.locale_value().month_label(s.month)
+                    }
+                });
+                if has_level_control && !static_mode {
+                    let level = state.clone();
+                    glory::ui::button()
+                        .class("sapid-calendar-month sapid-calendar-level-control")
+                        .label(label)
+                        .name("Choose month or year")
+                        .style(Style {
+                            font_size: Some(if self.mini { 11. } else { 14. }),
+                            background: Some(theme.surface),
+                            color: Some(theme.foreground),
+                            ..Style::new()
+                        })
+                        .on(EventKind::Activate, move |_| {
+                            level.level_control.emit(level.owner, ())
+                        })
+                        .show_in(&header_scope)?;
+                } else {
+                    glory::ui::text()
+                        .class("sapid-calendar-month")
+                        .content(label)
+                        .style(Style {
+                            font_size: Some(if self.mini { 11. } else { 14. }),
+                            ..Style::new()
+                        })
+                        .show_in(&header_scope)?;
+                }
             }
+            if static_mode {
+                continue;
+            }
+            if (base_delta < 0 && !self.previous_controls)
+                || (base_delta > 0 && !self.next_controls)
+            {
+                continue;
+            }
+            let delta = if base_delta.abs() == 1 {
+                base_delta * i32::from(self.navigation_step)
+            } else {
+                base_delta
+            };
             let r = scope.cage(None);
             let s = state.clone();
             let observers = activate.clone();
@@ -635,7 +757,7 @@ impl Widget for Calendar {
                     .border_color(border);
             }
             glory::ui::button()
-                .label(match delta {
+                .label(match base_delta {
                     -12 => "«",
                     -1 => "‹",
                     1 => "›",
@@ -689,8 +811,8 @@ impl Widget for Calendar {
                     grid_multiple: accepted.with(|s| s.selection.mode() != DatePickerMode::Single),
                     readonly: accepted.with(|s| s.readonly),
                     table: Some(TableMetadata::Table {
-                        rows: Some(7),
-                        columns: Some(7),
+                        rows: Some(if hide_weekdays { 6 } else { 7 }),
+                        columns: Some(if week_numbers { 8 } else { 7 }),
                     }),
                     ..Default::default()
                 }))
@@ -699,6 +821,7 @@ impl Widget for Calendar {
                 Style::new()
                     .display(Display::Flex)
                     .flex_direction(FlexDirection::Column)
+                    .width(display_width)
                     .gap(gap),
             )
             .on(EventKind::GridNavigate, move |event| {
@@ -717,7 +840,9 @@ impl Widget for Calendar {
         }
         grid.show_in(&content)?;
         let grid_scope = place(scope, grid_ref)?;
-        for row in 0..7usize {
+        let first_row = usize::from(hide_weekdays);
+        let total_columns = if week_numbers { 8. } else { 7. };
+        for row in first_row..7usize {
             let r = scope.cage(None);
             let height = if row == 0 { size * 0.75 } else { size };
             glory::ui::view()
@@ -728,25 +853,142 @@ impl Widget for Calendar {
                     "sapid-calendar-week"
                 })
                 .semantics(Some(Box::new(Semantics {
-                    table: Some(TableMetadata::Row { index: row as u32 }),
+                    table: Some(TableMetadata::Row {
+                        index: (row - first_row) as u32,
+                    }),
                     ..Default::default()
                 })))
-                .style(row_style(width, height))
+                .style(row_style(display_width, height))
                 .node_ref(r)
                 .show_in(&grid_scope)?;
             let row_scope = place(scope, r)?;
+            if row == 0 && week_numbers {
+                let left = if full_width {
+                    Length::Percent(
+                        if direction == Direction::Rtl { 7. } else { 0. } / total_columns * 100.,
+                    )
+                } else if direction == Direction::Rtl {
+                    Length::Px(7. * pitch - gap)
+                } else {
+                    Length::Px(0.)
+                };
+                let column_width = if full_width {
+                    Length::Percent(100. / total_columns)
+                } else {
+                    Length::Px(week_number_width)
+                };
+                glory::ui::view()
+                    .role(Role::ColumnHeader)
+                    .class("sapid-calendar-week-number-corner")
+                    .semantics(Some(Box::new(Semantics {
+                        table: Some(TableMetadata::Cell {
+                            row: 0,
+                            column: 0,
+                            row_span: 1,
+                            column_span: 1,
+                            headers: vec![],
+                        }),
+                        ..Default::default()
+                    })))
+                    .style(
+                        Style::new()
+                            .position(Position::Absolute)
+                            .left(left)
+                            .top(Length::Px(0.))
+                            .width(column_width)
+                            .height(Length::Px(height)),
+                    )
+                    .show_in(&row_scope)?;
+            } else if row > 0 && week_numbers {
+                let index = (row - 1) * 7;
+                let left = if full_width {
+                    Length::Percent(
+                        if direction == Direction::Rtl { 7. } else { 0. } / total_columns * 100.,
+                    )
+                } else if direction == Direction::Rtl {
+                    Length::Px(7. * pitch - gap)
+                } else {
+                    Length::Px(0.)
+                };
+                let column_width = if full_width {
+                    Length::Percent(100. / total_columns)
+                } else {
+                    Length::Px(week_number_width)
+                };
+                glory::ui::view()
+                    .role(Role::Cell)
+                    .class("sapid-calendar-week-number")
+                    .name(scope.bond(move || {
+                        accepted.with(|s| {
+                            s.grid.cells()[index]
+                                .map(|date| format!("Week {}", date.iso_week_number()))
+                                .unwrap_or_default()
+                        })
+                    }))
+                    .semantics(Some(Box::new(Semantics {
+                        table: Some(TableMetadata::Cell {
+                            row: (row - first_row) as u32,
+                            column: 0,
+                            row_span: 1,
+                            column_span: 1,
+                            headers: vec![],
+                        }),
+                        ..Default::default()
+                    })))
+                    .style(Style {
+                        display: Some(Display::Flex),
+                        align: Some(Align::Center),
+                        justify: Some(Justify::Center),
+                        ..Style::new()
+                            .position(Position::Absolute)
+                            .left(left)
+                            .top(Length::Px(0.))
+                            .width(column_width)
+                            .height(Length::Px(height))
+                    })
+                    .fill(glory::ui::text().content(scope.bond(move || {
+                        accepted.with(|s| {
+                            s.grid.cells()[index]
+                                .map(|date| date.iso_week_number().to_string())
+                                .unwrap_or_default()
+                        })
+                    })))
+                    .show_in(&row_scope)?;
+            }
             for column in 0..7usize {
-                let left = (if direction == Direction::Rtl {
+                let logical_column = if direction == Direction::Rtl {
                     6 - column
                 } else {
-                    column
-                }) as f64
-                    * pitch;
+                    column + usize::from(week_numbers)
+                };
+                let (left, cell_width) = if full_width {
+                    (
+                        Length::Percent(logical_column as f64 / total_columns * 100.),
+                        Length::Percent(100. / total_columns),
+                    )
+                } else {
+                    (
+                        Length::Px(
+                            (if direction == Direction::Rtl {
+                                6 - column
+                            } else {
+                                column
+                            }) as f64
+                                * pitch
+                                + if direction == Direction::Ltr {
+                                    week_number_pitch
+                                } else {
+                                    0.
+                                },
+                        ),
+                        Length::Px(size),
+                    )
+                };
                 let cell_style = Style::new()
                     .position(Position::Absolute)
-                    .left(Length::Px(left))
+                    .left(left)
                     .top(Length::Px(0.))
-                    .width(Length::Px(size))
+                    .width(cell_width)
                     .height(Length::Px(height));
                 if row == 0 {
                     glory::ui::view()
@@ -766,7 +1008,7 @@ impl Widget for Calendar {
                         .semantics(Some(Box::new(Semantics {
                             table: Some(TableMetadata::Cell {
                                 row: 0,
-                                column: column as u16,
+                                column: column as u16 + u16::from(week_numbers),
                                 row_span: 1,
                                 column_span: 1,
                                 headers: vec![],
@@ -800,11 +1042,14 @@ impl Widget for Calendar {
                         .semantics(scope.bond(move || {
                             Some(Box::new(Semantics {
                                 selected: Some(accepted.with(|s| {
-                                    s.grid.cells()[index].is_some_and(|d| s.selection.contains(d))
+                                    s.grid.cells()[index].is_some_and(|d| {
+                                        (!hide_outside_dates || d.year_month() == s.month)
+                                            && s.selection.contains(d)
+                                    })
                                 })),
                                 table: Some(TableMetadata::Cell {
-                                    row: row as u32,
-                                    column: column as u16,
+                                    row: (row - first_row) as u32,
+                                    column: column as u16 + u16::from(week_numbers),
                                     row_span: 1,
                                     column_span: 1,
                                     headers: vec![],
@@ -817,14 +1062,24 @@ impl Widget for Calendar {
                     let s = state.clone();
                     let theme = theme.clone();
                     let observers = activate.clone();
+                    let day_renderer = render_day.clone();
                     glory::ui::when(
-                        scope.bond(move || accepted.with(|s| s.grid.cells()[index].is_some())),
+                        scope.bond(move || {
+                            accepted.with(|s| {
+                                s.grid.cells()[index].is_some_and(|d| {
+                                    !hide_outside_dates || d.year_month() == s.month
+                                })
+                            })
+                        }),
                         move || DayButton {
                             state: s.clone(),
                             index,
                             size,
+                            full_width,
+                            static_mode,
                             themed,
                             theme: theme.clone(),
+                            render_day: day_renderer.clone(),
                             observers: observers.clone(),
                         },
                     )
@@ -896,8 +1151,11 @@ struct DayButton {
     state: Rc<Controller>,
     index: usize,
     size: f64,
+    full_width: bool,
+    static_mode: bool,
     themed: bool,
     theme: crate::Theme,
+    render_day: Option<DayFactory>,
     observers: Observers,
 }
 impl Widget for DayButton {
@@ -909,33 +1167,99 @@ impl Widget for DayButton {
         let physical = s.physical;
         let reference = s.references[index];
         let size = self.size;
+        let full_width = self.full_width;
         let themed = self.themed;
         let theme = self.theme.clone();
         let observers = self.observers.clone();
         let enabled_state = s.clone();
         let style_state = s.clone();
+        let date: Vary<CivilDate> = scope
+            .bond(move || {
+                accepted.with(|s| {
+                    s.grid.cells()[index].expect("mounted calendar day branch retains its date")
+                })
+            })
+            .into();
+        let label_date = date.clone();
+        let label = scope.bond(move || label_date.get().day().to_string());
+        let name = scope.bond(move || {
+            accepted.with(|s| {
+                s.grid.cells()[index]
+                    .map(|d| s.provider.locale_value().date_label(d))
+                    .unwrap_or_default()
+            })
+        });
+        let semantics = scope.bond(move || {
+            Some(Box::new(Semantics {
+                current: accepted.with(|s| {
+                    s.grid.cells()[index]
+                        .filter(|d| Some(*d) == s.provider.today_date())
+                        .map(|_| Current::Date)
+                }),
+                ..Default::default()
+            }))
+        });
+        let style = scope.bond(move || {
+            let s = accepted.get();
+            let date = s.grid.cells()[index];
+            let chosen = date.is_some_and(|d| s.selection.contains(d));
+            let enabled = date.is_some_and(|d| style_state.allowed(s, d));
+            let focused = reference.get().is_some_and(|id| physical.get() == Some(id));
+            let mut style = Style::new()
+                .width(if full_width {
+                    Length::Percent(100.)
+                } else {
+                    Length::Px(size)
+                })
+                .height(Length::Px(size))
+                .padding(Edges::all(0.))
+                .min_width(Length::Px(0.));
+            if themed {
+                style.font_size = Some(if size < 30. { 11. } else { 14. });
+                style.background = Some(if chosen { theme.accent } else { theme.surface });
+                style.color = Some(if !enabled {
+                    theme.disabled_text
+                } else if chosen {
+                    theme.on_accent
+                } else if date.is_some_and(|d| d.year_month() != s.month) {
+                    theme.muted
+                } else {
+                    theme.foreground
+                });
+                style = style
+                    .radius(theme.radius)
+                    .border_width(Edges::all(1.))
+                    .border_style(BorderStyle::Solid)
+                    .border_color(if focused { theme.accent } else { theme.border });
+            }
+            style
+        });
+        let content = self
+            .render_day
+            .as_ref()
+            .map(|renderer| (renderer.borrow_mut())(date.clone()));
+        if self.static_mode {
+            let mut day = glory::ui::view()
+                .class("sapid-calendar-day sapid-calendar-day-static")
+                .name(name)
+                .style(style);
+            if let Some(content) = content {
+                day = day.fill(content);
+            } else {
+                day = day.fill(glory::ui::text().content(label));
+            }
+            return day.show_in(scope);
+        }
         let activate = s.clone();
         let focus_state = s.clone();
-        let button = glory::ui::button()
+        let mut button = glory::ui::button()
             .class("sapid-calendar-day")
             .node_ref(reference)
-            .label(scope.bond(move || {
-                accepted.with(|s| {
-                    s.grid.cells()[index]
-                        .map(|d| d.day().to_string())
-                        .unwrap_or_default()
-                })
-            }))
-            .name(scope.bond(move || {
-                accepted.with(|s| {
-                    s.grid.cells()[index]
-                        .map(|d| s.provider.locale_value().date_label(d))
-                        .unwrap_or_default()
-                })
-            }))
+            .label(label)
+            .name(name)
             .enabled(scope.bond(move || {
-                let s = accepted.get();
-                s.grid.cells()[index].is_some_and(|d| enabled_state.allowed(s, d))
+                accepted
+                    .with(|s| s.grid.cells()[index].is_some_and(|d| enabled_state.allowed(*s, d)))
             }))
             .focus(scope.bond(move || {
                 let date = accepted.with(|s| s.grid.cells()[index]);
@@ -945,47 +1269,8 @@ impl Widget for DayButton {
                     FocusMode::Programmatic
                 }
             }))
-            .semantics(scope.bond(move || {
-                Some(Box::new(Semantics {
-                    current: accepted.with(|s| {
-                        s.grid.cells()[index]
-                            .filter(|d| Some(*d) == s.provider.today_date())
-                            .map(|_| Current::Date)
-                    }),
-                    ..Default::default()
-                }))
-            }))
-            .style(scope.bond(move || {
-                let s = accepted.get();
-                let date = s.grid.cells()[index];
-                let chosen = date.is_some_and(|d| s.selection.contains(d));
-                let enabled = date.is_some_and(|d| style_state.allowed(s, d));
-                let focused = reference.get().is_some_and(|id| physical.get() == Some(id));
-                let mut style = Style::new()
-                    .width(Length::Px(size))
-                    .height(Length::Px(size))
-                    .padding(Edges::all(0.))
-                    .min_width(Length::Px(0.));
-                if themed {
-                    style.font_size = Some(if size < 30. { 11. } else { 14. });
-                    style.background = Some(if chosen { theme.accent } else { theme.surface });
-                    style.color = Some(if !enabled {
-                        theme.disabled_text
-                    } else if chosen {
-                        theme.on_accent
-                    } else if date.is_some_and(|d| d.year_month() != s.month) {
-                        theme.muted
-                    } else {
-                        theme.foreground
-                    });
-                    style = style
-                        .radius(theme.radius)
-                        .border_width(Edges::all(1.))
-                        .border_style(BorderStyle::Solid)
-                        .border_color(if focused { theme.accent } else { theme.border });
-                }
-                style
-            }))
+            .semantics(semantics)
+            .style(style)
             .on(EventKind::Activate, move |event| {
                 if activate.ensure().is_ok() {
                     activate.report(activate.select(index));
@@ -1011,6 +1296,9 @@ impl Widget for DayButton {
                     focus_state.report(result);
                 }
             });
+        if let Some(content) = content {
+            button = button.fill(glory::ui::group().fill(content));
+        }
         // The date is always Some while this scoped branch is mounted. Its
         // reactive source can disappear only through this branch's retirement.
         button.show_in(scope)

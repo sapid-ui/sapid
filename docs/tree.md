@@ -51,6 +51,20 @@ Branch and publish its children. Repeated Right on an already open Lazy node
 does not start another request; closing and reopening explicitly retries. Empty
 loaded branches remain distinguishable from unloaded nodes.
 
+`expanded_tree_branches(nodes)` returns the current finite branch-key set for
+explicit Expand all/Collapse all controls. `filter_tree_nodes(nodes, query)`
+matches labels case-insensitively and retains every ancestor needed to reach a
+match. Both validate the same budgets before deriving data and keep control of
+the accepted source in the application.
+
+`on_drag_drop(callback)` enables real pointer drag proposals. The drop is typed
+as `Before`, `Inside` or `After` from the target row geometry; `allow_drop`
+can reject a proposal before publication. `move_tree_node` validates the same
+operation for controlled application state, rejects self/descendant cycles and
+preserves sibling ordering. No global drag registry or hidden source copy is
+retained. Drag rows use native pointer hit targets without a transient focus
+outline or a composed color-strip image.
+
 `render_label(factory)` receives reactive current TreeNode data and may render
 ordinary text, code or controls. The node's short plain-text label remains its
 explicit accessible name. Nested controls preserve their own editing/activation
@@ -74,9 +88,10 @@ semantic tree, never a data source.
 
 Evidence:
 
-- `src/tree_model.rs`: five tests for independent budgets, explicit parents,
-  visible coordinates, lazy replacement, sentinel admission and FileTree paths.
-- `tests/trees.rs`: ten component cases cover four-theme SSR, same-tick accepted
+- `src/tree_model.rs`: eight tests for independent budgets, explicit parents,
+  visible coordinates, lazy replacement, sentinel admission, FileTree paths,
+  branch expansion, ancestor-preserving filtering and validated reparenting.
+- `tests/trees.rs`: eleven component cases cover four-theme SSR, same-tick accepted
   and refused control, selection/focus separation, lazy data, keyed editors,
   nested activation, generic observer ordering, disabled Fieldset and cleanup.
   `D:/BuildCache/sapid/tree-model-tests.log`, `tree-components.log`.
@@ -97,5 +112,9 @@ Evidence:
   `D:/BuildCache/sapid/tree-browser-web29.json`. The strengthened original suite also passed all twelve groups against fixed
   Web30, including genuine disabled propagation to nested editors through the
   enclosing Fieldset: `D:/BuildCache/sapid/tree-browser-web30.json`.
+- `scripts/tree-showcase-browser.cjs`: seven Chromium checks cover all eight
+  component-name sections, bulk expansion, both checked policies, lazy loading,
+  filtering, real pointer drop and custom labels/connecting lines with zero page
+  errors: `D:/BuildCache/sapid/tree-showcase-browser.json`.
 
 These checks do not establish OS IME or screen-reader announcement acceptance.

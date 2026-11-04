@@ -21,7 +21,7 @@ mod focused {
     pub fn demo_for(name: &str, theme: Theme) -> Box<dyn Widget> {
         match name {
             "HueSlider" => Box::new(
-                hue_slider("mantine-hue")
+                hue_slider("showcase-hue")
                     .theme(theme)
                     .name("Hue")
                     .default_value(210.0),

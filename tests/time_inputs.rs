@@ -337,3 +337,57 @@ fn direct_oversized_commit_is_rejected_before_copying_the_draft_and_recovers() {
     app.flush().unwrap();
     assert_eq!(props(&app, id).value, "11:00");
 }
+
+#[test]
+fn placeholder_is_reactive_bounded_and_preserves_the_real_editor_identity() {
+    let app = App::memory();
+    let reference = app.scope().cage(None);
+    let placeholder = app.scope().cage("Select a time".to_owned());
+    app.mount(
+        time_input("placeholder")
+            .node_ref(reference)
+            .name("Meeting time")
+            .placeholder(placeholder),
+    )
+    .unwrap();
+    let id = reference.get().unwrap();
+    assert_eq!(
+        app.tree()
+            .node(id)
+            .unwrap()
+            .descriptor
+            .view()
+            .semantics
+            .as_ref()
+            .unwrap()
+            .placeholder
+            .as_deref(),
+        Some("Select a time")
+    );
+    placeholder.revise(|value| *value = "HH:MM".into());
+    app.flush().unwrap();
+    assert_eq!(reference.get(), Some(id));
+    assert_eq!(
+        app.tree()
+            .node(id)
+            .unwrap()
+            .descriptor
+            .view()
+            .semantics
+            .as_ref()
+            .unwrap()
+            .placeholder
+            .as_deref(),
+        Some("HH:MM")
+    );
+    placeholder.revise(|value| *value = "bad\nplaceholder".into());
+    assert!(app.flush().is_err());
+    assert_eq!(reference.get(), Some(id));
+
+    let bad = App::memory();
+    assert!(
+        bad.mount(time_input("bad-placeholder").placeholder("bad\nplaceholder"))
+            .is_err()
+    );
+    assert!(bad.tree().is_empty());
+}

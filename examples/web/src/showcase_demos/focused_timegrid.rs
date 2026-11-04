@@ -21,7 +21,7 @@ mod focused {
     pub fn demo_for(name: &str, theme: Theme) -> Box<dyn Widget> {
         match name {
             "TimeGrid" => Box::new(
-                time_grid("mantine-time-grid")
+                time_grid("showcase-time-grid")
                     .theme(theme)
                     .name("Available times")
                     .default_value(Some(LocalTime::new(10, 30, 0).unwrap())),

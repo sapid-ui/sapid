@@ -127,6 +127,7 @@ struct Controller<T: DatePeriod> {
     changed: Callback<PeriodSelection<T>>,
     page_changed: Callback<CivilYear>,
     rejected: Callback<DateSelectionError>,
+    level_control: Callback<()>,
 }
 impl<T: DatePeriod> Controller<T> {
     fn ensure(&self) -> Result {
@@ -380,6 +381,7 @@ impl<T: DatePeriod> Controller<T> {
         self.changed.clear();
         self.page_changed.clear();
         self.rejected.clear();
+        self.level_control.clear();
     }
 }
 /// The domain is sealed to YearMonth/CivilYear; it cannot carry arbitrary business data.
@@ -399,6 +401,7 @@ pub struct PeriodPicker<T: DatePeriod> {
     changed: Option<Box<dyn FnMut(PeriodSelection<T>)>>,
     page_changed: Option<Box<dyn FnMut(CivilYear)>>,
     rejected: Option<Box<dyn FnMut(DateSelectionError)>>,
+    level_control: Option<Box<dyn FnMut(())>>,
 }
 pub type MonthPicker = PeriodPicker<YearMonth>;
 pub type YearPicker = PeriodPicker<CivilYear>;
@@ -422,6 +425,7 @@ pub(crate) fn period_picker<T: DatePeriod>(
         changed: None,
         page_changed: None,
         rejected: None,
+        level_control: None,
     }
 }
 pub fn month_picker(
@@ -489,6 +493,10 @@ impl<T: DatePeriod> PeriodPicker<T> {
     }
     pub fn on_reject(mut self, v: impl FnMut(DateSelectionError) + 'static) -> Self {
         self.rejected = Some(Box::new(v));
+        self
+    }
+    pub(crate) fn on_level_control(mut self, mut value: impl FnMut() + 'static) -> Self {
+        self.level_control = Some(Box::new(move |()| value()));
         self
     }
 }
@@ -564,6 +572,7 @@ impl<T: DatePeriod> Widget for PeriodPicker<T> {
                         .copied()
                 }),
         );
+        let has_level_control = self.level_control.is_some();
         let state = Rc::new(Controller {
             owner: scope.id(),
             weak: scope.downgrade(),
@@ -584,6 +593,7 @@ impl<T: DatePeriod> Widget for PeriodPicker<T> {
             changed: Callback::new(self.changed.take()),
             page_changed: Callback::new(self.page_changed.take()),
             rejected: Callback::new(self.rejected.take()),
+            level_control: Callback::new(self.level_control.take()),
         });
         let cleanup = Rc::downgrade(&state);
         scope.on_cleanup(move || {
@@ -713,9 +723,25 @@ impl<T: DatePeriod> Widget for PeriodPicker<T> {
                 })
                 .show_in(&hs)?;
             if delta < 0 {
-                glory::ui::text()
-                    .content(scope.bond(move || page_label::<T>(accepted.with(|s| s.page))))
-                    .show_in(&hs)?;
+                let label = scope.bond(move || page_label::<T>(accepted.with(|s| s.page)));
+                if has_level_control {
+                    let level = state.clone();
+                    glory::ui::button()
+                        .class("sapid-period-level-control")
+                        .label(label)
+                        .name("Choose year")
+                        .style(Style {
+                            background: Some(theme.surface),
+                            color: Some(theme.foreground),
+                            ..Style::new()
+                        })
+                        .on(EventKind::Activate, move |_| {
+                            level.level_control.emit(level.owner, ())
+                        })
+                        .show_in(&hs)?;
+                } else {
+                    glory::ui::text().content(label).show_in(&hs)?;
+                }
             }
         }
         let grid_ref = self.common.node_ref.unwrap_or_else(|| scope.cage(None));

@@ -21,6 +21,12 @@ field("amount")
 
 The default range is 0–100, initial value 0, step 1, page step ten steps. Bounds and steps are limited to absolute 10^12, with positive finite steps. The optional nonblank value text is limited to 1024 UTF-8 bytes and is checked by borrowing before cloning. Pointer and keyboard proposals snap to the nearest step from the minimum, permitting both endpoints; program values can remain off-grid. Values are ordinary `f64`, not exact decimal quantities. A tiny step that cannot change the representable value emits no fictitious numeric progress.
 
+`.marks(...)` accepts at most 64 strictly increasing `SliderMark` values inside
+the accepted range. Labels are optional bounded single-line text. With
+`.restrict_to_marks(true)`, the initial and every later accepted value must equal
+a mark; pointer input snaps to the nearest mark and Arrow/Page/Home/End move only
+between declared values. Marks remain passive visuals and add no tab stops.
+
 Horizontal Left/Right follow `.direction(Direction::Ltr/Rtl)`. Vertical Up increases and Down decreases, independently of text direction. Home/End reach bounds; PageUp/PageDown use the page step. The other axis, editable origins, composition and modifier chords retain their ordinary behavior. The component owns one tab stop; readonly keeps focus while refusing changes, and disabled is removed from sequential focus. Field labels, descriptions, required, readonly, invalid, errors, theme and size are carried by the actual slider node.
 
 Pointer down focuses the slider and starts a gesture immediately, so clicking the track changes the value. The host captures the pointer and routes release to the original slider even outside its bounds. Horizontal RTL reverses the coordinate; vertical ranges increase upwards. One live Bounds request and a bounded start/latest intent record serve each gesture. Move and final release resample current geometry, while intervening moves coalesce. Resize, invalid or external model configuration, disable/readonly and Owner retirement cancel the pending request. Late replies cannot mutate a later gesture. Cancellation never emits a commit. The semantic host contract supplies `touch-action:none` for the slider; it does not add a general application style escape hatch.

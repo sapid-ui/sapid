@@ -29,16 +29,20 @@ mod focused {
     pub fn demo_for(name: &str, theme: Theme) -> Box<dyn Widget> {
         match name {
             "BackgroundImage" => Box::new(
-                background_image(media("image-pattern.png"))
-                    .theme(theme.clone())
-                    .name("Pattern background")
-                    .width(Length::Px(360.0))
-                    .height(Length::Px(180.0))
-                    .fill(
-                        sapid::text()
-                            .theme(theme)
-                            .content("Content over a background image"),
-                    ),
+                sapid::stack().theme(theme.clone()).gap(12.0).fill((
+                    sapid::text().theme(theme.clone()).content("Usage"),
+                    background_image(media("image-pattern.png"))
+                        .theme(theme.clone())
+                        .class("showcase-background-image")
+                        .name("Pattern background")
+                        .width(Length::Px(360.0))
+                        .height(Length::Px(180.0))
+                        .fill(
+                            sapid::text()
+                                .theme(theme)
+                                .content("Content over a background image"),
+                        ),
+                )),
             ),
             _ => unreachable!("unsupported named demo: {name}"),
         }

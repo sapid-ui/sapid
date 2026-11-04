@@ -29,21 +29,70 @@ mod focused {
         widget(move |scope| {
             let value = scope.cage(None::<String>);
             let search = scope.cage(String::new());
-            field("combobox-framework")
+            stack()
                 .theme(theme.clone())
-                .label("Your favorite framework")
-                .description("Type to filter options, then choose a suggestion.")
-                .control(move |field| {
-                    combobox("combobox-framework")
-                        .field(field)
-                        .value(value)
-                        .search(search)
-                        .options(framework_options())
-                        .empty_message("Nothing found")
-                        .placeholder("Search or pick value")
-                        .on_value_change(move |next| value.revise(|current| *current = next))
-                        .on_search_change(move |next| search.revise(|current| *current = next))
-                })
+                .gap(20.0)
+                .fill((
+                    field("combobox-framework")
+                        .theme(theme.clone())
+                        .label("Your favorite framework")
+                        .description("Type to filter options, then choose a suggestion.")
+                        .control(move |field| {
+                            combobox("combobox-framework")
+                                .field(field)
+                                .value(value)
+                                .search(search)
+                                .options(framework_options())
+                                .empty_message("Nothing found")
+                                .placeholder("Search or pick value")
+                                .on_value_change(move |next| {
+                                    value.revise(|current| *current = next)
+                                })
+                                .on_search_change(move |next| {
+                                    search.revise(|current| *current = next)
+                                })
+                        }),
+                    field("combobox-prefix-limit")
+                        .theme(theme.clone())
+                        .label("Prefix filter with visible limit")
+                        .description("Four declarations match A, but only two results are mounted.")
+                        .control(move |field| {
+                            combobox("combobox-prefix-limit")
+                                .field(field)
+                                .default_search("a")
+                                .default_open(true)
+                                .filter(ComboboxFilter::Prefix)
+                                .limit(2)
+                                .loading(true)
+                                .loading_left(true)
+                                .options([
+                                    select_option("angular", "Angular"),
+                                    select_option("astro", "Astro"),
+                                    select_option("alpine", "Alpine"),
+                                    select_option("ark", "Ark UI"),
+                                    select_option("react", "React"),
+                                ])
+                        }),
+                    field("combobox-groups")
+                        .theme(theme.clone())
+                        .label("Grouped options")
+                        .description(
+                            "Groups preserve declaration order and disabled options are skipped.",
+                        )
+                        .control(move |field| {
+                            combobox("combobox-groups")
+                                .field(field)
+                                .group(select_group("Frontend").options([
+                                    select_option("vue", "Vue"),
+                                    select_option("svelte", "Svelte"),
+                                ]))
+                                .group(select_group("Backend").options([
+                                    select_option("axum", "Axum"),
+                                    select_option("django", "Django").disabled(true),
+                                ]))
+                                .placeholder("Search grouped options")
+                        }),
+                ))
                 .show_in(scope)
         })
     }

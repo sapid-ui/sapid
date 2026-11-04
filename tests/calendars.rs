@@ -58,6 +58,54 @@ fn command(app: &App, root: NodeId, from: NodeId, command: GridCommand) {
     app.dispatch(root, Event::GridNavigate { from, command })
         .unwrap();
 }
+
+#[test]
+fn week_numbers_and_hidden_weekdays_preserve_the_real_day_grid() {
+    let app = App::memory();
+    let root = app.scope().cage(None);
+    app.mount(
+        calendar("week-numbers", p())
+            .default_month(YearMonth::new(2024, 2).unwrap())
+            .with_week_numbers(true)
+            .hide_weekdays(true)
+            .node_ref(root),
+    )
+    .unwrap();
+
+    assert_eq!(class(&app, "sapid-calendar-day").len(), 42);
+    assert!(class(&app, "sapid-calendar-weekdays").is_empty());
+    let weeks = class(&app, "sapid-calendar-week-number");
+    assert_eq!(weeks.len(), 6);
+    let mut names = weeks
+        .iter()
+        .map(|id| {
+            app.tree()
+                .node(*id)
+                .unwrap()
+                .descriptor
+                .view()
+                .name
+                .clone()
+                .unwrap()
+        })
+        .collect::<Vec<_>>();
+    names.sort();
+    let mut expected = (5..=10)
+        .map(|week| format!("Week {week}"))
+        .collect::<Vec<_>>();
+    expected.sort();
+    assert_eq!(names, expected);
+    let tree = app.tree();
+    let grid = tree.node(root.get().unwrap()).unwrap();
+    assert_eq!(
+        grid.descriptor.view().semantics.as_ref().unwrap().table,
+        Some(glory::render::TableMetadata::Table {
+            rows: Some(6),
+            columns: Some(8),
+        })
+    );
+}
+
 #[test]
 fn constant_real_grid_has_day_buttons_headers_independent_selected_and_today() {
     let app = App::memory();
@@ -280,4 +328,69 @@ fn repeated_local_selection_can_deselect_in_one_tick_and_owner_retirement_stops_
     app.dispatch(id, Event::Activate).unwrap();
     assert!(root.get().is_none());
     assert_eq!(observed.get(), 0);
+}
+
+#[test]
+fn custom_selection_day_renderer_full_width_and_static_mode_are_component_features() {
+    let app = App::memory();
+    let selection = app
+        .scope()
+        .cage(DateSelection::Multiple(SelectedDates::new()));
+    let selected = selection;
+    app.mount(
+        calendar("custom", p())
+            .default_month(YearMonth::new(2024, 2).unwrap())
+            .selection(selection)
+            .full_width(true)
+            .render_day(|_| glory::ui::text().class("custom-calendar-day").content("•"))
+            .on_value_change(move |date| {
+                let Some(date) = date else { return };
+                selected.revise(|current| {
+                    let DateSelection::Multiple(mut values) = *current else {
+                        unreachable!()
+                    };
+                    if !values.remove(date) && values.len() < 3 {
+                        values.insert(date).unwrap();
+                    }
+                    *current = DateSelection::Multiple(values);
+                });
+            }),
+    )
+    .unwrap();
+    assert_eq!(class(&app, "custom-calendar-day").len(), 42);
+    let outer = class(&app, "sapid-calendar")[0];
+    assert_eq!(
+        app.tree()
+            .node(outer)
+            .unwrap()
+            .descriptor
+            .view()
+            .style
+            .width,
+        Some(Length::Percent(100.))
+    );
+    app.dispatch(day(&app, d("2024-02-29")), Event::Activate)
+        .unwrap();
+    assert!(selection.get().contains(d("2024-02-29")));
+
+    let app = App::memory();
+    app.mount(
+        calendar("static", p())
+            .default_month(YearMonth::new(2024, 2).unwrap())
+            .static_mode(true)
+            .render_day(|_| {
+                glory::ui::text()
+                    .class("static-calendar-day-content")
+                    .content("•")
+            }),
+    )
+    .unwrap();
+    let days = class(&app, "sapid-calendar-day-static");
+    assert_eq!(days.len(), 42);
+    assert!(days.iter().all(|id| matches!(
+        app.tree().node(*id).unwrap().descriptor.view().props,
+        Props::View
+    )));
+    assert!(class(&app, "sapid-calendar-nav").is_empty());
+    assert!(tab(&app).is_empty());
 }

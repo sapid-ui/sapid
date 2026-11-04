@@ -1,10 +1,11 @@
 # Schedule / AgendaView
 
-Enable optional dependency-free `dates`. `schedule(key, data)` currently builds
-the same genuine Agenda view as `agenda_view(key, data)`: a named Group, real
-date Headings, unordered Lists/ListItems and ordinary event Buttons. It does not
-pretend a date list is a time-grid or a resource timeline. Day/Week/Month/Year,
-MobileMonth and resource views are being developed separately.
+Enable optional dependency-free `dates`. `schedule(key, data)` is the unified
+finite schedule when `available_views(...)` is supplied. Its stable header uses
+real buttons and switches the keyed child among Agenda, Day, Week, Month, Year
+and MobileMonth. Without `available_views`, it remains a standalone view;
+`agenda_view`, `day_view`, `week_view`, `month_view`, `year_view` and
+`mobile_month_view` are the corresponding named constructors.
 
 ```rust
 let data = scope.cage(ScheduleData::new(
@@ -22,6 +23,32 @@ agenda_view("work", data)
         // Application owns routing/details; nothing navigates implicitly.
     });
 ```
+
+Controlled unified view switching uses the same application-owned current-window
+contract as paging:
+
+```rust
+schedule("work", data.clone())
+    .view(ScheduleView::Week)
+    .view_value(view)
+    .available_views([
+        ScheduleView::Day,
+        ScheduleView::Week,
+        ScheduleView::Month,
+        ScheduleView::Year,
+    ])
+    .on_view_change(move |next| {
+        // In one application batch, supply ScheduleData whose window matches
+        // `next`, then accept `next` in the controlled view source.
+    });
+```
+
+At most six distinct views may be declared, and the accepted controlled view
+must be in that set. A view switch replaces the keyed child with one immutable
+`(view, ScheduleData)` snapshot, so the retired Week view cannot briefly consume
+new Day data. The application still owns loading, route state, clock policy and
+the accepted date. Sapid does not retain visited views or mirror a complete event
+store. A controlled refusal leaves the mounted view unchanged.
 
 The model's half-open intervals, explicit zones, recurrence/exception rules,
 conflicts, resource/edit permissions and finite budgets are documented in
@@ -70,10 +97,15 @@ geometry; header controls wrap on narrow viewports.
 
 Evidence so far:
 
-- Seven component tests pass in `D:/BuildCache/sapid/schedule-rust.log`: genuine
+- Eight component tests pass: genuine
   Lists/Headings, selection ordering/refusal, keyed identity/current callback,
   same-tick request cursor, overflow rejection/recovery, readonly/disabled,
-  domain edges and Owner retirement.
+  domain edges and Owner retirement, plus controlled unified Day/Week switching,
+  matching current-window acceptance and stable header identity.
+- The public `schedule` showcase now has four component-named sections and a
+  controlled Day/Week/Month/Year example. Its browser acceptance changes every
+  real view, verifies the header is not remounted, accepts a next-window request,
+  and checks the bounded recurrence explanation.
 - Two actual native tests pass in `schedule-native-final.log`, including four themes:
   physical layout, real hit testing and focus, accepted selected border pixels,
   keyed engine identity/focus after data updates; separate request/empty/readonly

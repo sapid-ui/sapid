@@ -1,6 +1,6 @@
 use glory::prelude::*;
 use glory::render::NodeId;
-use sapid::{Theme, checkbox, field, fieldset, text_field};
+use sapid::{FieldSlot, InputSectionPosition, Theme, checkbox, field, fieldset, text, text_field};
 
 fn find(app: &App, class: &str) -> NodeId {
     let tree = app.tree();
@@ -264,4 +264,116 @@ fn keyboard_focus_rings_contrast_with_each_shipped_background() {
     // Dark modes keep their brighter ring through explicit palette overrides.
     assert_eq!(Theme::blue_dark().focus_ring, Color(0x74, 0xc0, 0xfc, 255));
     assert_eq!(Theme::green_dark().focus_ring, Color(0x8c, 0xe9, 0x9a, 255));
+}
+
+#[test]
+fn field_order_is_a_complete_permutation_and_preserves_real_relations() {
+    let snapshot = glory::ssr::snapshot(
+        field("ordered")
+            .label("Account")
+            .description("Public identifier")
+            .error("Unavailable")
+            .order([
+                FieldSlot::Description,
+                FieldSlot::Label,
+                FieldSlot::Control,
+                FieldSlot::Error,
+            ])
+            .control(|field| text_field().field(field)),
+    )
+    .unwrap();
+    let description = snapshot.html.find("sapid-field-description").unwrap();
+    let label = snapshot.html.find("sapid-field-label").unwrap();
+    let control = snapshot.html.find("sapid-text-field").unwrap();
+    let error = snapshot.html.find("sapid-field-error").unwrap();
+    assert!(description < label && label < control && control < error);
+    for value in ["<label", "for=", "aria-describedby", "aria-errormessage"] {
+        assert!(snapshot.html.contains(value), "{value}: {}", snapshot.html);
+    }
+
+    assert!(
+        App::memory()
+            .mount(
+                field("bad-order")
+                    .order([
+                        FieldSlot::Label,
+                        FieldSlot::Label,
+                        FieldSlot::Control,
+                        FieldSlot::Error,
+                    ])
+                    .control(|field| text_field().field(field)),
+            )
+            .is_err()
+    );
+}
+
+#[test]
+fn shared_input_success_loading_and_sections_are_real_and_error_wins() {
+    let app = App::memory();
+    let error = app.scope().cage(String::new());
+    let loading = app.scope().cage(true);
+    app.mount(
+        field("decorated")
+            .label("Search")
+            .error(error)
+            .success(true)
+            .control(move |field| {
+                text_field()
+                    .field(field)
+                    .loading(loading)
+                    .loading_position(InputSectionPosition::Right)
+                    .left_section(text().content("@"))
+                    .right_section_width(44.)
+            }),
+    )
+    .unwrap();
+    let input = find(&app, "sapid-text-field");
+    assert_eq!(
+        app.tree()
+            .node(input)
+            .unwrap()
+            .descriptor
+            .view()
+            .style
+            .border_color,
+        Some(Theme::light().success)
+    );
+    assert_eq!(
+        app.tree()
+            .node(input)
+            .unwrap()
+            .descriptor
+            .view()
+            .style
+            .padding
+            .unwrap()
+            .right,
+        44.
+    );
+    find(&app, "sapid-input-left-section");
+    find(&app, "sapid-input-loading");
+
+    error.revise(|value| *value = "Not available".into());
+    app.flush().unwrap();
+    assert_eq!(
+        app.tree()
+            .node(input)
+            .unwrap()
+            .descriptor
+            .view()
+            .style
+            .border_color,
+        Some(Theme::light().danger)
+    );
+    assert_eq!(find(&app, "sapid-text-field"), input);
+
+    assert!(
+        App::memory()
+            .mount(
+                text_field()
+                    .left_section_width(19.)
+                    .left_section(text().content("x"))
+            )
+            .is_err()
+    );
 }

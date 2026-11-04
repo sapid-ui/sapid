@@ -11,7 +11,7 @@ fn main() {
         for entry in sapid_web_example::showcase_catalog::ENTRIES {
             let app = App::memory();
             app.mount(sapid_web_example::showcase_examples::demo(
-                entry.id,
+                entry.slug,
                 theme.clone(),
             ))
             .unwrap();

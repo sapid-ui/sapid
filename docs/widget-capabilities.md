@@ -1416,7 +1416,7 @@ Tests:
 
 ### Evidence P4-06
 
-真实Input editable Combobox，active-descendant、有限过滤、composition冻结/结束协调、独立搜索/选中/open受控状态与Field/FormData已实现。四主题CSR/hydration、dirty adoption、classic stream、真实键鼠触摸/AX及CDP组合输入通过；不宣称OS IME/屏幕阅读器验收，native Choice facet明确拒绝。
+真实Input editable Combobox，active-descendant、有限过滤、composition冻结/结束协调、独立搜索/选中/open受控状态与Field/FormData已实现；新增可见结果limit、响应式busy/loading indicator。四主题CSR/hydration、dirty adoption、classic stream、真实键鼠触摸/AX及CDP组合输入通过；不宣称OS IME/屏幕阅读器验收，native Choice facet明确拒绝。
 
 Implementation:
 
@@ -1434,7 +1434,7 @@ Tests:
 
 ### Evidence P4-07
 
-真实单行Input支持自由文字、建议value/label/key分离、过滤活动高亮、composition冻结、Field/native required与实际成功控件值；百万来源预算和受控拒绝恢复、四主题CSR/hydration/dirty/触屏/IME协议/classic通过。共享Choice native明确拒绝；不宣称OS IME。
+真实单行Input支持自由文字、建议value/label/key分离、过滤活动高亮、composition冻结、Field/native required与实际成功控件值；新增最多1024范围内的可见结果limit、输入时首项高亮、失焦提交高亮项、内建清空、左右响应式loading indicator和六段showcase。受控拒绝恢复、四主题CSR/hydration/dirty/触屏/IME协议/classic通过。共享Choice native明确拒绝；不宣称OS IME。
 
 Implementation:
 
@@ -1445,7 +1445,7 @@ Implementation:
 
 Tests:
 
-- `src/combobox_advanced_tests.rs (22 passed shared Auto/Multi tests)`
+- `src/combobox_advanced_tests.rs (23 passed shared Auto/Multi tests)`
 - `examples/web/choice-extras-acceptance.js`
 - `D:/BuildCache/sapid/choice-extras-browser-choice-extras-next.json (12 passed, Chromium 148.0.7778.96)`
 - `D:/BuildCache/sapid/browser-web14-results.json (43 suites, 378 reports)`
@@ -1453,7 +1453,7 @@ Tests:
 
 ### Evidence P4-08
 
-真实 Multiple Input、独立受控搜索与 known-key Vec、动态 tags/移除、IME 保护、multiple 成功值 proxy 和有界选项已实现。弱 Owner handle 支持当前过滤且 enabled 选项的原子全选及清空；受控拒绝、只读/组合输入/退休拒绝与四主题实际浏览器已验收。 新增 max_values、hide_picked_options、clearable/clear_label 与真实 placeholder；新增边界和宿主证据见 Mantine 全量 API 报告。
+真实 Multiple Input、独立受控搜索与 known-key Vec、动态 tags/移除、IME 保护、multiple 成功值 proxy 和有界选项已实现。弱 Owner handle 支持当前过滤且 enabled 选项的原子全选及清空；受控拒绝、只读/组合输入/退休拒绝与四主题实际浏览器已验收。新增 max_values、hide_picked_options、clearable/clear_label、真实 placeholder、可见结果limit、左右响应式loading和三段详细showcase；新增边界和宿主证据见 Mantine 全量 API 报告。
 
 Implementation:
 
@@ -1477,7 +1477,7 @@ Tests:
 
 ### Evidence P4-09
 
-自由 TagsInput/PillsInput 的原子受控 state、重复策略、有界分隔/粘贴/删除、IME 保护、成功值 proxy 与清理已实现；Glory 原生 host 协议和 AX textbox 现已连接，五项四主题实际消费端含 256 tags/UTF-16/拒绝恢复通过。平台剪贴板服务与 OS 输入/读屏另验收；原 Web16 14 项证据保留。
+自由 TagsInput/PillsInput 的原子受控 state、重复策略、有界分隔/粘贴/删除、IME 保护、成功值 proxy 与清理已实现；新增 clearable、默认失焦接纳/显式关闭、左右响应式 loading 和 controlled/loading/max-clear/blur/parsing 五段详细 showcase。Glory 原生 host 协议和 AX textbox 现已连接，五项四主题实际消费端含 256 tags/UTF-16/拒绝恢复通过。平台剪贴板服务与 OS 输入/读屏另验收；原 Web16 14 项证据保留。
 
 Implementation:
 
@@ -1656,7 +1656,7 @@ Tests:
 
 ### Evidence P5-08
 
-只读ProgressBar有限min/max/current与本地化value_text、indeterminate不伪造0、typed line与有界圆弧Ring/SemiCircle已实现；非法源保留接受状态，四主题原生真实arc/track像素与AX、Web/SSR/stream通过。
+只读ProgressBar有限min/max/current与本地化value_text、indeterminate不伪造0、typed line与有界圆弧Ring/SemiCircle已实现；Line支持水平/垂直主轴，确定/未知/最多16个有序静态彩色ProgressSection均共享单一语义；SemiCircle支持up/down、左右填充、独立空/填充色与bottom/center label；Ring支持startAngle、sectionGap、rootColor、roundCaps与中心label，showcase九段；圆形视图明确拒绝线性vertical。非法源保留接受状态，四主题原生真实arc/track像素与AX、Web/SSR/stream通过。
 
 Implementation:
 
@@ -1666,9 +1666,9 @@ Implementation:
 
 Tests:
 
-- `tests/progress.rs (5 passed)`
+- `tests/progress.rs (10 passed)`
 - `../glory/crates/render/tests/progress.rs (3 passed)`
-- `examples/native/tests/progress.rs`
+- `examples/native/tests/progress.rs (4 passed; vertical, semicircle and ring configuration geometry/pixels)`
 - `D:/BuildCache/sapid/progress-native.log`
 - `../glory/crates/ssr/src/stream/progress_tests.rs`
 - `examples/web/progress-acceptance.js`
@@ -2072,7 +2072,7 @@ Tests:
 
 ### Evidence P7-01
 
-精确Decimal单源NumberInput已实现：本地化完整草稿/范围/readonly/disabled/步进、真正SpinButton输入、同tick有序键盘、IME回声收口、Enter先Commit再Form Submit。6纯模型、15组件、原生组件2+Spin driver/AX2及Web22实际12项加强边界验收全过。
+精确Decimal单源NumberInput已实现：本地化完整草稿/范围/readonly/disabled/步进、真正SpinButton输入、同tick有序键盘、IME回声收口、Enter先Commit再Form Submit，并补共享有界响应式 placeholder。6纯模型、18组件、原生组件2+Spin driver/AX2及Web22实际12项加强边界验收全过。
 
 Implementation:
 
@@ -2083,7 +2083,7 @@ Implementation:
 
 Tests:
 
-- `tests/number_inputs.rs (15 passed)`
+- `tests/number_inputs.rs (18 passed)`
 - `examples/native/tests/number_input.rs`
 - `../glory/crates/apace/src/command/tests.rs`
 - `../glory/crates/html/src/patch_tests.rs`
@@ -2092,7 +2092,7 @@ Tests:
 
 ### Evidence P7-02
 
-真实 Slider 语义、键盘等价、受控 cursor（含 commit-only 同 tick 接受）、捕获指针/触屏、RTL/纵向、Field 和有界 geometry query 已实现；11 模型/2 原生与 Web16 四主题实际 10 项通过。
+真实 Slider 语义、键盘等价、受控 cursor（含 commit-only 同 tick 接受）、捕获指针/触屏、RTL/纵向、Field 和有界 geometry query 已实现；新增最多64个严格有序 marks、可选标签与 restrict_to_marks 的指针/键盘 snap，showcase 补 controlled/commit/bounds/marks 四段真实示例。14项模型回归通过，既有原生与 Web16 证据保留。
 
 Implementation:
 
@@ -2101,7 +2101,7 @@ Implementation:
 
 Tests:
 
-- `tests/sliders.rs (11 passed)`
+- `tests/sliders.rs (14 passed)`
 - `examples/native/tests/slider.rs (2 passed)`
 - `D:/BuildCache/sapid/sliders-cursor-rust.log`
 - `D:/BuildCache/sapid/sliders-native.log`
@@ -2111,7 +2111,7 @@ Tests:
 
 ### Evidence P7-03
 
-双具名真实 Slider thumb、固定 Lower/Upper 身份和 Tab 顺序、Clamp/min_gap、闭区间 readonly、单次 geometry query 和受控 commit-only 已实现；10 Rust/2 原生与 Web16 四主题实际 10 项通过。交换策略明确固定为 Clamp，拒绝越过相邻 thumb。
+双具名真实 Slider thumb、固定 Lower/Upper 身份和 Tab 顺序、独立visual domain、minimum_gap/maximum_gap、闭区间 readonly、单次 geometry query 和受控 commit-only 已实现；默认Push会在min/max gap处原子推动另一thumb，push_on_overlap(false)使用Hold拒绝越界提议，Clamp保留为额外显式策略。共享 SliderMark 支持最多64个有序/隐藏标记及restrict_to_marks，inverted仅反转轨道填充。value labels支持拖动/常显/禁用，有限scale只改变视觉与aria-valuetext，有界value_text可覆盖格式，标签节点inert。showcase七段。15项Rust集成与2项模型回归通过，既有原生与Web16证据保留。
 
 Implementation:
 
@@ -2120,7 +2120,7 @@ Implementation:
 
 Tests:
 
-- `tests/range_sliders.rs`
+- `tests/range_sliders.rs (11 passed)`
 - `examples/native/tests/range_slider.rs`
 - `examples/web/range-slider-acceptance.js`
 - `D:/BuildCache/sapid/range-slider-browser-web16.json (10 passed, Chromium 148.0.7778.96)`
@@ -2189,7 +2189,7 @@ Tests:
 
 ### Evidence P7-07
 
-Hue/Alpha f64 数值域、真实 Slider 交互/Field、有限采样色带与真实透明棋盘、HSV/hex 纯模型已实现。6模型/7组件/1四主题原生像素通过；unstyled 默认宽高缺失已修，Web18 加强实际尺寸/不重叠断言后10项全过，并保留显式 Auto/custom 样式。
+Hue/Alpha f64 数值域、真实 Slider 交互/Field、Mantine 式连续渐变色带与真实透明棋盘、HSV/hex 纯模型已实现。6模型/7组件/1四主题原生像素通过；unstyled 默认宽高缺失已修，Web18 加强实际尺寸/不重叠断言后10项全过，并保留显式 Auto/custom 样式。
 
 Implementation:
 
@@ -2216,7 +2216,7 @@ Tests:
 
 ### Evidence P7-08
 
-ColorPicker/ColorInput与共享DragCapture、二维饱和/亮度及真正Slider键盘替代、精确HSV/hex解析/Field/Popover已实现。11组件/3原生/Web19实际11项通过；目检发现的小plane通道宽度/indicator居中已修，加强原生真实bounds与同源command-next实际11项全部通过。默认原生浮层仍明确Unsupported，Picker与显式hex-only已验证。
+ColorPicker/ColorInput与共享DragCapture、连续二维饱和/亮度、Hue/Alpha及可选Slider键盘精度控件已实现。ColorInput支持hex(a)/rgb(a)/hsl(a)六种格式、输入内预览、swatches/preset-only、fix-on-blur、disallow-input、loading/左右section/success和由输入框直接锚定的紧凑弹层；showcase已有6个专属区块并逐项展示18个真实输入状态。EyeDropper仍要求显式宿主服务，不调用隐式浏览器I/O。既有证据保留，完整showcase门禁与实际浏览器DOM/视觉复核通过。
 
 Implementation:
 
@@ -2579,7 +2579,7 @@ Tests:
 
 ### Evidence P9-07
 
-TimeInput/TimeValue 保留小时/分/秒、12/24h、空值与本地化；新版 Glory 原生支持中文 UTF-16 精确选区，真实编辑器、只读/禁用、身份与像素已验证。
+TimeInput/TimeValue 保留小时/分/秒、12/24h、空值与本地化；TimeInput补齐共享有界placeholder及Field/controlled/格式秒/placeholder/states五段showcase；Glory原生支持真实hint layout与中文UTF-16精确选区，真实编辑器、只读/禁用、身份与像素已验证。
 
 Implementation:
 
@@ -2591,8 +2591,8 @@ Implementation:
 
 Tests:
 
-- `tests/time_inputs.rs (9 passed)`
-- `examples/native/tests/time_input.rs (2 actual four-theme/Chinese/unstyled/readonly tests)`
+- `tests/time_inputs.rs (10 passed)`
+- `examples/native/tests/time_input.rs (3 actual four-theme/Chinese/placeholder/unstyled/readonly tests)`
 - `examples/web/time-input-acceptance.js`
 - `D:/BuildCache/sapid/time-model-rust.log (4 tests; all 86400 seconds and UTF-8 prefixes)`
 - `D:/BuildCache/sapid/time-input-browser-web31.json (12 passed, zero errors)`
@@ -2605,7 +2605,7 @@ Tests:
 
 ### Evidence P9-08
 
-分段时间输入与可选时间网格、步长/禁用值。
+分段时间输入与可选时间网格、typed duration/minHoursDigits、步长/禁用值、不完整草稿可见的受控 clearable、默认/自定义分段 placeholder、presets、完整 controls dropdown、32-byte pasteSplit、受控锚定弹层、labels/focus、typed placement/width，以及十五段 showcase。
 
 Implementation:
 
@@ -2613,14 +2613,16 @@ Implementation:
 - `src/time_grid.rs`
 - `src/time_parts.rs`
 - `src/time_picker.rs`
+- `src/duration_picker.rs`
 - `docs/time-picker.md`
-- `显式wall-clock分段SpinButton和真实Grid；有界步长/排除值、12/24h/中英、未完成段、受控/readonly/disabled。`
+- `显式wall-clock分段SpinButton、真实Grid和真实Popover presets；有界步长/排除值、12/24h/中英、未完成段、受控clearable/open、共享placeholder、readonly/disabled。`
 
 Tests:
 
 - `tests/time_grids.rs (6 passed)`
-- `tests/time_pickers.rs (8 passed)`
-- `examples/native/tests/time_picker.rs (2 actual tests)`
+- `tests/time_pickers.rs (15 passed)`
+- `tests/duration_pickers.rs (3 passed)`
+- `examples/native/tests/time_picker.rs (4 actual tests)`
 - `D:/BuildCache/sapid/time-picker-rust-final.log`
 - `D:/BuildCache/sapid/time-grid-model-rust.log (2 tests)`
 - `D:/BuildCache/sapid/time-parts-rust.log (2 tests)`
@@ -2632,7 +2634,7 @@ Tests:
 
 ### Evidence P9-09
 
-DateTimePicker 与 InlineDateTimePicker：显式 civil/fixed-offset/application resolver、fold/gap 策略，部分草稿不默认补齐，受控值/清除/拒绝、真实 Calendar/TimePicker 组合和 Done/Escape/Form 边界。
+DateTimePicker 与 InlineDateTimePicker：真实 input dialog、显式 resolver/fold/gap、部分草稿、presets/default time、placeholder/typed display format、受控 clearable、TimePicker controls 转发、Done/Escape/Form 边界和七段 showcase。
 
 Implementation:
 
@@ -2642,7 +2644,7 @@ Implementation:
 
 Tests:
 
-- `tests/date_time_pickers.rs`
+- `tests/date_time_pickers.rs (14 passed)`
 - `examples/native/tests/date_time_picker.rs`
 - `examples/web/date-time-picker-acceptance.js`
 - `D:/BuildCache/sapid/date-time-config-rust.log (12 components plus 8 TimePicker regressions)`

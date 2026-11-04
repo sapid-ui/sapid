@@ -1,7 +1,6 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const {chromium} = require(process.env.SAPID_PLAYWRIGHT || 'D:/Works/glory-rs/glory/tests/playwright/node_modules/playwright');
-process.env.TEMP = process.env.TMP = 'D:/BuildCache/sapid/tmp';
+const { chromium, base, outputPath, outputRoot, writeReport } = require('./showcase-browser-env.cjs');
 (async () => {
   const report = {checks: [], errors: []};
   const browser = await chromium.launch({headless: true});
@@ -23,7 +22,7 @@ process.env.TEMP = process.env.TMP = 'D:/BuildCache/sapid/tmp';
     };
     const sameSidebar = async () => assert(await page.locator('.site-sidebar').evaluate(e => e === window.feedbackSidebar && Math.abs(e.scrollTop - window.feedbackScroll) < 1), 'sidebar node or scroll position changed');
     for(const hue of ['blue', 'green']) for(const scheme of ['light', 'dark']) {
-      await page.goto(`${base}/showcase.html?widget=P5-05&theme=${hue}&scheme=${scheme}`); await ready('P5-05');
+      await page.goto(`${base}/showcase.html?widget=alert&theme=${hue}&scheme=${scheme}`); await ready('alert');
       const alert = page.locator('.site-demo .sapid-alert');
       assert.equal(await alert.locator('.sapid-alert-title').textContent(), 'Alert title');
       assert.equal(await alert.locator('.sapid-alert-icon').count(), 1);
@@ -57,11 +56,11 @@ process.env.TEMP = process.env.TMP = 'D:/BuildCache/sapid/tmp';
       await page.getByRole('textbox',{name:'Children',exact:true}).fill(''); await tick();
       report.checks.push(`${hue}-${scheme}: Alert variants, colors, radius, text, empty title/message and dismiss/restore`);
       await nav('Skeleton').evaluate(e => e.scrollIntoView({block:'center'})); await retainSidebar();
-      const before = documents; await nav('Skeleton').click(); await ready('P5-10'); await sameSidebar();
-      await page.goBack(); await ready('P5-05'); await sameSidebar();
-      await page.goForward(); await ready('P5-10'); await sameSidebar();
+      const before = documents; await nav('Skeleton').click(); await ready('skeleton'); await sameSidebar();
+      await page.goBack(); await ready('alert'); await sameSidebar();
+      await page.goForward(); await ready('skeleton'); await sameSidebar();
       assert.equal(documents, before);
-      await nav('LoadingOverlay').click(); await ready('P5-11'); await sameSidebar();
+      await nav('LoadingOverlay').click(); await ready('loading-overlay'); await sameSidebar();
       assert.equal(await nav('LoadingOverlay').getAttribute('aria-current'), 'page');
       await page.getByRole('textbox',{name:'Region editor',exact:true}).fill('Retained after load');
       await button('Open region dialog').click(); let dialog=page.getByRole('dialog',{name:'Region dialog',exact:true}); await dialog.waitFor();
@@ -74,16 +73,16 @@ process.env.TEMP = process.env.TMP = 'D:/BuildCache/sapid/tmp';
       assert.equal(await page.getByRole('textbox',{name:'Region editor',exact:true}).inputValue(),'Retained after load');
       await button('Open region dialog').click(); await dialog.waitFor(); await dialog.getByRole('button',{name:'Close',exact:true}).click(); await dialog.waitFor({state:'hidden'});
       report.checks.push(`${hue}-${scheme}: retained sidebar scroll/document/back/forward; dialog Close, Escape, load, recovery`);
-      await nav('Alert').click(); await ready('P5-05');
-      await page.screenshot({path:`D:/BuildCache/sapid/feedback-${hue}-${scheme}.png`,fullPage:true});
+      await nav('Alert').click(); await ready('alert');
+      await page.screenshot({path:outputPath(`feedback-${hue}-${scheme}.png`),fullPage:true});
       await page.setViewportSize({width:390,height:844});await tick();
       assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),'mobile horizontal overflow');
       await page.setViewportSize({width:1440,height:1100});
     }
-    await page.goto(`${base}/ssr-button-blue-dark.html`);await ready('P0-01');
+    await page.goto(`${base}/ssr-button-blue-dark.html`);await ready('button');
     await nav('Alert').evaluate(e=>e.scrollIntoView({block:'center'}));await retainSidebar();const before=documents;
-    await nav('Alert').click();await ready('P5-05');await sameSidebar();await page.goBack();await ready('P0-01');await sameSidebar();assert.equal(documents,before);
+    await nav('Alert').click();await ready('alert');await sameSidebar();await page.goBack();await ready('button');await sameSidebar();assert.equal(documents,before);
     report.checks.push('SSR hydration retains the sidebar across client navigation and history');
   } catch(e) {report.errors.push(e.stack || String(e))}
-  finally {await browser.close();fs.writeFileSync('D:/BuildCache/sapid/showcase-feedback-browser.json',JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));if(report.errors.length)process.exitCode=1}
+  finally {await browser.close();writeReport('showcase-feedback-browser.json', report);console.log(JSON.stringify(report,null,2));if(report.errors.length)process.exitCode=1}
 })();

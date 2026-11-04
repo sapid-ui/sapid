@@ -7,7 +7,8 @@ use crate::{
     tree_model::*,
 };
 use glory::render::{
-    Direction, Event, EventKind, FocusMode, NodeId, Role, Semantics, TreeCommand, TreeNavigation,
+    Direction, DragPhase, Event, EventKind, FocusMode, NodeId, Query, QueryValue, Role, Semantics,
+    TreeCommand, TreeNavigation,
 };
 use glory::style::{Align, BorderStyle, Display, Edges, FlexDirection, Length, Overflow, Style};
 use glory::ui::{Result, WeakScope, Widget};
@@ -569,6 +570,8 @@ impl State {
     }
 }
 type LabelFactory = Rc<RefCell<Box<dyn FnMut(Vary<TreeNode>) -> Box<dyn Widget>>>>;
+type DropCallback = Rc<RefCell<Box<dyn FnMut(TreeDrop)>>>;
+type AllowDrop = Rc<RefCell<Box<dyn FnMut(&TreeDrop) -> bool>>>;
 pub struct Tree {
     common: Common,
     key: String,
@@ -590,6 +593,10 @@ pub struct Tree {
     intent: Option<Box<dyn FnMut(String)>>,
     popup: Option<TreePopup>,
     columns: bool,
+    with_lines: bool,
+    empty_message: Option<String>,
+    drag_drop: Option<DropCallback>,
+    allow_drop: Option<AllowDrop>,
 }
 pub(crate) struct TreePopup {
     pub id: glory::render::SemanticId,
@@ -619,6 +626,10 @@ pub fn tree(key: impl Into<String>) -> Tree {
         intent: None,
         popup: None,
         columns: false,
+        with_lines: true,
+        empty_message: None,
+        drag_drop: None,
+        allow_drop: None,
     }
 }
 pub fn file_tree(
@@ -711,6 +722,14 @@ impl Tree {
         self.height = Some(value);
         self
     }
+    pub fn with_lines(mut self, value: bool) -> Self {
+        self.with_lines = value;
+        self
+    }
+    pub fn empty_message(mut self, value: impl Into<String>) -> Self {
+        self.empty_message = Some(value.into());
+        self
+    }
     pub fn file_icons(mut self, value: bool) -> Self {
         self.file_icons = value;
         self
@@ -724,9 +743,27 @@ impl Tree {
         }))));
         self
     }
+    /// Enable finite pointer reordering. The component only proposes a drop;
+    /// applications publish the returned declaration with `move_tree_node`.
+    pub fn on_drag_drop(mut self, callback: impl FnMut(TreeDrop) + 'static) -> Self {
+        self.drag_drop = Some(Rc::new(RefCell::new(Box::new(callback))));
+        self
+    }
+    /// Reject a proposed before/inside/after target before the drop callback.
+    pub fn allow_drop(mut self, callback: impl FnMut(&TreeDrop) -> bool + 'static) -> Self {
+        self.allow_drop = Some(Rc::new(RefCell::new(Box::new(callback))));
+        self
+    }
 }
 impl Widget for Tree {
     fn build(&mut self, scope: &Scope) -> Result {
+        if self
+            .empty_message
+            .as_ref()
+            .is_some_and(|value| value.len() > 256 || value.contains(['\0', '\r']))
+        {
+            return Err(error(TreeError::Label));
+        }
         let id = if let Some(popup) = &self.popup {
             popup.id.clone()
         } else {
@@ -746,9 +783,10 @@ impl Widget for Tree {
                 })
             })
             .transpose()?;
-        if self
-            .height
-            .is_some_and(|height| !height.is_finite() || height <= 0. || height > 16384.)
+        if self.allow_drop.is_some() && self.drag_drop.is_none()
+            || self
+                .height
+                .is_some_and(|height| !height.is_finite() || height <= 0. || height > 16384.)
             || self.follows && self.mode != TreeSelectionMode::Single
         {
             return Err(error(TreeError::State));
@@ -1056,10 +1094,22 @@ impl Widget for Tree {
         let fields = scope.child_in(field_ref.get().ok_or(glory::ui::Error::Gone)?)?;
         root.show_in(&fields)?;
         let area = scope.child_in(reference.get().ok_or(glory::ui::Error::Gone)?)?;
+        if let Some(message) = self.empty_message.take() {
+            let empty = rows.map(Vec::is_empty);
+            glory::ui::when(empty, move || {
+                glory::ui::text()
+                    .class("sapid-tree-empty")
+                    .content(message.clone())
+            })
+            .show_in(&area)?;
+        }
         let theme = self.common.theme.clone();
         let unstyled = self.common.unstyled;
+        let with_lines = self.with_lines;
         let renderer = self.label.clone();
         let icons = self.file_icons;
+        let drag_drop = self.drag_drop.take();
+        let allow_drop = self.allow_drop.take();
         glory::ui::each(rows)
             .key(|row| row.key.clone())
             .children(move |entry| {
@@ -1067,6 +1117,8 @@ impl Widget for Tree {
                 let state = state.clone();
                 let theme = theme.clone();
                 let renderer = renderer.clone();
+                let drag_drop = drag_drop.clone();
+                let allow_drop = allow_drop.clone();
                 glory::ui::widget(move |scope| {
                     let key = row.with(|row| row.key.clone());
                     let reference = scope.cage(None);
@@ -1118,6 +1170,11 @@ impl Widget for Tree {
                                         .unwrap_or(glory::render::TreeCheckState::Unchecked)
                                 })
                             }),
+                            // Keep the host's threshold drag path so the Drop event
+                            // is dispatched to the row under the pointer. Immediate
+                            // capture deliberately keeps Drop on the origin and is
+                            // appropriate for sliders/splitters, not tree targets.
+                            drag_capture: None,
                             disabled: node.disabled || !enabled.get(),
                             ..Default::default()
                         }))
@@ -1135,7 +1192,7 @@ impl Widget for Tree {
                     });
                     let disclosure_color = theme.muted;
                     let check_theme = theme.clone();
-                    let guide = if columns || unstyled {
+                    let guide = if columns || unstyled || !with_lines {
                         Vec::new()
                     } else {
                         row.with(|row| guides(row, direction, theme.border))
@@ -1214,9 +1271,13 @@ impl Widget for Tree {
                     });
                     let s = state.clone();
                     let click_key = key.clone();
-                    glory::ui::view()
+                    let mut item = glory::ui::view()
                         .role(Role::TreeItem)
-                        .class("sapid-tree-item")
+                        .class(if drag_drop.is_some() {
+                            "sapid-tree-item sapid-tree-draggable"
+                        } else {
+                            "sapid-tree-item"
+                        })
                         .name(value.map(|node| node.label.clone()))
                         .node_ref(reference)
                         .semantics(semantics)
@@ -1228,8 +1289,77 @@ impl Widget for Tree {
                             }
                             s.report(s.request_focus(click_key.clone(), true));
                             s.report(s.select(click_key.clone(), false));
-                        })
-                        .show_in(scope)?;
+                        });
+                    if let Some(dropped) = drag_drop.clone() {
+                        let s = state.clone();
+                        let target_key = key.clone();
+                        let target_reference = reference;
+                        let allowed = allow_drop.clone();
+                        let weak = scope.downgrade();
+                        item = item.on(EventKind::Drag, move |event| {
+                            let Event::Drag {
+                                from,
+                                phase: DragPhase::Drop,
+                                x: _,
+                                y,
+                            } = event
+                            else {
+                                return;
+                            };
+                            let Some(scope) = weak.upgrade() else { return };
+                            let Some(dragged) = s.mounted.borrow().nodes.get(&from).cloned() else {
+                                return;
+                            };
+                            let Ok(Some(target_node)) = target_reference.try_get() else {
+                                return;
+                            };
+                            let target = target_key.clone();
+                            let model = s.model;
+                            let dropped = dropped.clone();
+                            let allowed = allowed.clone();
+                            let result = scope.request(Query::Bounds(target_node), move |result| {
+                                let Ok(QueryValue::Bounds(bounds)) = result else {
+                                    return;
+                                };
+                                if bounds.height <= 0. || !bounds.height.is_finite() {
+                                    return;
+                                }
+                                let ratio = ((y - bounds.y) / bounds.height).clamp(0., 1.);
+                                let branch = model.with(|model| {
+                                    model
+                                        .index(&target)
+                                        .and_then(|index| model.nodes().get(index))
+                                        .is_some_and(|node| node.kind == TreeKind::Branch)
+                                });
+                                let position = if ratio < 0.25 {
+                                    TreeDropPosition::Before
+                                } else if ratio > 0.75 {
+                                    TreeDropPosition::After
+                                } else if branch {
+                                    TreeDropPosition::Inside
+                                } else if ratio < 0.5 {
+                                    TreeDropPosition::Before
+                                } else {
+                                    TreeDropPosition::After
+                                };
+                                let proposal =
+                                    TreeDrop::new(dragged.clone(), target.clone(), position);
+                                let valid = model
+                                    .with(|model| move_tree_node(model.nodes(), &proposal).is_ok());
+                                if valid
+                                    && allowed
+                                        .as_ref()
+                                        .is_none_or(|allowed| (allowed.borrow_mut())(&proposal))
+                                {
+                                    (dropped.borrow_mut())(proposal);
+                                }
+                            });
+                            if let Err(error) = result {
+                                scope.report_error(error);
+                            }
+                        });
+                    }
+                    item.show_in(scope)?;
                     let node = reference.get().ok_or(glory::ui::Error::Gone)?;
                     {
                         let mut mounted = state.mounted.borrow_mut();

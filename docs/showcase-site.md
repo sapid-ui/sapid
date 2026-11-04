@@ -140,9 +140,9 @@ SVG 宽高均为 256；顶栏桌面显示 36 × 36，手机显示 32 × 32，保
 首页和 `showcase.html` 使用同一个入口。例如：
 
 - [首页](http://127.0.0.1:8795/)
-- [Button 参数面板](http://127.0.0.1:8795/showcase.html?widget=P0-01)
-- [TextField](http://127.0.0.1:8795/showcase.html?widget=P0-02)
-- [Button 深色主题](http://127.0.0.1:8795/showcase.html?widget=P0-01&scheme=dark)
+- [Button 参数面板](http://127.0.0.1:8795/showcase.html?widget=button)
+- [TextInput](http://127.0.0.1:8795/showcase.html?widget=text-input)
+- [Button 深色主题](http://127.0.0.1:8795/showcase.html?widget=button&scheme=dark)
 
 展示站包含 181 个官方对应指南；路线图的 137 个工程工作项仍单独保留，其中 122 个映射到这些指南。
 Core 的 121 个条目、分类和顺序与 Mantine 9.7.4 一致；内部工作项名称不显示在侧栏。
@@ -176,6 +176,12 @@ Styles API 列出实现中的实际类名。Charts 的 22 个指南分别使用�
 `charts` feature 在库中默认关闭，展示应用只是显式启用它来编译这些指南。
 TreeSelect 展示单选、可移除多选、父子级联、独立选择、保留祖先的搜索、受控展开及禁用/只读/错误状态；
 Select、Combobox、Autocomplete 和 Cascader 同样使用各自的使用示例，不再显示工程拒绝、提案计数或 Owner 开关。
+Calendar 展示真实42格使用方式、调用方拥有的三项自定义选择、全宽百分比网格、无隐藏按钮的静态自定义日期，
+以及周编号/隐藏星期标题；这些示例直接调用组件 builder，不在页面层复制日期选择逻辑或普通按钮网格。
+RichTextEditor 展示普通使用、subtle、controlled、placeholder、无工具栏内容和只读/禁用六组真实组件状态；
+任意 Tiptap 插件、HTML、表格、任务、图片和源码模式明确保留为有限 RichDocument 协议边界，页面不以脚本伪装支持。
+AreaChart、BarChart、LineChart 与 CompositeChart 各自展示 usage、stack/legend、共享 reference area/line/dot
+以及 inclusive brush；annotation 进入组件的有限共享几何场景，不是展示页额外绘制。
 命名示例的源码面板只保留当前示例及其传递引用的辅助函数，预览、复制文本和编译内容仍来自同一 Rust 模块。
 
 ## 实现与证据
@@ -192,7 +198,18 @@ Select、Combobox、Autocomplete 和 Cascader 同样使用各自的使用示例�
   [showcase_ssr.rs](../examples/web/src/bin/showcase_ssr.rs)。
 - Rust 验收：[showcase_site.rs](../examples/web/tests/showcase_site.rs)与示例模块内测试。
 - 浏览器验收：[showcase-acceptance.js](../examples/web/showcase-acceptance.js)、
-  [运行器](../scripts/showcase-browser.cjs)。
+  [统一运行器](../scripts/showcase-acceptance.cjs)和
+  [共享环境](../scripts/showcase-browser-env.cjs)。专项 `.cjs` 只描述页面交互；
+  Playwright、构建根、临时目录和报告目录由 `SAPID_PLAYWRIGHT`、
+  `SAPID_BUILD_ROOT`、`SAPID_BROWSER_TEMP`、`SAPID_BROWSER_OUTPUT` 注入，
+  不包含开发者机器的绝对路径。
+
+2026-11-04 的统一门禁在 `D:/BuildCache/sapid/showcase-acceptance/` 完成 26/26；
+TreeSelect 后续加入真实 editable-tree 焦点验收，Calendar 专项加入后统一套件为 27 组；
+RichTextEditor 六节专项加入后统一套件为 28 组。
+Cartesian charts 四页专项加入后统一套件为 29 组。
+Schedule、ResourcesSchedule、Day/Week 与 Month/Year/MobileMonth 专项完成后，
+当前统一矩阵为 33/33，`complete=true`、`errors=[]`。
 
 构建门禁包括 14 项 focused Rust 测试、host 全 target 严格 Clippy、wasm32 严格 Clippy、
 WASM 构建，以及 12 个代表页面乘 4 个主题组合的 48 个 SSR/adoption 页面。

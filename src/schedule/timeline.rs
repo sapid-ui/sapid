@@ -202,6 +202,7 @@ pub(super) struct Config {
     pub viewport_ref: Option<Cage<Option<NodeId>>>,
     pub column_width: f64,
     pub viewport_height: f64,
+    pub slot_height: f64,
 }
 pub(super) fn build(scope: &Scope, root: Rc<Controller>, config: Config) -> Result {
     let Config {
@@ -216,6 +217,7 @@ pub(super) fn build(scope: &Scope, root: Rc<Controller>, config: Config) -> Resu
         viewport_ref,
         column_width,
         viewport_height,
+        slot_height,
     } = config;
     let accepted = root.accepted;
     let prepared = scope.bond(move || accepted.with(|data| prepare(data, column_width)));
@@ -257,7 +259,9 @@ pub(super) fn build(scope: &Scope, root: Rc<Controller>, config: Config) -> Resu
         .show_in(scope)?;
     let viewport_scope = child(scope, viewport)?;
     let canvas = scope.cage(None);
-    let height = time.len() as f64 * 32. + 32.;
+    let heading_height = 32.;
+    let timeline_height = time.len() as f64 * slot_height;
+    let height = timeline_height + heading_height;
     glory::ui::view()
         .class("sapid-schedule-timeline")
         .style(scope.bond(move || {
@@ -324,7 +328,11 @@ pub(super) fn build(scope: &Scope, root: Rc<Controller>, config: Config) -> Resu
                     .width(Length::Px(
                         64. + days as f64 * prepared.with(|p| p.column_width),
                     ))
-                    .height(Length::Px(32.))
+                    .height(Length::Px(if row == 0 {
+                        heading_height
+                    } else {
+                        slot_height
+                    }))
             }))
             .node_ref(row_ref)
             .show_in(&grid_scope)?;
@@ -338,7 +346,7 @@ pub(super) fn build(scope: &Scope, root: Rc<Controller>, config: Config) -> Resu
                 .semantics(scope.bond(move||Some(Box::new(Semantics{selected:if row==0||col==0{None}else{Some(active.with(|v|matches!(v,Some(ScheduleSelection::Slot{interval,resource:None})if state_for_cell.interval((row-1)*days+col-1).ok()==Some(*interval))))},table:Some(TableMetadata::Cell{row:row as u32,column:col as u16,row_span:1,column_span:1,headers:vec![]}),..Default::default()}))))
                 .style(scope.bond(move||{
                     let width=prepared.with(|p|p.column_width);let physical=if col==0{0}else if direction==Direction::Ltr{col}else{days+1-col};
-                    Style::new().position(Position::Absolute).left(Length::Px(if physical==0{0.}else{64.+(physical-1)as f64*width})).top(Length::Px(0.)).width(Length::Px(if col==0{64.}else{width})).height(Length::Px(32.))
+                    Style::new().position(Position::Absolute).left(Length::Px(if physical==0{0.}else{64.+(physical-1)as f64*width})).top(Length::Px(0.)).width(Length::Px(if col==0{64.}else{width})).height(Length::Px(if row==0{heading_height}else{slot_height}))
                 })).node_ref(cell).show_in(&row_scope)?;
             let cell_scope = child(scope, cell)?;
             if row == 0 {
@@ -395,7 +403,7 @@ pub(super) fn build(scope: &Scope, root: Rc<Controller>, config: Config) -> Resu
                     .name(scope.bond(move||names.interval(at).map(|span|format!("{} {} — {}",locale.date_label(span.start().date()),span.start().time(),span.end().time())).unwrap_or_default()))
                     .enabled(flags.map(|f|f.enabled)).focus(scope.bond(move||if focus.get()==at{FocusMode::TabStop}else{FocusMode::Programmatic}))
                     .style(scope.bond(move||{
-                        let mut style=Style::new().width(Length::Percent(100.)).height(Length::Px(32.)).padding(Edges::all(0.)).overflow_x(Overflow::Hidden).overflow_y(Overflow::Hidden);
+                        let mut style=Style::new().width(Length::Percent(100.)).height(Length::Px(slot_height)).padding(Edges::all(0.)).overflow_x(Overflow::Hidden).overflow_y(Overflow::Hidden);
                         if !unstyled{let chosen=selected.with(|v|matches!(v,Some(ScheduleSelection::Slot{interval,resource:None})if styles.interval(at).ok()==Some(*interval)));
                             style.background=Some(if chosen{button_theme.accent_soft}else{button_theme.surface});style.color=Some(if chosen{button_theme.accent_text}else{button_theme.foreground});style.font_size=Some(10.);style=style.border_width(Edges::all(1.)).border_style(BorderStyle::Solid).border_color(if reference.get().is_some_and(|id|physical.get()==Some(id)){button_theme.accent}else{button_theme.border});}
                         style
@@ -422,7 +430,8 @@ pub(super) fn build(scope: &Scope, root: Rc<Controller>, config: Config) -> Resu
                 unstyled,
                 direction,
                 days,
-                height: height - 32.,
+                heading_height,
+                height: timeline_height,
             }
         })
         .show_in(&canvas_scope)?;
@@ -463,6 +472,7 @@ struct TimelineEventWidget {
     direction: Direction,
     days: usize,
     height: f64,
+    heading_height: f64,
 }
 impl Widget for TimelineEventWidget {
     fn build(&mut self, scope: &Scope) -> Result {
@@ -472,13 +482,14 @@ impl Widget for TimelineEventWidget {
         let direction = self.direction;
         let days = self.days;
         let height = self.height;
+        let heading_height = self.heading_height;
         let theme = self.theme.clone();
         let unstyled = self.unstyled;
         let selected = self.state.selection.source.clone();
         let style=scope.bond(move||{
             let width=prepared.with(|p|p.column_width);event.with(|e|{
                 let day=if direction==Direction::Ltr{e.day}else{days-1-e.day};let fraction=width/e.position.lanes()as f64;
-                let mut style=Style::new().position(Position::Absolute).left(Length::Px(64.+day as f64*width+e.position.lane()as f64*fraction)).top(Length::Px(32.+e.position.start_fraction()*height))
+                let mut style=Style::new().position(Position::Absolute).left(Length::Px(64.+day as f64*width+e.position.lane()as f64*fraction)).top(Length::Px(heading_height+e.position.start_fraction()*height))
                     .width(Length::Px((fraction-2.).max(2.))).height(Length::Px(((e.position.end_fraction()-e.position.start_fraction())*height).max(18.))).padding(Edges::all(1.)).overflow_x(Overflow::Hidden).overflow_y(Overflow::Hidden);
                 if !unstyled{let chosen=selected.with(|v|matches!(v,Some(ScheduleSelection::Event{key,candidate,interval})if *key==e.row.key&&*candidate==e.row.candidate&&*interval==e.row.interval));style.background=Some(if chosen{theme.accent}else{theme.accent_soft});style.color=Some(if chosen{theme.on_accent}else{theme.accent_text});style=style.border_width(Edges::all(1.)).border_style(BorderStyle::Solid).border_color(theme.accent);style.font_size=Some(11.);}
                 style

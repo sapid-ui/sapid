@@ -27,14 +27,14 @@ mod focused {
                         values: vec!["Rust".into(), "WebAssembly".into()],
                         search: String::new(),
                     });
-                    field("mantine-token-input")
+                    field("showcase-token-input")
                     .theme(theme.clone())
                     .label(if pills { "Labels" } else { "Skills" })
                     .description("Press Enter to add a value. Backspace removes the last value when search is empty.")
                     .control(move |field| {
                         let input: Box<dyn Widget> = if pills {
                             Box::new(
-                                pills_input("mantine-pills-input")
+                                pills_input("showcase-pills-input")
                                     .field(field)
                                     .state(state)
                                     .placeholder("Add a value")
@@ -42,7 +42,7 @@ mod focused {
                             )
                         } else {
                             Box::new(
-                                tags_input("mantine-tags-input")
+                                tags_input("showcase-tags-input")
                                     .field(field)
                                     .state(state)
                                     .placeholder("Add a value")

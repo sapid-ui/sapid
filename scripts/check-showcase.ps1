@@ -13,7 +13,7 @@ if ($BuildRoot -notmatch '^D:\\BuildCache\\sapid(?:\\|$)') { throw 'BuildRoot mu
 $showcaseBuild = "$BuildRoot/showcase"
 $showcaseTarget = "$BuildRoot/target"
 $savedEnvironment = @{}
-$environmentNames = @('CARGO_HOME','CARGO_TARGET_DIR','CARGO_BUILD_JOBS','CARGO_PROFILE_DEV_DEBUG','CARGO_PROFILE_TEST_DEBUG','CARGO_INCREMENTAL','TEMP','TMP','PYTHONPYCACHEPREFIX','SAPID_SHOWCASE_BASE','SAPID_PLAYWRIGHT','SAPID_SHOWCASE_MEDIA')
+$environmentNames = @('CARGO_HOME','CARGO_TARGET_DIR','CARGO_BUILD_JOBS','CARGO_PROFILE_DEV_DEBUG','CARGO_PROFILE_TEST_DEBUG','CARGO_INCREMENTAL','TEMP','TMP','PYTHONPYCACHEPREFIX','SAPID_BUILD_ROOT','SAPID_BROWSER_OUTPUT','SAPID_SHOWCASE_BASE','SAPID_PLAYWRIGHT','SAPID_SHOWCASE_MEDIA')
 foreach ($name in $environmentNames) { $savedEnvironment[$name] = [Environment]::GetEnvironmentVariable($name, 'Process') }
 function Invoke-ShowcaseCargo {
     param([string[]]$Arguments)
@@ -25,6 +25,8 @@ try {
     if (-not $env:CARGO_HOME) { $env:CARGO_HOME = 'D:/BuildCache/glory-semantic-ui/cargo' }
     if ([IO.Path]::GetFullPath($env:CARGO_HOME) -notmatch '^D:\\BuildCache\\[^\\]+') { throw 'CARGO_HOME must be on D drive' }
     $env:CARGO_TARGET_DIR = $showcaseTarget
+    $env:SAPID_BUILD_ROOT = $BuildRoot
+    $env:SAPID_BROWSER_OUTPUT = $BuildRoot
     $env:CARGO_BUILD_JOBS = '1'
     $env:CARGO_PROFILE_DEV_DEBUG = '0'
     $env:CARGO_PROFILE_TEST_DEBUG = '0'

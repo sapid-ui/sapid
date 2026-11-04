@@ -25,7 +25,7 @@ mod focused {
     pub fn demo_for(name: &str, theme: Theme) -> Box<dyn Widget> {
         match name {
             "MonthPicker" => Box::new(
-                month_picker("mantine-month", DatesProvider::new(date("2024-02-29")))
+                month_picker("showcase-month", DatesProvider::new(date("2024-02-29")))
                     .theme(theme)
                     .name("Billing month")
                     .default_value(MonthSelection::Single(Some(

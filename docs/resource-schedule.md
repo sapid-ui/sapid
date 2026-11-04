@@ -7,6 +7,16 @@ and an explicit `ScheduleResourceWindow` containing at most eight registrations.
 Events must name a registered resource. Off-window registered events remain in
 the application data; the widget retains only the current rendered window.
 
+`resources_schedule` becomes the unified Day/Week/Month container when
+`available_views(...)` is supplied. `view_value(...)` and `on_view_change(...)`
+follow the same controlled proposal contract as ordinary Schedule. A switch uses
+one keyed `(ResourceScheduleView, ResourceScheduleData)` snapshot, so a retired
+Day view cannot observe Week or Month window data. The application accepts the
+new view and supplies its matching finite date/resource window in one batch.
+At most three distinct views are admitted; controlled refusal keeps the current
+view and stable outer view-control buttons. Without `available_views`, all four
+constructors retain their standalone behavior.
+
 ```rust
 use sapid::prelude::*;
 
@@ -139,11 +149,12 @@ an applied data mutation.
 
 ## Evidence
 
-- Pure resource/window/layout/edit tests: 8 in
-  `tests/schedule_resource_views.rs`; component/protocol tests: 11 in
+- Pure resource/window/layout/edit tests: 10 in
+  `tests/schedule_resource_views.rs`; component/protocol tests: 13 in
   `tests/resource_schedules.rs`. Includes both axes, month projection/lane cap,
   all-day invariants, current-turn budgets, permission independence, request
-  stride, accepted/refused editing, late query cancellation and Owner retirement.
+  stride, accepted/refused editing, late query cancellation, Owner retirement,
+  and controlled unified Day/Week/Month switching with stable controls.
   Combined regressions also cover existing Agenda7, Day/Week7 and Calendar8:
   `D:/BuildCache/sapid/resource-schedule-final-rust.log`. The final full-card
   hit-area regression is in `resource-schedule-full-hit-rust.log`.

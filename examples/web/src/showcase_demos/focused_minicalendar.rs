@@ -26,7 +26,7 @@ mod focused {
         match name {
             "MiniCalendar" => Box::new(
                 mini_calendar(
-                    "mantine-mini-calendar",
+                    "showcase-mini-calendar",
                     DatesProvider::new(date("2024-02-29")),
                 )
                 .theme(theme)

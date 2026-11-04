@@ -30,7 +30,7 @@ mod focused {
         match name {
             "InlineDateTimePicker" => Box::new(
                 inline_date_time_picker(
-                    "mantine-inline-date-time",
+                    "showcase-inline-date-time",
                     DatesProvider::new(date("2024-02-29")),
                     DateTimePolicy::Civil,
                 )

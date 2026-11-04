@@ -21,7 +21,7 @@ mod focused {
     pub fn demo_for(name: &str, theme: Theme) -> Box<dyn Widget> {
         match name {
             "ComboboxPopover" => Box::new(
-                popover("mantine-combobox-popover")
+                popover("showcase-combobox-popover")
                     .theme(theme.clone())
                     .label("Choose a framework")
                     .title("Framework suggestions")

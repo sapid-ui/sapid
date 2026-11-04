@@ -39,8 +39,10 @@ FOCUSED_GROUPS = {
     "measurement": ["P7-02", "P7-03", "P5-08"],
     "copy_button": ["P10-03"],
     "file_button": ["P10-01"],
+    "rich_editor": ["P10-08"],
     "toolbar": ["P2-07", "P6-10"],
     "charts": ["P11-01", "P11-02", "P11-03", "P11-04", "P11-05", "P11-06", "P11-07", "P11-08"],
+    "schedule": ["P12-01"],
 }
 FOCUSED = {identity: family for family, identities in FOCUSED_GROUPS.items() for identity in identities}
 FOCUSED_NAMES = {
@@ -88,6 +90,7 @@ FOCUSED_NAMES = {
     "P7-05": "focused_rating",
     "P10-01": "focused_file_button",
     "P10-03": "focused_copy_button",
+    "P10-08": "focused_rich_editor",
     "P11-01": "focused_chart",
     "P11-02": "focused_cartesian_charts",
     "P11-03": "focused_polar_charts",
@@ -96,6 +99,15 @@ FOCUSED_NAMES = {
     "P11-06": "focused_matrix_charts",
     "P11-07": "focused_range_charts",
     "P11-08": "focused_hierarchy_charts",
+    "P12-01": "focused_schedule",
+}
+FOCUSED_DISPLAY = {
+    "P12-05-resourcesschedule": ("focused_resources_schedule", "resources_schedule"),
+    "P12-02": ("focused_dayview", "schedule_timelines"),
+    "P12-02-weekview": ("focused_weekview", "schedule_timelines"),
+    "P12-03": ("focused_monthview", "schedule_calendars"),
+    "P12-03-yearview": ("focused_yearview", "schedule_calendars"),
+    "P12-03-mobilemonthview": ("focused_mobilemonthview", "schedule_calendars"),
 }
 if set(FOCUSED_NAMES) != set(FOCUSED):
     raise SystemExit("every focused demo requires an explicit semantic module name")
@@ -439,7 +451,7 @@ for item in MANTINE_FACTS["entries"]:
 NAMED_DEMO_TASKS = {task for task, items in MANTINE_BY_TASK.items() if len(items) > 1} | {
     "P3-07", "P3-13", "P4-05", "P4-06", "P4-07", "P6-06", "P8-01", "P8-04", "P8-05", "P10-06",
 }
-PRESERVE_PRIMARY = {"P0-01", "P2-08", "P3-10", "P4-09", "P5-11", "P6-07"}
+PRESERVE_PRIMARY = {"P0-01", "P2-08", "P3-10", "P4-09", "P5-11", "P6-07", "P12-01"}
 SOURCE_GROUPS = {
     "mantine-charts": "Charts",
     "mantine-dates": "Dates",
@@ -449,6 +461,11 @@ SOURCE_GROUPS = {
 }
 
 
+def public_slug(name):
+    name = re.sub(r"([a-z0-9])([A-Z])", r"\1-\2", name)
+    return re.sub(r"[^a-zA-Z0-9]+", "-", name).strip("-").lower()
+
+
 def display_items(task):
     items = MANTINE_BY_TASK.get(task["id"], [])
     if not items:
@@ -456,8 +473,8 @@ def display_items(task):
     items = sorted(items, key=lambda item: MANTINE_ORDER.get(item["name"], (99, 99)))
     result = []
     for index, item in enumerate(items):
-        slug = re.sub(r"[^a-z0-9]+", "-", item["name"].lower()).strip("-")
-        identity = task["id"] if index == 0 else f"{task['id']}-{slug}"
+        legacy_suffix = re.sub(r"[^a-z0-9]+", "-", item["name"].lower()).strip("-")
+        identity = task["id"] if index == 0 else f"{task['id']}-{legacy_suffix}"
         order = MANTINE_ORDER.get(item["name"], (99, 99))
         category = (list(MANTINE_GROUPS)[order[0]] if order[0] < len(MANTINE_GROUPS)
                     else SOURCE_GROUPS[item["source"]])
@@ -560,8 +577,8 @@ API_TYPES = {
     "ComboboxPopover": ["Popover"],
     "UnstyledButton": ["Button"],
     "Notifications system": ["Toaster"],
-    "DateTimePicker": ["DateTimePicker"],
-    "InlineDateTimePicker": ["InlineDateTimePicker"],
+    "DateTimePicker": ["DateTimePicker", "DateTimeRangePicker"],
+    "InlineDateTimePicker": ["InlineDateTimePicker", "InlineDateTimeRangePicker"],
     "DayView": ["Schedule"], "WeekView": ["Schedule"], "MonthView": ["Schedule"],
     "YearView": ["Schedule"], "MobileMonthView": ["Schedule"], "AgendaView": ["Schedule"],
     "Schedule": ["Schedule"],
@@ -586,8 +603,8 @@ API_PATHS = {
     "Text": ["src/typography.rs"], "Title": ["src/typography.rs"], "Typography": ["src/typography.rs"],
     "FocusTrap": ["src/focus_scope.rs"], "Portal": ["src/portal.rs"],
     "RollingNumber": ["src/rolling_number.rs"], "Marquee": ["src/marquee.rs"],
-    "DateTimePicker": ["src/date_time_picker_input.rs"],
-    "InlineDateTimePicker": ["src/date_time_picker.rs"],
+    "DateTimePicker": ["src/date_time_picker_input.rs", "src/date_time_range_picker.rs"],
+    "InlineDateTimePicker": ["src/date_time_picker.rs", "src/date_time_range_picker.rs"],
     "DayView": ["src/schedule/mod.rs"], "WeekView": ["src/schedule/mod.rs"],
     "MonthView": ["src/schedule/mod.rs"], "YearView": ["src/schedule/mod.rs"],
     "MobileMonthView": ["src/schedule/mod.rs"], "AgendaView": ["src/schedule/mod.rs"],
@@ -609,7 +626,7 @@ LAYOUT_NAMES = {"Box", "Flex", "Group", "Stack", "Center", "Container", "Space"}
 
 def rust_signatures(text):
     signatures = set()
-    for match in re.finditer(r"pub fn ([a-z_0-9]+)\s*\(", text):
+    for match in re.finditer(r"pub fn ([a-z_0-9]+)(?:<[^>{}]*>)?\s*\(", text):
         if match[1] in API_INFRASTRUCTURE:
             continue
         segment = text[match.start():]
@@ -659,6 +676,15 @@ def expand_macros(body, text):
         if not definition and name in support:
             definition = macro_definition(support[name].read_text(encoding="utf-8"), name)
         if definition: result.append(definition)
+    for match in re.finditer(
+        r"\bsource_method!\s*\(\s*([a-z_0-9]+)\s*,\s*[a-z_0-9]+\s*,\s*([^\)]+?)\s*\)",
+        body,
+    ):
+        method, value_type = match.groups()
+        value_type = re.sub(r"\s+", " ", value_type.strip())
+        result.append(
+            f"pub fn {method}(mut self, value: impl Into<Vary<{value_type}>>) -> Self {{"
+        )
     return "\n".join(result)
 
 
@@ -682,6 +708,9 @@ def api_surface(task, item):
         signatures.update(rust_signatures(body))
         classes.update(re.findall(r"\b(sapid-[a-z0-9-]+)", body))
         for widget_type in types:
+            type_factory = re.sub(r"(?<!^)(?=[A-Z])", "_", widget_type).lower()
+            if re.search(r"pub fn " + re.escape(type_factory) + r"\s*\(", text):
+                builders.add(type_factory)
             base = re.sub(r"(?<!^)(?=[A-Z])", "-", widget_type).lower()
             classes.update(value for value in re.findall(r"\b(sapid-[a-z0-9-]+)", text)
                            if value == f"sapid-{base}" or value.startswith(f"sapid-{base}-"))
@@ -738,6 +767,10 @@ mod tests {
         assert!(find("unknown").is_none());
         assert!(!find("P7-08").unwrap().builders.contains(&"plane_size"));
         assert!(find("P7-08-colorpicker").unwrap().builders.contains(&"plane_size"));
+        let range = find("P7-03").unwrap();
+        for method in ["min", "max", "step", "minimum_gap", "labels", "value_text"] {
+            assert!(range.builders.contains(&method), "missing macro builder {method}");
+        }
     }
 }
 """
@@ -771,7 +804,10 @@ for task in tasks:
             shared_code = (key, bundle(page))
     description = DESCRIPTIONS[identity]
     for display_id, display_name, display_group in display_items(task):
-        if shared_code is None or (identity in PRESERVE_PRIMARY and display_id != identity):
+        if display_id in FOCUSED_DISPLAY:
+            key, family = FOCUSED_DISPLAY[display_id]
+            code = focused_bundle(display_id, family)
+        elif shared_code is None or (identity in PRESERVE_PRIMARY and display_id != identity):
             slug = re.sub(r"[^a-z0-9]+", "_", display_name.lower()).strip("_")
             key = "focused_" + slug
             code = named_bundle(display_name, identity)
@@ -780,7 +816,8 @@ for task in tasks:
         if len(code.encode()) > 65_536: raise SystemExit(f"source exceeds CodeHighlight budget: {display_id}")
         outputs[WEB / f"src/showcase_demos/{key}.rs"] = code
         modules[key] = code
-        values = [("id", display_id), ("task", identity), ("name", display_name), ("group", display_group),
+        slug = public_slug(display_name)
+        values = [("id", display_id), ("slug", slug), ("task", identity), ("name", display_name), ("group", display_group),
                   ("description", DISPLAY_DESCRIPTIONS.get(display_name, description)), ("example", page),
                   ("web", records[identity]["web"]["state"]),
                   ("native", records[identity]["native"]["state"]),
@@ -804,6 +841,7 @@ catalog = '''//! Generated by `python scripts/showcase-catalog.py`; edit canonic
 #[derive(Clone, Copy, Debug)]
 pub struct Entry {
     pub id: &'static str,
+    pub slug: &'static str,
     pub task: &'static str,
     pub name: &'static str,
     pub group: &'static str,
@@ -821,7 +859,11 @@ pub const ENTRIES: &[Entry] = &[
 ''' + "\n".join(entries) + '''
 ];
 
-pub fn find(id: &str) -> Option<&'static Entry> {
+pub fn find(slug: &str) -> Option<&'static Entry> {
+    ENTRIES.iter().find(|entry| entry.slug == slug)
+}
+
+pub fn find_by_id(id: &str) -> Option<&'static Entry> {
     ENTRIES.iter().find(|entry| entry.id == id)
 }
 
@@ -834,7 +876,9 @@ mod tests {
         assert_eq!(ENTRIES.len(), 181);
         for (index, entry) in ENTRIES.iter().enumerate() {
             assert!(ENTRIES[..index].iter().all(|other| other.id != entry.id));
-            assert_eq!(find(entry.id).unwrap().name, entry.name);
+            assert!(ENTRIES[..index].iter().all(|other| other.slug != entry.slug));
+            assert_eq!(find_by_id(entry.id).unwrap().name, entry.name);
+            assert_eq!(find(entry.slug).unwrap().id, entry.id);
             assert!(
                 !entry.name.is_empty()
                     && !entry.group.is_empty()

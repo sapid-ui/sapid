@@ -53,6 +53,7 @@ pub fn form(scope: &Scope, theme: Theme) -> (impl Widget + use<>, State) {
                         viewport_padding: 16.,
                         flip: config.flip,
                         shift: config.shift,
+                        ..AnchorPlacement::default()
                     };
                     view()
                         .class("placement-anchor-box")

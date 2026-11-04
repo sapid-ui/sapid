@@ -29,7 +29,7 @@ mod focused {
         match name {
             "ActionBar" => Box::new(widget(move |scope| {
                 let count = scope.cage(2usize);
-                action_bar("mantine-action-bar")
+                action_bar("showcase-action-bar")
                     .theme(theme.clone())
                     .name("Selected item actions")
                     .selected_count(count)

@@ -16,19 +16,23 @@ fn nodes(app: &App) -> Vec<NodeId> {
 #[test]
 fn catalogue_has_exactly_181_unique_routes_and_real_example_sources() {
     let mut ids = std::collections::BTreeSet::new();
+    let mut slugs = std::collections::BTreeSet::new();
     assert_eq!(ENTRIES.len(), 181);
     for entry in ENTRIES {
         assert!(ids.insert(entry.id), "duplicate {}", entry.id);
+        assert!(slugs.insert(entry.slug), "duplicate {}", entry.slug);
         assert!(!entry.name.is_empty() && !entry.description.is_empty());
         assert!(!entry.code.trim().is_empty(), "missing source {}", entry.id);
-        assert!(showcase::route(entry.id, &Theme::blue_light()).contains(entry.id));
+        let route = showcase::route(entry.slug, &Theme::blue_light());
+        assert!(route.contains(&format!("widget={}", entry.slug)));
+        assert!(!route.contains(&format!("widget={}", entry.id)));
     }
 }
 
 #[test]
 fn docs_navigation_is_live_semantic_links_and_mobile_menu_is_rust_state() {
     let app = App::memory();
-    app.mount(showcase::site(Theme::blue_light(), "P0-01".into()))
+    app.mount(showcase::site(Theme::blue_light(), "button".into()))
         .unwrap();
     let all = nodes(&app);
     let navigation: Vec<_> = all
@@ -92,7 +96,7 @@ fn docs_navigation_is_live_semantic_links_and_mobile_menu_is_rust_state() {
 #[test]
 fn documentation_tab_switches_directly_to_host_support() {
     let app = App::memory();
-    app.mount(showcase::site(Theme::blue_light(), "P0-01".into()))
+    app.mount(showcase::site(Theme::blue_light(), "button".into()))
         .unwrap();
     let capabilities = nodes(&app)
         .into_iter()
@@ -116,7 +120,7 @@ fn documentation_tab_switches_directly_to_host_support() {
 #[test]
 fn props_and_styles_tabs_expose_only_real_sapid_rust_api() {
     let app = App::memory();
-    app.mount(showcase::site(Theme::blue_light(), "P0-01".into()))
+    app.mount(showcase::site(Theme::blue_light(), "button".into()))
         .unwrap();
     for (label, expected) in [
         ("Properties", "Button properties"),
@@ -150,7 +154,7 @@ fn representative_ssr_documents_render_in_all_themes_without_frames() {
         Theme::green_light(),
         Theme::green_dark(),
     ] {
-        for id in ["", "P0-01", "P0-02", "P9-02", "P11-02"] {
+        for id in ["", "button", "text-input", "mini-calendar", "area-chart"] {
             let html = glory::ssr::snapshot(showcase::site(theme.clone(), id.into()))
                 .unwrap()
                 .html;
@@ -181,6 +185,11 @@ fn unknown_route_is_a_friendly_rust_rendered_page() {
 fn every_displayed_source_builds_its_preview_and_fits_the_highlighter() {
     for entry in ENTRIES {
         assert!(entry.code.contains("pub fn demo("), "{}", entry.id);
+        assert!(
+            !entry.code.to_ascii_lowercase().contains("mantine"),
+            "{} exposes a comparison-source brand in user-facing example code",
+            entry.id
+        );
         assert!(
             !entry.code.contains("crate::"),
             "{} must be self-contained",
@@ -242,10 +251,10 @@ fn focused_guides_render_their_own_widget_content() {
         ("P6-01", "Semantic widgets"),
         ("P6-02", "Example pages"),
         ("P6-10", "Formatting"),
-        ("P11-02", "Area chart"),
-        ("P11-02-barchart", "Bar chart"),
-        ("P11-02-linechart", "Line chart"),
-        ("P11-02-compositechart", "Composite chart"),
+        ("P11-02", "Reference annotations"),
+        ("P11-02-barchart", "Reference annotations"),
+        ("P11-02-linechart", "Reference annotations"),
+        ("P11-02-compositechart", "Reference annotations"),
         ("P11-03", "Donut chart"),
         ("P11-03-piechart", "Pie chart"),
         ("P11-04", "Candlestick chart"),
@@ -261,7 +270,7 @@ fn focused_guides_render_their_own_widget_content() {
         ("P11-08-sankeychart", "Sankey chart"),
     ];
     for (id, expected) in cases {
-        let entry = sapid_web_example::showcase_catalog::find(id).unwrap();
+        let entry = sapid_web_example::showcase_catalog::find_by_id(id).unwrap();
         let html = glory::ssr::snapshot((entry.build)(Theme::blue_light()))
             .unwrap_or_else(|error| panic!("{id}: {error}"))
             .html;
@@ -284,7 +293,11 @@ fn chart_guides_do_not_mount_the_shared_acceptance_workbench() {
         assert!(!html.contains("Toggle plot owner"), "{id}");
         assert!(!html.contains("chart-mode-Line"), "{id}");
         assert!(!html.contains("plot-secondary"), "{id}");
-        assert_eq!(html.matches("site-chart-card").count(), 1, "{id}");
+        assert_eq!(
+            html.matches("site-chart-card").count(),
+            if entry.task == "P11-02" { 4 } else { 1 },
+            "{id}"
+        );
     }
 }
 
@@ -299,14 +312,14 @@ fn playground_helpers_are_embedded_only_when_the_preview_uses_them() {
         ("P3-07", false),
         ("P7-05", true),
     ] {
-        let entry = sapid_web_example::showcase_catalog::find(id).unwrap();
+        let entry = sapid_web_example::showcase_catalog::find_by_id(id).unwrap();
         assert_eq!(entry.code.contains("mod controls {"), expected, "{id}");
     }
 }
 
 #[test]
 fn number_input_size_slider_updates_the_actual_preview() {
-    let entry = sapid_web_example::showcase_catalog::find("P7-01").unwrap();
+    let entry = sapid_web_example::showcase_catalog::find("number-input").unwrap();
     let app = App::memory();
     app.mount((entry.build)(Theme::blue_light())).unwrap();
     let size = nodes(&app)
@@ -418,7 +431,7 @@ fn route_changes_preserve_one_editor_workspace_without_retaining_old_views() {
         d.set_text(Layer::Base, Target::Role(0), "#1".into());
     });
     state.editor.layer.revise(|v| *v = Layer::Dark);
-    let mut next = Page::builtin(Theme::green_light(), "P0-01".into());
+    let mut next = Page::builtin(Theme::green_light(), "button".into());
     next.revision = 1;
     next.shell_revision = 1;
     state.page.revise(|v| *v = next);
@@ -453,7 +466,7 @@ fn document_navigation_preserves_sidebar_and_updates_current_link() {
     let app = App::memory();
     let state = State::new(
         app.scope(),
-        Page::builtin(Theme::blue_light(), "P5-05".into()),
+        Page::builtin(Theme::blue_light(), "alert".into()),
         Vec::new(),
         false,
     );
@@ -471,7 +484,7 @@ fn document_navigation_preserves_sidebar_and_updates_current_link() {
                 .any(|class| class == "site-sidebar")
         })
         .unwrap();
-    for (revision, widget) in [(1, "P5-10"), (2, "P5-11"), (3, "P5-05")] {
+    for (revision, widget) in [(1, "skeleton"), (2, "loading-overlay"), (3, "alert")] {
         state.page.revise(|page| {
             page.route.widget = widget.into();
             page.revision = revision;

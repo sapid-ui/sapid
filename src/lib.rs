@@ -45,7 +45,8 @@ mod composite;
 mod tree_model;
 pub use tree_model::{
     FileEntry, MAX_TREE_DEPTH, MAX_TREE_LABEL_BYTES, MAX_TREE_NODES, MAX_TREE_PAYLOAD_BYTES,
-    TreeError, TreeKind, TreeModel, TreeNode, TreeRow, TreeSelectionMode, file_tree_nodes,
+    TreeDrop, TreeDropPosition, TreeError, TreeKind, TreeModel, TreeNode, TreeRow,
+    TreeSelectionMode, expanded_tree_branches, file_tree_nodes, filter_tree_nodes, move_tree_node,
 };
 mod tree;
 pub use tree::{Tree, file_tree, tree};
@@ -105,11 +106,15 @@ mod date_time_picker;
 #[cfg(feature = "dates")]
 mod date_time_picker_input;
 #[cfg(feature = "dates")]
+mod date_time_range_picker;
+#[cfg(feature = "dates")]
 pub use date_time_model::*;
 #[cfg(feature = "dates")]
 pub use date_time_picker::*;
 #[cfg(feature = "dates")]
 pub use date_time_picker_input::*;
+#[cfg(feature = "dates")]
+pub use date_time_range_picker::*;
 #[cfg(feature = "dates")]
 mod time_parts;
 #[cfg(feature = "dates")]
@@ -117,7 +122,17 @@ pub use time_parts::{TimeParts, TimePickerDraft, TimePickerStatus};
 #[cfg(feature = "dates")]
 mod time_picker;
 #[cfg(feature = "dates")]
-pub use time_picker::{TimePicker, time_picker};
+pub use time_picker::{
+    MAX_TIME_PICKER_PASTE_BYTES, MAX_TIME_PICKER_PRESET_GROUPS, MAX_TIME_PICKER_PRESETS,
+    TimePicker, TimePickerPresetGroup, TimePickerPresets, time_picker,
+};
+#[cfg(feature = "dates")]
+mod duration_picker;
+#[cfg(feature = "dates")]
+pub use duration_picker::{
+    DurationParts, DurationPicker, DurationPickerDraft, DurationPickerStatus,
+    MAX_DURATION_HOUR_DIGITS, MAX_DURATION_HOURS, TimeDuration, duration_picker,
+};
 #[cfg(feature = "dates")]
 mod time_grid_model;
 #[cfg(feature = "dates")]
@@ -167,7 +182,7 @@ pub use date_draft::*;
 #[cfg(feature = "dates")]
 mod date_input;
 #[cfg(feature = "dates")]
-pub use date_input::{DateInput, DateInputDraft, date_input};
+pub use date_input::{DateInput, DateInputDraft, DateInputFormat, date_input};
 #[cfg(feature = "dates")]
 mod date_picker_input;
 #[cfg(feature = "dates")]
@@ -175,7 +190,10 @@ pub use date_picker_input::{DatePickerInput, date_picker_input};
 #[cfg(feature = "dates")]
 mod date_picker;
 #[cfg(feature = "dates")]
-pub use date_picker::{DatePicker, date_picker};
+pub use date_picker::{
+    DatePicker, DatePickerLevel, DatePickerPreset, MAX_DATE_PICKER_COLUMNS,
+    MAX_DATE_PICKER_PRESETS, date_picker,
+};
 #[cfg(feature = "dates")]
 mod date_selection;
 #[cfg(feature = "dates")]
@@ -294,7 +312,9 @@ pub use affix::*;
 pub use alert::{Alert, AlertSeverity, AlertVariant, Announcement, MAX_ALERT_TEXT_BYTES, alert};
 pub use anchor::{Anchor, AnchorRequest, anchor};
 pub use app_shell::*;
-pub use autocomplete::{Autocomplete, autocomplete, autocomplete_option};
+pub use autocomplete::{
+    Autocomplete, AutocompleteLoadingPosition, autocomplete, autocomplete_option,
+};
 pub use avatar::{Avatar, AvatarGroup, AvatarShape, MAX_AVATAR_GROUP_ITEMS, avatar, avatar_group};
 pub use button::{Button, ButtonVariant, button};
 pub use checkbox::{Checkbox, checkbox};
@@ -326,7 +346,7 @@ pub use document::{
     highlight, item, kbd, mark, text_list, text_list_item,
 };
 pub use field::{
-    Description, Field, FieldControl, FieldError, Fieldset, Label, description, field,
+    Description, Field, FieldControl, FieldError, FieldSlot, Fieldset, Label, description, field,
     field_description, field_error, fieldset, label,
 };
 pub use form::{Form, FormButton, form, reset_button, submit_button};
@@ -336,7 +356,10 @@ pub use grid_layout::{
     simple_grid,
 };
 pub use hint::{FloatingTarget, HoverCard, MAX_HINT_TEXT_BYTES, Tooltip, hover_card, tooltip};
-pub use image::{BackgroundImage, Image, MAX_IMAGE_SOURCE_BYTES, background_image, image};
+pub use image::{
+    BackgroundImage, Image, ImageCandidate, ImageLoading, ImageSizeHint, ImageSlotSize,
+    MAX_IMAGE_SOURCE_BYTES, background_image, image,
+};
 pub use indicator::{Indicator, IndicatorPosition, indicator};
 pub use input_group::{
     InputAddon, InputGroup, InputSection, input_addon, input_group, input_section,
@@ -364,7 +387,7 @@ pub use modals::{
     MAX_PENDING_MODALS, ModalOutcome, ModalRequest, ModalToken, ModalsHandle, ModalsManager,
     confirmation_request, modal_request, modals_manager,
 };
-pub use multi_select::{MultiSelect, MultiSelectHandle, multi_select};
+pub use multi_select::{MultiSelect, MultiSelectHandle, MultiSelectLoadingPosition, multi_select};
 pub use native_select::{
     MAX_NATIVE_SELECT_OPTIONS, NativeOption, NativeOptionGroup, NativeSelect, native_select,
     select_group, select_option,
@@ -383,16 +406,20 @@ pub use number_formatter::{
     Currency, NumberFormat, NumberFormatter, NumberLocale, number_formatter,
 };
 pub use overlay::{
-    AlertCancelReason, AlertDialog, AnchorAlign, AnchorPlacement, AnchorSide, Dialog, Drawer,
-    DrawerSide, FloatingDialog, Popover, alert_dialog, dialog, drawer, floating_dialog, popover,
+    AlertCancelReason, AlertDialog, AnchorAlign, AnchorArrow, AnchorArrowPosition, AnchorPlacement,
+    AnchorSide, Dialog, Drawer, DrawerSide, FloatingDialog, Popover, PopoverWidth, alert_dialog,
+    dialog, drawer, floating_dialog, popover,
 };
 pub use password_input::{PasswordInput, password_input};
 pub use pills_input::{PillsInput, pills_input};
-pub use progress::{Progress, progress, ring_progress, semi_circle_progress};
+pub use progress::{
+    Progress, ProgressOrientation, ProgressSection, SemiCircleFillDirection,
+    SemiCircleLabelPosition, SemiCircleOrientation, progress, ring_progress, semi_circle_progress,
+};
 pub use radio::{MAX_RADIO_GROUP_ITEMS, Radio, RadioGroup, radio, radio_group};
 pub use scroll_area::*;
 pub use segmented_control::{Segment, SegmentedControl, segment, segmented_control};
-pub use select::{Select, select};
+pub use select::{Select, SelectCheckPosition, SelectOptionContent, select};
 pub use separator::{Separator, separator};
 pub use skeleton::{Skeleton, skeleton};
 pub use spinner::{Spinner, loader, spinner};
@@ -403,9 +430,10 @@ pub use switch::{Switch, switch};
 pub use tabs::{Tab, TabActivation, Tabs, tab, tabs};
 pub use tags_input::{
     MAX_TAGS_INPUT_TAG_BYTES, MAX_TAGS_INPUT_TOTAL_BYTES, MAX_TAGS_INPUT_VALUES,
-    TagDuplicatePolicy, TagRejection, TagsInput, TagsInputState, tags_input,
+    TagDuplicatePolicy, TagRejection, TagsInput, TagsInputLoadingPosition, TagsInputState,
+    tags_input,
 };
-pub use text_field::{TextField, text_field};
+pub use text_field::{InputSectionPosition, TextField, text_field};
 pub use textarea::{Textarea, textarea};
 pub use theme::{
     BLUE, ColorScheme, GREEN, Palette, PaletteOverrides, Size, Theme, ThemeDefinition,
@@ -434,6 +462,8 @@ pub mod prelude {
     pub use crate::date_time_picker::*;
     #[cfg(feature = "dates")]
     pub use crate::date_time_picker_input::*;
+    #[cfg(feature = "dates")]
+    pub use crate::date_time_range_picker::*;
     #[cfg(feature = "editor")]
     pub use crate::rich_editor::*;
     #[cfg(feature = "dates")]
@@ -444,6 +474,10 @@ pub mod prelude {
     pub use crate::schedule_model::*;
     #[cfg(feature = "dates")]
     pub use crate::schedule_recurrence::*;
+    pub use crate::{
+        BackgroundImage, Image, ImageCandidate, ImageLoading, ImageSizeHint, ImageSlotSize,
+        background_image, image,
+    };
     pub use crate::{
         Breakpoint, Breakpoints, ControlMetrics, Locale, LocaleMessage, LocaleMessages,
         MAX_LOCALE_TEXT_BYTES, ResponsiveContext, ResponsiveRoot, ResponsiveValues, ThemeProvider,
@@ -458,9 +492,17 @@ pub mod prelude {
     };
 
     #[cfg(feature = "dates")]
+    pub use crate::duration_picker::{
+        DurationParts, DurationPicker, DurationPickerDraft, DurationPickerStatus,
+        MAX_DURATION_HOUR_DIGITS, MAX_DURATION_HOURS, TimeDuration, duration_picker,
+    };
+    #[cfg(feature = "dates")]
     pub use crate::time_parts::{TimeParts, TimePickerDraft, TimePickerStatus};
     #[cfg(feature = "dates")]
-    pub use crate::time_picker::{TimePicker, time_picker};
+    pub use crate::time_picker::{
+        MAX_TIME_PICKER_PASTE_BYTES, MAX_TIME_PICKER_PRESET_GROUPS, MAX_TIME_PICKER_PRESETS,
+        TimePicker, TimePickerPresetGroup, TimePickerPresets, time_picker,
+    };
     pub use crate::{
         FocusScope, FocusScopeConfig, MAX_FOCUS_SCOPE_NODES, MAX_FOCUS_SCOPES, focus_scope,
     };
@@ -491,9 +533,12 @@ pub mod prelude {
     #[cfg(feature = "dates")]
     pub use crate::date_draft::*;
     #[cfg(feature = "dates")]
-    pub use crate::date_input::{DateInput, DateInputDraft, date_input};
+    pub use crate::date_input::{DateInput, DateInputDraft, DateInputFormat, date_input};
     #[cfg(feature = "dates")]
-    pub use crate::date_picker::{DatePicker, date_picker};
+    pub use crate::date_picker::{
+        DatePicker, DatePickerLevel, DatePickerPreset, MAX_DATE_PICKER_COLUMNS,
+        MAX_DATE_PICKER_PRESETS, date_picker,
+    };
     #[cfg(feature = "dates")]
     pub use crate::date_picker_input::{DatePickerInput, date_picker_input};
     #[cfg(feature = "dates")]
@@ -525,18 +570,19 @@ pub mod prelude {
         table_of_contents, toc_context, toc_document, toc_heading,
     };
     pub use crate::{
-        Accordion, AccordionItem, ActionIcon, ActionIconVariant, Anchor, AnchorAlign,
-        AnchorPlacement, AnchorRequest, AnchorSide, AspectRatio, BLUE, Badge, BadgeVariant,
-        Blockquote, Box, BreadcrumbItem, Breadcrumbs, Burger, Button, ButtonGroup, ButtonVariant,
-        Card, Center, CheckState, Checkbox, CheckboxGroup, CheckboxItem, Chip, ChipGroup, ChipItem,
-        ChipMode, CloseButton, Code, Collapsible, Collection, CollectionLimits, CollectionMember,
-        ColorScheme, Container, ContentPolicy, ControlValue, Currency, DataList, DataListItem,
-        Description, Dialog, Drawer, DrawerSide, EmptyState, Field, FieldControl, FieldError,
-        FieldOptions, Fieldset, Flex, Form, FormButton, FormEntry, FormError, FormField,
-        FormFieldState, FormLimits, FormState, FormStatus, GREEN, Grid, GridItem, Group, Highlight,
-        InputAddon, InputGroup, InputSection, Item, Kbd, KbdKey, KbdPlatform, Label, Mark,
-        MixedCheckbox, MountedItem, NavLink, NumberFormat, NumberFormatter, NumberLocale, PageItem,
-        Pagination, Palette, PaletteOverrides, Paper, PasswordInput, Pill, Popover, Radio,
+        Accordion, AccordionItem, ActionIcon, ActionIconVariant, Anchor, AnchorAlign, AnchorArrow,
+        AnchorArrowPosition, AnchorPlacement, AnchorRequest, AnchorSide, AspectRatio, BLUE, Badge,
+        BadgeVariant, Blockquote, Box, BreadcrumbItem, Breadcrumbs, Burger, Button, ButtonGroup,
+        ButtonVariant, Card, Center, CheckState, Checkbox, CheckboxGroup, CheckboxItem, Chip,
+        ChipGroup, ChipItem, ChipMode, CloseButton, Code, Collapsible, Collection,
+        CollectionLimits, CollectionMember, ColorScheme, Container, ContentPolicy, ControlValue,
+        Currency, DataList, DataListItem, Description, Dialog, Drawer, DrawerSide, EmptyState,
+        Field, FieldControl, FieldError, FieldOptions, FieldSlot, Fieldset, Flex, Form, FormButton,
+        FormEntry, FormError, FormField, FormFieldState, FormLimits, FormState, FormStatus, GREEN,
+        Grid, GridItem, Group, Highlight, InputAddon, InputGroup, InputSection,
+        InputSectionPosition, Item, Kbd, KbdKey, KbdPlatform, Label, Mark, MixedCheckbox,
+        MountedItem, NavLink, NumberFormat, NumberFormatter, NumberLocale, PageItem, Pagination,
+        Palette, PaletteOverrides, Paper, PasswordInput, Pill, Popover, PopoverWidth, Radio,
         RadioGroup, RovingFocus, Segment, SegmentedControl, Separator, ShadowSize, SimpleGrid,
         Size, Space, Spoiler, Stack, SubmissionLimits, SubmitStatus, SubmitToken, Switch, Tab,
         TabActivation, Tabs, Text, TextField, TextList, TextListItem, TextVariant, Textarea, Theme,
@@ -560,8 +606,8 @@ pub mod prelude {
         affix_container,
     };
     pub use crate::{
-        AlphaSlider, ColorError, Hsva, HueSlider, alpha_slider, format_hex_color, hue_slider,
-        parse_hex_color,
+        AlphaSlider, ColorError, ColorFormat, Hsva, HueSlider, alpha_slider, format_color,
+        format_hex_color, hue_slider, parse_color, parse_hex_color,
     };
     pub use crate::{AngleSlider, angle_slider};
     pub use crate::{
@@ -569,8 +615,8 @@ pub mod prelude {
         app_shell, sidebar,
     };
     pub use crate::{
-        Autocomplete, DrawerSnap, DrawerSnaps, MultiSelect, MultiSelectHandle, autocomplete,
-        autocomplete_option, multi_select,
+        Autocomplete, DrawerSnap, DrawerSnaps, MultiSelect, MultiSelectHandle,
+        MultiSelectLoadingPosition, autocomplete, autocomplete_option, multi_select,
     };
     pub use crate::{
         Avatar, AvatarGroup, AvatarShape, ContextMenu, DropdownMenu, Menu, MenuEntry, MenuItem,
@@ -588,8 +634,8 @@ pub mod prelude {
         code_block, code_highlight, tokenize_code,
     };
     pub use crate::{
-        ColorInput, ColorPicker, ColorValidity, MAX_COLOR_PICKER_KEY_BYTES, color_input,
-        color_picker,
+        ColorEyeDropper, ColorEyeDropperResult, ColorInput, ColorInputSectionPosition, ColorPicker,
+        ColorValidity, MAX_COLOR_PICKER_KEY_BYTES, color_input, color_picker,
     };
     pub use crate::{ColorSwatch, color_swatch};
     pub use crate::{
@@ -633,7 +679,8 @@ pub mod prelude {
     pub use crate::{MAX_MENUBAR_ROOTS, Menubar, MenubarMenu, menubar, menubar_menu};
     pub use crate::{
         MAX_PENDING_MODALS, ModalOutcome, ModalRequest, ModalToken, ModalsHandle, ModalsManager,
-        Select, confirmation_request, modal_request, modals_manager, select,
+        Select, SelectCheckPosition, SelectOptionContent, confirmation_request, modal_request,
+        modals_manager, select,
     };
     pub use crate::{
         MAX_PENDING_SCROLL_INTENTS, OverscrollBehavior, ScrollArea, ScrollContext, ScrollHandle,
@@ -663,14 +710,15 @@ pub mod prelude {
         notifications, toaster,
     };
     pub use crate::{
-        PillsInput, TagDuplicatePolicy, TagRejection, TagsInput, TagsInputState, pills_input,
-        tags_input,
+        PillsInput, TagDuplicatePolicy, TagRejection, TagsInput, TagsInputLoadingPosition,
+        TagsInputState, pills_input, tags_input,
     };
     pub use crate::{RangeCollision, RangeSlider, RangeThumb, range_slider};
     pub use crate::{Slider, slider};
     pub use crate::{Splitter, splitter};
     pub use crate::{
-        TreeChoiceModel, TreeChoicePolicy, TreeChoices, TreePath, TreeSelect, tree_select,
+        TreeChoiceModel, TreeChoicePolicy, TreeChoices, TreeDrop, TreeDropPosition, TreePath,
+        TreeSelect, expanded_tree_branches, filter_tree_nodes, move_tree_node, tree_select,
     };
 }
 
@@ -678,12 +726,14 @@ pub mod navigation_menu;
 pub use navigation_menu::*;
 
 pub mod slider;
-pub use slider::{Slider, slider};
+pub use slider::{Slider, SliderMark, slider};
 
 pub mod range_slider;
 pub use range_slider::{RangeCollision, RangeSlider, RangeThumb, range_slider};
 
-pub use color_model::{ColorError, Hsva, format_hex_color, parse_hex_color};
+pub use color_model::{
+    ColorError, ColorFormat, Hsva, format_color, format_hex_color, parse_color, parse_hex_color,
+};
 pub use color_slider::{
     AlphaSlider, HueSlider, MAX_COLOR_SLIDER_KEY_BYTES, alpha_slider, hue_slider,
 };
@@ -696,7 +746,10 @@ pub use rating::{MAX_RATING_COUNT, Rating, RatingPrecision, rating};
 pub mod color_picker;
 pub use color_picker::{ColorPicker, MAX_COLOR_PICKER_KEY_BYTES, color_picker};
 pub mod color_input;
-pub use color_input::{ColorInput, ColorValidity, color_input};
+pub use color_input::{
+    ColorEyeDropper, ColorEyeDropperResult, ColorInput, ColorInputSectionPosition, ColorValidity,
+    color_input,
+};
 
 mod number_model;
 pub use number_model::{

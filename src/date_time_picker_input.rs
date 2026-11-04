@@ -3,13 +3,51 @@ use crate::appearance::{Common, common_methods};
 use crate::composite::{self, Callback, ContentPolicy};
 use crate::state::Value;
 use crate::{
-    DateTimeBounds, DateTimeDraft, DateTimeOutcome, DateTimePolicy, DateTimeStatus, DatesProvider,
-    FieldControl, LocalDateTime, TimeFormat, TimeGridSpec,
+    DatePickerLevel, DateTimeBounds, DateTimeDraft, DateTimeOutcome, DateTimePolicy,
+    DateTimePreset, DateTimeStatus, DatesProvider, FieldControl, LocalDateTime, LocalTime,
+    TimeFormat, TimeGridSpec, YearMonth,
 };
 use glory::render::{Direction, FormControl, NodeId};
 use glory::style::{Align, Display, Length, Style};
 use glory::ui::{Result, Widget};
 use glory::{Cage, Scope, Vary};
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum DateTimeDisplayFormat {
+    #[default]
+    Iso,
+    DayMonthYear,
+    MonthDayYear,
+}
+impl DateTimeDisplayFormat {
+    pub(crate) fn format(self, value: LocalDateTime, time: TimeFormat) -> String {
+        if self == Self::Iso {
+            return crate::format_local_date_time(value);
+        }
+        let date = value.date();
+        let time = time
+            .format(value.time())
+            .expect("validated date/time display precision");
+        match self {
+            Self::Iso => unreachable!(),
+            Self::DayMonthYear => {
+                format!(
+                    "{:02}/{:02}/{} {time}",
+                    date.day(),
+                    date.month(),
+                    date.year()
+                )
+            }
+            Self::MonthDayYear => {
+                format!(
+                    "{:02}/{:02}/{} {time}",
+                    date.month(),
+                    date.day(),
+                    date.year()
+                )
+            }
+        }
+    }
+}
 /// Complete valid edits publish immediately. Done commits/closes; Escape keeps
 /// accepted edits. A draft or unresolved timezone gap never replaces the ISO value.
 pub struct DateTimePicker {
@@ -22,12 +60,33 @@ pub struct DateTimePicker {
     bounds: Vary<DateTimeBounds>,
     revision: Vary<u64>,
     format: TimeFormat,
+    display_format: DateTimeDisplayFormat,
+    placeholder: Vary<String>,
+    default_time: Option<LocalTime>,
+    presets: Vec<DateTimePreset>,
+    time_presets: Option<crate::TimePickerPresets>,
+    time_dropdown: bool,
+    time_reverse_controls: bool,
+    time_max_dropdown_height: f64,
+    time_steps: [u8; 3],
+    clearable: bool,
+    clear_label: String,
     readonly: Vary<bool>,
     required: Vary<bool>,
     invalid: Vary<bool>,
     field: Option<FieldControl>,
     form_name: Option<Vary<String>>,
     direction: Direction,
+    month: Option<Vary<YearMonth>>,
+    default_month: Option<YearMonth>,
+    level: Option<Vary<DatePickerLevel>>,
+    default_level: DatePickerLevel,
+    max_level: DatePickerLevel,
+    columns: u8,
+    columns_to_scroll: Option<u8>,
+    hide_outside_dates: bool,
+    hide_weekdays: bool,
+    week_numbers: bool,
     grid: Option<TimeGridSpec>,
     content_policy: ContentPolicy,
     references: [Option<Cage<Option<NodeId>>>; 3],
@@ -40,6 +99,8 @@ pub struct DateTimePicker {
     resolved: Option<Box<dyn FnMut(DateTimeOutcome)>>,
     rejected: Option<Box<dyn FnMut(DateTimeStatus)>>,
     opened: Option<Box<dyn FnMut(bool)>>,
+    month_changed: Option<Box<dyn FnMut(YearMonth)>>,
+    level_changed: Option<Box<dyn FnMut(DatePickerLevel)>>,
 }
 pub fn date_time_picker(
     key: impl Into<String>,
@@ -56,12 +117,33 @@ pub fn date_time_picker(
         bounds: DateTimeBounds::default().into(),
         revision: 0.into(),
         format: TimeFormat::default(),
+        display_format: DateTimeDisplayFormat::default(),
+        placeholder: "Pick date and time".to_owned().into(),
+        default_time: None,
+        presets: Vec::new(),
+        time_presets: None,
+        time_dropdown: false,
+        time_reverse_controls: false,
+        time_max_dropdown_height: 240.,
+        time_steps: [1; 3],
+        clearable: false,
+        clear_label: "Clear date and time".into(),
         readonly: false.into(),
         required: false.into(),
         invalid: false.into(),
         field: None,
         form_name: None,
         direction: Direction::Ltr,
+        month: None,
+        default_month: None,
+        level: None,
+        default_level: DatePickerLevel::Month,
+        max_level: DatePickerLevel::Decade,
+        columns: 1,
+        columns_to_scroll: None,
+        hide_outside_dates: false,
+        hide_weekdays: false,
+        week_numbers: false,
         grid: None,
         content_policy: ContentPolicy::KeepMounted,
         references: [None; 3],
@@ -74,6 +156,8 @@ pub fn date_time_picker(
         resolved: None,
         rejected: None,
         opened: None,
+        month_changed: None,
+        level_changed: None,
     }
 }
 impl DateTimePicker {
@@ -106,6 +190,53 @@ impl DateTimePicker {
         self.format = v;
         self
     }
+    pub fn display_format(mut self, value: DateTimeDisplayFormat) -> Self {
+        self.display_format = value;
+        self
+    }
+    pub fn placeholder(mut self, value: impl Into<Vary<String>>) -> Self {
+        self.placeholder = value.into();
+        self
+    }
+    pub fn default_time(mut self, value: LocalTime) -> Self {
+        self.default_time = Some(value);
+        self
+    }
+    pub fn presets(mut self, values: impl IntoIterator<Item = DateTimePreset>) -> Self {
+        self.presets = values
+            .into_iter()
+            .take(crate::MAX_DATE_TIME_PRESETS + 1)
+            .collect();
+        self
+    }
+    pub fn time_presets(mut self, value: impl Into<crate::TimePickerPresets>) -> Self {
+        self.time_presets = Some(value.into());
+        self
+    }
+    pub fn time_dropdown(mut self, value: bool) -> Self {
+        self.time_dropdown = value;
+        self
+    }
+    pub fn reverse_time_controls(mut self, value: bool) -> Self {
+        self.time_reverse_controls = value;
+        self
+    }
+    pub fn max_time_dropdown_height(mut self, value: f64) -> Self {
+        self.time_max_dropdown_height = value;
+        self
+    }
+    pub fn time_steps(mut self, hour: u8, minute: u8, second: u8) -> Self {
+        self.time_steps = [hour, minute, second];
+        self
+    }
+    pub fn clearable(mut self, value: bool) -> Self {
+        self.clearable = value;
+        self
+    }
+    pub fn clear_label(mut self, value: impl Into<String>) -> Self {
+        self.clear_label = value.into();
+        self
+    }
     pub fn readonly(mut self, v: impl Into<Vary<bool>>) -> Self {
         self.readonly = v.into();
         self
@@ -131,6 +262,46 @@ impl DateTimePicker {
     }
     pub fn direction(mut self, v: Direction) -> Self {
         self.direction = v;
+        self
+    }
+    pub fn month(mut self, value: impl Into<Vary<YearMonth>>) -> Self {
+        self.month = Some(value.into());
+        self
+    }
+    pub fn default_month(mut self, value: YearMonth) -> Self {
+        self.default_month = Some(value);
+        self
+    }
+    pub fn level(mut self, value: impl Into<Vary<DatePickerLevel>>) -> Self {
+        self.level = Some(value.into());
+        self
+    }
+    pub fn default_level(mut self, value: DatePickerLevel) -> Self {
+        self.default_level = value;
+        self
+    }
+    pub fn max_level(mut self, value: DatePickerLevel) -> Self {
+        self.max_level = value;
+        self
+    }
+    pub fn number_of_columns(mut self, value: u8) -> Self {
+        self.columns = value;
+        self
+    }
+    pub fn columns_to_scroll(mut self, value: u8) -> Self {
+        self.columns_to_scroll = Some(value);
+        self
+    }
+    pub fn hide_outside_dates(mut self, value: bool) -> Self {
+        self.hide_outside_dates = value;
+        self
+    }
+    pub fn hide_weekdays(mut self, value: bool) -> Self {
+        self.hide_weekdays = value;
+        self
+    }
+    pub fn with_week_numbers(mut self, value: bool) -> Self {
+        self.week_numbers = value;
         self
     }
     pub fn grid(mut self, v: TimeGridSpec) -> Self {
@@ -189,6 +360,14 @@ impl DateTimePicker {
         self.opened = Some(Box::new(v));
         self
     }
+    pub fn on_month_change(mut self, value: impl FnMut(YearMonth) + 'static) -> Self {
+        self.month_changed = Some(Box::new(value));
+        self
+    }
+    pub fn on_level_change(mut self, value: impl FnMut(DatePickerLevel) + 'static) -> Self {
+        self.level_changed = Some(Box::new(value));
+        self
+    }
 }
 impl Widget for DateTimePicker {
     fn build(&mut self, scope: &Scope) -> Result {
@@ -198,12 +377,28 @@ impl Widget for DateTimePicker {
                 .key
                 .bytes()
                 .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
+            || self.clear_label.trim().is_empty()
+            || self.clear_label.len() > 120
+            || self.clear_label.contains(['\0', '\r', '\n'])
+            || self.columns == 0
+            || self.columns > crate::MAX_DATE_PICKER_COLUMNS
+            || self
+                .columns_to_scroll
+                .is_some_and(|value| value == 0 || value > crate::MAX_DATE_PICKER_COLUMNS)
+            || !self.time_max_dropdown_height.is_finite()
+            || !(80.0..=1200.0).contains(&self.time_max_dropdown_height)
+            || self
+                .time_steps
+                .iter()
+                .enumerate()
+                .any(|(index, step)| *step == 0 || *step > if index == 0 { 24 } else { 59 })
         {
             return Err(glory::render::Error::InvalidProps("invalid date/time dialog key").into());
         }
         let control = std::mem::take(&mut self.value).mount(scope);
         let open = std::mem::take(&mut self.open).mount(scope);
         let format = self.format;
+        let display_format = self.display_format;
         let value_source = control.source.clone();
         let bounds_source = self.bounds.clone();
         let provider_source = self.provider.clone();
@@ -242,6 +437,8 @@ impl Widget for DateTimePicker {
         let resolved = Callback::new(self.resolved.take());
         let rejected = Callback::new(self.rejected.take());
         let opened = Callback::new(self.opened.take());
+        let month_changed = Callback::new(self.month_changed.take());
+        let level_changed = Callback::new(self.level_changed.take());
         let cleanup = (
             changed.clone(),
             committed.clone(),
@@ -249,6 +446,8 @@ impl Widget for DateTimePicker {
             resolved.clone(),
             rejected.clone(),
             opened.clone(),
+            month_changed.clone(),
+            level_changed.clone(),
         );
         scope.on_cleanup(move || {
             cleanup.0.clear();
@@ -257,6 +456,8 @@ impl Widget for DateTimePicker {
             cleanup.3.clear();
             cleanup.4.clear();
             cleanup.5.clear();
+            cleanup.6.clear();
+            cleanup.7.clear();
         })?;
         let enabled = self
             .field
@@ -277,8 +478,16 @@ impl Widget for DateTimePicker {
             self.invalid.clone(),
         );
         let form_name = composite::form_name(scope, &self.form_name)?;
+        let placeholder = composite::validated(scope, &self.placeholder, |value| {
+            if value.len() <= 240 && !value.contains(['\0', '\r', '\n']) {
+                Ok(())
+            } else {
+                Err(glory::render::Error::InvalidProps("invalid date/time placeholder").into())
+            }
+        })?;
         let metadata = scope.bond(move || {
             let mut s = metadata.get().unwrap_or_default();
+            s.placeholder = Some(placeholder.get());
             if let Some(name) = form_name {
                 s.form_control = Some(FormControl {
                     name: name.get(),
@@ -313,7 +522,10 @@ impl Widget for DateTimePicker {
             .style(style)
             .enabled(enabled.clone())
             .focus(self.common.focus)
-            .value(accepted.map(|v| v.0.map(crate::format_local_date_time).unwrap_or_default()))
+            .value(accepted.map(move |v| {
+                v.0.map(|value| display_format.format(value, format))
+                    .unwrap_or_default()
+            }))
             .semantics(metadata);
         if let Some(v) = self.common.name.take() {
             input = input.name(v);
@@ -327,6 +539,48 @@ impl Widget for DateTimePicker {
             });
         }
         input.show_in(&content)?;
+        if self.clearable {
+            let clear_control = control.clone();
+            let clear_changed = changed.clone();
+            let clear_owner = owner;
+            let clear_weak = scope.downgrade();
+            let clear_visible = accepted.map(|value| value.0.is_some());
+            let clear_ready_enabled = enabled.clone();
+            let clear_ready_readonly = readonly.clone();
+            let clear_ready =
+                scope.bond(move || clear_ready_enabled.get() && !clear_ready_readonly.get());
+            let clear_label = self.clear_label.clone();
+            let theme = self.common.theme.clone();
+            let size = self.common.size;
+            let unstyled = self.common.unstyled;
+            glory::ui::when(clear_visible, move || {
+                let control = clear_control.clone();
+                let changed = clear_changed.clone();
+                let weak = clear_weak.clone();
+                let mut clear = crate::button()
+                    .theme(theme.clone())
+                    .size(size)
+                    .variant(crate::ButtonVariant::Subtle)
+                    .compact(true)
+                    .class("sapid-date-time-clear")
+                    .name(clear_label.clone())
+                    .label(clear_label.clone())
+                    .enabled(clear_ready)
+                    .on_press(move || match control.accept(&None) {
+                        Ok(()) => changed.emit(clear_owner, None),
+                        Err(error) => {
+                            if let Some(scope) = weak.upgrade() {
+                                scope.report_error(error);
+                            }
+                        }
+                    });
+                if unstyled {
+                    clear = clear.unstyled();
+                }
+                clear
+            })
+            .show_in(&content)?;
+        }
         let key = format!("{}-inline", self.key);
         let provider = self.provider.clone();
         let policy = self.policy.clone();
@@ -337,7 +591,24 @@ impl Widget for DateTimePicker {
         let size = self.common.size;
         let unstyled = self.common.unstyled;
         let direction = self.direction;
+        let month = self.month.take();
+        let default_month = self.default_month;
+        let level = self.level.take();
+        let default_level = self.default_level;
+        let max_level = self.max_level;
+        let columns = self.columns;
+        let columns_to_scroll = self.columns_to_scroll;
+        let hide_outside_dates = self.hide_outside_dates;
+        let hide_weekdays = self.hide_weekdays;
+        let week_numbers = self.week_numbers;
         let grid = self.grid;
+        let default_time = self.default_time;
+        let presets = self.presets.clone();
+        let time_presets = self.time_presets.clone();
+        let time_dropdown = self.time_dropdown;
+        let time_reverse_controls = self.time_reverse_controls;
+        let time_max_dropdown_height = self.time_max_dropdown_height;
+        let time_steps = self.time_steps;
         let refs = self.references;
         let calendar_ref = self.calendar_ref;
         let active = enabled.clone();
@@ -376,6 +647,8 @@ impl Widget for DateTimePicker {
                 let rejected = rejected.clone();
                 let close = close_open.clone();
                 let opened = close_opened.clone();
+                let month_changed = month_changed.clone();
+                let level_changed = level_changed.clone();
                 let accepted_source = source.clone();
                 let mut picker =
                     crate::inline_date_time_picker(key.clone(), provider.clone(), policy.clone())
@@ -383,11 +656,22 @@ impl Widget for DateTimePicker {
                         .bounds(bounds.clone())
                         .reset_revision(revision.clone())
                         .format(format)
+                        .presets(presets.clone())
+                        .time_dropdown(time_dropdown)
+                        .reverse_time_controls(time_reverse_controls)
+                        .max_time_dropdown_height(time_max_dropdown_height)
+                        .time_steps(time_steps[0], time_steps[1], time_steps[2])
                         .theme(theme.clone())
                         .size(size)
                         .enabled(active.clone())
                         .readonly(readonly.clone())
                         .direction(direction)
+                        .default_level(default_level)
+                        .max_level(max_level)
+                        .number_of_columns(columns)
+                        .hide_outside_dates(hide_outside_dates)
+                        .hide_weekdays(hide_weekdays)
+                        .with_week_numbers(week_numbers)
                         .on_value_change(move |v| {
                             if owner.is_alive() && c.accept(&v).is_ok() {
                                 changed.emit(owner, v);
@@ -396,6 +680,8 @@ impl Widget for DateTimePicker {
                         .on_draft_change(move |v| drafted.emit(owner, v))
                         .on_resolved(move |v| resolved.emit(owner, v))
                         .on_reject(move |v| rejected.emit(owner, v))
+                        .on_month_change(move |value| month_changed.emit(owner, value))
+                        .on_level_change(move |value| level_changed.emit(owner, value))
                         .on_commit(move |v| {
                             committed.emit(owner, v);
                             if owner.is_alive()
@@ -405,6 +691,24 @@ impl Widget for DateTimePicker {
                                 opened.emit(owner, false);
                             }
                         });
+                if let Some(value) = columns_to_scroll {
+                    picker = picker.columns_to_scroll(value);
+                }
+                if let Some(value) = &month {
+                    picker = picker.month(value.clone());
+                }
+                if let Some(value) = default_month {
+                    picker = picker.default_month(value);
+                }
+                if let Some(value) = &level {
+                    picker = picker.level(value.clone());
+                }
+                if let Some(value) = time_presets.clone() {
+                    picker = picker.time_presets(value);
+                }
+                if let Some(value) = default_time {
+                    picker = picker.default_time(value);
+                }
                 if let Some(g) = grid {
                     picker = picker.grid(g);
                 }

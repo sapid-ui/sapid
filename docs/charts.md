@@ -37,6 +37,15 @@ geometry and displays the count of clipped values. Unknown hidden keys,
 nonfinite domains, reversed brushes, and invalid data/options combinations
 retain the previous admitted chart and report a typed error.
 
+`ChartReferenceArea`, `ChartReferenceLine` and `ChartReferenceDot` add portable
+annotations through `reference_areas`, `reference_lines` and `reference_dots`.
+Together they are limited to 16 current records. Category keys must resolve in
+the admitted data, numeric coordinates stay within the chart value budget, and
+optional labels use the ordinary finite chart-label contract. Areas and lines
+render behind series, dots render above them, and all are clipped to the current
+inclusive brush. Their drawing layers are part of `CartesianScene`, so HTML/SVG
+and native consume the same geometry; the showcase does not draw a second overlay.
+
 The legend uses real named buttons and a decorative color swatch. It proposes
 new options; a controlled `options` source may refuse them. Point Click and
 Previous/Next/Clear buttons provide finite sequential data access. Plot points
@@ -71,11 +80,13 @@ acceptance.
 
 ## Evidence
 
-- `chart_model.rs`: four pure data/scale tests. `chart_scene.rs`: seven geometry,
-  gap, signed-stack, brush, clipping, maximum-budget and safe export tests.
-- `tests/charts.rs`: nine component tests, including standalone legend and real
+- `chart_model.rs`: four pure data/scale tests. `chart_scene.rs`: eight geometry,
+  gap, signed-stack, brush, clipping, reference-layer, maximum-budget and safe export tests.
+- `tests/charts.rs`: ten component tests, including standalone legend and real
   Tooltip relations, controlled refusal, paired admission, stable identities,
   empty state and repeated-update node bounds.
+- `cartesian-chart-showcase-browser.json`: four public guides, reference geometry,
+  inclusive brush labels and a real keyed legend interaction.
 - `tests/button_enhancements.rs`: nine regressions, including validation inside
   keyed construction and typed rejection of invalid button children.
 - `chart-strict.log` and `chart-web-strict.log`: strict library/component and

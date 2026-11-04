@@ -40,7 +40,7 @@ mod focused {
                                     ));
                                 }
                             }),
-                        toaster("mantine-notifications")
+                        toaster("showcase-notifications")
                             .theme(theme.clone())
                             .capacity(8)
                             .visible_limit(4)

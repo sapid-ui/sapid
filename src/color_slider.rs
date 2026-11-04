@@ -3,13 +3,11 @@ use crate::appearance::Common;
 use crate::color_model::Hsva;
 use crate::{composite, state::Value};
 use glory::render::{Direction, Event, EventKind};
-use glory::style::{Color, Length, Overflow, PointerEvents, Position, Style};
+use glory::style::{Color, Length, LinearGradient, Overflow, PointerEvents, Position, Style};
 use glory::ui::{Result, Widget};
 use glory::{Scope, Vary};
 
 pub const MAX_COLOR_SLIDER_KEY_BYTES: usize = 58;
-const HUE_SEGMENTS: usize = 120;
-const ALPHA_SEGMENTS: usize = 64;
 #[derive(Clone, Copy)]
 enum Channel {
     Hue,
@@ -184,12 +182,6 @@ fn preview(channel: Channel, value: f64, Color(r, g, b, _): Color) -> Color {
         Channel::Alpha => Color(r, g, b, (value * 255.).round() as u8),
     }
 }
-fn surface(color: Color) -> Style {
-    Style {
-        background: Some(color),
-        ..Style::new()
-    }
-}
 struct Trail {
     checker: [Color; 2],
     channel: Channel,
@@ -215,55 +207,68 @@ impl Widget for Trail {
         let parent = scope.child_in(reference.get().ok_or(glory::ui::Error::Gone)?)?;
         let alpha = matches!(self.channel, Channel::Alpha);
         if alpha {
-            for row in 0..4 {
-                for column in 0..16 {
-                    glory::ui::view()
-                        .class("sapid-alpha-checker-cell")
-                        .style(
-                            surface(if (row + column) % 2 == 0 {
-                                self.checker[0]
-                            } else {
-                                self.checker[1]
-                            })
-                            .position(Position::Absolute)
-                            .left(Length::Percent(column as f64 * 6.25))
-                            .top(Length::Percent(row as f64 * 25.))
-                            .width(Length::Percent(6.25))
-                            .height(Length::Percent(25.))
-                            .pointer_events(PointerEvents::None),
-                        )
-                        .show_in(&parent)?;
-                }
-            }
-        }
-        let count = if alpha { ALPHA_SEGMENTS } else { HUE_SEGMENTS };
-        for index in 0..count {
-            let color = self.color.clone();
-            let channel = self.channel;
-            let fraction = index as f64 / (count - 1) as f64;
-            let left = if self.direction == Direction::Rtl {
-                (count - index - 1) as f64 * 100. / count as f64
-            } else {
-                index as f64 * 100. / count as f64
-            };
-            let style = scope.bond(move || {
-                surface(preview(
-                    channel,
-                    if alpha { fraction } else { fraction * 360. },
-                    color.get(),
-                ))
-                .position(Position::Absolute)
-                .left(Length::Percent(left))
-                .top(Length::Px(0.))
-                .width(Length::Percent(100. / count as f64))
-                .height(Length::Percent(100.))
-                .pointer_events(PointerEvents::None)
-            });
             glory::ui::view()
-                .class("sapid-color-slider-segment")
-                .style(style)
+                .class("sapid-alpha-slider-background")
+                .style(
+                    Style::new()
+                        .background_image(LinearGradient {
+                            angle: if self.direction == Direction::Rtl {
+                                270.
+                            } else {
+                                90.
+                            },
+                            stops: self.checker.to_vec(),
+                        })
+                        .position(Position::Absolute)
+                        .left(Length::Px(0.))
+                        .top(Length::Px(0.))
+                        .width(Length::Percent(100.))
+                        .height(Length::Percent(100.))
+                        .pointer_events(PointerEvents::None),
+                )
                 .show_in(&parent)?;
         }
+        let color = self.color.clone();
+        let channel = self.channel;
+        let direction = self.direction;
+        let style = scope.bond(move || {
+            let stops = match channel {
+                Channel::Hue => [0., 60., 120., 170., 240., 300., 360.]
+                    .into_iter()
+                    .map(|hue| {
+                        Hsva {
+                            hue,
+                            ..Hsva::default()
+                        }
+                        .to_rgba()
+                        .expect("finite hue stop")
+                    })
+                    .collect(),
+                Channel::Alpha => {
+                    let Color(r, g, b, _) = color.get();
+                    vec![Color(0, 0, 0, 0), Color(r, g, b, 255)]
+                }
+            };
+            Style::new()
+                .background_image(LinearGradient {
+                    angle: if direction == Direction::Rtl {
+                        270.
+                    } else {
+                        90.
+                    },
+                    stops,
+                })
+                .position(Position::Absolute)
+                .left(Length::Px(0.))
+                .top(Length::Px(0.))
+                .width(Length::Percent(100.))
+                .height(Length::Percent(100.))
+                .pointer_events(PointerEvents::None)
+        });
+        glory::ui::view()
+            .class("sapid-color-slider-overlay")
+            .style(style)
+            .show_in(&parent)?;
         scope.retain(parent)?;
         Ok(())
     }

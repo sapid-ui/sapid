@@ -47,6 +47,15 @@ changes make no application callbacks by themselves; actual host completion call
 ImageStatus observers. Explicit fit/dimensions survive unstyled; custom style
 overrides remain last. Default object fit follows the engine's Fill behavior.
 
+`srcset([ImageCandidate { source, width }, ...])` and `sizes([...])` add a
+finite responsive request. Candidate widths are strictly increasing in
+`1..=16384`, at most 16 candidates are accepted, and sources are bounded tokens.
+At most eight ordered viewport hints are accepted; the final hint is an
+unconditional pixel or viewport-width fallback. `loading(ImageLoading::{Auto,
+Eager,Lazy})` controls the browser loading policy. Responsive candidates require
+a static primary source and cannot be combined with the one-shot fallback, so a
+fallback request cannot remain shadowed by a stale `srcset` selection.
+
 `background_image(source).fill(children)` composes a relative container with a
 real absolute decorative Image and an independent content slot. It defaults to
 Cover, preserves content interaction and uses no HTML-only CSS URL injection.
@@ -64,7 +73,14 @@ base URL/provider or the opt-in assets loader with its origin/root/budget policy
 The acceptance provider is deterministic test infrastructure, not a production
 transport. See Glory's `docs/image-request-observations.md` for the shared contract.
 
-Additional evidence: `tests/image.rs` covers eight semantic, fallback, callback,
+Glory HTML format v17 serializes the responsive request as real `srcset`, `sizes`
+and `loading` attributes. Browser source selection therefore remains host-owned.
+The native Apace backend has no viewport candidate-selection/lazy-loading
+contract and rejects responsive candidates or `Lazy` during descriptor preflight,
+before identity allocation or resource work; `Auto` and `Eager` retain the normal
+single-source native path.
+
+Additional evidence: `tests/image.rs` covers ten semantic, responsive, fallback, callback,
 source-revision, theme/unstyled, composition and cleanup cases. Avatar's ninth
 case checks actual image load/error/source recovery. Native `tests/image.rs`
 reuses `image_form` across all four themes with real PNG consumption, decode
@@ -77,6 +93,10 @@ reports (CSR/hydration across four themes, plus two delayed-image protocol runs)
 The actual run results are `D:/BuildCache/sapid/image-browser.json` and
 `D:/BuildCache/sapid/avatar-browser.json`; hydration screenshots are stored beside
 them. These runs cover accessibility snapshots, not screen-reader announcements.
+
+The current showcase adds all documented usage/height/fit/fallback examples plus
+responsive loading and BackgroundImage composition; `scripts/image-showcase-browser.cjs`
+checks the live host attributes and geometry.
 
 `Style::object_fit(ObjectFit::{Fill,Contain,Cover,None,ScaleDown})` now provides
 the shared finite image content sizing contract, independently of image box

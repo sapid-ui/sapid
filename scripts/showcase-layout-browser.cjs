@@ -1,9 +1,7 @@
 const fs = require('node:fs');
 const assert = require('node:assert/strict');
-const { chromium } = require(process.env.SAPID_PLAYWRIGHT || 'D:/Works/glory-rs/glory/tests/playwright/node_modules/playwright');
-process.env.TEMP = process.env.TMP = 'D:/BuildCache/sapid/tmp';
-const base = process.env.SAPID_SHOWCASE_BASE || 'http://127.0.0.1:8795';
-const output = 'D:/BuildCache/sapid';
+const { chromium, base, outputPath, outputRoot, writeReport } = require('./showcase-browser-env.cjs');
+const output = outputRoot;
 
 (async () => {
   const report = { base, reports: [], errors: [] };
@@ -40,7 +38,7 @@ const output = 'D:/BuildCache/sapid';
     };
     for (const theme of ['blue', 'green']) for (const scheme of ['light', 'dark']) for (const hydrate of [false, true]) {
       const mode = `${theme}-${scheme}-${hydrate ? 'hydrate' : 'csr'}`;
-      await open('P3-04', 'aspect-ratio', theme, scheme, hydrate);
+      await open('aspect-ratio', 'aspect-ratio', theme, scheme, hydrate);
       const frame = page.locator('.site-aspect-preview');
       await frame.locator('img').waitFor();
       await page.waitForFunction(() => document.querySelector('.site-aspect-preview img')?.naturalWidth > 0);
@@ -60,7 +58,7 @@ const output = 'D:/BuildCache/sapid';
       if (theme === 'blue' && scheme === 'light' && !hydrate) await mobile('aspect');
       report.reports.push({ suite: `aspect-${mode}`, status: 'passed', checks: 'actual image geometry, responsive width, five ratios, retained image and desktop/mobile controls' });
 
-      await open('P6-08', 'splitter', theme, scheme, hydrate);
+      await open('splitter', 'splitter', theme, scheme, hydrate);
       assert.equal(await page.locator('.site-title').textContent(), 'Splitter');
       assert.equal(await page.locator('.site-sidebar').getByRole('link', { name: /Resizable/ }).count(), 0);
       const root = page.locator('.site-splitter-preview');
@@ -246,7 +244,7 @@ const output = 'D:/BuildCache/sapid';
       if (theme === 'blue' && scheme === 'light' && !hydrate) await mobile('splitter');
       report.reports.push({ suite: `splitter-${mode}`, status: 'passed', checks: 'controlled sizes, subpixel drag, retained grab offset through both limits, keyboard-only focus ring, live line sizing, optional grip and stable orientation' });
 
-      await open('P6-07', 'scroll-area', theme, scheme, hydrate);
+      await open('scroll-area', 'scroll-area', theme, scheme, hydrate);
       const group = page.locator('.site-nav-group').filter({ has: page.getByText('Miscellaneous', { exact: true }) });
       assert.equal(await group.getByRole('link', { name: 'ScrollArea', exact: true }).count(), 1);
       assert.equal(await page.locator('.site-nav-group').filter({ has: page.getByText('Layout', { exact: true }) }).getByRole('link', { name: 'ScrollArea', exact: true }).count(), 0);

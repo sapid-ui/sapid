@@ -2,11 +2,9 @@
 const fs = require('node:fs');
 const http = require('node:http');
 const path = require('node:path');
-const { chromium } = require(process.env.SAPID_PLAYWRIGHT || 'playwright');
-const output = process.env.SAPID_STYLE_OUTPUT || 'D:/BuildCache/sapid/style-browser';
+const { chromium, outputPath } = require('./showcase-browser-env.cjs');
+const output = process.env.SAPID_STYLE_OUTPUT || outputPath('style-browser');
 process.env.SAPID_STYLE_OUTPUT = output;
-process.env.TEMP = process.env.TMP = `${output}/tmp`;
-fs.mkdirSync(process.env.TEMP, { recursive: true });
 const css = fs.readFileSync(path.join(__dirname, '../styles/sapid.css'));
 const server = http.createServer((request, response) => {
   if (request.url === '/sapid.css') {

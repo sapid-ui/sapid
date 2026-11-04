@@ -681,3 +681,41 @@ fn input_and_steppers_share_one_focus_border() {
     assert_eq!(row.style.overflow_x, Some(Overflow::Hidden));
     assert_eq!(row.style.overflow_y, Some(Overflow::Hidden));
 }
+
+#[test]
+fn placeholder_is_reactive_bounded_and_keeps_the_number_editor_identity() {
+    let app = App::memory();
+    let reference = app.scope().cage(None);
+    let placeholder = app.scope().cage("Amount".to_owned());
+    app.mount(number_input().node_ref(reference).placeholder(placeholder))
+        .unwrap();
+    let id = reference.get().unwrap();
+    let read = || {
+        app.tree()
+            .node(id)
+            .unwrap()
+            .descriptor
+            .view()
+            .semantics
+            .as_ref()
+            .unwrap()
+            .placeholder
+            .clone()
+    };
+    assert_eq!(read().as_deref(), Some("Amount"));
+    placeholder.revise(|value| *value = "0.00".into());
+    app.flush().unwrap();
+    assert_eq!(read().as_deref(), Some("0.00"));
+    placeholder.revise(|value| *value = "bad\nplaceholder".into());
+    assert!(app.flush().is_err());
+    assert_eq!(read().as_deref(), Some("0.00"));
+    assert_eq!(reference.get(), Some(id));
+
+    let invalid = App::memory();
+    assert!(
+        invalid
+            .mount(number_input().placeholder("bad\rplaceholder"))
+            .is_err()
+    );
+    assert_eq!(invalid.stats().nodes, 0);
+}

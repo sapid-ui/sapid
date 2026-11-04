@@ -32,12 +32,12 @@ mod focused {
     pub fn demo_for(name: &str, theme: Theme) -> Box<dyn Widget> {
         match name {
             "Grid" => Box::new(
-                grid("mantine-grid")
+                grid("showcase-grid")
                     .theme(theme.clone())
                     .columns(3)
                     .gap(12.0)
                     .items((1..=6).map(|index| {
-                        grid_item(format!("mantine-grid-{index}"))
+                        grid_item(format!("showcase-grid-{index}"))
                             .theme(theme.clone())
                             .span(if index == 1 { 2 } else { 1 })
                             .fill(tile(&theme, &format!("Grid item {index}")))

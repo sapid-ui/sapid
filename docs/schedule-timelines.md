@@ -11,6 +11,9 @@ week_view("work", data)
     .selection(selected)
     .on_selection_change(move |proposal| selected.revise(|v| *v = Some(proposal)))
     .time_window(ScheduleTimeWindow::new(8 * 60, 18 * 60, 30)?)
+    .slot_height(44.)
+    .with_all_day(true)
+    .with_header(true)
     .viewport_height(400.)
     .on_window_request(move |request| { /* application supplies the new window */ });
 ```
@@ -24,6 +27,10 @@ the timed grid. An event spanning several days has one visible segment per day,
 and every segment proposes its complete original occurrence interval.
 
 The default time extent is 08:00–18:00, thirty-minute rows. Each row is 32px;
+`slot_height(20..=128)` changes the physical interval height without changing
+the exact event fractions or accessible times. `with_all_day(false)` omits the
+all-day region and `with_header(false)` omits previous/next controls; neither
+changes accepted data or silently mutates events.
 `ScheduleTimeWindow` admits at most 96 rows (672 slots in a week). At most sixteen
 overlap lanes per date are admitted before mounting or publishing source changes.
 The shared occurrence cap remains 2048. Columns have a minimum width of 120px in
@@ -79,6 +86,11 @@ FORMAT-12 Web39 original suite passes12/12 again, errors `[]`, in
 `schedule-timeline-browser-web39.json`, with the independent Calendar12 recorded
 in `schedule-browser-web39.log`. The guard source also passes the two real native
 timeline tests again alongside Calendar3 in `schedule-calendar-guard-native.log`.
+The current showcase gives DayView and WeekView separate real-name routes. Each
+has four documented sections and two live schedules covering time range, overlap,
+all-day data, 44px/60px slot geometry, readonly and header/all-day suppression.
+`scripts/schedule-timelines-showcase-browser.cjs` verifies both pages.
+
 Browser
 protocol and native driver evidence does not establish OS IME or screen-reader
 announcements.

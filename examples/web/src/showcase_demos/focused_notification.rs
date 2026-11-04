@@ -21,7 +21,7 @@ mod focused {
     pub fn demo_for(name: &str, theme: Theme) -> Box<dyn Widget> {
         match name {
             "Notification" => Box::new(
-                notification("mantine-notification")
+                notification("showcase-notification")
                     .theme(theme)
                     .title("Changes saved")
                     .content("Your changes are stored on this device.")

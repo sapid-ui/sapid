@@ -17,10 +17,10 @@ fn heading(level: u8, class: &str, content: &str) -> impl Widget {
         .content(content.to_owned())
 }
 
-fn destination(theme: &Theme, id: &str) -> String {
+fn destination(theme: &Theme, slug: &str) -> String {
     let hue = &theme.name;
     let scheme = theme.scheme.name();
-    format!("showcase.html?widget={id}&theme={hue}&scheme={scheme}")
+    format!("showcase.html?widget={slug}&theme={hue}&scheme={scheme}")
 }
 
 fn link(theme: &Theme, id: &str, label: &str, class: &str) -> impl Widget {
@@ -204,7 +204,7 @@ fn playground(theme: Theme) -> impl Widget {
                     sapid::button().theme(theme.clone()).variant(ButtonVariant::Secondary).label("Reset").on_press(move || count.revise(|count| *count = 0)),
                     copy("site-demo-feedback", caption),
                 )),
-                link(&theme, "P0-01", "Explore Button →", "site-text-link"),
+                link(&theme, "button", "Explore Button →", "site-text-link"),
             )),
             sapid::card().unstyled().class("site-playground-card site-preferences").fill((
                 copy("site-eyebrow", "BUILT AROUND YOU"),
@@ -239,7 +239,7 @@ pub fn home(theme: Theme) -> impl Widget {
                 heading(1, "site-hero-title", "Build beautiful\nRust applications."),
                 copy("site-hero-lead", format!("A thoughtfully crafted widget library for your next idea. {count} widget guides, expressive themes, and the freedom of handwritten Rust.")),
                 view().class("site-hero-actions").fill((
-                    link(&theme, "P0-01", "Get started  →", "site-button site-button-primary"),
+                    link(&theme, "button", "Get started  →", "site-button site-button-primary"),
                     sapid::anchor().unstyled().href("#widgets").label("Explore widgets").class("site-button site-button-secondary"),
                 )),
                 view().class("site-hero-facts").fill((copy("", format!("{count} widget guides")), copy("site-fact-dot", "·"), copy("", "Light & dark themes"), copy("site-fact-dot", "·"), copy("", "Pure Rust"))),
@@ -258,12 +258,12 @@ pub fn home(theme: Theme) -> impl Widget {
                 copy("site-section-description", format!("Explore {count} widget guides across {groups} categories. Each page includes a live example, Rust source, and a clear description of supported behavior.")),
             )),
             view().class("site-category-grid").fill((
-                category(&theme, "Inputs", "P0-02", "Aa", "site-category-blue", "From a simple text field to considered, complete forms."),
-                category(&theme, "Overlays", "P0-07", "▣", "site-category-violet", "Give your content a little room to step forward."),
-                category(&theme, "Navigation", "P6-01", "↗", "site-category-cyan", "Help people find their way, without getting in it."),
-                category(&theme, "Data display", "P8-01", "≡", "site-category-teal", "Turn your information into something easy to understand."),
-                category(&theme, "Dates", "P9-02", "28", "site-category-orange", "A thoughtful set of controls for dates and schedules."),
-                category(&theme, "Charts", "P11-02", "▥", "site-category-pink", "Give your numbers a voice with real, interactive charts."),
+                category(&theme, "Inputs", "text-input", "Aa", "site-category-blue", "From a simple text field to considered, complete forms."),
+                category(&theme, "Overlays", "modal", "▣", "site-category-violet", "Give your content a little room to step forward."),
+                category(&theme, "Navigation", "breadcrumbs", "↗", "site-category-cyan", "Help people find their way, without getting in it."),
+                category(&theme, "Data display", "table", "≡", "site-category-teal", "Turn your information into something easy to understand."),
+                category(&theme, "Dates", "mini-calendar", "28", "site-category-orange", "A thoughtful set of controls for dates and schedules."),
+                category(&theme, "Charts", "area-chart", "▥", "site-category-pink", "Give your numbers a voice with real, interactive charts."),
             )),
         )),
         view().class("site-home-container site-live-section").fill((
@@ -275,7 +275,7 @@ pub fn home(theme: Theme) -> impl Widget {
                 copy("site-eyebrow", "LESS CEREMONY. MORE CREATING."),
                 heading(2, "site-home-section-title", "Your next idea\nstarts here."),
                 copy("site-section-description", "Readable Rust, composable widgets, and a reactive model that stays with you from the first prototype to a complete application."),
-                link(&theme, "P0-01", "Start building  →", "site-button site-button-primary"),
+                link(&theme, "button", "Start building  →", "site-button site-button-primary"),
             )),
             view().class("site-start-code").fill((
                 view().class("site-start-code-header").fill((copy("", "Hello, Sapid"), copy("site-code-language", "Rust"))),

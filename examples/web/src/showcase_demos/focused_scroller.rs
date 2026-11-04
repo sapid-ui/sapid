@@ -53,13 +53,13 @@ mod focused {
                     };
                     let area: Box<dyn Widget> = if horizontal {
                         Box::new(
-                            scroller("mantine-scroller")
+                            scroller("showcase-scroller")
                                 .area(|area| area.theme(theme.clone()))
                                 .content(content),
                         )
                     } else {
                         Box::new(
-                            scroll_area("mantine-scroll-area")
+                            scroll_area("showcase-scroll-area")
                                 .theme(theme.clone())
                                 .name("Scrollable content")
                                 .content(content),

@@ -160,6 +160,9 @@ pub struct Schedule {
     requested: Option<Box<dyn FnMut(ScheduleRequest)>>,
     selected: Option<Box<dyn FnMut(ScheduleSelection)>>,
     view: ScheduleView,
+    view_source: Option<Vary<ScheduleView>>,
+    available_views: Vec<ScheduleView>,
+    view_changed: Option<Box<dyn FnMut(ScheduleView)>>,
     time_window: crate::ScheduleTimeWindow,
     direction: glory::render::Direction,
     grid_ref: Option<Cage<Option<NodeId>>>,
@@ -167,6 +170,13 @@ pub struct Schedule {
     column_width: Option<f64>,
     viewport_height: f64,
     week_start: crate::Weekday,
+    with_header: bool,
+    with_weekdays: bool,
+    show_outside_days: bool,
+    today: Option<crate::CivilDate>,
+    max_events_per_day: usize,
+    with_all_day: bool,
+    slot_height: f64,
 }
 pub fn schedule(key: impl Into<String>, data: impl Into<Vary<ScheduleData>>) -> Schedule {
     Schedule {
@@ -179,6 +189,9 @@ pub fn schedule(key: impl Into<String>, data: impl Into<Vary<ScheduleData>>) -> 
         requested: None,
         selected: None,
         view: ScheduleView::Agenda,
+        view_source: None,
+        available_views: vec![],
+        view_changed: None,
         time_window: crate::ScheduleTimeWindow::default(),
         direction: glory::render::Direction::Ltr,
         grid_ref: None,
@@ -186,6 +199,13 @@ pub fn schedule(key: impl Into<String>, data: impl Into<Vary<ScheduleData>>) -> 
         column_width: None,
         viewport_height: 520.,
         week_start: crate::Weekday::Monday,
+        with_header: true,
+        with_weekdays: true,
+        show_outside_days: true,
+        today: None,
+        max_events_per_day: 3,
+        with_all_day: true,
+        slot_height: 32.,
     }
 }
 pub type AgendaView = Schedule;
@@ -217,12 +237,61 @@ pub fn agenda_view(key: impl Into<String>, data: impl Into<Vary<ScheduleData>>) 
 }
 impl Schedule {
     common_methods!();
+    /// Show or hide the finite previous/next window controls.
+    pub fn with_header(mut self, value: bool) -> Self {
+        self.with_header = value;
+        self
+    }
+    /// Show or hide weekday column headings on month calendars.
+    pub fn with_weekdays(mut self, value: bool) -> Self {
+        self.with_weekdays = value;
+        self
+    }
+    /// Show or hide the disabled dates outside the current month.
+    pub fn show_outside_days(mut self, value: bool) -> Self {
+        self.show_outside_days = value;
+        self
+    }
+    /// Mark a caller-supplied civil date as today without installing a clock.
+    pub fn today(mut self, value: crate::CivilDate) -> Self {
+        self.today = Some(value);
+        self
+    }
+    /// Number of event previews shown in each calendar cell before disclosure.
+    pub fn max_events_per_day(mut self, value: usize) -> Self {
+        self.max_events_per_day = value;
+        self
+    }
+    /// Show or hide the all-day event region above DayView and WeekView.
+    pub fn with_all_day(mut self, value: bool) -> Self {
+        self.with_all_day = value;
+        self
+    }
+    /// Height of one timeline interval row in px (20..=128).
+    pub fn slot_height(mut self, value: f64) -> Self {
+        self.slot_height = value;
+        self
+    }
     pub fn week_start(mut self, value: crate::Weekday) -> Self {
         self.week_start = value;
         self
     }
     pub fn view(mut self, value: ScheduleView) -> Self {
         self.view = value;
+        self
+    }
+    /// Enable the unified schedule header with a finite ordered set of views.
+    /// An empty list keeps the standalone view behavior used by DayView, etc.
+    pub fn available_views(mut self, value: impl IntoIterator<Item = ScheduleView>) -> Self {
+        self.available_views = value.into_iter().take(7).collect();
+        self
+    }
+    pub fn view_value(mut self, value: impl Into<Vary<ScheduleView>>) -> Self {
+        self.view_source = Some(value.into());
+        self
+    }
+    pub fn on_view_change(mut self, callback: impl FnMut(ScheduleView) + 'static) -> Self {
+        self.view_changed = Some(Box::new(callback));
         self
     }
     pub fn time_window(mut self, value: crate::ScheduleTimeWindow) -> Self {
@@ -294,8 +363,260 @@ fn shift_window(
         _ => window.shifted(delta),
     }
 }
+fn view_name(view: ScheduleView) -> &'static str {
+    match view {
+        ScheduleView::Agenda => "Agenda",
+        ScheduleView::Day => "Day",
+        ScheduleView::Week => "Week",
+        ScheduleView::Month => "Month",
+        ScheduleView::Year => "Year",
+        ScheduleView::MobileMonth => "Mobile month",
+    }
+}
+
+fn view_matches_window(view: ScheduleView, data: &ScheduleData) -> bool {
+    let window = data.window();
+    match view {
+        ScheduleView::Agenda => true,
+        ScheduleView::Day | ScheduleView::Week => {
+            window.start().time() == crate::schedule_model::midnight()
+                && window.end().time() == crate::schedule_model::midnight()
+                && window.start().date().days_until(window.end().date())
+                    == if view == ScheduleView::Day { 1 } else { 7 }
+        }
+        ScheduleView::Month | ScheduleView::Year | ScheduleView::MobileMonth => {
+            calendar::validate(data, view).is_ok()
+        }
+    }
+}
+
+impl Schedule {
+    fn build_switcher(&mut self, scope: &Scope) -> Result {
+        if self.available_views.is_empty()
+            || self.available_views.len() > 6
+            || self
+                .available_views
+                .iter()
+                .enumerate()
+                .any(|(index, view)| self.available_views[..index].contains(view))
+        {
+            return Err(invalid());
+        }
+        let available = Rc::new(self.available_views.clone());
+        let view_control = Value {
+            source: self.view_source.take(),
+            default: self.view,
+        }
+        .mount(scope);
+        let accepted_view = composite::validated(scope, &view_control.source, {
+            let available = available.clone();
+            move |view| {
+                if available.contains(view) {
+                    Ok(())
+                } else {
+                    Err(invalid())
+                }
+            }
+        })?;
+        let view_changed = Callback::new(self.view_changed.take());
+        let requested = Callback::new(self.requested.take());
+        let selected = Callback::new(self.selected.take());
+        let selection = std::mem::take(&mut self.selection).mount(scope);
+        let owner = scope.id();
+        let activated = Observers::new(
+            self.common
+                .handlers
+                .remove(&EventKind::Activate)
+                .unwrap_or_default(),
+        );
+        let grid_events = Observers::new(
+            self.common
+                .handlers
+                .remove(&EventKind::GridNavigate)
+                .unwrap_or_default(),
+        );
+        let cleanup = (
+            view_changed.clone(),
+            requested.clone(),
+            selected.clone(),
+            activated.clone(),
+            grid_events.clone(),
+        );
+        scope.on_cleanup(move || {
+            cleanup.0.clear();
+            cleanup.1.clear();
+            cleanup.2.clear();
+            cleanup.3.clear();
+            cleanup.4.clear();
+        })?;
+
+        let root = self.common.node_ref.unwrap_or_else(|| scope.cage(None));
+        let (class, appearance) = self.common.appearance(
+            scope,
+            "sapid-schedule sapid-schedule-switcher",
+            composite::column(8.),
+        );
+        let mut shell = glory::ui::view()
+            .role(Role::Group)
+            .class(class)
+            .style(appearance)
+            .node_ref(root)
+            .focus(self.common.focus)
+            .name(
+                self.common
+                    .name
+                    .take()
+                    .unwrap_or_else(|| "Schedule".to_owned().into()),
+            );
+        for (kind, mut handlers) in std::mem::take(&mut self.common.handlers) {
+            shell = shell.on(kind, move |event| {
+                crate::appearance::observe(&mut handlers, owner, event)
+            });
+        }
+        shell.show_in(scope)?;
+        let content = child(scope, root)?;
+        let header = scope.cage(None);
+        glory::ui::view()
+            .class("sapid-schedule-view-controls")
+            .style(Style::new().display(Display::Flex).gap(8.))
+            .node_ref(header)
+            .show_in(&content)?;
+        let header_scope = child(scope, header)?;
+        let weak = scope.downgrade();
+        for view in available.iter().copied() {
+            let control = view_control.clone();
+            let callback = view_changed.clone();
+            let current = accepted_view;
+            let weak = weak.clone();
+            let activated = activated.clone();
+            let mut button = crate::button()
+                .theme(self.common.theme.clone())
+                .size(self.common.size)
+                .label(view_name(view))
+                .variant(crate::ButtonVariant::Secondary)
+                .enabled(self.common.enabled.clone())
+                .on_press(move || {
+                    if current.get() != view {
+                        if let Err(error) = control.accept(&view) {
+                            if let Some(scope) = weak.upgrade() {
+                                scope.report_error(error);
+                            }
+                        } else {
+                            callback.emit(owner, view);
+                        }
+                    }
+                    activated.emit(owner, Event::Activate);
+                });
+            if self.common.unstyled {
+                button = button.unstyled();
+            }
+            button.show_in(&header_scope)?;
+        }
+
+        let data = self.data.clone();
+        let theme = self.common.theme.clone();
+        let enabled = self.common.enabled.clone();
+        let readonly = self.readonly.clone();
+        let locale = self.locale;
+        let time_window = self.time_window;
+        let direction = self.direction;
+        let column_width = self.column_width;
+        let viewport_height = self.viewport_height;
+        let week_start = self.week_start;
+        let with_header = self.with_header;
+        let with_weekdays = self.with_weekdays;
+        let show_outside_days = self.show_outside_days;
+        let today = self.today;
+        let max_events_per_day = self.max_events_per_day;
+        let with_all_day = self.with_all_day;
+        let slot_height = self.slot_height;
+        let size = self.common.size;
+        let unstyled = self.common.unstyled;
+        let selection_source = selection.source.clone();
+        let child_activated = activated.clone();
+        let child_grid_events = grid_events.clone();
+        let rows = scope.bond({
+            let data = data.clone();
+            let available = available.clone();
+            move || {
+                let requested = accepted_view.get();
+                let data = data.get();
+                let view = if view_matches_window(requested, &data) {
+                    requested
+                } else {
+                    available
+                        .iter()
+                        .copied()
+                        .find(|view| view_matches_window(*view, &data))
+                        .unwrap_or(requested)
+                };
+                vec![(view, Rc::new(data))]
+            }
+        });
+        glory::ui::each(rows)
+            .key(|(_, data)| Rc::as_ptr(data) as usize)
+            .children(move |entry| {
+                let (view, child_data) = entry
+                    .value
+                    .with_untracked(|(view, data)| (*view, data.as_ref().clone()));
+                let requested = requested.clone();
+                let selected = selected.clone();
+                let selection = selection.clone();
+                let activated = child_activated.clone();
+                let grid_events = child_grid_events.clone();
+                let mut child = schedule(
+                    format!("schedule-{}", view_name(view).to_ascii_lowercase()),
+                    child_data,
+                )
+                .view(view)
+                .theme(theme.clone())
+                .size(size)
+                .enabled(enabled.clone())
+                .readonly(readonly.clone())
+                .locale(locale)
+                .time_window(time_window)
+                .direction(direction)
+                .viewport_height(viewport_height)
+                .week_start(week_start)
+                .with_header(with_header)
+                .with_weekdays(with_weekdays)
+                .show_outside_days(show_outside_days)
+                .max_events_per_day(max_events_per_day)
+                .with_all_day(with_all_day)
+                .slot_height(slot_height)
+                .selection(selection_source.clone())
+                .on(EventKind::Activate, move |event| {
+                    activated.emit(owner, event)
+                })
+                .on(EventKind::GridNavigate, move |event| {
+                    grid_events.emit(owner, event)
+                })
+                .on_window_request(move |request| requested.emit(owner, request))
+                .on_selection_change(move |value| {
+                    let _ = selection.accept(&Some(value.clone()));
+                    selected.emit(owner, value);
+                });
+                if let Some(width) = column_width {
+                    child = child.column_width(width);
+                }
+                if let Some(today) = today {
+                    child = child.today(today);
+                }
+                if unstyled {
+                    child = child.unstyled();
+                }
+                child
+            })
+            .show_in(&content)?;
+        scope.retain(header_scope)?;
+        scope.retain(content)
+    }
+}
 impl Widget for Schedule {
     fn build(&mut self, scope: &Scope) -> Result {
+        if !self.available_views.is_empty() {
+            return self.build_switcher(scope);
+        }
         if self.key.is_empty()
             || self.key.len() > 48
             || !self
@@ -307,6 +628,9 @@ impl Widget for Schedule {
                 .is_some_and(|v| !v.is_finite() || !(96. ..=1024.).contains(&v))
             || !self.viewport_height.is_finite()
             || !(80. ..=2048.).contains(&self.viewport_height)
+            || !self.slot_height.is_finite()
+            || !(20. ..=128.).contains(&self.slot_height)
+            || !(1..=16).contains(&self.max_events_per_day)
         {
             return Err(invalid());
         }
@@ -404,38 +728,43 @@ impl Widget for Schedule {
         }
         widget.show_in(scope)?;
         let content = child(scope, root)?;
-        let header = scope.cage(None);
-        glory::ui::view()
-            .class("sapid-schedule-header")
-            .style(Style {
-                flex_wrap: Some(FlexWrap::Wrap),
-                ..Style::new().display(Display::Flex).gap(8.)
-            })
-            .node_ref(header)
-            .show_in(&content)?;
-        let header_scope = child(scope, header)?;
-        for (delta, label) in [
-            (-1, "Previous schedule window"),
-            (1, "Next schedule window"),
-        ] {
-            let s = state.clone();
-            let mut button = crate::button()
-                .label(label)
-                .variant(crate::ButtonVariant::Secondary)
-                .theme(self.common.theme.clone())
-                .size(self.common.size)
-                .enabled(scope.bond(move || {
-                    flags.with(|f| f.enabled)
-                        && accepted.with(|data| shift_window(data.window(), view, delta).is_ok())
-                }))
-                .on_press(move || {
-                    s.report(s.request(delta));
-                    s.activated.emit(s.owner, Event::Activate);
-                });
-            if self.common.unstyled {
-                button = button.unstyled();
+        let mut header_scope = None;
+        if self.with_header {
+            let header = scope.cage(None);
+            glory::ui::view()
+                .class("sapid-schedule-header")
+                .style(Style {
+                    flex_wrap: Some(FlexWrap::Wrap),
+                    ..Style::new().display(Display::Flex).gap(8.)
+                })
+                .node_ref(header)
+                .show_in(&content)?;
+            let mounted = child(scope, header)?;
+            for (delta, label) in [
+                (-1, "Previous schedule window"),
+                (1, "Next schedule window"),
+            ] {
+                let s = state.clone();
+                let mut button = crate::button()
+                    .label(label)
+                    .variant(crate::ButtonVariant::Secondary)
+                    .theme(self.common.theme.clone())
+                    .size(self.common.size)
+                    .enabled(scope.bond(move || {
+                        flags.with(|f| f.enabled)
+                            && accepted
+                                .with(|data| shift_window(data.window(), view, delta).is_ok())
+                    }))
+                    .on_press(move || {
+                        s.report(s.request(delta));
+                        s.activated.emit(s.owner, Event::Activate);
+                    });
+                if self.common.unstyled {
+                    button = button.unstyled();
+                }
+                button.show_in(&mounted)?;
             }
-            button.show_in(&header_scope)?;
+            header_scope = Some(mounted);
         }
         let locale = self.locale;
         let title = accepted.map(move |data| {
@@ -472,19 +801,21 @@ impl Widget for Schedule {
         let size = self.common.size;
         let unstyled = self.common.unstyled;
         let s = state.clone();
-        glory::ui::each(groups)
-            .key(|day| day.date)
-            .children(move |entry| {
-                let day = entry.value;
-                AgendaDayWidget {
-                    day,
-                    state: s.clone(),
-                    theme: theme.clone(),
-                    size,
-                    unstyled,
-                }
-            })
-            .show_in(&content)?;
+        if self.with_all_day || !matches!(view, ScheduleView::Day | ScheduleView::Week) {
+            glory::ui::each(groups)
+                .key(|day| day.date)
+                .children(move |entry| {
+                    let day = entry.value;
+                    AgendaDayWidget {
+                        day,
+                        state: s.clone(),
+                        theme: theme.clone(),
+                        size,
+                        unstyled,
+                    }
+                })
+                .show_in(&content)?;
+        }
         if matches!(view, ScheduleView::Day | ScheduleView::Week) {
             timeline::build(
                 &content,
@@ -505,6 +836,7 @@ impl Widget for Schedule {
                         120.
                     }),
                     viewport_height: self.viewport_height,
+                    slot_height: self.slot_height,
                 },
             )?;
         } else if view != ScheduleView::Agenda {
@@ -521,6 +853,10 @@ impl Widget for Schedule {
                     unstyled: self.common.unstyled,
                     size: self.common.size,
                     grid_ref: self.grid_ref,
+                    with_weekdays: self.with_weekdays,
+                    show_outside_days: self.show_outside_days,
+                    today: self.today,
+                    max_events_per_day: self.max_events_per_day,
                 },
             )?;
         }
@@ -542,7 +878,9 @@ impl Widget for Schedule {
                 s.request_cursor.set(None);
             }
         });
-        scope.retain(header_scope)?;
+        if let Some(header_scope) = header_scope {
+            scope.retain(header_scope)?;
+        }
         scope.retain(content)?;
         scope.retain(state)
     }

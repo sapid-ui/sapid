@@ -21,16 +21,16 @@ mod focused {
     pub fn demo_for(name: &str, theme: Theme) -> Box<dyn Widget> {
         match name {
             "ColorInput" => Box::new(widget(move |scope| {
-                let value = scope.cage("#228be6".to_owned());
-                field("mantine-color-input")
+                let hex = scope.cage("#228be6".to_owned());
+                field("showcase-color-input")
                     .theme(theme.clone())
-                    .label("Accent color")
-                    .description("Enter a hex color, including an optional alpha channel.")
+                    .label("Input label")
+                    .description("Input description")
                     .control(move |field| {
-                        color_input("mantine-color-input")
+                        color_input("showcase-color-input")
                             .field(field)
-                            .value(value)
-                            .on_value_change(move |next| value.revise(|current| *current = next))
+                            .value(hex)
+                            .on_value_change(move |next| hex.revise(|current| *current = next))
                     })
                     .show_in(scope)
             })),

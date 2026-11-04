@@ -12,6 +12,9 @@ date_time_picker(
     DateTimePolicy::FixedOffset(FixedOffset::new(480)?), // minutes, UTC+08:00
 )
 .value(value)
+.placeholder("Pick date and time")
+.display_format(DateTimeDisplayFormat::DayMonthYear)
+.clearable(true)
 .form_name("appointment")
 .on_value_change(move |next| value.revise(|old| *old = next));
 ```
@@ -35,6 +38,28 @@ already empty business source also clears partially entered raw segments.
 resolution rules; applications must advance this counter without wrapping.
 External accepted source updates and resets remain silent.
 
+`default_time(...)` supplies an explicit wall-clock value when a date is chosen
+before any time is entered; without it the draft remains incomplete and midnight
+is never fabricated. At most 32 unique `DateTimePreset` values are accepted.
+Preset labels and values are validated before nodes, and selection follows the
+same bounds, resolver and controlled-value protocol as calendar/time edits.
+
+The input picker supports a bounded placeholder, `clearable(true)` with a custom
+clear label, and finite `DateTimeDisplayFormat::{Iso,DayMonthYear,MonthDayYear}`.
+The formatter changes presentation only; the business value remains a typed
+`LocalDateTime`. The external clear action proposes `None` and is unavailable in
+readonly or disabled state. Inline and popup variants can forward the real
+TimePicker controls dropdown, presets, segment steps, reverse order and bounded
+dropdown height with the `time_*` builders.
+
+The same single-value variants also forward DatePicker's real calendar controls:
+controlled `.month`/`.level`, defaults, `.max_level`, up to four consecutive
+columns, `.columns_to_scroll`, outside-date/weekday visibility and ISO week
+numbers. Month/year/decade transitions reuse MonthPicker and YearPicker grids;
+`.on_month_change` and `.on_level_change` retain controlled refusal semantics.
+The atomic range variants expose the same calendar-control builders while
+retaining one shared range grid and two endpoint time drafts.
+
 `on_draft_change` precedes `on_value_change`. `on_resolved` runs only when the
 whole value proposal has actually been accepted. `on_commit` belongs to Done;
 an unresolved draft instead calls `on_reject` and keeps the popup open. Done
@@ -43,9 +68,9 @@ dismissal retain already accepted real-time edits; they do not roll them back.
 `ContentPolicy::KeepMounted` is the popup default and retains unfinished drafts.
 `Unmount` retires the child Owner and rebuilds from the accepted value on reopen.
 
-The popup Input's successful string is exact civil ISO, for example
+The popup Input displays the selected finite presentation format; ISO produces
 `2024-02-29T10:20:00`, with no `Z` or offset suffix. During a partial/gap/fold
-draft that Input still contains the last accepted complete ISO value. Therefore
+draft that Input still contains the last accepted complete value. Therefore
 an application that requires a complete current draft must validate
 `DateTimeDraft.status` before accepting a form submission; a successful old
 control value alone is not proof that the current draft is valid. Enter in a
@@ -78,11 +103,12 @@ inline and 40 for the popup. All draft/controller state belongs to the live Owne
 Current verification:
 
 - Six pure policy/ISO/bounds tests: `D:/BuildCache/sapid/date-time-model-rust.log`.
-- Eleven component tests plus all eight TimePicker regressions:
+- Fifteen component tests plus the independent TimePicker suite:
   `D:/BuildCache/sapid/date-time-rust.log`. They cover complete/partial drafts,
   same-tick date and segment edits, equal-value reset, controlled Clear refusal,
   gap/fold/Done rejection, edge bounds, resolver and draft-callback reentry,
-  source recovery, Field ISO metadata, Keep/Unmount, and resolver Owner disposal.
+  source recovery, Field ISO metadata, Keep/Unmount, resolver Owner disposal,
+  real level traversal and popup multi-column forwarding.
 - Two actual native tests, including four themes:
   `D:/BuildCache/sapid/date-time-native.log`. Real Dialog layout, Calendar hit
   testing/selected accent pixels, real spinbutton geometry/Spin, focus return,
@@ -116,7 +142,30 @@ suite again passes 12/12 with errors `[]` on Chromium 148.0.7778.96:
 `schedule-date-time-browser-web35.log` also contains the independent Agenda suite.
 Protocol/driver tests do not prove real OS IME or screen-reader announcements.
 
+## Atomic date/time range
+
+`DateTimeRangeValue` represents empty, start-only and complete ordered ranges.
+`DateTimeRangePicker` and `InlineDateTimeRangePicker` share one range calendar
+and two independent segmented time editors; they do not compose two unrelated
+single-value pickers. Presets must be complete, finite and unique. `Done` commits
+only an empty or complete ordered value, while reversed endpoint times remain a
+typed rejected draft and never replace the accepted controlled source.
+
+The public showcase now includes ten DateTimePicker sections, including calendar
+level/multi-column controls plus popup and inline range examples.
+`tests/date_time_range_pickers.rs` covers end-only and
+reverse rejection, partial-to-complete calendar selection with endpoint default
+times, atomic presets, controlled popup close/clear, invalid preset admission,
+level traversal and multi-column week rows.
+The unified release browser matrix also exercises both `date-time-picker` and
+`inline-date-time-picker` public slugs without duplicate semantic identities.
+
 The same original twelve-case suite passes against immutable FORMAT-11 Web36,
 Chromium 148.0.7778.96, errors `[]`: `date-time-picker-browser-web36.json`.
 `schedule-date-time-browser-web36.log` also records independent Agenda12 and
 TimePicker12 regressions from that fixed artifact.
+
+The current showcase adds seven dedicated DateTimePicker sections: input popup,
+seconds/12-hour display formatting, finite presets/default time, forwarded
+TimePicker controls, controlled clearable state, inline mode, and readonly/
+disabled state. These examples use Sapid terminology only.

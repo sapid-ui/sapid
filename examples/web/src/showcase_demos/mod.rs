@@ -440,6 +440,10 @@ mod focused_recurring_events;
 pub fn focused_recurring_events_widget(theme: sapid::Theme) -> Box<dyn Widget> {
     Box::new(focused_recurring_events::demo(theme))
 }
+mod focused_resources_schedule;
+pub fn focused_resources_schedule_widget(theme: sapid::Theme) -> Box<dyn Widget> {
+    Box::new(focused_resources_schedule::demo(theme))
+}
 mod focused_resourcesdayview;
 pub fn focused_resourcesdayview_widget(theme: sapid::Theme) -> Box<dyn Widget> {
     Box::new(focused_resourcesdayview::demo(theme))
@@ -448,13 +452,13 @@ mod focused_resourcesmonthview;
 pub fn focused_resourcesmonthview_widget(theme: sapid::Theme) -> Box<dyn Widget> {
     Box::new(focused_resourcesmonthview::demo(theme))
 }
-mod focused_resourcesschedule;
-pub fn focused_resourcesschedule_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(focused_resourcesschedule::demo(theme))
-}
 mod focused_resourcesweekview;
 pub fn focused_resourcesweekview_widget(theme: sapid::Theme) -> Box<dyn Widget> {
     Box::new(focused_resourcesweekview::demo(theme))
+}
+mod focused_rich_editor;
+pub fn focused_rich_editor_widget(theme: sapid::Theme) -> Box<dyn Widget> {
+    Box::new(focused_rich_editor::demo(theme))
 }
 mod focused_ringprogress;
 pub fn focused_ringprogress_widget(theme: sapid::Theme) -> Box<dyn Widget> {
@@ -679,10 +683,6 @@ pub fn overflow_list_widget(theme: sapid::Theme) -> Box<dyn Widget> {
 mod pin_input;
 pub fn pin_input_widget(theme: sapid::Theme) -> Box<dyn Widget> {
     Box::new(pin_input::demo(theme))
-}
-mod rich_editor;
-pub fn rich_editor_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(rich_editor::demo(theme))
 }
 mod schedule;
 pub fn schedule_widget(theme: sapid::Theme) -> Box<dyn Widget> {

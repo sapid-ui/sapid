@@ -305,18 +305,92 @@ mod focused {
 
     pub fn demo_for(id: &str, theme: Theme) -> Box<dyn Widget> {
         match id {
-            "P1-01" => Box::new(
-                sapid::field("focused-field-email")
+            "P1-01" => Box::new(widget(move |scope| {
+                let loading = scope.cage(true);
+                let invalid = scope.cage(false);
+                let error = scope.bond(move || {
+                    if invalid.get() {
+                        "That workspace name is already used".to_owned()
+                    } else {
+                        String::new()
+                    }
+                });
+                sapid::stack()
                     .theme(theme.clone())
-                    .label("Email address")
-                    .description("We will only use this for important account updates.")
-                    .required(true)
-                    .control(|field| {
-                        sapid::text_field()
-                            .field(field)
-                            .default_value("alex@studio.design")
-                    }),
-            ),
+                    .gap(18.)
+                    .fill((
+                        sapid::field("focused-field-email")
+                            .theme(theme.clone())
+                            .label("Email address")
+                            .description("We will only use this for important account updates.")
+                            .required(true)
+                            .control(|field| {
+                                sapid::text_field()
+                                    .field(field)
+                                    .default_value("alex@studio.design")
+                            }),
+                        sapid::field("focused-field-sections")
+                            .theme(theme.clone())
+                            .label("Workspace URL")
+                            .description("Loading and both sections belong to the real input.")
+                            .control({
+                                let theme = theme.clone();
+                                move |field| {
+                                    sapid::text_field()
+                                        .field(field)
+                                        .default_value("design")
+                                        .loading(loading)
+                                        .loading_position(sapid::InputSectionPosition::Right)
+                                        .left_section(
+                                            sapid::text().theme(theme.clone()).content("@"),
+                                        )
+                                        .right_section_width(44.)
+                                }
+                            }),
+                        sapid::group().theme(theme.clone()).gap(8.).fill(
+                            sapid::button()
+                                .theme(theme.clone())
+                                .variant(sapid::ButtonVariant::Secondary)
+                                .label(scope.bond(move || {
+                                    if loading.get() {
+                                        "Stop loading".to_owned()
+                                    } else {
+                                        "Start loading".to_owned()
+                                    }
+                                }))
+                                .on_press(move || loading.revise(|value| *value = !*value)),
+                        ),
+                        sapid::field("focused-field-success")
+                            .theme(theme.clone())
+                            .label("Workspace name")
+                            .description(
+                                "The description is intentionally rendered before the label.",
+                            )
+                            .error(error)
+                            .success(true)
+                            .order([
+                                sapid::FieldSlot::Description,
+                                sapid::FieldSlot::Label,
+                                sapid::FieldSlot::Control,
+                                sapid::FieldSlot::Error,
+                            ])
+                            .control(|field| {
+                                sapid::text_field().field(field).default_value("north-star")
+                            }),
+                        sapid::button()
+                            .theme(theme.clone())
+                            .variant(sapid::ButtonVariant::Secondary)
+                            .label(scope.bond(move || {
+                                if invalid.get() {
+                                    "Show success".to_owned()
+                                } else {
+                                    "Show error".to_owned()
+                                }
+                            }))
+                            .on_press(move || invalid.revise(|value| *value = !*value)),
+                    ))
+                    .show_in(scope)
+            })),
             "P1-02" => Box::new(
                 sapid::field("focused-field-parts")
                     .theme(theme.clone())

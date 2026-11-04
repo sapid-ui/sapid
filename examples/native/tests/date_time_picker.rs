@@ -249,3 +249,85 @@ fn native_date_time_unmount_readonly_and_resolver_gap_do_not_replace_successful_
     assert_eq!(app.stats().queries, 0);
     assert_eq!(host.renderer().inspect(|doc| doc.top_layers().len()), 0);
 }
+
+#[test]
+fn native_date_time_presets_display_format_and_outer_clear_are_physical_controls() {
+    let host = WindowApp::new();
+    host.renderer().set_viewport(900, 850, 1.).unwrap();
+    let app = host.app();
+    let input = app.scope().cage(None);
+    let panel = app.scope().cage(None);
+    let value = app.scope().cage(Some(dt("2024-02-29T10:20")));
+    host.mount(
+        date_time_picker(
+            "native-features",
+            DatesProvider::new(d("2024-02-29")),
+            DateTimePolicy::Civil,
+        )
+        .node_ref(input)
+        .panel_ref(panel)
+        .value(value)
+        .default_open(true)
+        .display_format(DateTimeDisplayFormat::DayMonthYear)
+        .placeholder("Choose appointment")
+        .clearable(true)
+        .presets([DateTimePreset::new(
+            "Start of shift",
+            dt("2024-02-28T08:15"),
+        )])
+        .on_value_change(move |next| value.revise(|old| *old = next)),
+    )
+    .unwrap();
+    app.settle(16).unwrap();
+    let input = input.get().unwrap();
+    let tree = app.tree();
+    let Props::Input(properties) = tree.node(input).unwrap().descriptor.view().props else {
+        panic!()
+    };
+    assert_eq!(properties.value, "29/02/2024 10:20");
+    drop(tree);
+    let preset = button(app, "Start of shift");
+    let preset_rect = bounds(app, preset);
+    assert!(preset_rect.width > 70. && preset_rect.height > 30.);
+    app.dispatch(preset, Event::Activate).unwrap();
+    app.settle(16).unwrap();
+    assert_eq!(value.get(), Some(dt("2024-02-28T08:15")));
+    app.dispatch(
+        panel.get().unwrap(),
+        Event::Dismiss(glory::render::DismissReason::Escape),
+    )
+    .unwrap();
+    app.settle(16).unwrap();
+    let clear = all(app)
+        .into_iter()
+        .find(|id| {
+            app.tree().node(*id).is_ok_and(|node| {
+                node.descriptor
+                    .view()
+                    .classes
+                    .iter()
+                    .any(|class| class == "sapid-date-time-clear")
+            })
+        })
+        .unwrap();
+    let clear_rect = bounds(app, clear);
+    let hit = host.renderer().inspect(|document| {
+        document
+            .hit(
+                (clear_rect.x + clear_rect.width / 2.) as f32,
+                (clear_rect.y + clear_rect.height / 2.) as f32,
+            )
+            .unwrap()
+            .node_id
+    });
+    assert_eq!(
+        hit,
+        host.renderer()
+            .engine_id(clear, glory::html::Part::Main)
+            .unwrap()
+    );
+    app.dispatch(clear, Event::Activate).unwrap();
+    app.settle(16).unwrap();
+    assert_eq!(value.get(), None);
+    assert!(all(app).into_iter().all(|id| id != clear));
+}

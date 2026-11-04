@@ -505,3 +505,35 @@ fn disabled_tree_uses_a_real_fieldset_for_custom_inputs_and_excludes_item_tab_st
             .all(|id| app.tree().node(*id).unwrap().descriptor.view().focus != FocusMode::TabStop)
     );
 }
+
+#[test]
+fn drag_drop_marks_finite_rows_and_allow_drop_requires_a_consumer() {
+    let app = App::memory();
+    app.mount(
+        tree("reorder")
+            .nodes(nodes())
+            .default_expanded(BTreeSet::from(["src".into()]))
+            .on_drag_drop(|_| {}),
+    )
+    .unwrap();
+
+    for item in items(&app) {
+        let tree = app.tree();
+        let descriptor = tree.node(item).unwrap().descriptor.view();
+        assert_eq!(descriptor.semantics.as_ref().unwrap().drag_capture, None);
+        assert!(
+            descriptor
+                .classes
+                .iter()
+                .any(|class| class == "sapid-tree-draggable")
+        );
+    }
+
+    let invalid = App::memory();
+    assert!(
+        invalid
+            .mount(tree("invalid-drop").nodes(nodes()).allow_drop(|_| true))
+            .is_err()
+    );
+    assert_eq!(invalid.stats().nodes, 0);
+}

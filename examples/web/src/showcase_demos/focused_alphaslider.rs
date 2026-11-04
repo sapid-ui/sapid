@@ -21,7 +21,7 @@ mod focused {
     pub fn demo_for(name: &str, theme: Theme) -> Box<dyn Widget> {
         match name {
             "AlphaSlider" => Box::new(
-                alpha_slider("mantine-alpha")
+                alpha_slider("showcase-alpha")
                     .theme(theme)
                     .name("Opacity")
                     .default_value(0.65)

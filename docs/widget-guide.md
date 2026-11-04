@@ -197,6 +197,19 @@ and state changes; absent parts are omitted at construction. An explicit control
 `name(...)` overrides its Field naming relation. Checkbox's own label remains
 clickable when an external Field label supplies its accessible name.
 
+`.order([FieldSlot; 4])` changes the physical Label/Description/Control/Error
+order. Every slot must occur exactly once, even when its optional content is
+absent, so no accessible relationship can point at a silently omitted part.
+The default remains Label, Description, Control, Error.
+
+TextField and the PasswordInput/Textarea wrappers expose shared
+`.loading(...)`, `.loading_position(...)`, `.left_section(...)`,
+`.right_section(...)` and finite 20–200 CSS pixel section widths. Decorations
+are physical siblings around the same input identity and do not become its
+accessible name. `.success(...)` can be set on the Field or control; a nonempty
+error/invalid state always wins the border state. These are explicit widgets and
+typed styles rather than arbitrary React input-container injection.
+
 `required`, `readonly` and `invalid` also work directly on TextField/Checkbox.
 Field and control flags combine with OR. A nonempty Field error implies invalid
 and adds its error relation alongside the help description. Clearing it removes
@@ -375,10 +388,13 @@ actual outcome. Composition and repeated Escape keys do not dismiss layers.
 Drawer supports Left/Right/Top/Bottom viewport edges and optional finite Sheet
 snap points with captured pointer/touch grips, viewport cancellation and reduced
 motion. See [Drawer evidence](drawer.md) and [Sheet](sheet.md). Popover uses
-`.placement(AnchorPlacement { side, align, gap, viewport_padding, flip, shift })`
+`.placement(AnchorPlacement { side, align, gap, viewport_padding, flip, shift, match_width, arrow })`
 with four physical sides and Start/Center/End alignment. Flip and shift are
 independent collision policies. The default is Bottom/Start with a 6 px gap and
-8 px viewport padding. Scroll/resize placement work coalesces at the host read
+8 px viewport padding. `.width(PopoverWidth::Target)` follows the live trigger
+border box; `Auto`, `Default` and bounded `Px` are also explicit. `.offset(...)`,
+`.with_arrow(true)` and `.arrow(AnchorArrow { ... })` share the host placement
+pass, so the arrow follows the collision-resolved side. Scroll/resize placement work coalesces at the host read
 boundary. `trigger_content` and `close_content` customize the actual Buttons
 while retaining their accessible names and control behavior. See
 [placement and native evidence](popover.md). `.class/.style/.theme/.size/.unstyled` configure the

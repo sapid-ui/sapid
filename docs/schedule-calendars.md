@@ -12,6 +12,10 @@ full year9999. These are civil windows; no clock or time-zone rule is inferred.
 ```rust
 month_view("month", data)
     .week_start(Weekday::Monday)
+    .with_weekdays(true)
+    .show_outside_days(true)
+    .today(CivilDate::new(2024, 2, 29)?)
+    .max_events_per_day(2)
     .selection(selection)
     .on_selection_change(move |value| selection.revise(|v| *v = Some(value)))
     .on_window_request(move |request| { /* application replaces current data */ });
@@ -24,7 +28,12 @@ Each in-month cell summarizes every occurrence overlapping that civil day, so
 an event crossing midnight appears on each touched day, while an event ending at
 midnight does not appear on the following day. The date Button's full name
 includes the date and exact occurrence count. At most three event rows are
-initially visible per cell. A named disclosure Button expands the remaining
+initially visible per cell by default. `max_events_per_day(1..=16)` changes that
+bounded preview count. `with_weekdays(false)` removes the heading row;
+`show_outside_days(false)` leaves the fixed grid geometry but blanks disabled
+outside-month labels. `today(date)` highlights only the explicit caller-supplied
+civil date and never installs a clock. `with_header(false)` removes paging controls.
+A named disclosure Button expands the remaining
 rows; opening another date collapses the former. It has real expanded semantics,
 with no synthetic Menu role. Disclosure Buttons remain mounted while extra row
 Owners retire. Event previews show the bounded title, while accessible names
@@ -104,5 +113,13 @@ root. Current-source native reruns pass Calendar3 plus Day/Week2, followed by
 strict Clippy, with debug0 in the verified D-drive native target:
 `schedule-calendar-guard-native.log`, `schedule-calendar-native-clippy.log`.
 The final Month/Year/Mobile images were visually inspected:
-`schedule-calendar-{month,year,mobile}-web39.png`. These driver/protocol checks
+`schedule-calendar-{month,year,mobile}-web39.png`.
+
+The current showcase gives MonthView, YearView and MobileMonthView independent
+real-name routes. Each contains four documentation sections and two live calendars
+covering disclosure, explicit today, preview bounds, header/weekday/outside-day
+suppression, readonly, locale/week-start and the controlled-window boundary.
+`scripts/schedule-calendars-showcase-browser.cjs` verifies all three pages.
+
+These driver/protocol checks
 do not prove screen-reader announcements or OS IME.

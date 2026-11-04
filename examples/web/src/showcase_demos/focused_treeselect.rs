@@ -116,38 +116,6 @@ mod focused {
             )
     }
 
-    fn filter_tree_nodes(nodes: &[TreeNode], query: &str) -> Vec<TreeNode> {
-        let query = query.trim().to_lowercase();
-        if query.is_empty() {
-            return nodes.to_vec();
-        }
-        nodes
-            .iter()
-            .filter(|candidate| {
-                nodes.iter().any(|node| {
-                    if !node.label.to_lowercase().contains(&query) {
-                        return false;
-                    }
-                    if node.key == candidate.key {
-                        return true;
-                    }
-                    let mut parent = node.parent.as_deref();
-                    while let Some(key) = parent {
-                        if key == candidate.key {
-                            return true;
-                        }
-                        parent = nodes
-                            .iter()
-                            .find(|node| node.key == key)
-                            .and_then(|node| node.parent.as_deref());
-                    }
-                    false
-                })
-            })
-            .cloned()
-            .collect()
-    }
-
     fn tree_select_field(
         theme: &Theme,
         key: &'static str,
@@ -181,6 +149,15 @@ mod focused {
             })
     }
 
+    fn documentation_heading(theme: &Theme, id: &'static str, title: &'static str) -> impl Widget {
+        glory::ui::view()
+            .semantics(Some(Box::new(glory::render::Semantics {
+                id: Some(glory::render::SemanticId::new(id).expect("showcase section id")),
+                ..Default::default()
+            })))
+            .fill(sapid::title(3).theme(theme.clone()).content(title))
+    }
+
     fn tree_select_demo(theme: Theme) -> impl Widget {
         widget(move |scope| {
             let single = scope.cage(TreeChoices::default());
@@ -189,12 +166,15 @@ mod focused {
             let independent = scope.cage(TreeChoices::default());
             let searched = scope.cage(TreeChoices::default());
             let query = scope.cage(String::new());
-            let expanded = scope.cage(tree_expanded());
-            let filtered =
-                scope.bond(move || filter_tree_nodes(&tree_select_nodes(), &query.get()));
-            let nothing_found = scope.bond(move || filtered.with(Vec::is_empty));
             let controlled_expanded = scope.cage(tree_expanded());
+            let node_theme = theme.clone();
+            let value_theme = theme.clone();
             let children: Vec<Box<dyn Widget>> = vec![
+                Box::new(documentation_heading(
+                    &theme,
+                    "tree-select-usage",
+                    "Usage and single selection",
+                )),
                 Box::new(tree_select_field(
                     &theme,
                     "tree-select-single",
@@ -204,11 +184,11 @@ mod focused {
                     false,
                     TreeChoicePolicy::Leaves,
                 )),
-                Box::new(
-                    sapid::title(3)
-                        .theme(theme.clone())
-                        .content("Multiple selection"),
-                ),
+                Box::new(documentation_heading(
+                    &theme,
+                    "tree-select-modes",
+                    "Multiple and checkbox selection",
+                )),
                 Box::new(sapid::stack().theme(theme.clone()).gap(8.0).fill((
                     tree_select_field(
                         &theme,
@@ -222,7 +202,7 @@ mod focused {
                     removable_tree_choices(theme.clone(), multiple, TreeChoicePolicy::Leaves),
                 ))),
                 Box::new(
-                    sapid::title(3)
+                    sapid::title(4)
                         .theme(theme.clone())
                         .content("Checkbox selection with parent-child cascade"),
                 ),
@@ -249,54 +229,42 @@ mod focused {
                     "Check individual leaves without changing their parent or siblings.",
                     independent,
                     true,
-                    TreeChoicePolicy::Leaves,
+                    TreeChoicePolicy::AnyNode,
                 )),
-                Box::new(sapid::title(3).theme(theme.clone()).content("Search")),
-                Box::new(
-                    sapid::text_field()
-                        .theme(theme.clone())
-                        .name("Search tree items")
-                        .placeholder("Search items")
-                        .value(query)
-                        .on_value_change(move |next| {
-                            query.revise(|current| *current = next);
-                            searched.revise(|current| *current = TreeChoices::default());
-                            expanded.revise(|current| {
-                                *current = tree_expanded();
-                            });
-                        }),
-                ),
+                Box::new(documentation_heading(
+                    &theme,
+                    "tree-select-searchable",
+                    "Searchable and nothing found",
+                )),
                 Box::new(
                     field("tree-select-search")
                         .theme(theme.clone())
                         .label("Filtered items")
-                        .description("Matching items retain their ancestors.")
+                        .description("Type in the control; matching items retain their ancestors.")
                         .control(move |field| {
                             tree_select("tree-select-search")
                                 .field(field)
                                 .class("site-tree-select-search")
-                                .nodes(filtered)
+                                .nodes(tree_select_nodes())
                                 .value(searched)
-                                .expanded(expanded)
+                                .search(query)
+                                .searchable(true)
+                                .nothing_found_message("Nothing found...")
+                                .default_expanded(tree_expanded())
                                 .placeholder("Pick a matching item")
                                 .on_value_change(move |next| {
                                     searched.revise(|current| *current = next)
                                 })
-                                .on_expanded_change(move |next| {
-                                    expanded.revise(|current| *current = next)
+                                .on_search_change(move |next| {
+                                    query.revise(|current| *current = next)
                                 })
                         }),
                 ),
-                Box::new(when(nothing_found, || {
-                    text()
-                        .class("site-tree-select-empty")
-                        .content("Nothing found")
-                })),
-                Box::new(
-                    sapid::title(3)
-                        .theme(theme.clone())
-                        .content("Controlled expansion"),
-                ),
+                Box::new(documentation_heading(
+                    &theme,
+                    "tree-select-expanded",
+                    "Controlled expansion and clearable",
+                )),
                 Box::new(
                     field("tree-select-expansion")
                         .theme(theme.clone())
@@ -334,11 +302,76 @@ mod focused {
                             }),
                     )),
                 ),
+                Box::new(documentation_heading(
+                    &theme,
+                    "tree-select-limits",
+                    "Selection limit and hidden picked items",
+                )),
                 Box::new(
-                    sapid::title(3)
+                    tree_select("tree-select-limited")
                         .theme(theme.clone())
-                        .content("Disabled, read only and error"),
+                        .name("Pick up to 2 items")
+                        .nodes(tree_select_nodes())
+                        .multiple(true)
+                        .searchable(true)
+                        .hide_picked(true)
+                        .max_values(2)
+                        .default_expanded(tree_expanded())
+                        .placeholder("Pick values"),
                 ),
+                Box::new(documentation_heading(
+                    &theme,
+                    "tree-select-rendering",
+                    "Custom node and selected value rendering",
+                )),
+                Box::new(
+                    tree_select("tree-select-rendered")
+                        .theme(theme.clone())
+                        .name("Rendered categories")
+                        .nodes(tree_select_nodes())
+                        .multiple(true)
+                        .default_value(tree_choice("headphones"))
+                        .default_expanded(tree_expanded())
+                        .render_node(move |node| {
+                            group().theme(node_theme.clone()).gap(6.0).fill((
+                                theme_icon(Icon::ChevronRight)
+                                    .theme(node_theme.clone())
+                                    .size(Size::ExtraSmall)
+                                    .variant(ThemeIconVariant::Soft),
+                                text().content(node.with(|node| node.label.clone())),
+                            ))
+                        })
+                        .render_value(move |node| {
+                            badge()
+                                .theme(value_theme.clone())
+                                .content(node.with(|node| node.label.clone()))
+                        }),
+                ),
+                Box::new(documentation_heading(
+                    &theme,
+                    "tree-select-dropdown",
+                    "Dropdown size, position and connecting lines",
+                )),
+                Box::new(
+                    tree_select("tree-select-dropdown")
+                        .theme(theme.clone())
+                        .name("Compact dropdown without lines")
+                        .nodes(tree_select_nodes())
+                        .default_expanded(tree_expanded())
+                        .with_lines(false)
+                        .popup_width(220.)
+                        .max_dropdown_height(180.)
+                        .popup_placement(glory::render::AnchorPlacement {
+                            side: glory::render::AnchorSide::Top,
+                            flip: false,
+                            ..glory::render::AnchorPlacement::default()
+                        }),
+                ),
+                Box::new(documentation_heading(
+                    &theme,
+                    "tree-select-states",
+                    "Disabled, read only and error",
+                )),
                 Box::new(
                     tree_select("tree-select-disabled")
                         .theme(theme.clone())

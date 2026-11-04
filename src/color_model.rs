@@ -26,6 +26,21 @@ pub enum ColorError {
     UnitOutOfRange,
     InvalidHex,
 }
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum ColorFormat {
+    #[default]
+    Hex,
+    Hexa,
+    Rgb,
+    Rgba,
+    Hsl,
+    Hsla,
+}
+impl ColorFormat {
+    pub const fn alpha(self) -> bool {
+        matches!(self, Self::Hexa | Self::Rgba | Self::Hsla)
+    }
+}
 impl std::fmt::Display for ColorError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
@@ -143,6 +158,142 @@ pub fn format_hex_color(Color(r, g, b, a): Color, include_alpha: bool) -> String
         format!("#{r:02x}{g:02x}{b:02x}{a:02x}")
     } else {
         format!("#{r:02x}{g:02x}{b:02x}")
+    }
+}
+
+fn arguments<'a>(value: &'a str, name: &str) -> Option<Vec<&'a str>> {
+    let body = value
+        .strip_prefix(name)?
+        .strip_prefix('(')?
+        .strip_suffix(')')?;
+    Some(body.split(',').map(str::trim).collect())
+}
+fn byte(value: &str) -> Result<u8, ColorError> {
+    value.parse().map_err(|_| ColorError::InvalidHex)
+}
+fn unit(value: &str) -> Result<f64, ColorError> {
+    let value: f64 = value.parse().map_err(|_| ColorError::InvalidHex)?;
+    if (0. ..=1.).contains(&value) {
+        Ok(value)
+    } else {
+        Err(ColorError::InvalidHex)
+    }
+}
+fn percent(value: &str) -> Result<f64, ColorError> {
+    let value = value
+        .strip_suffix('%')
+        .ok_or(ColorError::InvalidHex)?
+        .parse::<f64>()
+        .map_err(|_| ColorError::InvalidHex)?
+        / 100.;
+    if (0. ..=1.).contains(&value) {
+        Ok(value)
+    } else {
+        Err(ColorError::InvalidHex)
+    }
+}
+pub fn parse_color(value: &str, format: ColorFormat) -> Result<Color, ColorError> {
+    match format {
+        ColorFormat::Hex | ColorFormat::Hexa => parse_hex_color(value).and_then(|color| {
+            let has_alpha = matches!(value.len(), 5 | 9);
+            if has_alpha == format.alpha() {
+                Ok(color)
+            } else {
+                Err(ColorError::InvalidHex)
+            }
+        }),
+        ColorFormat::Rgb | ColorFormat::Rgba => {
+            let args = arguments(value, if format.alpha() { "rgba" } else { "rgb" })
+                .ok_or(ColorError::InvalidHex)?;
+            if args.len() != if format.alpha() { 4 } else { 3 } {
+                return Err(ColorError::InvalidHex);
+            }
+            Ok(Color(
+                byte(args[0])?,
+                byte(args[1])?,
+                byte(args[2])?,
+                if format.alpha() {
+                    (unit(args[3])? * 255.).round() as u8
+                } else {
+                    255
+                },
+            ))
+        }
+        ColorFormat::Hsl | ColorFormat::Hsla => {
+            let args = arguments(value, if format.alpha() { "hsla" } else { "hsl" })
+                .ok_or(ColorError::InvalidHex)?;
+            if args.len() != if format.alpha() { 4 } else { 3 } {
+                return Err(ColorError::InvalidHex);
+            }
+            let hue: f64 = args[0].parse().map_err(|_| ColorError::InvalidHex)?;
+            if !hue.is_finite() {
+                return Err(ColorError::InvalidHex);
+            }
+            let saturation = percent(args[1])?;
+            let lightness = percent(args[2])?;
+            let c = (1. - (2. * lightness - 1.).abs()) * saturation;
+            let hp = hue.rem_euclid(360.) / 60.;
+            let x = c * (1. - (hp % 2. - 1.).abs());
+            let (r, g, b) = if hp < 1. {
+                (c, x, 0.)
+            } else if hp < 2. {
+                (x, c, 0.)
+            } else if hp < 3. {
+                (0., c, x)
+            } else if hp < 4. {
+                (0., x, c)
+            } else if hp < 5. {
+                (x, 0., c)
+            } else {
+                (c, 0., x)
+            };
+            let m = lightness - c / 2.;
+            let q = |v: f64| ((v + m) * 255.).round() as u8;
+            Ok(Color(
+                q(r),
+                q(g),
+                q(b),
+                if format.alpha() {
+                    (unit(args[3])? * 255.).round() as u8
+                } else {
+                    255
+                },
+            ))
+        }
+    }
+}
+pub fn format_color(color: Color, format: ColorFormat) -> String {
+    let Color(r, g, b, a) = color;
+    match format {
+        ColorFormat::Hex => format_hex_color(color, false),
+        ColorFormat::Hexa => format_hex_color(color, true),
+        ColorFormat::Rgb => format!("rgb({r}, {g}, {b})"),
+        ColorFormat::Rgba => format!("rgba({r}, {g}, {b}, {:.2})", f64::from(a) / 255.),
+        ColorFormat::Hsl | ColorFormat::Hsla => {
+            let hsv = Hsva::from_rgba(color);
+            let lightness = hsv.value * (1. - hsv.saturation / 2.);
+            let saturation = if lightness == 0. || lightness == 1. {
+                0.
+            } else {
+                (hsv.value - lightness) / lightness.min(1. - lightness)
+            };
+            if format.alpha() {
+                format!(
+                    "hsla({:.0}, {:.0}%, {:.0}%, {:.2})",
+                    hsv.hue,
+                    saturation * 100.,
+                    lightness * 100.,
+                    f64::from(a) / 255.
+                )
+            } else {
+                format!(
+                    "hsl({:.0}, {:.0}%, {:.0}%)",
+                    hsv.hue,
+                    saturation * 100.,
+                    lightness * 100.
+                )
+            }
+        }
     }
 }
 
@@ -297,5 +448,37 @@ mod tests {
             parse_hex_color(&"f".repeat(1_000_000)),
             Err(ColorError::InvalidHex)
         );
+    }
+    #[test]
+    fn public_formats_parse_and_emit_canonical_colors() {
+        for (format, input, color) in [
+            (ColorFormat::Hex, "#228be6", Color(34, 139, 230, 255)),
+            (ColorFormat::Hexa, "#228be680", Color(34, 139, 230, 128)),
+            (
+                ColorFormat::Rgb,
+                "rgb(34, 139, 230)",
+                Color(34, 139, 230, 255),
+            ),
+            (
+                ColorFormat::Rgba,
+                "rgba(34, 139, 230, 0.5)",
+                Color(34, 139, 230, 128),
+            ),
+            (
+                ColorFormat::Hsl,
+                "hsl(208, 80%, 52%)",
+                Color(35, 139, 231, 255),
+            ),
+            (
+                ColorFormat::Hsla,
+                "hsla(208, 80%, 52%, 0.5)",
+                Color(35, 139, 231, 128),
+            ),
+        ] {
+            assert_eq!(parse_color(input, format), Ok(color));
+            assert!(parse_color(&format_color(color, format), format).is_ok());
+        }
+        assert!(parse_color("#228be680", ColorFormat::Hex).is_err());
+        assert!(parse_color("rgba(1, 2, 3, 2)", ColorFormat::Rgba).is_err());
     }
 }

@@ -26,7 +26,7 @@ mod focused {
         match name {
             "MonthPickerInput" => Box::new(
                 month_picker_input(
-                    "mantine-month-input",
+                    "showcase-month-input",
                     DatesProvider::new(date("2024-02-29")),
                 )
                 .theme(theme)

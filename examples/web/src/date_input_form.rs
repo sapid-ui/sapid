@@ -58,6 +58,7 @@ pub fn form(scope: &Scope, theme: Theme) -> (impl Widget + use<>, State) {
                     .value(value)
                     .enabled(enabled)
                     .readonly(readonly)
+                    .placeholder("YYYY-MM-DD")
                     .picker_label("Choose editable appointment")
                     .picker_title("Editable appointment dates")
                     .parser(move |v| {
@@ -120,6 +121,7 @@ pub fn form(scope: &Scope, theme: Theme) -> (impl Widget + use<>, State) {
                 .theme(theme.clone())
                 .name("Custom date parser")
                 .class("custom-date-input")
+                .placeholder("29/02/2024 or ISO")
                 .parser(|v| {
                     if v == "29/02/2024" {
                         DateParse::Date(d("2024-02-29"))
@@ -127,6 +129,21 @@ pub fn form(scope: &Scope, theme: Theme) -> (impl Widget + use<>, State) {
                         parse_iso_date_draft(v)
                     }
                 }),
+            date_input("day-month-year-date", provider)
+                .with_picker(false)
+                .theme(theme.clone())
+                .name("Day month year format")
+                .class("day-month-year-date-input")
+                .format(DateInputFormat::DayMonthYear)
+                .placeholder("DD/MM/YYYY")
+                .default_value(Some(d("2024-02-29"))),
+            date_input("month-day-year-date", provider)
+                .with_picker(false)
+                .theme(theme.clone())
+                .name("Month day year format")
+                .class("month-day-year-date-input")
+                .format(DateInputFormat::MonthDayYear)
+                .placeholder("MM/DD/YYYY"),
             date_input("unstyled-date", provider)
                 .with_picker(false)
                 .theme(theme.clone())

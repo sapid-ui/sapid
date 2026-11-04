@@ -1,6 +1,7 @@
 use glory::Scope;
 use glory::core::Vary;
 use glory::render::{Event, EventKind, Purpose};
+use glory::ui::{Children, IntoChildren};
 use glory::ui::{Result, Widget};
 
 use crate::appearance::{Common, common_methods, configure, observe};
@@ -17,9 +18,24 @@ pub struct TextField {
     required: Vary<bool>,
     readonly: Vary<bool>,
     invalid: Vary<bool>,
+    success: Vary<bool>,
+    loading: Vary<bool>,
+    loading_position: InputSectionPosition,
+    left_section: Option<Children>,
+    right_section: Option<Children>,
+    left_section_width: f64,
+    right_section_width: f64,
     extra_error: Option<(glory::render::SemanticId, Vary<String>)>,
     placeholder: Option<Vary<String>>,
     multiline: bool,
+    semantic_id: Option<glory::render::SemanticId>,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum InputSectionPosition {
+    Left,
+    #[default]
+    Right,
 }
 
 pub fn text_field() -> TextField {
@@ -34,13 +50,25 @@ pub fn text_field() -> TextField {
         required: false.into(),
         readonly: false.into(),
         invalid: false.into(),
+        success: false.into(),
+        loading: false.into(),
+        loading_position: InputSectionPosition::Right,
+        left_section: None,
+        right_section: None,
+        left_section_width: 36.,
+        right_section_width: 36.,
         extra_error: None,
         placeholder: None,
         multiline: false,
+        semantic_id: None,
     }
 }
 
 impl TextField {
+    pub(crate) fn semantic_id(mut self, value: glory::render::SemanticId) -> Self {
+        self.semantic_id = Some(value);
+        self
+    }
     pub fn placeholder(mut self, value: impl Into<Vary<String>>) -> Self {
         self.placeholder = Some(value.into());
         self
@@ -71,6 +99,34 @@ impl TextField {
     }
     pub fn invalid(mut self, value: impl Into<Vary<bool>>) -> Self {
         self.invalid = value.into();
+        self
+    }
+    pub fn success(mut self, value: impl Into<Vary<bool>>) -> Self {
+        self.success = value.into();
+        self
+    }
+    pub fn loading(mut self, value: impl Into<Vary<bool>>) -> Self {
+        self.loading = value.into();
+        self
+    }
+    pub fn loading_position(mut self, value: InputSectionPosition) -> Self {
+        self.loading_position = value;
+        self
+    }
+    pub fn left_section(mut self, value: impl IntoChildren) -> Self {
+        self.left_section = Some(value.into_children());
+        self
+    }
+    pub fn right_section(mut self, value: impl IntoChildren) -> Self {
+        self.right_section = Some(value.into_children());
+        self
+    }
+    pub fn left_section_width(mut self, value: f64) -> Self {
+        self.left_section_width = value;
+        self
+    }
+    pub fn right_section_width(mut self, value: f64) -> Self {
+        self.right_section_width = value;
         self
     }
 
@@ -114,6 +170,16 @@ impl TextField {
 
 impl Widget for TextField {
     fn build(&mut self, scope: &Scope) -> Result {
+        if !self.left_section_width.is_finite()
+            || !self.right_section_width.is_finite()
+            || !(20.0..=200.0).contains(&self.left_section_width)
+            || !(20.0..=200.0).contains(&self.right_section_width)
+        {
+            return Err(glory::render::Error::InvalidProps(
+                "input section widths require finite 20..=200 CSS pixels",
+            )
+            .into());
+        }
         let placeholder =
             crate::text_input::placeholder(scope, self.placeholder.take(), self.multiline)?;
         let control = std::mem::take(&mut self.value).mount(scope);
@@ -121,6 +187,40 @@ impl Widget for TextField {
         let dirty = Dirty::new(scope);
         let reference = self.common.node_ref.unwrap_or_else(|| scope.cage(None));
         let base = self.common.theme.control(self.common.size);
+        let success = self.field.as_ref().map_or_else(
+            || self.success.clone(),
+            |field| field.success_state(scope, self.success.clone()),
+        );
+        let loading_left = self.loading_position == InputSectionPosition::Left;
+        let has_loading = self.loading.is_reactive() || self.loading.get();
+        let has_left = self.left_section.is_some() || (has_loading && loading_left);
+        let has_right = self.right_section.is_some() || (has_loading && !loading_left);
+        if has_left || has_right {
+            let styles = self.common.style.clone();
+            let mut fallback = base.padding.unwrap_or_else(|| glory::style::Edges::all(0.));
+            if has_left {
+                fallback.left = fallback.left.max(self.left_section_width);
+            }
+            if has_right {
+                fallback.right = fallback.right.max(self.right_section_width);
+            }
+            let left = self.left_section_width;
+            let right = self.right_section_width;
+            self.common.style = scope
+                .bond(move || {
+                    let mut style = styles.get();
+                    let mut padding = style.padding.unwrap_or(fallback);
+                    if has_left {
+                        padding.left = padding.left.max(left);
+                    }
+                    if has_right {
+                        padding.right = padding.right.max(right);
+                    }
+                    style.padding = Some(padding);
+                    style
+                })
+                .into();
+        }
         let enabled = self
             .field
             .as_ref()
@@ -134,6 +234,17 @@ impl Widget for TextField {
             self.readonly.clone(),
             self.invalid.clone(),
         );
+        let metadata = if let Some(id) = self.semantic_id.take() {
+            scope
+                .bond(move || {
+                    let mut state = metadata.get().unwrap_or_default();
+                    state.id = Some(id.clone());
+                    Some(state)
+                })
+                .into()
+        } else {
+            metadata
+        };
         let metadata = if let Some((id, message)) = self.extra_error.take() {
             scope
                 .bond(move || {
@@ -166,12 +277,16 @@ impl Widget for TextField {
             || self.required.get()
             || self.readonly.get()
             || self.invalid.get()
+            || success.is_reactive()
+            || success.get()
         {
             let state = metadata.clone();
             let styles = self.common.style.clone();
             let theme = self.common.theme.clone();
             let unstyled = self.common.unstyled;
             let active = enabled.clone();
+            let success_color = theme.success;
+            let successful = success.clone();
             self.common.style = scope
                 .bond(move || {
                     let mut style = styles.get();
@@ -183,6 +298,8 @@ impl Widget for TextField {
                         if let Some(state) = state.get() {
                             if state.invalid && style.border_color.is_none() {
                                 style.border_color = Some(theme.danger);
+                            } else if successful.get() && style.border_color.is_none() {
+                                style.border_color = Some(success_color);
                             }
                             if state.readonly && style.background.is_none() {
                                 style.background = Some(theme.disabled);
@@ -232,7 +349,64 @@ impl Widget for TextField {
         for (kind, mut handlers) in std::mem::take(&mut self.common.handlers) {
             inner = inner.on(kind, move |event| observe(&mut handlers, owner, event));
         }
-        inner.show_in(scope)?;
+        let decorated = self.left_section.is_some() || self.right_section.is_some() || has_loading;
+        if decorated {
+            let section_style = |left: bool, width: f64| {
+                let mut style = glory::style::Style::new()
+                    .position(glory::style::Position::Absolute)
+                    .top(glory::style::Length::Px(8.))
+                    .width(glory::style::Length::Px(width));
+                if left {
+                    style = style.left(glory::style::Length::Px(0.));
+                } else {
+                    style = style.right(glory::style::Length::Px(0.));
+                }
+                style
+            };
+            let mut editor = glory::ui::view()
+                .class("sapid-text-field-editor")
+                .style(glory::style::Style::new().position(glory::style::Position::Relative))
+                .fill(inner);
+            if let Some(children) = self.left_section.take() {
+                editor = editor.fill(
+                    glory::ui::view()
+                        .class("sapid-input-left-section")
+                        .style(section_style(true, self.left_section_width))
+                        .fill(children),
+                );
+            }
+            if let Some(children) = self.right_section.take() {
+                editor = editor.fill(
+                    glory::ui::view()
+                        .class("sapid-input-right-section")
+                        .style(section_style(false, self.right_section_width))
+                        .fill(children),
+                );
+            }
+            editor = editor.fill(
+                crate::spinner()
+                    .theme(self.common.theme.clone())
+                    .diameter(18.)
+                    .thickness(2.)
+                    .visible(self.loading.clone())
+                    .class(if loading_left {
+                        "sapid-input-loading is-left"
+                    } else {
+                        "sapid-input-loading is-right"
+                    })
+                    .style(section_style(
+                        loading_left,
+                        if loading_left {
+                            self.left_section_width
+                        } else {
+                            self.right_section_width
+                        },
+                    )),
+            );
+            editor.show_in(scope)?;
+        } else {
+            inner.show_in(scope)?;
+        }
         let node = reference.try_get()?.ok_or(glory::ui::Error::Gone)?;
         let weak = scope.downgrade();
         let mut previous = initial;

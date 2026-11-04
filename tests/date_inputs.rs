@@ -520,3 +520,87 @@ fn direct_oversized_commit_uses_a_finite_rejection_and_restores_accepted_date() 
     app.flush().unwrap();
     assert_eq!(props(&app, id).value, "2024-03-01");
 }
+
+#[test]
+fn finite_formats_parse_prefixes_and_format_program_and_calendar_values() {
+    let app = App::memory();
+    let reference = app.scope().cage(None);
+    let value = app.scope().cage(Some(d("2024-02-26")));
+    app.mount(
+        date_input("formatted", p())
+            .with_picker(false)
+            .node_ref(reference)
+            .format(DateInputFormat::DayMonthYear)
+            .value(value)
+            .on_value_change(move |next| value.revise(|old| *old = next)),
+    )
+    .unwrap();
+    let id = reference.get().unwrap();
+    assert_eq!(props(&app, id).value, "26/02/2024");
+    edit(&app, id, "29/02/", false);
+    app.flush().unwrap();
+    assert_eq!(props(&app, id).value, "29/02/");
+    assert_eq!(value.get(), Some(d("2024-02-26")));
+    edit(&app, id, "29/02/2024", false);
+    app.flush().unwrap();
+    assert_eq!(value.get(), Some(d("2024-02-29")));
+    assert_eq!(props(&app, id).value, "29/02/2024");
+
+    assert_eq!(
+        DateInputFormat::MonthDayYear.parse("02/29/2024"),
+        DateParse::Date(d("2024-02-29"))
+    );
+    assert_eq!(
+        DateInputFormat::MonthDayYear.parse("02/29/"),
+        DateParse::Incomplete
+    );
+    assert_eq!(
+        DateInputFormat::MonthDayYear.parse("29/02/2024"),
+        DateParse::Invalid
+    );
+}
+
+#[test]
+fn reactive_placeholder_uses_shared_input_metadata_without_replacing_the_editor() {
+    let app = App::memory();
+    let reference = app.scope().cage(None);
+    let placeholder = app.scope().cage("DD/MM/YYYY".to_owned());
+    app.mount(
+        date_input("placeholder", p())
+            .with_picker(false)
+            .node_ref(reference)
+            .format(DateInputFormat::DayMonthYear)
+            .placeholder(placeholder),
+    )
+    .unwrap();
+    let id = reference.get().unwrap();
+    assert_eq!(
+        app.tree()
+            .node(id)
+            .unwrap()
+            .descriptor
+            .view()
+            .semantics
+            .as_ref()
+            .unwrap()
+            .placeholder
+            .as_deref(),
+        Some("DD/MM/YYYY")
+    );
+    placeholder.revise(|value| *value = "Select a date".into());
+    app.flush().unwrap();
+    assert_eq!(reference.get(), Some(id));
+    assert_eq!(
+        app.tree()
+            .node(id)
+            .unwrap()
+            .descriptor
+            .view()
+            .semantics
+            .as_ref()
+            .unwrap()
+            .placeholder
+            .as_deref(),
+        Some("Select a date")
+    );
+}

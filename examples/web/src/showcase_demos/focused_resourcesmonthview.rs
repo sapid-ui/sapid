@@ -72,24 +72,24 @@ mod focused {
                 let data = resource_data(window);
                 let widget: Box<dyn Widget> = match name {
                     "ResourcesWeekView" => Box::new(
-                        resources_week_view("mantine-resource-week", data)
+                        resources_week_view("showcase-resource-week", data)
                             .theme(theme)
                             .name("Resources this week")
                             .viewport_height(400.0),
                     ),
                     "ResourcesMonthView" => Box::new(
-                        resources_month_view("mantine-resource-month", data)
+                        resources_month_view("showcase-resource-month", data)
                             .theme(theme)
                             .name("Resources this month"),
                     ),
                     "ResourcesSchedule" => Box::new(
-                        resources_schedule("mantine-resources", data)
+                        resources_schedule("showcase-resources", data)
                             .theme(theme)
                             .name("Resource schedule")
                             .viewport_height(400.0),
                     ),
                     _ => Box::new(
-                        resources_day_view("mantine-resource-day", data)
+                        resources_day_view("showcase-resource-day", data)
                             .theme(theme)
                             .name("Resources today")
                             .viewport_height(400.0),

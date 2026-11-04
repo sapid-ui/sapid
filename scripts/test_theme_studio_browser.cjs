@@ -2,8 +2,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const { buildRoot, outputPath } = require('./showcase-browser-env.cjs');
 const digest = value => crypto.createHash('sha256').update(value).digest('hex');
-const output = process.env.SAPID_STUDIO_TIMING_OUTPUT || 'D:/BuildCache/sapid/theme-studio-frame-regression';
+const output = process.env.SAPID_STUDIO_TIMING_OUTPUT || outputPath('theme-studio-frame-regression');
 
 // Runs automatically from theme-studio-browser.cjs. For a focused real-WASM
 // run, set SAPID_SHOWCASE_DIRECTORY to the built showcase directory and run
@@ -101,12 +102,12 @@ if (require.main === module) {
   const { chromium } = require(process.env.SAPID_PLAYWRIGHT || 'playwright');
   const { serve } = require('./showcase-acceptance.cjs');
   test('sample editing waits for the committed mode rather than an editor being retired', { timeout: 120000 }, async () => {
-    const relative = path.relative(path.resolve('D:/BuildCache/sapid'), path.resolve(output));
-    assert(!relative.startsWith('..') && !path.isAbsolute(relative), 'Timing output stays under D:/BuildCache/sapid');
+    const relative = path.relative(buildRoot, path.resolve(output));
+    assert(!relative.startsWith('..') && !path.isAbsolute(relative), 'Timing output stays under SAPID_BUILD_ROOT');
     fs.mkdirSync(output, { recursive: true });
     process.env.TEMP = process.env.TMP = path.join(output, 'tmp');
     fs.mkdirSync(process.env.TEMP, { recursive: true });
-    const directory = process.env.SAPID_SHOWCASE_DIRECTORY || 'D:/BuildCache/sapid/showcase';
+    const directory = process.env.SAPID_SHOWCASE_DIRECTORY || outputPath('showcase');
     const server = await serve(directory);
     let browser;
     try {

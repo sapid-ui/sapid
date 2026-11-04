@@ -1,6 +1,6 @@
 use glory::{
     prelude::*,
-    render::{ComboboxKind, Event, NodeId, PopupKind, Role, TreeCheckState},
+    render::{ComboboxKind, Event, NodeId, PopupKind, Props, Role, TreeCheckState},
 };
 use sapid::{
     TreeChoiceModel, TreeChoicePolicy, TreeChoices, TreeKind, TreeModel, TreeNode, tree_select,
@@ -89,6 +89,18 @@ fn named(app: &App, name: &str) -> NodeId {
                 == Some(name)
         })
         .unwrap_or_else(|| panic!("missing {name}"))
+}
+fn has_name(app: &App, name: &str) -> bool {
+    all(app).into_iter().any(|id| {
+        app.tree()
+            .node(id)
+            .unwrap()
+            .descriptor
+            .view()
+            .name
+            .as_deref()
+            == Some(name)
+    })
 }
 fn model() -> TreeChoiceModel {
     TreeChoiceModel::new(
@@ -411,4 +423,106 @@ fn branch_leaf_policy_and_owner_retirement_do_not_publish_hidden_choices() {
             .iter()
             .all(|id| app.tree().node(*id).unwrap().descriptor.view().role != Some(Role::TreeItem))
     );
+}
+
+#[test]
+fn searchable_hide_picked_limit_rendering_and_popup_configuration_are_component_features() {
+    let html = glory::ssr::snapshot(
+        tree_select("rendered-values")
+            .nodes(nodes())
+            .name("Rendered files")
+            .default_value(TreeChoices::new([model().path("a").unwrap()]).unwrap())
+            .default_open(true)
+            .default_expanded(BTreeSet::from(["root".into()]))
+            .render_node(|node| {
+                glory::ui::text().content(node.with(|node| format!("Node: {}", node.label)))
+            })
+            .render_value(|node| {
+                glory::ui::text().content(node.with(|node| format!("Picked: {}", node.label)))
+            }),
+    )
+    .unwrap()
+    .html;
+    assert!(html.contains("Node: Alpha") && html.contains("Picked: Alpha"));
+    let app = App::memory();
+    let changes = Rc::new(RefCell::new(Vec::new()));
+    let output = changes.clone();
+    app.mount(
+        tree_select("searchable")
+            .nodes(nodes())
+            .name("Search files")
+            .searchable(true)
+            .hide_picked(true)
+            .multiple(true)
+            .max_values(1)
+            .nothing_found_message("No files")
+            .with_lines(false)
+            .max_dropdown_height(180.)
+            .popup_width(240.)
+            .default_open(true)
+            .default_expanded(BTreeSet::from(["root".into()]))
+            .render_node(|node| {
+                glory::ui::text().content(node.with(|node| format!("Node: {}", node.label)))
+            })
+            .render_value(|node| {
+                glory::ui::text().content(node.with(|node| format!("Picked: {}", node.label)))
+            })
+            .on_value_change(move |value| output.borrow_mut().push(value)),
+    )
+    .unwrap();
+    let trigger = named(&app, "Search files");
+    let revision = match &app.tree().node(trigger).unwrap().descriptor.view().props {
+        Props::Input(value) => value.revision,
+        _ => panic!("searchable TreeSelect must use an editable input"),
+    };
+    app.dispatch(
+        trigger,
+        Event::ValueChanged {
+            value: "Beta".into(),
+            composing: false,
+            revision,
+        },
+    )
+    .unwrap();
+    app.flush().unwrap();
+    assert!(has_name(&app, "Root") && has_name(&app, "Beta"));
+    assert!(!has_name(&app, "Alpha"));
+    app.dispatch(named(&app, "Beta"), Event::Activate).unwrap();
+    app.flush().unwrap();
+    assert_eq!(changes.borrow().last().unwrap().paths().len(), 1);
+    assert!(!has_name(&app, "Beta"));
+    let revision = match &app.tree().node(trigger).unwrap().descriptor.view().props {
+        Props::Input(value) => value.revision,
+        _ => unreachable!(),
+    };
+    app.dispatch(
+        trigger,
+        Event::ValueChanged {
+            value: String::new(),
+            composing: false,
+            revision,
+        },
+    )
+    .unwrap();
+    app.flush().unwrap();
+    app.dispatch(named(&app, "Alpha"), Event::Activate).unwrap();
+    app.flush().unwrap();
+    assert_eq!(changes.borrow().len(), 1);
+    let tree = all(&app)
+        .into_iter()
+        .find(|id| app.tree().node(*id).unwrap().descriptor.view().role == Some(Role::Tree))
+        .unwrap();
+    let current = app.tree();
+    let style = &current.node(tree).unwrap().descriptor.view().style;
+    assert_eq!(style.width, Some(glory::style::Length::Px(240.)));
+    assert_eq!(style.height, Some(glory::style::Length::Px(180.)));
+    assert!(all(&app).into_iter().all(|id| {
+        !app.tree()
+            .node(id)
+            .unwrap()
+            .descriptor
+            .view()
+            .classes
+            .contains(&"sapid-tree-guide".to_owned())
+    }));
 }

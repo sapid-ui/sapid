@@ -32,7 +32,7 @@ mod focused {
     pub fn demo_for(name: &str, theme: Theme) -> Box<dyn Widget> {
         match name {
             "Portal" => Box::new(widget(move |scope| {
-                let context = portal_context(scope, "mantine-portal")?;
+                let context = portal_context(scope, "showcase-portal")?;
                 let content_theme = theme.clone();
                 view()
                     .fill((

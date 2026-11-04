@@ -316,3 +316,73 @@ fn domain_edge_headers_are_disabled_and_owner_retirement_removes_live_items() {
     assert!(!app.dispatch(old, Event::Activate).unwrap());
     assert_eq!(app.stats().queries, 0);
 }
+
+#[test]
+fn unified_schedule_view_controls_switch_real_views_after_application_window_acceptance() {
+    let app = App::memory();
+    let source = app.scope().cage(data());
+    let view = app.scope().cage(ScheduleView::Week);
+    let changed = app.scope().cage(0usize);
+    let activated = app.scope().cage(0usize);
+    let update_scope = app.scope().downgrade();
+    app.mount(
+        schedule("switcher", source)
+            .view(ScheduleView::Week)
+            .view_value(view)
+            .available_views([ScheduleView::Day, ScheduleView::Week])
+            .on(EventKind::Activate, move |_| {
+                activated.revise(|count| *count += 1)
+            })
+            .on_view_change({
+                move |next| {
+                    changed.revise(|count| *count += 1);
+                    update_scope
+                        .upgrade()
+                        .unwrap()
+                        .batch(|| {
+                            if next == ScheduleView::Day {
+                                source.revise(|current| {
+                                    *current = ScheduleData::new(
+                                        current.zone().clone(),
+                                        ScheduleWindow::days(d("2024-02-26"), 1).unwrap(),
+                                        current.events().iter().cloned(),
+                                    )
+                                    .unwrap();
+                                });
+                            }
+                            view.revise(|current| *current = next);
+                        })
+                        .unwrap();
+                }
+            }),
+    )
+    .unwrap();
+    assert_eq!(count_class(&app, "sapid-week-view"), 1);
+    let day = button(&app, "Day");
+    app.dispatch(day, Event::Activate).unwrap();
+    app.flush().unwrap();
+    assert_eq!(changed.get(), 1);
+    assert_eq!(activated.get(), 1);
+    assert_eq!(count_class(&app, "sapid-day-view"), 1);
+    assert_eq!(count_class(&app, "sapid-week-view"), 0);
+    assert_eq!(button(&app, "Day"), day);
+
+    let refused = App::memory();
+    let proposals = refused.scope().cage(0usize);
+    refused
+        .mount(
+            schedule("refused-switcher", data())
+                .view(ScheduleView::Week)
+                .view_value(ScheduleView::Week)
+                .available_views([ScheduleView::Day, ScheduleView::Week])
+                .on_view_change(move |_| proposals.revise(|count| *count += 1)),
+        )
+        .unwrap();
+    refused
+        .dispatch(button(&refused, "Day"), Event::Activate)
+        .unwrap();
+    refused.flush().unwrap();
+    assert_eq!(proposals.get(), 1);
+    assert_eq!(count_class(&refused, "sapid-week-view"), 1);
+    assert_eq!(count_class(&refused, "sapid-day-view"), 0);
+}

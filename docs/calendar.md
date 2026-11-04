@@ -33,12 +33,27 @@ clamped to its explicit bounds. Today is a separate optional value.
 
 ## Real grid and bounded editing state
 
-The semantic structure is a named Grid View, seven Row Views (one weekday header
-plus six date rows), seven ColumnHeaders and 42 GridCells. Real Button controls
+The default semantic structure is a named Grid View, seven Row Views (one weekday
+header plus six date rows), seven ColumnHeaders and 42 GridCells. Real Button controls
 inside represent valid dates. Dates before year 1 or after year 9999 leave an
 empty cell; they do not wrap into a fictional date. Grid/TableMetadata counts and
 coordinates agree in HTML and AccessKit. `aria-selected` belongs to GridCell;
 today's actual date Button independently has `aria-current="date"`.
+
+`with_week_numbers(true)` adds one passive table column with six ISO-8601 week
+numbers; it never creates another action or selection source. `hide_weekdays(true)`
+removes only the weekday header row. The resulting TableMetadata reports 8
+columns and/or 6 rows while all 42 real day cells and their keyboard protocol
+remain intact. Week computation is bounded arithmetic over the current date and
+does not install a locale, cache or calendar service.
+
+`selection(...)` exposes the same finite `DateSelection` projection used by the
+picker family for custom calendar behavior. In this mode a day activation calls
+`on_value_change(Some(date))` without mutating the supplied projection; the
+application may accept, reject or transform that proposal, including a bounded
+multiple-date policy. `render_day(...)` is a typed Widget factory for passive
+inline day content. Its date is reactive and it does not replace the real day
+Button, GridCell coordinates, accessible date name or activation protocol.
 
 Exactly one enabled day has a roving Tab stop when the visible month contains a
 selectable day. Other days remain programmatically focusable; native disabled
@@ -90,12 +105,18 @@ foreign, disabled or nearer-grid origins cannot target the previous Grid.
 ## Presentation, readonly and lifecycle
 
 Theme, size, unstyled, class/style, name, enabled, focus and node_ref use the
-ordinary builder API. The public ref and name belong to the semantic Grid;
+ordinary builder API. `full_width(true)` changes the outer calendar, grid, rows
+and cells to one shared percentage layout; it does not scale the control height
+or create a viewport listener. `static_mode(true)` removes header navigation and
+all 42 day Buttons, leaving passive day content in the real GridCells. Static
+mode does not disguise disabled interactive controls as a display-only calendar.
+
+The public ref and name belong to the semantic Grid;
 class/style belong to its outer layout. RTL mirrors the physical column layout
 and keyboard direction explicitly. English and simplified Chinese labels and
 week-start order come from the provider. No automatic locale negotiation occurs.
-The layout has fixed bounded cells based on control size; explicit outer widths
-do not invent a responsive breakpoint policy.
+The default layout has fixed bounded cells based on control size; full width is
+an explicit percentage mode and does not invent a responsive breakpoint policy.
 
 Readonly keeps day focus and month/year browsing, sets the real Grid's
 `aria-readonly`, and suppresses selection proposals. Disabled propagates to all
@@ -111,11 +132,13 @@ history, pending query or task is kept after retirement.
 
 ## Evidence
 
-- Six component tests in `tests/calendars.rs`: finite roles/counts,
+- Eight component tests in `tests/calendars.rs`: finite roles/counts,
   selection/current/focus separation, same-tick arrows plus activation,
   controlled month refusal, invalid external recovery, weekday/date exclusions,
   readonly, disabled, iterator sentinel, year edge, deselection and callback
-  Owner retirement. `D:/BuildCache/sapid/calendar-rust.log`.
+  Owner retirement, ISO week-number cells, hidden weekday rows and adjusted
+  table metadata, custom selection projection, typed day rendering, full-width
+  geometry and passive static mode. `D:/BuildCache/sapid/calendar-rust.log`.
 - Seven shared date-model tests and Cargo/strict evidence are in `dates.md`.
 - Shared grid tests: three render target/key/identity cases plus Current::Date
   target/reset, all eighteen HTML tests including full field-delta oracle,
@@ -139,6 +162,10 @@ history, pending query or task is kept after retirement.
   `D:/BuildCache/sapid/calendar-browser-web27b.log`. Screenshots are
   `calendar-{hue}-{scheme}-{csr|hydrate}.png` under the same build root;
   blue light CSR and green dark CSR captures were visually inspected.
+- The component-name showcase has five sections for usage, bounded custom
+  multiple selection, full width, passive custom-day static mode and week/header
+  options. `scripts/calendar-showcase-browser.cjs` verifies the live grid and
+  writes `D:/BuildCache/sapid/calendar-showcase-browser.json`.
 
 Actual screen-reader announcement timing, OS IME, IANA timezone and DST handling
 are outside these claims. Calendar itself never changes an absolute instant.

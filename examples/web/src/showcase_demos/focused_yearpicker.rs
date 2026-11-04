@@ -25,7 +25,7 @@ mod focused {
     pub fn demo_for(name: &str, theme: Theme) -> Box<dyn Widget> {
         match name {
             "YearPicker" => Box::new(
-                year_picker("mantine-year", DatesProvider::new(date("2024-02-29")))
+                year_picker("showcase-year", DatesProvider::new(date("2024-02-29")))
                     .theme(theme)
                     .name("Billing year")
                     .default_value(YearSelection::Single(Some(CivilYear::new(2024).unwrap()))),

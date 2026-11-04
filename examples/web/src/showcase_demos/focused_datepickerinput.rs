@@ -26,13 +26,20 @@ mod focused {
         match name {
             "DatePickerInput" => Box::new(
                 date_picker_input(
-                    "mantine-date-picker-input",
+                    "showcase-date-picker-input",
                     DatesProvider::new(date("2024-02-29")),
                 )
                 .theme(theme)
                 .name("Appointment date")
                 .default_value(DateSelection::Single(Some(date("2024-02-29"))))
-                .trigger_label("Choose appointment date"),
+                .trigger_label("Choose appointment date")
+                .presets([
+                    DatePickerPreset::new(
+                        "Yesterday",
+                        DateSelection::Single(Some(date("2024-02-28"))),
+                    ),
+                    DatePickerPreset::new("Today", DateSelection::Single(Some(date("2024-02-29")))),
+                ]),
             ),
             _ => unreachable!("unsupported named demo: {name}"),
         }

@@ -1,7 +1,6 @@
 use glory::apace::{Raster, shell::WindowApp};
 use glory::prelude::*;
 use glory::render::{Action, DragPhase, Event, NodeId, Query, QueryValue, RangeCommand, Rect};
-use glory::style::Color;
 use std::{cell::RefCell, rc::Rc};
 fn bounds(app: &App, id: NodeId) -> Rect {
     let out = Rc::new(RefCell::new(None));
@@ -75,37 +74,26 @@ fn native_picker_four_themes_has_real_plane_pixels_two_axis_mapping_focus_and_st
         let indicator = bounds(app, nodes(app, "sapid-color-plane-indicator")[0]);
         assert!((indicator.x + indicator.width / 2. - (rect.x + rect.width * 0.5)).abs() < 1.);
         assert!((indicator.y + indicator.height / 2. - (rect.y + rect.height * 0.5)).abs() < 1.);
-        let cells = nodes(app, "sapid-color-plane-cell");
-        assert_eq!(cells.len(), 256);
-        let mut raster = Raster::new();
-        raster.draw(host.renderer()).unwrap();
-        let cell = *cells
-            .iter()
-            .find(|id| {
-                let r = bounds(app, **id);
-                r.x > rect.x + 200. && r.y < rect.y + 2.
-            })
-            .unwrap();
-        let cell_rect = bounds(app, cell);
-        let Some(Color(r, g, b, a)) = app
+        let hue_layer = nodes(app, "sapid-color-plane-hue")[0];
+        let initial_hue = app
             .tree()
-            .node(cell)
+            .node(hue_layer)
             .unwrap()
             .descriptor
             .view()
             .style
-            .background
-        else {
-            panic!("color")
-        };
-        let actual = pixel(
-            &raster,
-            cell_rect.x + cell_rect.width / 2.,
-            cell_rect.y + cell_rect.height / 2.,
-        );
-        for (actual, want) in actual.into_iter().zip([r, g, b, a]) {
-            assert!(actual.abs_diff(want) <= 2);
-        }
+            .background;
+        assert_eq!(nodes(app, "sapid-color-plane-saturation").len(), 1);
+        assert_eq!(nodes(app, "sapid-color-plane-value").len(), 1);
+        assert!(nodes(app, "sapid-color-plane-cell").is_empty());
+        let mut raster = Raster::new();
+        raster.draw(host.renderer()).unwrap();
+        let white = pixel(&raster, rect.x + 3., rect.y + 3.);
+        let green = pixel(&raster, rect.x + rect.width - 3., rect.y + 3.);
+        let black = pixel(&raster, rect.x + rect.width / 2., rect.y + rect.height - 3.);
+        assert!(white[0] > 240 && white[1] > 240 && white[2] > 240);
+        assert!(green[1] > 240 && green[0] < 20 && green[2] < 20);
+        assert!(black[0] < 20 && black[1] < 20 && black[2] < 20);
         let editor = editor.get().unwrap();
         app.scope().action(Action::Focus(editor)).unwrap();
         app.flush().unwrap();
@@ -147,14 +135,13 @@ fn native_picker_four_themes_has_real_plane_pixels_two_axis_mapping_focus_and_st
         raster.draw(host.renderer()).unwrap();
         let now = app
             .tree()
-            .node(cell)
+            .node(hue_layer)
             .unwrap()
             .descriptor
             .view()
             .style
-            .background
-            .unwrap();
-        assert_ne!(now, Color(r, g, b, a));
+            .background;
+        assert_ne!(now, initial_hue);
         assert_eq!(
             host.renderer()
                 .engine_id(plane, glory::html::Part::Main)
@@ -185,6 +172,7 @@ fn native_color_input_preserves_hex_editor_identity_and_error_metadata() {
             .form_name("accent")
             .control(move |field| {
                 sapid::color_input("hex")
+                    .format(sapid::ColorFormat::Hexa)
                     .show_picker(false)
                     .field(field)
                     .value(value)

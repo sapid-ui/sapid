@@ -27,7 +27,7 @@ async (hostPage) => {
     await shot(p, 'home-light');
     reports.push({suite:'showcase-rust-home',status:'passed'});
 
-    await go(p, 'showcase.html?widget=P0-01');
+    await go(p, 'showcase.html?widget=button');
     const routes = await p.locator('.site-nav-link').evaluateAll(elements => elements.map(e => ({href:e.getAttribute('href'),label:e.textContent.trim()})));
     assert(routes.length === 181 && new Set(routes.map(r => new URL(r.href, base).searchParams.get('widget'))).size === 181, '181 unique canonical navigation links');
     for (const route of routes) {
@@ -44,11 +44,11 @@ async (hostPage) => {
       console.log(`showcase route ${reports.length - 1}/181 ${id} passed`);
     }
 
-    await go(p, 'showcase.html?widget=P0-01');
+    await go(p, 'showcase.html?widget=button');
     const search = p.getByRole('textbox',{name:'Search widgets',exact:true});
-    await search.fill('P0-02');
+    await search.fill('TextInput');
     await p.waitForFunction(() => document.querySelectorAll('.site-nav-link').length === 1);
-    assert((await p.locator('.site-nav-link').getAttribute('href')).includes('P0-02'), 'search filters by canonical ID');
+    assert((await p.locator('.site-nav-link').getAttribute('href')).includes('text-input'), 'search finds the canonical component route');
     await search.fill('no-such-widget-xyz');
     await p.locator('.site-nav-empty').first().waitFor();
     assert(await p.locator('.site-nav-link').count() === 0, 'empty search state');
@@ -119,19 +119,19 @@ async (hostPage) => {
 
     await p.getByRole('link',{name:'Switch to dark theme',exact:true}).click();
     await p.locator('.sapid-site.site-dark').waitFor();
-    assert(new URL(p.url()).searchParams.get('widget') === 'P0-01', 'theme reload retains route');
-    await go(p, 'showcase.html?widget=P0-02&theme=green&scheme=dark');
+    assert(new URL(p.url()).searchParams.get('widget') === 'button', 'theme reload retains route');
+    await go(p, 'showcase.html?widget=text-input&theme=green&scheme=dark');
     await p.getByRole('textbox',{name:'Your name',exact:true}).fill('Sapid reader');
     await p.getByText('Hello, Sapid reader!',{exact:true}).waitFor();
     await shot(p, 'textfield-dark');
     reports.push({suite:'showcase-theme-and-controlled-text',status:'passed'});
 
     for (const name of ['blue','green']) for (const scheme of ['light','dark']) {
-      await go(p, `showcase.html?widget=P0-01&scheme=${scheme}&theme=${name === 'blue' ? 'green' : 'blue'}`);
+      await go(p, `showcase.html?widget=button&scheme=${scheme}&theme=${name === 'blue' ? 'green' : 'blue'}`);
       await p.getByRole('link',{name:`Use ${name} palette`,exact:true}).click();
       await p.locator(`.sapid-site.sapid-theme-${name}-${scheme}`).waitFor();
       const query = new URL(p.url()).searchParams;
-      assert(query.get('widget') === 'P0-01' && query.get('theme') === name && query.get('scheme') === scheme, 'palette choice preserves guide and light/dark scheme');
+      assert(query.get('widget') === 'button' && query.get('theme') === name && query.get('scheme') === scheme, 'palette choice preserves guide and light/dark scheme');
       assert(await p.getByRole('link',{name:`Use ${name} palette`,exact:true}).getAttribute('aria-current') === 'location', 'selected palette is exposed as current');
       const swatch = await p.getByRole('link',{name:`Use ${name} palette`,exact:true}).evaluate(e => ({text:e.textContent.trim(),color:getComputedStyle(e).backgroundColor,outline:getComputedStyle(e).outlineColor}));
       assert(swatch.text === '' && swatch.color === (name === 'blue' ? 'rgb(25, 113, 194)' : 'rgb(35, 112, 50)'), 'palette is represented by its actual color, without a text label');
@@ -151,23 +151,23 @@ async (hostPage) => {
     }
 
 
-    await go(p, 'showcase.html?widget=P0-03');
+    await go(p, 'showcase.html?widget=checkbox');
     const check = p.getByRole('checkbox',{name:'I agree to the terms and conditions',exact:true});
     await check.check(); assert(await check.isChecked(), 'real checkbox toggles');
     await p.getByText('Thank you for confirming.',{exact:true}).waitFor();
     reports.push({suite:'showcase-controlled-checkbox',status:'passed'});
 
-    await go(p, 'showcase.html?widget=P1-04');
+    await go(p, 'showcase.html?widget=textarea');
     await p.getByRole('textbox',{name:'Biography',exact:true}).waitFor();
     assert(await p.getByRole('button',{name:'Toggle error',exact:true}).count() === 0, 'Textarea starts with its own focused example');
-    await go(p, 'showcase.html?widget=P1-03');
+    await go(p, 'showcase.html?widget=fieldset');
     await p.getByRole('button',{name:'Toggle fieldset disabled',exact:true}).click();
     await p.locator('.sapid-fieldset[disabled]').waitFor();
     assert(await p.getByRole('textbox',{name:'Your name',exact:true}).isDisabled(), 'Fieldset disables its grouped controls');
     assert(await p.getByRole('textbox',{name:'Biography',exact:true}).count() === 0, 'Fieldset does not reuse the Textarea example');
     reports.push({suite:'showcase-focused-fields',status:'passed'});
 
-    await go(p, 'showcase.html?widget=P10-06');
+    await go(p, 'showcase.html?widget=code-highlight');
     await p.getByRole('button',{name:'JSON example',exact:true}).click();
     await p.locator('.site-code-highlight-demo .sapid-code-source').filter({hasText:'"ready"'}).waitFor();
     await p.locator('.site-demo').getByRole('button',{name:'Copy code',exact:true}).click();
@@ -182,7 +182,7 @@ async (hostPage) => {
     assert(await p.locator('.site-code-highlight-demo .sapid-code-gutter').count() > 0, 'CodeHighlight renders line numbers');
     reports.push({suite:'showcase-code-highlight-copy-and-expansion',status:'passed'});
 
-    await go(p, 'showcase.html?widget=P8-01');
+    await go(p, 'showcase.html?widget=table');
     assert(await p.getByRole('table').count() === 6, 'Table includes six complete scenarios');
     const stickyHeader = p.locator('.site-sticky-table .sapid-table-cell').first();
     assert(await stickyHeader.evaluate(e => getComputedStyle(e).position) === 'sticky', 'Table header is actually sticky');
@@ -194,7 +194,7 @@ async (hostPage) => {
     await p.getByText('Selected: Nitrogen',{exact:true}).waitFor();
     reports.push({suite:'showcase-table-rich-scenarios-and-selection',status:'passed'});
 
-    await go(p, 'showcase.html?widget=P8-04');
+    await go(p, 'showcase.html?widget=tree-select');
     assert(await p.getByText('Refuse path selection',{exact:true}).count() === 0, 'TreeSelect is a usage guide, not an engineering workbench');
     const popupFor = async trigger => p.locator(`#${await trigger.getAttribute('aria-controls')}`);
     const treeItem = (root,name) => root.getByRole('treeitem',{name,exact:true});
@@ -298,24 +298,20 @@ async (hostPage) => {
     await continuousTreeGuides(cascadePopup);
     await p.keyboard.press('Escape');
 
-    const treeSearch = p.getByRole('textbox',{name:'Search tree items',exact:true});
-    await treeSearch.fill('no-such-item');
-    await p.getByText('Nothing found',{exact:true}).waitFor();
     const filteredTree = p.getByRole('combobox',{name:'Filtered items',exact:true});
     const filteredPopup = await popupFor(filteredTree);
-    await filteredTree.click();
+    await filteredTree.fill('no-such-item');
+    await p.getByText('Nothing found...',{exact:true}).waitFor();
     assert(await filteredPopup.getByRole('treeitem').count() === 0, 'TreeSelect search has a real empty tree state');
-    await filteredTree.click();
-    await treeSearch.fill('phone');
-    await p.getByText('Nothing found',{exact:true}).waitFor({state:'detached'});
-    assert(await p.getByText('Nothing found',{exact:true}).count() === 0, 'TreeSelect search recovers from empty results');
-    await filteredTree.click();
+    await filteredTree.fill('phone');
+    await p.getByText('Nothing found...',{exact:true}).waitFor({state:'detached'});
+    assert(await p.getByText('Nothing found...',{exact:true}).count() === 0, 'TreeSelect search recovers from empty results');
     await treeItem(filteredPopup,'iPhone').waitFor();
     assert(await treeItem(filteredPopup,'Electronics').count() === 1 && await treeItem(filteredPopup,'Phones').count() === 1 && await treeItem(filteredPopup,'Laptops').count() === 0, 'TreeSelect search preserves both ancestors and filters sibling branches');
     reports.push({suite:'showcase-tree-select-usage-and-interactions',status:'passed'});
 
     for (const theme of ['blue', 'green']) for (const scheme of ['light', 'dark']) {
-      await go(p, `showcase.html?widget=P8-04&theme=${theme}&scheme=${scheme}`);
+      await go(p, `showcase.html?widget=tree-select&theme=${theme}&scheme=${scheme}`);
       for (const name of ['Your favorite item', 'Your favorite items', 'Include categories']) {
         const trigger = p.getByRole('combobox', {name, exact:true});
         await trigger.click();
@@ -324,19 +320,19 @@ async (hostPage) => {
         await continuousTreeGuides(popup);
         await p.keyboard.press('Escape');
       }
-      await go(p, `showcase.html?widget=P8-03&theme=${theme}&scheme=${scheme}`);
+      await go(p, `showcase.html?widget=tree&theme=${theme}&scheme=${scheme}`);
       await continuousTreeGuides(p.getByRole('tree', {name:'Project files', exact:true}));
     }
     reports.push({suite:'showcase-tree-guides-four-themes',status:'passed'});
 
-    for (const [id,label] of [['P4-05','Your favorite framework'],['P4-06','Your favorite framework'],['P4-07','Your favorite framework'],['P8-05','Your favorite item']]) {
+    for (const [id,label] of [['select','Your favorite framework'],['combobox','Your favorite framework'],['autocomplete','Your favorite framework'],['cascader','Your favorite item']]) {
       await go(p, `showcase.html?widget=${id}`);
       assert(await p.getByRole('combobox',{name:label,exact:true}).count() > 0, `${id}: its own usage example is present`);
       assert(await p.getByText(/Before choices|Before combobox|Proposals:|Toggle path Owner/).count() === 0, `${id}: no engineering acceptance workbench remains`);
     }
     reports.push({suite:'showcase-combobox-family-focused-guides',status:'passed'});
 
-    await go(p, 'showcase.html?widget=P6-06');
+    await go(p, 'showcase.html?widget=stepper');
     assert(await p.locator('.site-stepper-demo .sapid-stepper-text').evaluateAll(nodes => nodes.every(node => getComputedStyle(node).display === 'flex' && getComputedStyle(node).flexDirection === 'column')), 'Stepper labels and descriptions use independent columns');
     assert(await p.getByText('Pending',{exact:true}).count() === 0, 'Stepper has no raw pending debug text');
     await p.getByRole('button',{name:'Back',exact:true}).click();
@@ -348,18 +344,18 @@ async (hostPage) => {
     reports.push({suite:'showcase-stepper-layout-and-workflow',status:'passed'});
 
     for (const [id,title,cards] of [
-      ['P11-02','Area chart',1],
-      ['P11-02-barchart','Bar chart',1], ['P11-02-linechart','Line chart',1],
-      ['P11-02-compositechart','Composite chart',1], ['P11-03','Donut chart',1],
-      ['P11-03-piechart','Pie chart',1], ['P11-03-radialbarchart','Radial bar chart',1],
-      ['P11-04','Candlestick chart',1], ['P11-04-scatterchart','Scatter chart',1],
-      ['P11-04-bubblechart','Bubble chart',1], ['P11-05','Funnel chart',1],
-      ['P11-05-radarchart','Radar chart',1], ['P11-05-sparkline','Sparkline',1],
-      ['P11-06','Heatmap',1], ['P11-06-matrixchart','Matrix chart',1],
-      ['P11-06-wafflechart','Waffle chart',1], ['P11-07','Bars list',1],
-      ['P11-07-bulletchart','Bullet chart',1], ['P11-07-gaugechart','Gauge chart',1],
-      ['P11-08','Treemap',1], ['P11-08-sunburstchart','Sunburst chart',1],
-      ['P11-08-sankeychart','Sankey chart',1],
+      ['area-chart','Usage',4],
+      ['bar-chart','Usage',4], ['line-chart','Usage',4],
+      ['composite-chart','Usage',4], ['donut-chart','Donut chart',1],
+      ['pie-chart','Pie chart',1], ['radial-bar-chart','Radial bar chart',1],
+      ['candlestick-chart','Candlestick chart',1], ['scatter-chart','Scatter chart',1],
+      ['bubble-chart','Bubble chart',1], ['funnel-chart','Funnel chart',1],
+      ['radar-chart','Radar chart',1], ['sparkline','Sparkline',1],
+      ['heatmap','Heatmap',1], ['matrix-chart','Matrix chart',1],
+      ['waffle-chart','Waffle chart',1], ['bars-list','Bars list',1],
+      ['bullet-chart','Bullet chart',1], ['gauge-chart','Gauge chart',1],
+      ['treemap','Treemap',1], ['sunburst-chart','Sunburst chart',1],
+      ['sankey-chart','Sankey chart',1],
     ]) {
       await go(p, `showcase.html?widget=${id}`);
       await p.locator('.site-chart-card').getByRole('heading',{name:title,exact:true}).waitFor();
@@ -381,7 +377,7 @@ async (hostPage) => {
     const dirty = p.getByRole('textbox',{name:'Your name',exact:true});
     await dirty.fill('Before hydration');
     await dirty.evaluate(e => {window.beforeShowcaseInput=e;e.focus();e.setSelectionRange(2,8,'backward');});
-    await p.evaluate(() => window.showcase.mount(true,'P0-02','blue','light'));
+    await p.evaluate(() => window.showcase.mount(true,'text-input','blue','light'));
     assert(await dirty.evaluate(e => e === window.beforeShowcaseInput && e.value === 'Before hydration' && e.selectionStart === 2 && e.selectionEnd === 8 && e.selectionDirection === 'backward'), 'SSR dirty editor identity/value/backward selection retained');
     await dirty.fill('After hydration');
     await p.getByText('Hello, After hydration!',{exact:true}).waitFor();
@@ -390,7 +386,7 @@ async (hostPage) => {
     const mobile = await browser.newContext({viewport:{width:360,height:800},hasTouch:true,isMobile:true});
     try {
       const m = await mobile.newPage(); setup(m);
-      await go(m, 'showcase.html?widget=P0-01');
+      await go(m, 'showcase.html?widget=button');
       for (const width of [320,360,390]) {
         await m.setViewportSize({width,height:800});
         const header = await m.locator('.site-header').evaluate(e => {
@@ -403,16 +399,16 @@ async (hostPage) => {
       await m.setViewportSize({width:360,height:800});
       await m.getByRole('link',{name:'Use green palette',exact:true}).tap();
       await m.locator('.sapid-site.sapid-theme-green-light').waitFor();
-      assert(new URL(m.url()).searchParams.get('widget') === 'P0-01', 'mobile swatch preserves guide');
+      assert(new URL(m.url()).searchParams.get('widget') === 'button', 'mobile swatch preserves guide');
 
       await m.getByRole('button',{name:'Open navigation',exact:true}).tap();
       await m.getByRole('button',{name:'Close navigation',exact:true}).waitFor();
       assert(await m.locator('.sapid-site.menu-open .site-sidebar').isVisible(), 'mobile Rust menu opens');
       await shot(m, 'mobile-navigation');
-      await m.locator('.site-nav-link[href*="widget=P0-02&"]').tap();
+      await m.locator('.site-nav-link[href*="widget=text-input&"]').tap();
       await m.locator('h1.site-title').waitFor();
       await m.getByRole('button',{name:'Open navigation',exact:true}).waitFor();
-      assert(new URL(m.url()).searchParams.get('widget') === 'P0-02', 'mobile chooses real docs route');
+      assert(new URL(m.url()).searchParams.get('widget') === 'text-input', 'mobile chooses real docs route');
       assert(await m.evaluate(() => innerWidth === 360 && document.documentElement.clientWidth === 360 && document.body.scrollWidth <= 361), 'mobile document contains its content');
       assert(await m.locator('.site-doc-note').evaluateAll(notes => notes.length > 0 && notes.every(note => getComputedStyle(note).display === 'block' && note.getClientRects().length === 1)), 'mobile descriptions remain contiguous readable blocks');
       await shot(m, 'mobile-docs');

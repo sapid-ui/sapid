@@ -27,10 +27,11 @@ mod focused {
                     value: 0.9,
                     alpha: 1.0,
                 });
-                color_picker("mantine-color-picker")
+                color_picker("showcase-color-picker")
                     .theme(theme.clone())
                     .name("Accent color")
                     .value(value)
+                    .show_precision_sliders(false)
                     .on_value_change(move |next| value.revise(|current| *current = next))
                     .show_in(scope)
             })),

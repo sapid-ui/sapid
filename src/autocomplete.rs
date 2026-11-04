@@ -8,6 +8,12 @@ use glory::{Cage, Scope, Vary};
 pub struct Autocomplete {
     inner: Combobox,
 }
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum AutocompleteLoadingPosition {
+    Left,
+    #[default]
+    Right,
+}
 pub fn autocomplete(key: impl Into<String>) -> Autocomplete {
     Autocomplete {
         inner: crate::combobox(key).autocomplete(),
@@ -135,6 +141,38 @@ impl Autocomplete {
     }
     pub fn filter(mut self, value: ComboboxFilter) -> Self {
         self.inner = self.inner.filter(value);
+        self
+    }
+    /// Caps the number of matching suggestions mounted as visible options.
+    /// Sapid declarations remain bounded to 1024 options in total.
+    pub fn limit(mut self, value: usize) -> Self {
+        self.inner = self.inner.visible_limit(value);
+        self
+    }
+    pub fn select_first_option_on_change(mut self, value: bool) -> Self {
+        self.inner = self.inner.select_first_on_change(value);
+        self
+    }
+    pub fn auto_select_on_blur(mut self, value: bool) -> Self {
+        self.inner = self.inner.auto_select_on_blur(value);
+        self
+    }
+    pub fn clearable(mut self, value: bool) -> Self {
+        self.inner = self.inner.clearable(value);
+        self
+    }
+    pub fn clear_label(mut self, value: impl Into<String>) -> Self {
+        self.inner = self.inner.clear_label(value.into());
+        self
+    }
+    pub fn loading(mut self, value: impl Into<Vary<bool>>) -> Self {
+        self.inner = self.inner.loading(value);
+        self
+    }
+    pub fn loading_position(mut self, value: AutocompleteLoadingPosition) -> Self {
+        self.inner = self
+            .inner
+            .loading_position(matches!(value, AutocompleteLoadingPosition::Left));
         self
     }
     pub fn empty_message(mut self, value: impl Into<String>) -> Self {
