@@ -4,8 +4,10 @@ use crate::composite::{self, Callback, Observers};
 use crate::state::Value;
 use crate::{AnchorRequest, ContentPolicy};
 use glory::render::{Current, Event, EventKind, Role, Semantics};
-use glory::style::{Display, FlexDirection, Style};
-use glory::ui::{IntoChildren, Result, Widget};
+use glory::style::{
+    Align, Display, Edges, FlexDirection, FlexWrap, Justify, Length, Style, WhiteSpace,
+};
+use glory::ui::{Children, IntoChildren, Result, Widget};
 use glory::{Scope, Vary};
 
 pub const MAX_BREADCRUMB_ITEMS: usize = 128;
@@ -52,10 +54,13 @@ macro_rules! navigation_methods {
     };
 }
 fn row() -> Style {
-    Style::new()
-        .display(Display::Flex)
-        .flex_direction(FlexDirection::Row)
-        .gap(8.0)
+    Style {
+        align: Some(Align::Center),
+        ..Style::new()
+            .display(Display::Flex)
+            .flex_direction(FlexDirection::Row)
+            .gap(8.0)
+    }
 }
 fn invalid(message: &'static str) -> glory::ui::Error {
     glory::render::Error::InvalidProps(message).into()
@@ -145,6 +150,8 @@ pub struct Pagination {
     has_next: Vary<bool>,
     siblings: u8,
     boundaries: u8,
+    with_controls: bool,
+    with_edges: bool,
     change: Option<Box<dyn FnMut(u64)>>,
 }
 pub fn pagination(key: impl Into<String>) -> Pagination {
@@ -159,6 +166,8 @@ pub fn pagination(key: impl Into<String>) -> Pagination {
         has_next: false.into(),
         siblings: 1,
         boundaries: 1,
+        with_controls: true,
+        with_edges: true,
         change: None,
     }
 }
@@ -190,6 +199,16 @@ impl Pagination {
     }
     pub fn boundaries(mut self, value: u8) -> Self {
         self.boundaries = value;
+        self
+    }
+    /// Show or omit the previous/next controls without changing the page window.
+    pub fn with_controls(mut self, value: bool) -> Self {
+        self.with_controls = value;
+        self
+    }
+    /// Show or omit the first/last controls. Both control groups default to true.
+    pub fn with_edges(mut self, value: bool) -> Self {
+        self.with_edges = value;
         self
     }
     pub fn on_page_change(mut self, callback: impl FnMut(u64) + 'static) -> Self {
@@ -241,12 +260,24 @@ impl Widget for Pagination {
             glory::ui::view(),
             scope,
             "sapid-pagination",
-            crate::appearance::merge(self.common.theme.label(self.common.size), row())
+            crate::appearance::merge(
+                self.common.theme.label(self.common.size),
+                row().flex_wrap(FlexWrap::Wrap),
+            )
         )
         .role(Role::Navigation);
         let owner = scope.id();
         // Four directional controls and a fixed number of live numeric slots.
-        for index in 0..(MAX_PAGINATION_WINDOW_ITEMS + 4) {
+        for index in [0, 1]
+            .into_iter()
+            .chain(4..(MAX_PAGINATION_WINDOW_ITEMS + 4))
+            .chain([2, 3])
+        {
+            if matches!(index, 0 | 3) && !self.with_edges
+                || matches!(index, 1 | 2) && !self.with_controls
+            {
+                continue;
+            }
             let slot = index.checked_sub(4);
             let label = scope.bond(move || match index {
                 0 => "First page".to_owned(),
@@ -255,6 +286,16 @@ impl Widget for Pagination {
                 3 => "Last page".to_owned(),
                 _ => match window.get().get(slot.unwrap()) {
                     Some(PageItem::Page(page)) => format!("Page {page}"),
+                    _ => String::new(),
+                },
+            });
+            let visible_label = scope.bond(move || match index {
+                0 => "«".to_owned(),
+                1 => "‹".to_owned(),
+                2 => "›".to_owned(),
+                3 => "»".to_owned(),
+                _ => match window.get().get(slot.unwrap()) {
+                    Some(PageItem::Page(page)) => page.to_string(),
                     _ => String::new(),
                 },
             });
@@ -290,7 +331,8 @@ impl Widget for Pagination {
             let control = control.clone();
             let weak = scope.downgrade();
             let mut button = glory::ui::button()
-                .label(label)
+                .label(visible_label)
+                .name(label)
                 .enabled(enabled)
                 .semantics(metadata)
                 .class("sapid-button sapid-page-button");
@@ -299,6 +341,19 @@ impl Widget for Pagination {
                 let size = self.common.size;
                 button = button.style(scope.bond(move || {
                     let mut style = theme.control(size);
+                    let side = theme.tokens.control(size).min_height;
+                    style.min_width = Some(Length::Px(side));
+                    style.shrink = Some(0.);
+                    style.padding = Some(Edges {
+                        left: 8.,
+                        right: 8.,
+                        top: 0.,
+                        bottom: 0.,
+                    });
+                    style.white_space = Some(WhiteSpace::NoWrap);
+                    style.display = Some(Display::InlineFlex);
+                    style.align = Some(Align::Center);
+                    style.justify = Some(Justify::Center);
                     if slot.and_then(|slot| window.get().get(slot).copied())
                         == Some(PageItem::Page(accepted.get().page))
                     {
@@ -406,6 +461,8 @@ pub struct Breadcrumbs {
     max_items: usize,
     expanded: Value<bool>,
     change: Option<Box<dyn FnMut(bool)>>,
+    separator: Vary<String>,
+    gap: f64,
 }
 pub fn breadcrumbs(key: impl Into<String>) -> Breadcrumbs {
     Breadcrumbs {
@@ -416,10 +473,20 @@ pub fn breadcrumbs(key: impl Into<String>) -> Breadcrumbs {
         max_items: 5,
         expanded: Value::default(),
         change: None,
+        separator: "/".into(),
+        gap: 8.,
     }
 }
 impl Breadcrumbs {
     navigation_methods!();
+    pub fn separator(mut self, value: impl Into<Vary<String>>) -> Self {
+        self.separator = value.into();
+        self
+    }
+    pub fn gap(mut self, value: f64) -> Self {
+        self.gap = value;
+        self
+    }
     pub fn items(mut self, items: impl IntoIterator<Item = BreadcrumbItem>) -> Self {
         self.items = items.into_iter().take(MAX_BREADCRUMB_ITEMS + 1).collect();
         self
@@ -447,7 +514,11 @@ impl Breadcrumbs {
 }
 impl Widget for Breadcrumbs {
     fn build(&mut self, scope: &Scope) -> Result {
-        if self.items.len() > MAX_BREADCRUMB_ITEMS || self.max_items < 2 {
+        if self.items.len() > MAX_BREADCRUMB_ITEMS
+            || self.max_items < 2
+            || !self.gap.is_finite()
+            || self.gap < 0.
+        {
             return Err(invalid(
                 "breadcrumbs require <= 128 items and max_items >= 2",
             ));
@@ -489,7 +560,9 @@ impl Widget for Breadcrumbs {
             self.common.theme.label(self.common.size)
         )
         .role(Role::Navigation);
-        let mut list = glory::ui::view().role(Role::List).style(row());
+        let list_style = row().gap(self.gap).flex_wrap(FlexWrap::Wrap);
+        let mut list = glory::ui::view().role(Role::List).style(list_style);
+        let gap = self.gap;
         for (index, item) in std::mem::take(&mut self.items).into_iter().enumerate() {
             if collapse && index == first_middle {
                 let open = expanded.clone();
@@ -503,7 +576,8 @@ impl Widget for Breadcrumbs {
                 });
                 let open = expanded.clone();
                 let mut button = glory::ui::button()
-                    .label(label)
+                    .label("…")
+                    .name(label)
                     .node_ref(trigger)
                     .class("sapid-button sapid-breadcrumb-expand")
                     .semantics(scope.bond(move || {
@@ -534,7 +608,17 @@ impl Widget for Breadcrumbs {
                         scope.report_error(error);
                     }
                 });
-                list = list.fill(glory::ui::view().role(Role::ListItem).fill(button));
+                list = list.fill(
+                    glory::ui::view()
+                        .role(Role::ListItem)
+                        .style(row().gap(gap))
+                        .fill((
+                            glory::ui::text()
+                                .class("sapid-breadcrumb-separator")
+                                .content(self.separator.clone()),
+                            button,
+                        )),
+                );
             }
             let middle = collapse && (first_middle..last_middle).contains(&index);
             let key = item.key;
@@ -545,6 +629,7 @@ impl Widget for Breadcrumbs {
             let visible = scope.bond(move || !middle || open.get() || current.get() == key);
             let mut shell = glory::ui::view()
                 .role(Role::ListItem)
+                .style(row().gap(gap))
                 .semantics(scope.bond(move || {
                     composite::metadata(Semantics {
                         hidden: !visible.get(),
@@ -562,6 +647,17 @@ impl Widget for Breadcrumbs {
                         });
                     }
                 });
+            if index > 0 {
+                shell = shell.fill(
+                    glory::ui::text()
+                        .class("sapid-breadcrumb-separator")
+                        .content(self.separator.clone())
+                        .style(Style {
+                            color: Some(self.common.theme.muted),
+                            ..Style::new()
+                        }),
+                );
+            }
             shell =
                 if let Some(href) = item.href {
                     let mut link = crate::anchor()
@@ -607,6 +703,13 @@ impl Widget for Breadcrumbs {
     }
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum NavLinkVariant {
+    #[default]
+    Light,
+    Filled,
+    Subtle,
+}
 pub struct NavLink {
     common: Common,
     key: String,
@@ -619,6 +722,10 @@ pub struct NavLink {
     navigate: Option<Box<dyn FnMut(AnchorRequest)>>,
     children: Option<composite::Factory>,
     policy: ContentPolicy,
+    description: Vary<String>,
+    left: Option<Children>,
+    right: Option<Children>,
+    variant: NavLinkVariant,
 }
 pub fn nav_link(key: impl Into<String>) -> NavLink {
     NavLink {
@@ -633,10 +740,30 @@ pub fn nav_link(key: impl Into<String>) -> NavLink {
         navigate: None,
         children: None,
         policy: ContentPolicy::Unmount,
+        description: "".into(),
+        left: None,
+        right: None,
+        variant: NavLinkVariant::Light,
     }
 }
 impl NavLink {
     navigation_methods!();
+    pub fn description(mut self, value: impl Into<Vary<String>>) -> Self {
+        self.description = value.into();
+        self
+    }
+    pub fn left_section(mut self, value: impl IntoChildren) -> Self {
+        self.left = Some(value.into_children());
+        self
+    }
+    pub fn right_section(mut self, value: impl IntoChildren) -> Self {
+        self.right = Some(value.into_children());
+        self
+    }
+    pub fn variant(mut self, value: NavLinkVariant) -> Self {
+        self.variant = value;
+        self
+    }
     pub fn href(mut self, value: impl Into<Vary<String>>) -> Self {
         self.href = value.into();
         self
@@ -711,19 +838,68 @@ impl Widget for NavLink {
         if let Some(callback) = self.navigate.take() {
             link = link.on_navigate(callback);
         }
+        if self.left.is_some()
+            || self.right.is_some()
+            || self.description.is_reactive()
+            || !self.description.try_get()?.is_empty()
+        {
+            link = link.fill(
+                glory::ui::view().style(row()).fill((
+                    glory::ui::group().fill(self.left.take().unwrap_or_else(|| ().into_children())),
+                    glory::ui::view()
+                        .class("sapid-nav-labels")
+                        .style(Style {
+                            grow: Some(1.),
+                            min_width: Some(Length::Px(0.)),
+                            ..Style::new()
+                                .display(Display::Flex)
+                                .flex_direction(FlexDirection::Column)
+                                .gap(2.)
+                        })
+                        .fill((
+                            glory::ui::text().content(self.label.clone()),
+                            glory::ui::text()
+                                .class("sapid-nav-description")
+                                .content(self.description.clone())
+                                .style(self.common.theme.description(self.common.size)),
+                        )),
+                    glory::ui::group()
+                        .fill(self.right.take().unwrap_or_else(|| ().into_children())),
+                )),
+            );
+        }
         let highlight = self.highlighted.clone();
+        let current = self.current.clone();
         let theme = self.common.theme.clone();
         let unstyled = self.common.unstyled;
+        let variant = self.variant;
         let style = scope.bond(move || {
-            if highlight.get() && !unstyled {
-                Style {
-                    background: Some(theme.accent),
-                    color: Some(theme.on_accent),
-                    ..Style::new()
-                }
-            } else {
-                Style::new()
+            if unstyled {
+                return Style::new();
             }
+            let active = highlight.get() || current.get();
+            let mut style = Style {
+                grow: Some(1.),
+                min_width: Some(Length::Px(0.)),
+                color: Some(theme.foreground),
+                ..Style::new()
+                    .display(Display::Block)
+                    .padding(Edges::all(10.))
+                    .radius(theme.radius)
+            };
+            if active {
+                style.color = Some(if variant == NavLinkVariant::Filled {
+                    theme.on_accent
+                } else {
+                    theme.accent_text
+                });
+                style.background = match variant {
+                    NavLinkVariant::Filled => Some(theme.accent),
+                    NavLinkVariant::Light => Some(theme.accent_soft),
+                    NavLinkVariant::Subtle => None,
+                };
+            }
+            style
         });
         let mut root = configure!(
             self.common,
@@ -731,18 +907,29 @@ impl Widget for NavLink {
             scope,
             "sapid-nav-link",
             Style::new()
-        )
-        .fill(link.style(style));
+        );
+        let mut header = glory::ui::view()
+            .class("sapid-nav-header")
+            .style(row().gap(4.))
+            .fill(link.style(style));
         if let Some(factory) = self.children.take() {
             let callback = Callback::new(self.change.take());
             let expanded = open.clone();
             let panel = panel_id.clone();
             let label = self.label.clone();
             let label_open = open.clone();
+            let icon_open = open.clone();
             let mut button = glory::ui::button()
                 .node_ref(trigger)
                 .class("sapid-button sapid-nav-expand")
                 .label(scope.bond(move || {
+                    if icon_open.get() {
+                        "⌄".to_owned()
+                    } else {
+                        "›".to_owned()
+                    }
+                }))
+                .name(scope.bond(move || {
                     format!(
                         "{} {}",
                         if label_open.get() {
@@ -761,7 +948,21 @@ impl Widget for NavLink {
                     })
                 }));
             if !self.common.unstyled {
-                button = button.style(self.common.theme.control(self.common.size));
+                let side = self
+                    .common
+                    .theme
+                    .tokens
+                    .control(self.common.size)
+                    .min_height;
+                button = button.style(Style {
+                    shrink: Some(0.),
+                    ..self
+                        .common
+                        .theme
+                        .control(self.common.size)
+                        .width(Length::Px(side))
+                        .padding(Edges::all(0.))
+                });
             }
             let weak = scope.downgrade();
             button = button.on(EventKind::Activate, move |event| {
@@ -779,8 +980,9 @@ impl Widget for NavLink {
                     scope.report_error(error);
                 }
             });
+            header = header.fill(button);
             root = root.fill((
-                button,
+                header,
                 composite::Panel {
                     id: panel_id,
                     label: link_id,
@@ -795,6 +997,8 @@ impl Widget for NavLink {
                     unstyled: self.common.unstyled,
                 },
             ));
+        } else {
+            root = root.fill(header);
         }
         attach(root, &mut self.common, scope).show_in(scope)
     }

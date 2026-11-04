@@ -18,7 +18,7 @@ async (hostPage) => {
    await page.evaluate(()=>window.demo.shell_policy(false));await trigger.click();await tick();assert((await status()).includes('collapsed=true'),`${mode}: rejected controlled collapse changed source`);
    const requests=(await status()).match(/requests=(\d+)/)[1];await page.evaluate(()=>window.demo.shell_controls(false,false));await tick();assert((await status()).includes('collapsed=false')&&(await status()).includes(`requests=${requests}`),`${mode}: external write emitted a request`);
    await page.evaluate(()=>window.demo.shell_policy(true));
-   await page.getByRole('link',{name:'Skip to main content'}).click();await tick();assert(await page.getByRole('main').evaluate(e=>document.activeElement===e)&&!new URL(page.url()).hash,`${mode}: skip link did not use typed focus`);
+   await page.getByRole('link',{name:'Skip to main content'}).focus();await page.getByRole('link',{name:'Skip to main content'}).press('Enter');await tick();assert(await page.getByRole('main').evaluate(e=>document.activeElement===e)&&!new URL(page.url()).hash,`${mode}: skip link did not use typed focus`);
    await nav.getByRole('link',{name:'Projects',exact:true}).click();await tick();assert(page.url().includes('shell')&&await nav.getByRole('link',{name:'Recent projects'}).count()===0,`${mode}: navigation callback routed or disclosure activated`);
    await nav.getByRole('button',{name:'Expand Projects'}).click();await tick();assert(await nav.getByRole('link',{name:'Recent projects'}).isVisible(),`${mode}: separate navigation disclosure failed`);
    await draft.focus();await page.setViewportSize({width:520,height:900});await page.waitForFunction(()=>document.querySelector('.shell-status').textContent.includes('mobile=true'));await tick();

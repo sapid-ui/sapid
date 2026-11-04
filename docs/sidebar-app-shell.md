@@ -16,7 +16,9 @@ app_shell("workspace")
     .footer(|_| text().content("Application footer"));
 ```
 
-The shell uses real Banner (`header`), Main (`main`), ContentInfo (`footer`), and Navigation (`nav`) landmarks. Header and footer exist when their content is configured; a sidebar also creates a header containing its primary trigger. The main region is always present and programmatically focusable. The visible skip link captures activation and queues the shared typed Focus action to that main region; it does not rely on a browser-only fragment jump.
+The shell uses real Banner (`header`), Main (`main`), ContentInfo (`footer`), and Navigation (`nav`) landmarks. Header and footer exist when their content is configured; a sidebar also creates a header containing its compact menu icon. The main region is always present and programmatically focusable. The skip link becomes visible on keyboard focus, captures activation and queues the shared typed Focus action to that main region; it does not rely on a browser-only fragment jump.
+
+The default frame has an aligned 60px-minimum header, separated sidebar/main and footer regions, and padded main content. It is scoped to its container, rather than fixed over an enclosing document. The documentation preview uses an interactive workspace with navigation and a persistent note, followed by separate region, responsive drawer and collapsed-rail examples. Test counters and raw acceptance controls remain in the independent host fixtures.
 
 Both widgets accept theme, size, unstyled, additive class/style, node reference, and generic event observers. Sidebar additionally accepts a name, navigation/drawer node references, expanded width, and rail width. Widths must be positive, finite, at most 1,000,000, and rail width cannot exceed expanded width. Default widths are 256 and 72 pixels. Collapse retains the navigation content in a clipped rail; applications choose suitable compact content with the supplied context. `unstyled` leaves colors, padding, and dock decoration to the application while retaining structural sizing and semantics.
 

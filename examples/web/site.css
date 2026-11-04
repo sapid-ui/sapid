@@ -402,3 +402,10 @@ html,body{margin:0;padding:0}
 .sapid-site .site-scroll-position,.sapid-site .site-splitter-sizes{font-size:13px!important;color:var(--site-muted)!important}
 @media(max-width:600px){.sapid-site .site-layout-playground .site-playground-preview,.sapid-site .site-layout-playground .site-playground-controls{width:100%!important}.sapid-site .site-layout-playground .site-playground-preview{min-width:0!important}}
 @media(max-width:760px){.sapid-site .site-chart-grid{grid-template-columns:minmax(0,1fr)}}
+
+.sapid-site .site-demo:has(.site-shell-example){padding:0}
+.sapid-site .site-shell-nav-link{display:block;padding:9px 12px;border-radius:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sapid-site .site-shell-nav-link:hover{background:var(--sp-disabled)}
+.sapid-site .site-shell-nav-link[aria-current=page]{background:var(--sp-accent-soft);font-weight:600}
+.sapid-site .site-shell-example .sapid-shell-header>.sapid-group{min-width:0;flex-wrap:wrap}
+.sapid-site .site-shell-example .sapid-shell-main .sapid-card{width:100%}

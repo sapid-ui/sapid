@@ -1,0 +1,1152 @@
+{
+  "schema": 1,
+  "started": "2026-11-04",
+  "scope": "All 181 shared pages; complete the 27 P1 pages first, including functionality, public examples, documentation and focused acceptance.",
+  "status": "in_progress",
+  "pages": [
+    {
+      "slug": "app-shell",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "aspect-ratio",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "center",
+      "priority": "P3",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "container",
+      "priority": "P3",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "flex",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "grid",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "group",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "simple-grid",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "space",
+      "priority": "P3",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "splitter",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "stack",
+      "priority": "P3",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "alpha-slider",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "angle-slider",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "checkbox",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "chip",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "color-input",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "color-picker",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "fieldset",
+      "priority": "P3",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "file-input",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "hue-slider",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "input",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "json-input",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "mask-input",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "native-select",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "number-input",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "password-input",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "pin-input",
+      "priority": "P1",
+      "status": "in_progress",
+      "evidence": []
+    },
+    {
+      "slug": "radio",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "range-slider",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "rating",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "segmented-control",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "slider",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "switch",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "textarea",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "text-input",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "autocomplete",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "cascader",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "combobox",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "combobox-popover",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "multi-select",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "pill",
+      "priority": "P3",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "pills-input",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "select",
+      "priority": "P1",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "tags-input",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "tree-select",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "action-icon",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "button",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "close-button",
+      "priority": "P3",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "copy-button",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "file-button",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "toggle",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "unstyled-button",
+      "priority": "P3",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "anchor",
+      "priority": "P1",
+      "status": "verified",
+      "evidence": [
+        "docs/navigation.md",
+        "examples/web/src/showcase_navigation_docs/mod.rs",
+        "scripts/showcase-remediation-navigation.cjs",
+        "D:/BuildCache/sapid/remediation/navigation-remediation.json (40 reports, zero runtime errors)",
+        "D:/BuildCache/sapid/remediation-navigation-build.log (release site gate)"
+      ]
+    },
+    {
+      "slug": "breadcrumbs",
+      "priority": "P1",
+      "status": "verified",
+      "evidence": [
+        "docs/navigation.md",
+        "examples/web/src/showcase_navigation_docs/mod.rs",
+        "scripts/showcase-remediation-navigation.cjs",
+        "D:/BuildCache/sapid/remediation/navigation-remediation.json (40 reports, zero runtime errors)",
+        "D:/BuildCache/sapid/remediation-navigation-build.log (release site gate)",
+        "tests/navigation.rs (18 tests)",
+        "examples/native/tests/navigation.rs (3 tests; D:/BuildCache/sapid/remediation-navigation-native.log)"
+      ]
+    },
+    {
+      "slug": "burger",
+      "priority": "P1",
+      "status": "verified",
+      "evidence": [
+        "docs/navigation.md",
+        "examples/web/src/showcase_navigation_docs/mod.rs",
+        "scripts/showcase-remediation-navigation.cjs",
+        "D:/BuildCache/sapid/remediation/navigation-remediation.json (40 reports, zero runtime errors)",
+        "D:/BuildCache/sapid/remediation-navigation-build.log (release site gate)"
+      ]
+    },
+    {
+      "slug": "nav-link",
+      "priority": "P1",
+      "status": "verified",
+      "evidence": [
+        "docs/navigation.md",
+        "examples/web/src/showcase_navigation_docs/mod.rs",
+        "scripts/showcase-remediation-navigation.cjs",
+        "D:/BuildCache/sapid/remediation/navigation-remediation.json (40 reports, zero runtime errors)",
+        "D:/BuildCache/sapid/remediation-navigation-build.log (release site gate)",
+        "tests/navigation.rs (18 tests)",
+        "examples/native/tests/navigation.rs (3 tests; D:/BuildCache/sapid/remediation-navigation-native.log)"
+      ]
+    },
+    {
+      "slug": "pagination",
+      "priority": "P1",
+      "status": "verified",
+      "evidence": [
+        "docs/navigation.md",
+        "examples/web/src/showcase_navigation_docs/mod.rs",
+        "scripts/showcase-remediation-navigation.cjs",
+        "D:/BuildCache/sapid/remediation/navigation-remediation.json (40 reports, zero runtime errors)",
+        "D:/BuildCache/sapid/remediation-navigation-build.log (release site gate)",
+        "tests/navigation.rs (18 tests)",
+        "examples/native/tests/navigation.rs (3 tests; D:/BuildCache/sapid/remediation-navigation-native.log)"
+      ]
+    },
+    {
+      "slug": "stepper",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "table-of-contents",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "tabs",
+      "priority": "P1",
+      "status": "verified",
+      "evidence": [
+        "src/composite/skin.rs",
+        "examples/web/src/showcase_composite_docs/mod.rs",
+        "D:/BuildCache/sapid/remediation-composites-unit.log (46 passing library regressions)",
+        "D:/BuildCache/sapid/remediation-composites-native.log (4 passing engine tests including geometry)",
+        "D:/BuildCache/sapid/remediation/composite-remediation.json (24 four-theme desktop/mobile browser reports)",
+        "D:/BuildCache/sapid/remediation-composites-build.log (release site gate)"
+      ]
+    },
+    {
+      "slug": "tree",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "alert",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "empty-state",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "loader",
+      "priority": "P3",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "notification",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "progress",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "ring-progress",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "semi-circle-progress",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "skeleton",
+      "priority": "P3",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "action-bar",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "affix",
+      "priority": "P1",
+      "status": "in_progress",
+      "evidence": []
+    },
+    {
+      "slug": "dialog",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "drawer",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "floating-indicator",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "floating-window",
+      "priority": "P1",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "hover-card",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "loading-overlay",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "menu",
+      "priority": "P1",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "menubar",
+      "priority": "P1",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "modal",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "overlay",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "popover",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "tooltip",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "tour",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "accordion",
+      "priority": "P1",
+      "status": "verified",
+      "evidence": [
+        "src/composite/skin.rs",
+        "examples/web/src/showcase_composite_docs/mod.rs",
+        "D:/BuildCache/sapid/remediation-composites-unit.log (46 passing library regressions)",
+        "D:/BuildCache/sapid/remediation-composites-native.log (4 passing engine tests including geometry)",
+        "D:/BuildCache/sapid/remediation/composite-remediation.json (24 four-theme desktop/mobile browser reports)",
+        "D:/BuildCache/sapid/remediation-composites-build.log (release site gate)"
+      ]
+    },
+    {
+      "slug": "avatar",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "background-image",
+      "priority": "P1",
+      "status": "in_progress",
+      "evidence": []
+    },
+    {
+      "slug": "badge",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "card",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "color-swatch",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "data-list",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "image",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "indicator",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "kbd",
+      "priority": "P3",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "number-formatter",
+      "priority": "P3",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "overflow-list",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "rolling-number",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "spoiler",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "theme-icon",
+      "priority": "P3",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "timeline",
+      "priority": "P1",
+      "status": "verified",
+      "evidence": [
+        "src/composite/skin.rs",
+        "examples/web/src/showcase_composite_docs/mod.rs",
+        "D:/BuildCache/sapid/remediation-composites-unit.log (46 passing library regressions)",
+        "D:/BuildCache/sapid/remediation-composites-native.log (4 passing engine tests including geometry)",
+        "D:/BuildCache/sapid/remediation/composite-remediation.json (24 four-theme desktop/mobile browser reports)",
+        "D:/BuildCache/sapid/remediation-composites-build.log (release site gate)"
+      ]
+    },
+    {
+      "slug": "blockquote",
+      "priority": "P3",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "code",
+      "priority": "P3",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "highlight",
+      "priority": "P3",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "list",
+      "priority": "P3",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "mark",
+      "priority": "P3",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "table",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "text",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "title",
+      "priority": "P3",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "typography",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "box",
+      "priority": "P3",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "collapse",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "divider",
+      "priority": "P3",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "focus-trap",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "marquee",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "paper",
+      "priority": "P3",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "portal",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "scroll-area",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "scroller",
+      "priority": "P1",
+      "status": "in_progress",
+      "evidence": []
+    },
+    {
+      "slug": "toolbar",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "transition",
+      "priority": "P1",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "visually-hidden",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "date-picker",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "date-picker-input",
+      "priority": "P1",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "date-time-picker",
+      "priority": "P1",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "inline-date-time-picker",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "date-input",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "month-picker",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "month-picker-input",
+      "priority": "P1",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "year-picker",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "year-picker-input",
+      "priority": "P1",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "time-input",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "time-picker",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "time-grid",
+      "priority": "P1",
+      "status": "in_progress",
+      "evidence": []
+    },
+    {
+      "slug": "time-value",
+      "priority": "P3",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "mini-calendar",
+      "priority": "P1",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "calendar",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "area-chart",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "bar-chart",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "line-chart",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "composite-chart",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "candlestick-chart",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "donut-chart",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "pie-chart",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "funnel-chart",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "radar-chart",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "scatter-chart",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "bubble-chart",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "radial-bar-chart",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "sparkline",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "heatmap",
+      "priority": "P1",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "bars-list",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "bullet-chart",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "gauge-chart",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "waffle-chart",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "treemap",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "sunburst-chart",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "sankey-chart",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "matrix-chart",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "schedule",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "day-view",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "month-view",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "week-view",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "year-view",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "mobile-month-view",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "agenda-view",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "resources-day-view",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "resources-week-view",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "resources-month-view",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "resources-schedule",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "recurring-events",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "events-data",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "code-highlight",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "json-viewer",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "notifications-system",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "spotlight",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "carousel",
+      "priority": "P1",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "lightbox",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "dropzone",
+      "priority": "P1",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "navigation-progress",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "modals-manager",
+      "priority": "P2",
+      "status": "planned",
+      "evidence": []
+    },
+    {
+      "slug": "rich-text-editor",
+      "priority": "P1",
+      "status": "in_progress",
+      "evidence": []
+    }
+  ],
+  "verified_p1_pages": 8
+}

@@ -64,6 +64,54 @@ fn native_lines_have_real_axes_and_progress_preserves_mounted_items_and_input() 
         let list = bounds(app, timeline);
         assert!(list.width > 0.0 && list.height > 0.0);
         let items = app.tree().node(timeline).unwrap().children.clone();
+        let marker = {
+            let tree = app.tree();
+            *tree
+                .node(items[0])
+                .unwrap()
+                .children
+                .iter()
+                .find(|id| {
+                    tree.node(**id)
+                        .unwrap()
+                        .descriptor
+                        .view()
+                        .classes
+                        .iter()
+                        .any(|name| name == "sapid-timeline-marker")
+                })
+                .unwrap()
+        };
+        let connector = {
+            let tree = app.tree();
+            *tree
+                .node(items[0])
+                .unwrap()
+                .children
+                .iter()
+                .find(|id| {
+                    tree.node(**id)
+                        .unwrap()
+                        .descriptor
+                        .view()
+                        .classes
+                        .iter()
+                        .any(|name| name == "sapid-timeline-line")
+                })
+                .unwrap()
+        };
+        let marker = bounds(app, marker);
+        let connector = bounds(app, connector);
+        assert!(
+            (marker.width - 22.).abs() < 0.1 && (marker.height - 22.).abs() < 0.1,
+            "{marker:?}"
+        );
+        assert!(
+            (connector.width - 2.).abs() < 0.1 && connector.height > 10.,
+            "{connector:?}"
+        );
+        assert!((marker.x + marker.width / 2. - connector.x - connector.width / 2.).abs() < 0.1);
+        assert!((connector.y - marker.y - marker.height).abs() < 0.1);
         let field = class(app, "timeline-draft");
         let engine_field = host
             .renderer()

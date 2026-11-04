@@ -1,16 +1,20 @@
 //! Generated compiled widget examples; source panels include these exact files.
 use glory::ui::Widget;
-mod actions;
-pub fn actions_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(actions::demo(theme))
-}
 mod affix;
 pub fn affix_widget(theme: sapid::Theme) -> Box<dyn Widget> {
     Box::new(affix::demo(theme))
 }
+mod anchor;
+pub fn anchor_widget(theme: sapid::Theme) -> Box<dyn Widget> {
+    Box::new(anchor::demo(theme))
+}
 mod angle_slider;
 pub fn angle_slider_widget(theme: sapid::Theme) -> Box<dyn Widget> {
     Box::new(angle_slider::demo(theme))
+}
+mod burger;
+pub fn burger_widget(theme: sapid::Theme) -> Box<dyn Widget> {
+    Box::new(burger::demo(theme))
 }
 mod carousel;
 pub fn carousel_widget(theme: sapid::Theme) -> Box<dyn Widget> {
@@ -668,9 +672,9 @@ mod native_select;
 pub fn native_select_widget(theme: sapid::Theme) -> Box<dyn Widget> {
     Box::new(native_select::demo(theme))
 }
-mod navigation_menu;
-pub fn navigation_menu_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(navigation_menu::demo(theme))
+mod nav_link;
+pub fn nav_link_widget(theme: sapid::Theme) -> Box<dyn Widget> {
+    Box::new(nav_link::demo(theme))
 }
 mod navigation_progress;
 pub fn navigation_progress_widget(theme: sapid::Theme) -> Box<dyn Widget> {
@@ -715,10 +719,6 @@ pub fn tour_widget(theme: sapid::Theme) -> Box<dyn Widget> {
 mod tree;
 pub fn tree_widget(theme: sapid::Theme) -> Box<dyn Widget> {
     Box::new(tree::demo(theme))
-}
-mod typography;
-pub fn typography_widget(theme: sapid::Theme) -> Box<dyn Widget> {
-    Box::new(typography::demo(theme))
 }
 mod visually_hidden;
 pub fn visually_hidden_widget(theme: sapid::Theme) -> Box<dyn Widget> {

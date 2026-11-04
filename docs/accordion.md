@@ -1,5 +1,28 @@
 # Accordion
 
+## Presentation and disclosure
+
+`variant(AccordionVariant::{Default,Contained,Filled,Separated})` configures the
+default item surface. Headings fill the available width, panel padding belongs
+to the panel, and each heading includes a passive chevron that follows accepted
+open state. `with_chevron(false)` omits it. Custom trigger content retains the
+same named native button. Static and keyed collections share this presentation;
+`unstyled()` removes theme paint while retaining the component contract.
+
+## State, keyboard and content
+
+`multiple(true)` allows independent open panels. `collapsible(false)` prevents
+closing the final open panel. `default_open` initializes local state; `open` and
+`on_open_change` form a controlled proposal pair. Arrow keys/Home/End navigate
+enabled headings, with explicit direction and loop policy. `heading_level` sets
+the heading level, while `regions(true)` gives panels named region semantics.
+`ContentPolicy::Unmount` is the default; `KeepMounted` retains hidden panel state.
+
+The public page now separates variants, controlled/multiple state, panel lifetime
+and dynamic keys into independently compiled examples with matching source panels.
+
+## Keyed collections
+
 `accordion(namespace).items(keys, factory)` mounts a bounded dynamic keyed
 sequence. `keys` is `Vary<Vec<String>>`; `factory` returns an `AccordionItem`
 with the same key. Static `.item(...)` remains available and cannot be mixed

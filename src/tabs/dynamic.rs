@@ -164,6 +164,9 @@ pub(super) fn build(widget: &mut Tabs, scope: &Scope, input: Items) -> Result {
     let theme = widget.common.theme.clone();
     let size = widget.common.size;
     let unstyled = widget.common.unstyled;
+    let variant = widget.variant;
+    let axis = widget.orientation;
+    let grow = widget.grow;
     let namespace = widget.key.clone();
     let automatic = widget.activation == TabActivation::Automatic;
     let owner = scope.id();
@@ -229,14 +232,10 @@ pub(super) fn build(widget: &mut Tabs, scope: &Scope, input: Items) -> Result {
                     }));
                 if !unstyled {
                     let theme = theme.clone();
-                    trigger = trigger.style(scope.bond(move || {
-                        let mut style = theme.control(size);
-                        if open.get() {
-                            style.background = Some(theme.accent);
-                            style.color = Some(theme.on_accent);
-                        }
-                        style
-                    }));
+                    trigger = trigger
+                        .style(scope.bond(move || {
+                            skin::tab(&theme, size, variant, axis, open.get(), grow)
+                        }));
                 }
                 if let Some(mut factory) = config.take_trigger_content() {
                     trigger = trigger
@@ -345,16 +344,12 @@ pub(super) fn build(widget: &mut Tabs, scope: &Scope, input: Items) -> Result {
             navigation_direction: widget.direction,
             ..Default::default()
         }))
-        .style(
-            glory::style::Style::new()
-                .display(glory::style::Display::Flex)
-                .flex_direction(if widget.orientation == Orientation::Horizontal {
-                    glory::style::FlexDirection::Row
-                } else {
-                    glory::style::FlexDirection::Column
-                })
-                .gap(4.),
-        )
+        .style(skin::tab_list(
+            &widget.common.theme,
+            widget.variant,
+            widget.orientation,
+            widget.common.unstyled,
+        ))
         .on(EventKind::FocusWithin, move |event| {
             if let Event::FocusWithin { focused, .. } = event {
                 within.revise(|value| *value = focused);
@@ -397,14 +392,23 @@ pub(super) fn build(widget: &mut Tabs, scope: &Scope, input: Items) -> Result {
         glory::ui::view(),
         scope,
         "sapid-tabs",
-        composite::column(8.0)
+        skin::tabs_root(widget.orientation)
     )
     .semantics(composite::metadata(Semantics {
         id: Some(root_id),
         ..Default::default()
     }))
     .fill(list)
-    .fill(panels)
+    .fill(
+        glory::ui::view()
+            .class("sapid-tab-panels")
+            .style(glory::style::Style {
+                grow: Some(1.),
+                min_width: Some(glory::style::Length::Px(0.)),
+                ..Default::default()
+            })
+            .fill(panels),
+    )
     .on(EventKind::FocusWithin, move |event| {
         if let Some(scope) = weak.upgrade() {
             if matches!(event, Event::FocusWithin { focused: false, .. })

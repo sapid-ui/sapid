@@ -203,15 +203,53 @@ fn password_visibility_is_independent_of_value_revision_and_field_disabling() {
     let id = find(&app, "sapid-password-input");
     let toggle = find(&app, "sapid-password-toggle");
     let before = props(&app, id);
+    let visibility = app.tree().node(toggle).unwrap().parent.unwrap();
+    let parent = app.tree().node(visibility).unwrap().parent.unwrap();
+    assert!(
+        app.tree()
+            .node(parent)
+            .unwrap()
+            .descriptor
+            .view()
+            .classes
+            .iter()
+            .any(|class| class == "sapid-input-right-section")
+    );
+    assert!(
+        matches!(app.tree().node(toggle).unwrap().descriptor.view().props, Props::Button(button) if button.label.is_empty())
+    );
+    let icon = app.tree().node(toggle).unwrap().children[0];
+    let before_icon = app
+        .tree()
+        .node(icon)
+        .unwrap()
+        .descriptor
+        .view()
+        .props
+        .clone();
     app.dispatch(toggle, Event::Activate).unwrap();
     app.flush().unwrap();
     assert_eq!(props(&app, id).purpose, Purpose::Text);
+    assert!(
+        matches!(app.tree().node(icon).unwrap().descriptor.view().props, Props::Graphic(graphic) if graphic.alternative.is_none())
+    );
+    assert_ne!(
+        app.tree().node(icon).unwrap().descriptor.view().props,
+        &before_icon
+    );
     assert_eq!(
         (props(&app, id).value, props(&app, id).revision),
         (before.value.clone(), before.revision)
     );
     assert!(
-        matches!(&app.tree().node(toggle).unwrap().descriptor.view().props.clone(),Props::Button(p) if p.label=="Hide password")
+        app.tree()
+            .node(toggle)
+            .unwrap()
+            .descriptor
+            .view()
+            .name
+            .as_deref()
+            == Some("Hide password")
     );
     disabled.revise(|v| *v = true);
     app.flush().unwrap();
@@ -224,6 +262,71 @@ fn password_visibility_is_independent_of_value_revision_and_field_disabling() {
     app.flush().unwrap();
     assert_eq!(props(&app, id), before);
     assert_eq!(*calls.borrow(), [true, false]);
+}
+
+#[test]
+fn password_custom_right_section_replaces_default_eye_without_replacing_the_editor() {
+    let app = App::memory();
+    let visible = app.scope().cage(false);
+    app.mount(
+        password_input()
+            .visible(visible)
+            .default_value("secret")
+            .right_section(glory::ui::text().content("Custom section")),
+    )
+    .unwrap();
+    let id = find(&app, "sapid-password-input");
+    assert_eq!(props(&app, id).purpose, Purpose::Password);
+    assert!(
+        !glory::ssr::render(
+            password_input().right_section(glory::ui::text().content("Custom section"))
+        )
+        .unwrap()
+        .contains("sapid-password-toggle")
+    );
+    visible.revise(|value| *value = true);
+    app.flush().unwrap();
+    assert_eq!(props(&app, id).purpose, Purpose::Text);
+    assert_eq!(props(&app, id).value, "secret");
+}
+
+#[test]
+fn password_loading_replaces_only_the_right_visibility_icon() {
+    for position in [
+        sapid::InputSectionPosition::Left,
+        sapid::InputSectionPosition::Right,
+    ] {
+        let app = App::memory();
+        let loading = app.scope().cage(false);
+        app.mount(password_input().loading(loading).loading_position(position))
+            .unwrap();
+        let toggle = find(&app, "sapid-password-visibility");
+        loading.revise(|value| *value = true);
+        app.flush().unwrap();
+        assert_eq!(
+            app.tree()
+                .node(toggle)
+                .unwrap()
+                .descriptor
+                .view()
+                .semantics
+                .as_ref()
+                .is_some_and(|state| state.hidden),
+            position == sapid::InputSectionPosition::Right
+        );
+        loading.revise(|value| *value = false);
+        app.flush().unwrap();
+        assert!(
+            !app.tree()
+                .node(toggle)
+                .unwrap()
+                .descriptor
+                .view()
+                .semantics
+                .as_ref()
+                .is_some_and(|state| state.hidden)
+        );
+    }
 }
 
 #[test]

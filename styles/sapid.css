@@ -1,5 +1,19 @@
 /* Opt-in interaction styles. Rust Theme owns the same semantic tokens. */
 .sapid-alert{text-align:start}
+.sapid-password-toggle:where(:not(.sapid-unstyled)){cursor:pointer;flex-shrink:0}
+.sapid-password-toggle:where(:not(.sapid-unstyled)):hover:enabled{background:var(--sp-disabled)!important}
+.sapid-password-toggle:where(:not(.sapid-unstyled)):focus-visible{outline:2px solid var(--sp-ring);outline-offset:-2px}
+.sapid-password-toggle:disabled{cursor:not-allowed}
+.sapid-password-input::-ms-reveal{display:none}
+.sapid-app-shell:where(:not(.sapid-unstyled)){box-sizing:border-box}
+.sapid-app-shell:where(:not(.sapid-unstyled))>.sapid-shell-skip{position:absolute;left:12px;top:8px;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap;z-index:2}
+.sapid-app-shell:where(:not(.sapid-unstyled))>.sapid-shell-skip:focus{width:auto;height:auto;clip-path:none;padding:8px 12px;background:var(--sp-surface);outline:2px solid var(--sp-ring);border-radius:4px}
+.sapid-sidebar-trigger:where(:not(.sapid-unstyled)){cursor:pointer;flex-shrink:0}
+.sapid-sidebar-trigger:where(:not(.sapid-unstyled)):hover{background:var(--sp-disabled)!important}
+.sapid-menubar:where(:not(.sapid-unstyled)){box-sizing:border-box;align-items:center;flex-wrap:wrap}
+.sapid-menubar .sapid-menu-trigger:where(:not(.sapid-unstyled)){cursor:pointer}
+.sapid-menubar .sapid-menu-trigger:where(:not(.sapid-unstyled)):is(:hover,[aria-expanded=true]){background:var(--sp-disabled)!important}
+.sapid-menubar .sapid-menu-trigger:where(:not(.sapid-unstyled)):focus-visible{outline:2px solid var(--sp-ring);outline-offset:-2px}
 .sapid-alert-close{cursor:pointer}
 .sapid-alert-close:hover{opacity:.75}
 /* BEGIN SAPID PALETTES */

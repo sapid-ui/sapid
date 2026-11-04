@@ -1,5 +1,13 @@
 # Timeline and Separator
 
+The default timeline draws its own round nodes and connecting lines while
+retaining ordered-list semantics. `bullet_size(px)` accepts 8–64 and
+`line_width(px)` accepts 0–8 finite CSS pixels; zero omits connecting lines.
+Invalid geometry fails before nodes are created. The final item has no trailing
+connector. `marker(children)` centers caller content inside a node and preserves
+the ordinary Widget ownership model. Pending/current/completed updates patch
+node and connector paint without rebuilding list items or embedded controls.
+
 `timeline("release")` renders an actual ordered list. Explicit stable ASCII item
 keys identify each list item; `title`, `description`, `timestamp`, `marker` and
 `fill` provide separate content slots. Timestamps are ordinary text supplied by
@@ -20,7 +28,7 @@ and following items read “Upcoming”. `state_labels` replaces these three tex
 alternatives. The current status has theme accent color and stronger weight;
 state classes supplement the readable text. There is no invented
 interactive role, implicit focus movement or progress callback. Changes patch
-only item classes and status text; item, slot and embedded control identities
+item classes, status text and marker/connector paint; item, slot and embedded control identities
 remain stable. Controlled sources remain read-only. An unknown dynamic active
 key returns a typed error, retains the last accepted state and can recover after
 a valid update. The effect and references retire with the component Owner.

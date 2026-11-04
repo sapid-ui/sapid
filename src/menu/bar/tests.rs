@@ -65,6 +65,128 @@ fn sample() -> Menubar {
 }
 
 #[test]
+fn pointer_switches_one_open_root_hover_is_opt_in_and_controlled_refusals_hold() {
+    for hover in [false, true] {
+        let app = App::memory();
+        app.mount(sample().open_on_hover(hover)).unwrap();
+        let file = button(&app, "File");
+        let view = button(&app, "View");
+        let disabled = button(&app, "Disabled");
+        let pointer = |from| Event::Pointer {
+            from,
+            related: None,
+            phase: PointerPhase::Move,
+        };
+        app.dispatch(file, pointer(file)).unwrap();
+        app.flush().unwrap();
+        assert_eq!(!hidden(&app, panel(&app, "File")), hover);
+        if !hover {
+            app.dispatch(file, Event::Activate).unwrap();
+            app.flush().unwrap();
+        }
+        app.dispatch(view, pointer(view)).unwrap();
+        app.flush().unwrap();
+        assert!(hidden(&app, panel(&app, "File")));
+        assert!(!hidden(&app, panel(&app, "View")));
+        app.dispatch(disabled, pointer(disabled)).unwrap();
+        app.flush().unwrap();
+        assert!(!hidden(&app, panel(&app, "View")));
+        if hover {
+            let bar = nodes(&app)
+                .into_iter()
+                .find(|id| {
+                    app.tree().node(*id).unwrap().descriptor.view().role == Some(Role::Menubar)
+                })
+                .unwrap();
+            app.dispatch(
+                bar,
+                Event::PointerWithin {
+                    from: view,
+                    related: None,
+                    phase: PointerPhase::Leave,
+                },
+            )
+            .unwrap();
+            app.flush().unwrap();
+            assert!(hidden(&app, panel(&app, "View")));
+        }
+    }
+    let app = App::memory();
+    app.mount(sample().open_on_hover(true).value(Some("file".to_owned())))
+        .unwrap();
+    let view = button(&app, "View");
+    app.dispatch(
+        view,
+        Event::Pointer {
+            from: view,
+            related: None,
+            phase: PointerPhase::Move,
+        },
+    )
+    .unwrap();
+    app.flush().unwrap();
+    assert!(!hidden(&app, panel(&app, "File")));
+    assert!(hidden(&app, panel(&app, "View")));
+}
+
+#[test]
+fn dropdown_position_and_width_override_per_root_and_validate_before_mount() {
+    use glory::render::{AnchorAlign, AnchorPlacement, AnchorSide};
+    let position = AnchorPlacement::new(AnchorSide::Top, AnchorAlign::End);
+    let app = App::memory();
+    app.mount(
+        menubar("position").position(position).menus([
+            menubar_menu("file")
+                .label("File")
+                .width(260.)
+                .item(menu_item("new").label("New")),
+            menubar_menu("edit")
+                .label("Edit")
+                .width(180.)
+                .position(AnchorPlacement::default())
+                .item(menu_item("undo").label("Undo")),
+        ]),
+    )
+    .unwrap();
+    for (name, width, placement) in [
+        ("File", 260., position),
+        ("Edit", 180., AnchorPlacement::default()),
+    ] {
+        let tree = app.tree();
+        let id = panel(&app, name);
+        let descriptor = tree.node(id).unwrap().descriptor.view();
+        assert_eq!(descriptor.style.width, Some(Length::Px(width)));
+        assert_eq!(
+            descriptor
+                .semantics
+                .as_ref()
+                .unwrap()
+                .layer
+                .as_ref()
+                .unwrap()
+                .placement,
+            LayerPlacement::Anchor(placement)
+        );
+    }
+    for width in [f64::NAN, 0., 1001.] {
+        let app = App::memory();
+        assert!(
+            app.mount(
+                menubar("invalid").menu(menubar_menu("file").width(width).item(menu_item("new")))
+            )
+            .is_err()
+        );
+        assert!(app.tree().is_empty());
+    }
+    let app = App::memory();
+    assert!(
+        app.mount(sample().position(position.gap(f64::NAN)))
+            .is_err()
+    );
+    assert!(app.tree().is_empty());
+}
+
+#[test]
 fn menubar_intrinsic_roots_share_one_tab_stop_disabled_skip_and_horizontal_typeahead() {
     let app = App::memory();
     app.mount(sample().name("Application menu")).unwrap();

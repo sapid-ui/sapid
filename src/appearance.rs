@@ -121,6 +121,7 @@ pub(crate) fn merge(mut base: Style, overrides: Style) -> Style {
         text_gradient,
         font_size,
         line_height,
+        letter_spacing,
         font_family,
         font_weight,
         white_space,

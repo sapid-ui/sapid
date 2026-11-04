@@ -43,7 +43,7 @@ async (hostPage) => {
       await page.evaluate(()=>window.demo.input_state('visible',true));await tick();
       assert(await password.evaluate(e=>e===window.savedPassword&&e.type==='text'&&e.value==='secret🦀value'&&e.selectionStart===2&&e.selectionEnd===8&&e.selectionDirection==='backward'&&window.passwordWrites===0),`${mode}: revealing replaced editor/value/selection`);
       await toggle.focus();await page.keyboard.press('Space');await tick();
-      assert(await password.getAttribute('type')==='password'&&await toggle.innerText()==='Show password',`${mode}: keyboard hide/name`);
+      assert(await password.getAttribute('type')==='password'&&await toggle.getAttribute('aria-label')==='Show password'&&await toggle.innerText()==='',`${mode}: keyboard hide/name`);
       await toggle.click();await tick();assert(await password.getAttribute('type')==='text',`${mode}: pointer reveal`);
       await password.evaluate(e=>{e.focus();e.dispatchEvent(new CompositionEvent('compositionstart',{bubbles:true,data:''}));e.value='合成draft';e.setSelectionRange(2,4);e.dispatchEvent(new InputEvent('input',{bubbles:true,data:'合成',inputType:'insertCompositionText',isComposing:true}));});await tick();
       await page.evaluate(()=>window.demo.input_state('visible',false));await tick();

@@ -85,6 +85,8 @@ pub(super) fn build(widget: &mut Accordion, scope: &Scope, input: Items) -> Resu
     let theme = widget.common.theme.clone();
     let size = widget.common.size;
     let unstyled = widget.common.unstyled;
+    let variant = widget.variant;
+    let chevron = widget.chevron;
     let heading = widget.heading;
     let regions = widget.regions;
     let policy = widget.policy;
@@ -129,6 +131,7 @@ pub(super) fn build(widget: &mut Accordion, scope: &Scope, input: Items) -> Resu
                 let mut trigger = glory::ui::button()
                     .class("sapid-accordion-trigger")
                     .label(config.label)
+                    .name(config.label)
                     .enabled(enabled)
                     .node_ref(config.trigger)
                     .semantics(scope.bond(move || {
@@ -144,13 +147,16 @@ pub(super) fn build(widget: &mut Accordion, scope: &Scope, input: Items) -> Resu
                         })
                     }));
                 if !unstyled {
-                    trigger = trigger.style(theme.control(size));
+                    trigger = trigger.style(skin::accordion_trigger(&theme, size));
                 }
                 if let Some(mut factory) = config.take_trigger_content() {
                     trigger = trigger
                         .label("")
                         .name(config.label)
                         .fill(glory::ui::widget(move |scope| factory().show_in(scope)));
+                }
+                if chevron {
+                    trigger = trigger.fill(skin::chevron(scope, open.into(), theme.foreground));
                 }
                 let control = control.clone();
                 let callback = callback.clone();
@@ -196,21 +202,26 @@ pub(super) fn build(widget: &mut Accordion, scope: &Scope, input: Items) -> Resu
                 };
                 let focused_key = config.key.clone();
                 let weak = scope.downgrade();
-                glory::ui::view()
-                    .class("sapid-accordion-item")
-                    .on(EventKind::FocusWithin, move |event| {
-                        if let Event::FocusWithin { focused, .. } = event
-                            && let Err(error) = focus.observe(&focused_key, focused)
-                            && let Some(scope) = weak.upgrade()
-                        {
-                            scope.report_error(error);
-                        }
-                    })
-                    .fill((
-                        glory::ui::view().role(Role::Heading(heading)).fill(trigger),
-                        panel,
-                    ))
-                    .show_in(scope)
+                let mut row = glory::ui::view().class("sapid-accordion-item");
+                if !unstyled {
+                    let theme = theme.clone();
+                    row = row.style(
+                        scope.bond(move || skin::accordion_item(&theme, variant, open.get())),
+                    );
+                }
+                row.on(EventKind::FocusWithin, move |event| {
+                    if let Event::FocusWithin { focused, .. } = event
+                        && let Err(error) = focus.observe(&focused_key, focused)
+                        && let Some(scope) = weak.upgrade()
+                    {
+                        scope.report_error(error);
+                    }
+                })
+                .fill((
+                    glory::ui::view().role(Role::Heading(heading)).fill(trigger),
+                    panel,
+                ))
+                .show_in(scope)
             })
         });
     let mut observers = widget
@@ -231,7 +242,7 @@ pub(super) fn build(widget: &mut Accordion, scope: &Scope, input: Items) -> Resu
         glory::ui::view(),
         scope,
         "sapid-accordion",
-        composite::column(8.0)
+        skin::accordion_root(widget.variant)
     )
     .semantics(composite::metadata(Semantics {
         id: Some(root_id),

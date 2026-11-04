@@ -14,7 +14,59 @@ fn all(app: &App) -> Vec<NodeId> {
     result
 }
 fn button(app: &App, label: &str) -> NodeId {
-    all(app).into_iter().find(|id|matches!(&app.tree().node(*id).unwrap().descriptor.view().props.clone(),Props::Button(p)if p.label==label)).unwrap()
+    all(app).into_iter().find(|id| {
+        let tree = app.tree();
+        let view = tree.node(*id).unwrap().descriptor.view();
+        matches!(view.props, Props::Button(p) if p.label == label || view.name.as_deref() == Some(label))
+    }).unwrap()
+}
+
+#[test]
+fn rich_navigation_sections_keep_one_native_link_and_live_description() {
+    let host = WindowApp::new();
+    let app = host.app();
+    let description = app.scope().cage("Workspace activity".to_owned());
+    host.mount(
+        nav_link("rich-native")
+            .label("Projects")
+            .href("/projects")
+            .description(description)
+            .current(true)
+            .left_section(glory::ui::text().content("P"))
+            .right_section(glory::ui::text().content("12"))
+            .style(Style::new().width(Length::Px(280.))),
+    )
+    .unwrap();
+    app.settle(16).unwrap();
+    let links: Vec<_> = all(app)
+        .into_iter()
+        .filter(|id| {
+            matches!(
+                app.tree().node(*id).unwrap().descriptor.view().props,
+                Props::Link(_)
+            )
+        })
+        .collect();
+    assert_eq!(links.len(), 1);
+    let link = links[0];
+    let rect = bounds(app, link);
+    assert!(rect.width > 200. && rect.height > 36.);
+    assert_eq!(
+        app.tree()
+            .node(link)
+            .unwrap()
+            .descriptor
+            .view()
+            .name
+            .as_deref(),
+        Some("Projects")
+    );
+    let identities = all(app);
+    description.revise(|value| *value = "Updated activity".into());
+    app.settle(16).unwrap();
+    assert_eq!(identities, all(app));
+    app.clear().unwrap();
+    assert!(app.tree().is_empty());
 }
 fn bounds(app: &App, node: NodeId) -> glory::render::Rect {
     let reply = Rc::new(RefCell::new(None));

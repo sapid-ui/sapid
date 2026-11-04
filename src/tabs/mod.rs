@@ -5,6 +5,8 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 use crate::appearance::{Common, common_methods, configure, observe};
+use crate::composite::skin;
+pub use crate::composite::skin::TabsVariant;
 use crate::composite::{
     self, Callback, ContentPolicy, Item, Members, Observers, Panel, item_methods,
 };
@@ -49,6 +51,8 @@ pub struct Tabs {
     activation: TabActivation,
     looping: bool,
     policy: ContentPolicy,
+    variant: TabsVariant,
+    grow: bool,
 }
 pub fn tabs(key: impl Into<String>) -> Tabs {
     Tabs {
@@ -63,10 +67,21 @@ pub fn tabs(key: impl Into<String>) -> Tabs {
         activation: TabActivation::Automatic,
         looping: true,
         policy: ContentPolicy::KeepMounted,
+        variant: TabsVariant::Default,
+        grow: false,
     }
 }
 impl Tabs {
     common_methods!();
+    pub fn variant(mut self, value: TabsVariant) -> Self {
+        self.variant = value;
+        self
+    }
+    /// Distribute horizontal tab labels across the available list width.
+    pub fn grow(mut self, value: bool) -> Self {
+        self.grow = value;
+        self
+    }
     pub fn tab(mut self, tab: Tab) -> Self {
         if self.items.len() <= 256 {
             self.items.push(tab.inner);
@@ -282,14 +297,14 @@ impl Widget for Tabs {
             if !self.common.unstyled {
                 let theme = self.common.theme.clone();
                 let size = self.common.size;
-                trigger = trigger.style(scope.bond(move || {
-                    let mut style = theme.control(size);
-                    if open.get() {
-                        style.background = Some(theme.accent);
-                        style.color = Some(theme.on_accent);
-                    }
-                    style
-                }));
+                let variant = self.variant;
+                let axis = self.orientation;
+                let grow = self.grow;
+                trigger =
+                    trigger
+                        .style(scope.bond(move || {
+                            skin::tab(&theme, size, variant, axis, open.get(), grow)
+                        }));
             }
             let automatic = self.activation == TabActivation::Automatic;
             let on_focus = selection.clone();
@@ -355,16 +370,12 @@ impl Widget for Tabs {
                 navigation_direction: self.direction,
                 ..Default::default()
             }))
-            .style(
-                glory::style::Style::new()
-                    .display(glory::style::Display::Flex)
-                    .flex_direction(if self.orientation == Orientation::Horizontal {
-                        glory::style::FlexDirection::Row
-                    } else {
-                        glory::style::FlexDirection::Column
-                    })
-                    .gap(4.0),
-            )
+            .style(skin::tab_list(
+                &self.common.theme,
+                self.variant,
+                self.orientation,
+                self.common.unstyled,
+            ))
             .on(EventKind::FocusWithin, move |event| {
                 if let Event::FocusWithin { focused, .. } = event {
                     within.revise(|value| *value = focused);
@@ -397,14 +408,23 @@ impl Widget for Tabs {
             glory::ui::view(),
             scope,
             "sapid-tabs",
-            composite::column(8.0)
+            skin::tabs_root(self.orientation)
         )
         .semantics(composite::metadata(Semantics {
             id: Some(root_id),
             ..Default::default()
         }))
         .fill(list)
-        .fill(panels);
+        .fill(
+            glory::ui::view()
+                .class("sapid-tab-panels")
+                .style(glory::style::Style {
+                    grow: Some(1.),
+                    min_width: Some(glory::style::Length::Px(0.)),
+                    ..Default::default()
+                })
+                .fill(panels),
+        );
         for (kind, mut observers) in std::mem::take(&mut self.common.handlers) {
             root = root.on(kind, move |event| observe(&mut observers, owner, event));
         }

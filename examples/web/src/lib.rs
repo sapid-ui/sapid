@@ -379,9 +379,13 @@ pub mod schedule_timeline_form;
 pub mod showcase;
 pub mod showcase_api;
 pub mod showcase_catalog;
+mod showcase_composite_docs;
 pub mod showcase_examples;
 pub mod showcase_home;
 pub mod showcase_host;
+mod showcase_menubar;
+mod showcase_navigation_docs;
+mod showcase_shell;
 pub mod time_picker_form;
 
 pub mod focus_scope_form;

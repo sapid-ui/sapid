@@ -65,6 +65,12 @@ pub fn text_field() -> TextField {
 }
 
 impl TextField {
+    pub(crate) fn has_right_section(&self) -> bool {
+        self.right_section.is_some()
+    }
+    pub(crate) fn right_section_loading(&self) -> Option<Vary<bool>> {
+        (self.loading_position == InputSectionPosition::Right).then(|| self.loading.clone())
+    }
     pub(crate) fn semantic_id(mut self, value: glory::render::SemanticId) -> Self {
         self.semantic_id = Some(value);
         self
@@ -367,11 +373,19 @@ impl Widget for TextField {
                 .class("sapid-text-field-editor")
                 .style(glory::style::Style::new().position(glory::style::Position::Relative))
                 .fill(inner);
+            let section_container = |left, width| glory::style::Style {
+                align: Some(glory::style::Align::Center),
+                justify: Some(glory::style::Justify::Center),
+                ..section_style(left, width)
+                    .top(glory::style::Length::Px(0.))
+                    .bottom(glory::style::Length::Px(0.))
+                    .display(glory::style::Display::Flex)
+            };
             if let Some(children) = self.left_section.take() {
                 editor = editor.fill(
                     glory::ui::view()
                         .class("sapid-input-left-section")
-                        .style(section_style(true, self.left_section_width))
+                        .style(section_container(true, self.left_section_width))
                         .fill(children),
                 );
             }
@@ -379,7 +393,7 @@ impl Widget for TextField {
                 editor = editor.fill(
                     glory::ui::view()
                         .class("sapid-input-right-section")
-                        .style(section_style(false, self.right_section_width))
+                        .style(section_container(false, self.right_section_width))
                         .fill(children),
                 );
             }

@@ -16,7 +16,11 @@ fn all(app: &App) -> Vec<NodeId> {
     result
 }
 fn button(app: &App, label: &str) -> NodeId {
-    all(app).into_iter().find(|id|matches!(&app.tree().node(*id).unwrap().descriptor.view().props.clone(),Props::Button(p) if p.label==label)).unwrap_or_else(||panic!("missing button {label}"))
+    all(app).into_iter().find(|id| {
+        let tree = app.tree();
+        let node = tree.node(*id).unwrap().descriptor.view();
+        matches!(node.props, Props::Button(p) if p.label == label || node.name.as_deref() == Some(label))
+    }).unwrap_or_else(|| panic!("missing button {label}"))
 }
 fn current(app: &App) -> Vec<NodeId> {
     all(app)
@@ -439,6 +443,112 @@ fn semantic_ssr_current_is_page_or_step_and_absence_clears_metadata() {
     )
     .unwrap();
     assert!(html.contains("aria-current=\"step\""));
+}
+
+#[test]
+fn compact_pagination_names_order_and_optional_controls_keep_real_page_requests() {
+    let html = glory::ssr::render(pagination("order").default_page(3).total(Some(5))).unwrap();
+    assert!(html.find("First page").unwrap() < html.find("Page 1").unwrap());
+    assert!(html.find("Page 3").unwrap() < html.find("Next page").unwrap());
+    assert!(html.contains("aria-label=\"Next page\""));
+    let app = App::memory();
+    app.mount(
+        pagination("numbers")
+            .total(Some(5))
+            .default_page(2)
+            .with_controls(false)
+            .with_edges(false),
+    )
+    .unwrap();
+    assert_eq!(
+        all(&app)
+            .iter()
+            .filter(|id| matches!(
+                app.tree().node(**id).unwrap().descriptor.view().props,
+                Props::Button(_)
+            ))
+            .count(),
+        35
+    );
+    assert!(!all(&app).iter().any(|id| {
+        app.tree()
+            .node(*id)
+            .unwrap()
+            .descriptor
+            .view()
+            .name
+            .as_deref()
+            == Some("Next page")
+    }));
+    let third = button(&app, "Page 3");
+    app.dispatch(third, Event::Activate).unwrap();
+    assert_eq!(current(&app), vec![third]);
+    assert!(
+        matches!(app.tree().node(third).unwrap().descriptor.view().props, Props::Button(p) if p.label == "3")
+    );
+}
+
+#[test]
+fn breadcrumb_reactive_separator_preserves_folded_links_and_current_item() {
+    let app = App::memory();
+    let separator = app.scope().cage("/".to_owned());
+    app.mount(
+        breadcrumbs("separator")
+            .items(crumbs())
+            .separator(separator)
+            .gap(12.),
+    )
+    .unwrap();
+    let before = all(&app);
+    let current = current(&app);
+    separator.revise(|text| *text = "→".into());
+    app.flush().unwrap();
+    assert_eq!(before, all(&app));
+    assert_eq!(current, self::current(&app));
+    app.dispatch(button(&app, "Expand breadcrumb path"), Event::Activate)
+        .unwrap();
+    assert_eq!(before, all(&app));
+    let app = App::memory();
+    assert!(app.mount(breadcrumbs("invalid-gap").gap(f64::NAN)).is_err());
+    assert!(app.tree().roots().is_empty());
+}
+
+#[test]
+fn rich_nav_link_content_preserves_navigation_name_and_reactive_description() {
+    let app = App::memory();
+    let description = app.scope().cage("Project activity".to_owned());
+    let navigated = Rc::new(RefCell::new(Vec::new()));
+    let out = navigated.clone();
+    app.mount(
+        nav_link("rich")
+            .label("Projects")
+            .href("/projects")
+            .description(description)
+            .left_section(glory::ui::text().content("P"))
+            .right_section(glory::ui::text().content("12"))
+            .variant(sapid::NavLinkVariant::Filled)
+            .current(true)
+            .on_navigate(move |request| out.borrow_mut().push(request.href)),
+    )
+    .unwrap();
+    let link = current(&app)[0];
+    assert_eq!(
+        app.tree()
+            .node(link)
+            .unwrap()
+            .descriptor
+            .view()
+            .name
+            .as_deref(),
+        Some("Projects")
+    );
+    app.dispatch(link, Event::Activate).unwrap();
+    assert_eq!(*navigated.borrow(), ["/projects"]);
+    let ids = all(&app);
+    description.revise(|text| *text = "Updated activity".into());
+    app.flush().unwrap();
+    assert_eq!(ids, all(&app));
+    assert!(all(&app).iter().any(|id| matches!(app.tree().node(*id).unwrap().descriptor.view().props, Props::Text(p) if p.content == "Updated activity")));
 }
 #[test]
 fn invalid_initial_navigation_configs_create_no_nodes() {
