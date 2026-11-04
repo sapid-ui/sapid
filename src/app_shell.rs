@@ -6,7 +6,10 @@ use glory::render::{
     Action, Change, Event, EventKind, FocusMode, Layer, LayerPlacement, NodeId, Patch, PopupKind,
     Role, SemanticId, Semantics,
 };
-use glory::style::{Display, Edges, FlexDirection, Length, Overflow, Style};
+use glory::style::{
+    Align, BorderStyle, Color, Display, Edges, FlexDirection, Justify, Length, Overflow, Position,
+    Style,
+};
 use glory::ui::{Result, WeakScope, Widget};
 use glory::{Bond, Cage, Scope, Vary};
 use std::{cell::Cell, rc::Rc};
@@ -479,6 +482,18 @@ impl Sidebar {
                 Length::Percent(100.0)
             });
             style.shrink = Some(0.0);
+            if !unstyled {
+                style.border_width = Some(Edges {
+                    right: if embedded && state.mode == ShellMode::Desktop {
+                        1.0
+                    } else {
+                        0.0
+                    },
+                    ..Edges::all(0.0)
+                });
+                style.border_style = Some(BorderStyle::Solid);
+                style.border_color = Some(theme.border);
+            }
             merge(style, common_style.get())
         };
         let mut root = configure!(
@@ -678,7 +693,26 @@ impl Widget for SidebarTrigger {
         let handle = self.handle.clone();
         let owner = controller.owner;
         let mut button = glory::ui::button()
-            .label(label)
+            .name(label)
+            .fill(
+                glory::ui::graphic()
+                    .drawing({
+                        use glory::render::{GraphicPoint as P, PathCommand as C};
+                        glory::render::GraphicProps {
+                            commands: [6., 12., 18.]
+                                .into_iter()
+                                .flat_map(|y| [C::Move(P::new(4., y)), C::Line(P::new(20., y))])
+                                .collect(),
+                            stroke: Some(glory::render::GraphicStroke {
+                                color: self.theme.foreground,
+                                width: 1.5,
+                                cap: glory::render::StrokeCap::Round,
+                            }),
+                            ..Default::default()
+                        }
+                    })
+                    .style(Style::new().width(Length::Px(20.)).height(Length::Px(20.))),
+            )
             .node_ref(controller.trigger)
             .class("sapid-button sapid-sidebar-trigger")
             .semantics(scope.bond(move || {
@@ -710,7 +744,21 @@ impl Widget for SidebarTrigger {
                 }
             });
         if !self.unstyled {
-            button = button.style(self.theme.control(self.size));
+            let side = self.theme.tokens.control(self.size).min_height;
+            button = button.style(Style {
+                align: Some(Align::Center),
+                justify: Some(Justify::Center),
+                background: Some(Color(0, 0, 0, 0)),
+                ..Style::new()
+                    .width(Length::Px(side))
+                    .height(Length::Px(side))
+                    .display(Display::InlineFlex)
+                    .padding(Edges::all(0.))
+                    .border_width(Edges::all(0.))
+                    .radius(self.theme.radius)
+            });
+        } else {
+            button = button.class("sapid-button sapid-sidebar-trigger sapid-unstyled");
         }
         button.show_in(scope)
     }
@@ -840,8 +888,10 @@ impl Widget for AppShell {
         let measured = layout.clone();
         let adapt = handle.clone();
         let mut base = Style::new()
+            .position(Position::Relative)
             .display(Display::Flex)
             .flex_direction(FlexDirection::Column)
+            .min_width(Length::Px(0.))
             .width(Length::Percent(100.0));
         if !self.common.unstyled {
             base.background = Some(self.common.theme.surface);
@@ -902,12 +952,21 @@ impl Widget for AppShell {
                 .role(Role::Banner)
                 .class("sapid-shell-header");
             if !self.common.unstyled {
-                header = header.style(
-                    Style::new()
+                header = header.style(Style {
+                    align: Some(Align::Center),
+                    shrink: Some(0.),
+                    ..Style::new()
                         .display(Display::Flex)
+                        .min_height(Length::Px(60.))
                         .gap(12.0)
-                        .padding(Edges::all(12.0)),
-                );
+                        .padding(Edges::all(12.0))
+                        .border_width(Edges {
+                            bottom: 1.,
+                            ..Edges::all(0.)
+                        })
+                        .border_style(BorderStyle::Solid)
+                        .border_color(self.common.theme.border)
+                });
             }
             if let Some(handle) = handle.clone() {
                 header = header.fill(SidebarTrigger {
@@ -933,6 +992,8 @@ impl Widget for AppShell {
                 ..Style::new()
                     .display(Display::Flex)
                     .flex_direction(FlexDirection::Row)
+                    .min_height(Length::Px(0.))
+                    .min_width(Length::Px(0.))
             })
             .node_ref(body_ref)
             .show_in(&parent)?;
@@ -956,6 +1017,15 @@ impl Widget for AppShell {
                 grow: Some(1.0),
                 ..Style::new().min_width(Length::Px(0.0))
             });
+        if !self.common.unstyled {
+            main = main.style(Style {
+                grow: Some(1.),
+                background: Some(self.common.theme.canvas),
+                ..Style::new()
+                    .min_width(Length::Px(0.))
+                    .padding(Edges::all(16.))
+            });
+        }
         if let Some(mut factory) = self.main.take() {
             let context = context.clone();
             main = main.fill(glory::ui::widget(move |scope| {
@@ -972,7 +1042,17 @@ impl Widget for AppShell {
                     factory(context.clone()).show_in(scope)
                 }));
             if !self.common.unstyled {
-                footer = footer.style(Style::new().padding(Edges::all(12.0)));
+                footer = footer.style(Style {
+                    shrink: Some(0.),
+                    ..Style::new()
+                        .padding(Edges::all(12.0))
+                        .border_width(Edges {
+                            top: 1.,
+                            ..Edges::all(0.)
+                        })
+                        .border_style(BorderStyle::Solid)
+                        .border_color(self.common.theme.border)
+                });
             }
             footer.show_in(&parent)?;
         }

@@ -1,9 +1,52 @@
 use glory::render::Purpose;
+use glory::style::{Align, Color, Display, Edges, Justify, Length, Style};
 use glory::ui::{Result, Widget};
 use glory::{Scope, Vary};
 
 use crate::state::Value;
 use crate::text_input::text_input_methods;
+
+fn eye(visible: bool, color: Color) -> glory::render::GraphicProps {
+    use glory::render::{GraphicPoint as P, PathCommand as C};
+    let mut commands = vec![
+        C::Move(P::new(2., 12.)),
+        C::Cubic {
+            first: P::new(6., 4.),
+            second: P::new(18., 4.),
+            end: P::new(22., 12.),
+        },
+        C::Cubic {
+            first: P::new(18., 20.),
+            second: P::new(6., 20.),
+            end: P::new(2., 12.),
+        },
+        C::Close,
+        C::Move(P::new(15., 12.)),
+        C::Cubic {
+            first: P::new(15., 8.),
+            second: P::new(9., 8.),
+            end: P::new(9., 12.),
+        },
+        C::Cubic {
+            first: P::new(9., 16.),
+            second: P::new(15., 16.),
+            end: P::new(15., 12.),
+        },
+        C::Close,
+    ];
+    if visible {
+        commands.extend([C::Move(P::new(3., 3.)), C::Line(P::new(21., 21.))]);
+    }
+    glory::render::GraphicProps {
+        commands,
+        stroke: Some(glory::render::GraphicStroke {
+            color,
+            width: 1.5,
+            cap: glory::render::StrokeCap::Round,
+        }),
+        ..Default::default()
+    }
+}
 
 /// A single input identity with an explicitly named visibility action.
 /// Revealing does not copy its value or write a new input revision.
@@ -63,6 +106,12 @@ impl Widget for PasswordInput {
                 Purpose::Password
             }
         });
+        // A caller-supplied right section replaces the default visibility action.
+        if self.input.has_right_section() {
+            return std::mem::take(&mut self.input)
+                .purpose(purpose)
+                .build(scope);
+        }
         let source = control.source.clone();
         let show = self.show_label.clone();
         let hide = self.hide_label.clone();
@@ -83,16 +132,39 @@ impl Widget for PasswordInput {
         let theme = common.theme.clone();
         let size = common.size;
         let unstyled = common.unstyled;
+        let loading = self.input.right_section_loading();
         let weak = scope.downgrade();
         let mut callback = self.on_visibility.take();
-        let mut toggle = crate::button()
-            .theme(theme.clone())
-            .size(size)
-            .variant(crate::ButtonVariant::Secondary)
-            .class("sapid-password-toggle")
-            .label(label)
+        let side = theme.tokens.control(size).min_height;
+        let source = control.source.clone();
+        let enabled_icon = enabled.clone();
+        let colors = theme.clone();
+        let drawing = scope.bond(move || {
+            eye(
+                source.get(),
+                if enabled_icon.get() {
+                    colors.foreground
+                } else {
+                    colors.disabled_text
+                },
+            )
+        });
+        let mut toggle = glory::ui::button()
+            .class(format!(
+                "sapid-password-toggle {}{}",
+                theme.class(),
+                if unstyled { " sapid-unstyled" } else { "" }
+            ))
+            .name(label)
+            .fill(
+                glory::ui::graphic().drawing(drawing).style(
+                    Style::new()
+                        .width(Length::Px(side * 0.5))
+                        .height(Length::Px(side * 0.5)),
+                ),
+            )
             .enabled(enabled)
-            .on_press(move || {
+            .on(glory::render::EventKind::Activate, move |_| {
                 let Some(scope) = weak.upgrade() else { return };
                 let result = (|| -> Result {
                     let proposal = !control.source.try_get()?;
@@ -106,20 +178,35 @@ impl Widget for PasswordInput {
                     scope.report_error(error);
                 }
             });
-        if unstyled {
-            toggle = toggle.unstyled();
+        if !unstyled {
+            toggle = toggle.style(Style {
+                align: Some(Align::Center),
+                justify: Some(Justify::Center),
+                background: Some(Color(0, 0, 0, 0)),
+                ..Style::new()
+                    .display(Display::InlineFlex)
+                    .width(Length::Px(side - 6.))
+                    .height(Length::Px(side - 6.))
+                    .padding(Edges::all(0.))
+                    .border_width(Edges::all(0.))
+                    .radius(theme.radius)
+            });
         }
-        let input = std::mem::take(&mut self.input).purpose(purpose);
-        let mut group = crate::input_group()
-            .theme(theme)
-            .size(size)
-            .class("sapid-password-group")
-            .input(input)
-            .end(toggle);
-        if unstyled {
-            group = group.unstyled();
-        }
-        group.build(scope)
+        std::mem::take(&mut self.input)
+            .purpose(purpose)
+            .right_section_width(side.max(20.))
+            .right_section(
+                glory::ui::view()
+                    .class("sapid-password-visibility")
+                    .semantics(scope.bond(move || {
+                        crate::composite::metadata(glory::render::Semantics {
+                            hidden: loading.as_ref().is_some_and(|loading| loading.get()),
+                            ..Default::default()
+                        })
+                    }))
+                    .fill(toggle),
+            )
+            .build(scope)
     }
 }
 

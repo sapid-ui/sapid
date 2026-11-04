@@ -5,7 +5,7 @@ use glory::render::{
     Change, Current, EventKind, FocusMode, LinkOpen, NodeId, Patch, SemanticId, Semantics,
 };
 use glory::style::Style;
-use glory::ui::{Result, Widget};
+use glory::ui::{Children, IntoChildren, Result, Widget};
 use glory::{Cage, Scope, Vary};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -21,6 +21,7 @@ pub struct Anchor {
     current: Vary<Option<Current>>,
     semantic_id: Option<SemanticId>,
     navigate: Option<Box<dyn FnMut(AnchorRequest)>>,
+    content: Option<Children>,
 }
 pub fn anchor() -> Anchor {
     Anchor {
@@ -31,6 +32,7 @@ pub fn anchor() -> Anchor {
         current: None.into(),
         semantic_id: None,
         navigate: None,
+        content: None,
     }
 }
 impl Anchor {
@@ -75,6 +77,11 @@ impl Anchor {
         self.label = value.into();
         self
     }
+    /// Passive display content inside the same real link; label remains its name.
+    pub fn fill(mut self, value: impl IntoChildren) -> Self {
+        self.content = Some(value.into_children());
+        self
+    }
     pub fn open_in(mut self, value: impl Into<Vary<LinkOpen>>) -> Self {
         self.open = value.into();
         self
@@ -115,6 +122,11 @@ impl Widget for Anchor {
         let semantic_id = self.semantic_id.clone();
         let reference = self.common.node_ref.unwrap_or_else(|| scope.cage(None));
         let link_request = self.navigate.is_some();
+        let content = self.content.take();
+        let has_content = content.is_some();
+        if has_content && self.common.name.is_none() {
+            self.common.name = Some(self.label.clone());
+        }
         let mut link = configure!(self.common, glory::ui::link(), scope, "sapid-anchor", style)
             .target(self.href.clone())
             .label(self.label.clone())
@@ -126,6 +138,9 @@ impl Widget for Anchor {
                 id: semantic_id.clone(),
                 ..Default::default()
             }));
+        if let Some(content) = content {
+            link = link.label("").fill(content);
+        }
         let callback = Callback::new(self.navigate.take());
         let mut observers = self
             .common

@@ -20,6 +20,12 @@ Shared Glory `Current::{Page, Step}` is independent from selection, toggle state
 
 ## Breadcrumbs
 
+The default `/` separator is part of the actual item layout. `separator(source)`
+accepts static or reactive text and preserves item identities when it changes;
+`gap(px)` configures spacing and rejects negative or non-finite values before
+mounting. The path wraps at item boundaries in a narrow container. The long-path
+disclosure displays a compact ellipsis with its complete expand/collapse name.
+
 Items have a stable key, reactive label, and optional destination. Destination items are actual links; absent destinations are actual text. The root is a named Navigation landmark containing List and ListItem semantics. The last key is current by default; `.current(source)` is controlled and an empty string explicitly clears it. Unknown keys are rejected while preserving the last accepted current state.
 
 `max_items` defaults to 5 and must be at least 2. Collections are static and limited to 128 live items; construction consumes at most 129 iterator entries to detect and reject overflow. Longer paths show the first item, a named ordinary expand/collapse button, and the last `max_items - 2` items. A current item in the middle also remains visible, so the current-location exception may add one item to that presentation limit. This is a disclosure of the path; it does not claim menu semantics. Label and current updates preserve item and link identities.
@@ -28,15 +34,36 @@ Items have a stable key, reactive label, and optional destination. Destination i
 
 ## Pagination
 
+Controls display compact arrows and numbers with complete accessible names
+(`Next page`, `Page 3`, etc.). Their document and keyboard order is First,
+Previous, numeric window, Next, Last. `with_controls(false)` omits Previous/Next;
+`with_edges(false)` omits First/Last. Both default to true to retain the existing
+finite navigation contract. Omitted controls create no native buttons. The row
+wraps between controls without breaking labels character by character.
+
 Pages are positive `u64` values. Known totals must be positive and contain the current page. Initial invalid state fails before creating nodes. Dynamic invalid page/total state reports a typed UI error while keeping the last accepted state. Every callback derives its proposed page from that accepted state, including after rejected source writes and before a pending source update is rendered. There is no silent clamping or mutation of a controlled source.
 
 `page(source)` controls the page; `default_page` supplies the local initial page only without that source. `on_page_change` proposes a page before generic activation observers. Selecting the current page produces no change callback. Directional buttons have explicit First/Previous/Next/Last page names. Known boundaries disable the corresponding actual native buttons. `enabled(false)` disables every page control. Programmatic source changes are silent.
 
 `total(None)` means unknown, independently from `.has_next(source)`. Unknown totals expose one current page plus the four directional controls, with Last disabled. Next depends only on explicit `has_next`, and is also disabled at `u64::MAX`. There is no inference or prefetch of subsequent pages.
 
-`pagination_window` builds the finite snapshot in O(siblings + boundaries), with both budgets at most 8. It iterates only three bounded ranges and inserts gap markers between disjoint ranges, including at `u64::MAX`. At most 35 entries are returned, independent of total or navigation history. The component creates exactly 35 numeric/gap slots and four directional buttons once. Only the visible window participates in layout, focus, and accessibility; hidden slots retain no visited-page state. Physical slot identity remains stable as its displayed page changes. The current button uses `Current::Page` and themed emphasis.
+`pagination_window` builds the finite snapshot in O(siblings + boundaries), with both budgets at most 8. It iterates only three bounded ranges and inserts gap markers between disjoint ranges, including at `u64::MAX`. At most 35 entries are returned, independent of total or navigation history. The component creates exactly 35 numeric/gap slots and up to four directional buttons once. Only the visible window participates in layout, focus, and accessibility; hidden slots retain no visited-page state. Physical slot identity remains stable as its displayed page changes. The current button uses `Current::Page` and themed emphasis.
 
 ## NavLink
+
+`description(source)` adds supporting text; `left_section(children)` and
+`right_section(children)` add passive display content inside the same actual
+Anchor. Its label remains the link's accessible name, and the shared renderer
+rejects nested interactive descendants. All children update in place.
+`variant(NavLinkVariant::{Light,Filled,Subtle})` configures the active surface.
+Both `current(true)` and `highlighted(true)` activate that appearance; only the
+former claims the current page. The separate disclosure remains a compact named
+button beside the link rather than a second full-width text action.
+
+`Anchor::fill(children)` also supports passive custom display content directly.
+The label supplies the link's accessible name unless `name` overrides it. Its
+captured destination, activation callback ordering and current metadata use the
+same link node as ordinary text-only links.
 
 NavLink contains an actual Anchor. Its optional ordinary disclosure button is a separate control: following the link never toggles children, and expanding children never follows the link. `.current(true)` claims the current page. `.highlighted(true)` changes presentation only. Browser visited styling remains browser-owned.
 

@@ -1,6 +1,8 @@
 use crate::appearance::{Common, configure};
 use glory::render::{DocumentPart, NodeId, SemanticId, Semantics, TextKind};
-use glory::style::{Display, Edges, FlexDirection, Style};
+use glory::style::{
+    Align, BorderStyle, Display, Edges, FlexDirection, Justify, Length, Position, Style,
+};
 use glory::ui::{Children, IntoChildren, Result, Widget};
 use glory::{Cage, Scope, Vary};
 use std::{collections::HashMap, rc::Rc};
@@ -57,6 +59,8 @@ pub struct Timeline {
     progress: Vary<TimelineProgress>,
     labels: [String; 3],
     level: u8,
+    bullet_size: f64,
+    line_width: f64,
 }
 pub fn timeline(key: impl Into<String>) -> Timeline {
     Timeline {
@@ -66,10 +70,20 @@ pub fn timeline(key: impl Into<String>) -> Timeline {
         progress: TimelineProgress::Pending.into(),
         labels: ["Completed".into(), "Current".into(), "Upcoming".into()],
         level: 3,
+        bullet_size: 22.,
+        line_width: 2.,
     }
 }
 impl Timeline {
     appearance_methods!();
+    pub fn bullet_size(mut self, value: f64) -> Self {
+        self.bullet_size = value;
+        self
+    }
+    pub fn line_width(mut self, value: f64) -> Self {
+        self.line_width = value;
+        self
+    }
     pub fn theme(mut self, theme: crate::Theme) -> Self {
         self.common.theme = theme;
         self
@@ -132,6 +146,11 @@ impl Widget for Timeline {
     fn build(&mut self, scope: &Scope) -> Result {
         if self.items.len() > MAX_TIMELINE_ITEMS
             || !(1..=6).contains(&self.level)
+            || !self.bullet_size.is_finite()
+            || !(8.0..=64.0).contains(&self.bullet_size)
+            || !self.line_width.is_finite()
+            || !(0.0..=8.0).contains(&self.line_width)
+            || self.line_width > self.bullet_size
             || self
                 .labels
                 .iter()
@@ -177,7 +196,8 @@ impl Widget for Timeline {
                 }
             });
         }
-        let mut items = Vec::with_capacity(self.items.len());
+        let count = self.items.len();
+        let mut items = Vec::with_capacity(count);
         for (index, (mut item, id)) in self.items.drain(..).zip(ids).enumerate() {
             item.common.theme = item
                 .theme_override
@@ -192,16 +212,14 @@ impl Widget for Timeline {
                 phase,
                 labels: self.labels.clone(),
                 level: self.level,
+                last: index + 1 == count,
+                bullet_size: self.bullet_size,
+                line_width: self.line_width,
             });
         }
         let mut base = Style::new();
         base.margin = Some(Edges::all(0.0));
-        base.padding = Some(Edges {
-            top: 0.0,
-            bottom: 0.0,
-            left: 24.0,
-            right: 0.0,
-        });
+        base.padding = Some(Edges::all(0.));
         base.color = Some(self.common.theme.foreground);
         configure!(
             self.common,
@@ -282,6 +300,9 @@ struct RenderedItem {
     phase: Cage<Phase>,
     labels: [String; 3],
     level: u8,
+    last: bool,
+    bullet_size: f64,
+    line_width: f64,
 }
 impl Widget for RenderedItem {
     fn build(&mut self, scope: &Scope) -> Result {
@@ -309,7 +330,10 @@ impl Widget for RenderedItem {
             .class("sapid-timeline-state")
             .content(status);
         if !self.item.common.unstyled {
-            title = title.style(self.item.common.theme.label(self.item.common.size));
+            let mut style = self.item.common.theme.label(self.item.common.size);
+            style.margin = Some(Edges::all(0.));
+            style.font_weight = Some(600.);
+            title = title.style(style);
             let phase = self.phase;
             let theme = self.item.common.theme.clone();
             let size = self.item.common.size;
@@ -329,7 +353,9 @@ impl Widget for RenderedItem {
                 .class("sapid-timeline-timestamp")
                 .content(timestamp);
             if !self.item.common.unstyled {
-                text = text.style(self.item.common.theme.description(self.item.common.size));
+                let mut style = self.item.common.theme.description(self.item.common.size);
+                style.margin = Some(Edges::all(0.));
+                text = text.style(style);
             }
             body = body.fill(text);
         }
@@ -356,13 +382,55 @@ impl Widget for RenderedItem {
             );
         }
         let mut base = Style::new();
-        base.margin = Some(Edges {
-            top: 0.0,
-            bottom: 12.0,
-            left: 0.0,
-            right: 0.0,
+        base.position = Some(Position::Relative);
+        base.display = Some(Display::Flex);
+        base.gap = Some(12.);
+        base.margin = Some(Edges::all(0.));
+        base.padding = Some(Edges {
+            top: 0.,
+            bottom: if self.last { 0. } else { 24. },
+            left: 0.,
+            right: 0.,
         });
-        configure!(
+        let mut marker = glory::ui::view()
+            .class("sapid-timeline-marker")
+            .fill(std::mem::replace(&mut self.item.marker, ().into_children()));
+        let theme = self.item.common.theme.clone();
+        let bullet = self.bullet_size;
+        if !self.item.common.unstyled {
+            marker = marker.style(scope.bond(move || {
+                let state = phase.get().state(index);
+                Style {
+                    shrink: Some(0.),
+                    align: Some(Align::Center),
+                    justify: Some(Justify::Center),
+                    background: Some(if state == 0 {
+                        theme.accent
+                    } else {
+                        theme.surface
+                    }),
+                    color: Some(if state == 0 {
+                        theme.on_accent
+                    } else {
+                        theme.foreground
+                    }),
+                    ..Style::new()
+                        .position(Position::Relative)
+                        .display(Display::InlineFlex)
+                        .width(Length::Px(bullet))
+                        .height(Length::Px(bullet))
+                        .border_width(Edges::all(2.))
+                        .border_style(BorderStyle::Solid)
+                        .border_color(if state < 2 {
+                            theme.accent
+                        } else {
+                            theme.border
+                        })
+                        .radius(bullet / 2.)
+                }
+            }));
+        }
+        let mut root = configure!(
             self.item.common,
             glory::ui::view(),
             scope,
@@ -374,13 +442,31 @@ impl Widget for RenderedItem {
             document_part: Some(DocumentPart::ListItem),
             id: Some(self.id.clone()),
             ..Default::default()
-        })))
-        .fill(
-            glory::ui::view()
-                .class("sapid-timeline-marker")
-                .fill(std::mem::replace(&mut self.item.marker, ().into_children())),
-        )
-        .fill(body)
-        .show_in(scope)
+        })));
+        root = root.fill((marker, body));
+        if !self.last && !self.item.common.unstyled && self.line_width > 0. {
+            let theme = self.item.common.theme.clone();
+            let width = self.line_width;
+            root = root.fill(
+                glory::ui::view()
+                    .class("sapid-timeline-line")
+                    .style(scope.bond(move || {
+                        Style {
+                            background: Some(if phase.get().state(index) == 0 {
+                                theme.accent
+                            } else {
+                                theme.border
+                            }),
+                            ..Style::new()
+                                .position(Position::Absolute)
+                                .left(Length::Px((bullet - width) / 2.))
+                                .top(Length::Px(bullet))
+                                .bottom(Length::Px(0.))
+                                .width(Length::Px(width))
+                        }
+                    })),
+            );
+        }
+        root.show_in(scope)
     }
 }

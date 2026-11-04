@@ -385,6 +385,8 @@ def timer_browser():
 
 
 def bundle(page):
+    if page in {"shell", "menubar"}:
+        return formatted((WEB / f"src/showcase_demos/{page}.rs").read_text(encoding="utf-8"))
     module, function, arguments, scoped = target(page)
     body = fixture_source(module)
     dependencies = []
@@ -804,7 +806,10 @@ for task in tasks:
             shared_code = (key, bundle(page))
     description = DESCRIPTIONS[identity]
     for display_id, display_name, display_group in display_items(task):
-        if display_id in FOCUSED_DISPLAY:
+        if display_name in {"Anchor", "Burger", "NavLink"}:
+            key = {"Anchor": "anchor", "Burger": "burger", "NavLink": "nav_link"}[display_name]
+            code = formatted((WEB / f"src/dedicated_demos/{key}.rs").read_text(encoding="utf-8"))
+        elif display_id in FOCUSED_DISPLAY:
             key, family = FOCUSED_DISPLAY[display_id]
             code = focused_bundle(display_id, family)
         elif shared_code is None or (identity in PRESERVE_PRIMARY and display_id != identity):

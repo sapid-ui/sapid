@@ -1,5 +1,10 @@
 # Glory + Sapid 展示站
 
+2026-11-04 对全部 181 个 Mantine 共同页面的逐页复核见
+[页面审查清单](shared-page-review-2026-11-04.md)。报告包含桌面/窄屏/深色截图审查、
+已复现问题、功能定义差异和后续优先级；它不把当前有限实现状态等同于完整上游功能对齐。
+逐项修复及验收进度见 [修复记录](shared-page-remediation.md)。
+
 ## Glory routing 接入
 
 展示站应用启用 `glory/routing`，组件库本身继续独立于路由。Router 是 URL 与历史的唯一来源，

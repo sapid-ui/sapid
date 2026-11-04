@@ -5,6 +5,8 @@ use std::collections::HashSet;
 use std::rc::Rc;
 
 use crate::appearance::{Common, common_methods, configure, observe};
+use crate::composite::skin;
+pub use crate::composite::skin::AccordionVariant;
 use crate::composite::{
     self, Callback, ContentPolicy, Item, Members, Observers, Panel, item_methods,
 };
@@ -43,6 +45,8 @@ pub struct Accordion {
     regions: bool,
     policy: ContentPolicy,
     direction: Direction,
+    variant: AccordionVariant,
+    chevron: bool,
 }
 pub fn accordion(key: impl Into<String>) -> Accordion {
     Accordion {
@@ -59,10 +63,20 @@ pub fn accordion(key: impl Into<String>) -> Accordion {
         regions: false,
         policy: ContentPolicy::Unmount,
         direction: Direction::Ltr,
+        variant: AccordionVariant::Default,
+        chevron: true,
     }
 }
 impl Accordion {
     common_methods!();
+    pub fn variant(mut self, value: AccordionVariant) -> Self {
+        self.variant = value;
+        self
+    }
+    pub fn with_chevron(mut self, value: bool) -> Self {
+        self.chevron = value;
+        self
+    }
     pub fn item(mut self, item: AccordionItem) -> Self {
         if self.items.len() <= 256 {
             self.items.push(item.inner);
@@ -201,6 +215,7 @@ impl Widget for Accordion {
             let mut trigger = glory::ui::button()
                 .class("sapid-accordion-trigger")
                 .label(item.label.clone())
+                .name(item.label.clone())
                 .node_ref(members.references[index])
                 .enabled(scope.bond(move || root_enabled.get() && enabled.get()))
                 .semantics(scope.bond(move || {
@@ -221,7 +236,17 @@ impl Widget for Accordion {
                     .fill(glory::ui::widget(move |scope| factory().show_in(scope)));
             }
             if !self.common.unstyled {
-                trigger = trigger.style(self.common.theme.control(self.common.size));
+                trigger = trigger.style(skin::accordion_trigger(
+                    &self.common.theme,
+                    self.common.size,
+                ));
+            }
+            if self.chevron {
+                trigger = trigger.fill(skin::chevron(
+                    scope,
+                    open.into(),
+                    self.common.theme.foreground,
+                ));
             }
             let state = control.clone();
             let callback = callback.clone();
@@ -270,18 +295,21 @@ impl Widget for Accordion {
                 class: "sapid-accordion-panel",
                 unstyled: self.common.unstyled,
             };
-            children.push(Box::new(
-                glory::ui::view()
-                    .class("sapid-accordion-item")
-                    .fill((header, panel)),
-            ));
+            let mut row = glory::ui::view().class("sapid-accordion-item");
+            if !self.common.unstyled {
+                let theme = self.common.theme.clone();
+                let variant = self.variant;
+                row = row
+                    .style(scope.bond(move || skin::accordion_item(&theme, variant, open.get())));
+            }
+            children.push(Box::new(row.fill((header, panel))));
         }
         let mut root = configure!(
             self.common,
             glory::ui::view(),
             scope,
             "sapid-accordion",
-            composite::column(8.0)
+            skin::accordion_root(self.variant)
         )
         .semantics(composite::metadata(Semantics {
             id: Some(root_id),

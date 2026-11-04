@@ -17,6 +17,16 @@ pub fn menubar_menu(key: impl Into<String>) -> MenubarMenu {
     }
 }
 impl MenubarMenu {
+    /// Dropdown width in CSS pixels, bounded before any roots are mounted.
+    pub fn width(mut self, width: f64) -> Self {
+        self.inner.panel_width = Some(width);
+        self
+    }
+    /// Overrides the bar's default anchored dropdown placement for this menu.
+    pub fn position(mut self, position: glory::render::AnchorPlacement) -> Self {
+        self.inner.position = Some(position);
+        self
+    }
     dropdown_methods! {
         label(value: impl Into<Vary<String>>); item(item: impl Into<MenuEntry>);
         items(items: impl IntoIterator<Item=MenuItem>); radio_group(group:MenuRadioGroup);
@@ -36,6 +46,8 @@ pub struct Menubar {
     looping: bool,
     typeahead: TypeaheadConfig,
     delay: Option<Delay>,
+    open_on_hover: bool,
+    position: glory::render::AnchorPlacement,
 }
 pub fn menubar(key: impl Into<String>) -> Menubar {
     Menubar {
@@ -49,10 +61,26 @@ pub fn menubar(key: impl Into<String>) -> Menubar {
         looping: true,
         typeahead: Default::default(),
         delay: None,
+        open_on_hover: false,
+        position: glory::render::AnchorPlacement::new(
+            glory::render::AnchorSide::Bottom,
+            glory::render::AnchorAlign::Start,
+        )
+        .gap(0.),
     }
 }
 impl Menubar {
     common_methods!();
+    /// Opens a closed bar on actual mouse/pen movement. Open bars always switch
+    /// menus on movement; touch continues to use activation.
+    pub fn open_on_hover(mut self, value: bool) -> Self {
+        self.open_on_hover = value;
+        self
+    }
+    pub fn position(mut self, position: glory::render::AnchorPlacement) -> Self {
+        self.position = position;
+        self
+    }
     pub fn value(mut self, value: impl Into<Vary<Option<String>>>) -> Self {
         self.value.source = Some(value.into());
         self
@@ -134,6 +162,7 @@ pub(super) struct BarState {
     owner: glory::core::InstanceId,
     enabled: Vary<bool>,
     focus: Cage<Option<BarFocus>>,
+    open_on_hover: bool,
 }
 #[derive(Clone, PartialEq, Eq)]
 struct BarFocus {
@@ -163,6 +192,34 @@ impl BarState {
                 && let Err(error) = roving.observe(&current)
             {
                 scope.report_error(error);
+            }
+        })?;
+        let pointer = Rc::downgrade(self);
+        let current_key = key.to_owned();
+        let weak = scope.downgrade();
+        scope.on(trigger, EventKind::Pointer, move |event| {
+            let (Some(scope), Some(bar)) = (weak.upgrade(), pointer.upgrade()) else {
+                return;
+            };
+            if let Event::Pointer {
+                from,
+                phase: PointerPhase::Move,
+                ..
+            } = event
+                && from == trigger
+            {
+                let result = (|| -> Result {
+                    let open = bar.read()?;
+                    if (bar.open_on_hover || open.is_some())
+                        && open.as_deref() != Some(&current_key)
+                    {
+                        bar.request(Some(current_key.clone()))?;
+                    }
+                    Ok(())
+                })();
+                if let Err(error) = result {
+                    scope.report_error(error);
+                }
             }
         })?;
         self.roots.borrow_mut().push(BarRoot {
@@ -359,6 +416,17 @@ impl Widget for Menubar {
         let mut keys = Vec::with_capacity(self.menus.len());
         let mut names = HashSet::new();
         for root in &mut self.menus {
+            if root
+                .inner
+                .panel_width
+                .is_some_and(|width| !width.is_finite() || !(80.0..=1000.0).contains(&width))
+            {
+                return Err(invalid(
+                    "menubar dropdown widths require finite 80..=1000 CSS pixels",
+                ));
+            }
+            let position = root.inner.position.unwrap_or(self.position);
+            position.validate()?;
             key(&root.inner.key)?;
             if !names.insert(root.inner.key.clone()) {
                 return Err(invalid("duplicate menubar root key"));
@@ -405,6 +473,7 @@ impl Widget for Menubar {
             owner: scope.id(),
             enabled: self.common.enabled.clone(),
             focus: scope.cage(None),
+            open_on_hover: self.open_on_hover,
         });
         let navigation_observers = Observers::new(
             self.common
@@ -428,6 +497,14 @@ impl Widget for Menubar {
         let enabled = self.common.enabled.clone();
         let reference = self.common.node_ref.unwrap_or_else(|| scope.cage(None));
         let name = self.common.name.take().unwrap_or_else(|| "Menu bar".into());
+        let leave = Rc::downgrade(&state);
+        let leave_scope = scope.downgrade();
+        let hover = self.open_on_hover;
+        let mut pointer_observers = self
+            .common
+            .handlers
+            .remove(&EventKind::PointerWithin)
+            .unwrap_or_default();
         let bar = configure!(
             self.common,
             glory::ui::view().role(Role::Menubar),
@@ -437,9 +514,33 @@ impl Widget for Menubar {
                 .display(glory::style::Display::Flex)
                 .flex_direction(glory::style::FlexDirection::Row)
                 .gap(2.0)
+                .padding(Edges::all(4.))
+                .border_width(Edges::all(1.))
+                .border_style(glory::style::BorderStyle::Solid)
+                .border_color(self.common.theme.border)
+                .radius(self.common.theme.radius)
         )
         .name(name)
         .node_ref(reference)
+        .on(EventKind::PointerWithin, move |event| {
+            let (Some(scope), Some(bar)) = (leave_scope.upgrade(), leave.upgrade()) else {
+                return;
+            };
+            if hover
+                && matches!(
+                    event,
+                    Event::PointerWithin {
+                        phase: PointerPhase::Leave,
+                        ..
+                    }
+                )
+                && let Err(error) = bar.request(None)
+            {
+                scope.report_error(error);
+                return;
+            }
+            observe(&mut pointer_observers, instance, event);
+        })
         .semantics(scope.bond(move || {
             Some(Box::new(Semantics {
                 id: Some(id.clone()),
@@ -528,6 +629,7 @@ impl Widget for Menubar {
             root.inner.looping = self.looping;
             root.inner.typeahead = self.typeahead;
             root.inner.delay = self.delay.clone();
+            root.inner.position = Some(root.inner.position.unwrap_or(self.position));
             root.inner.bar = Some(BarItem {
                 owner: owner_id.clone(),
                 key: key.clone(),

@@ -41,8 +41,19 @@ first/last enabled menu item. Within a root menu, forward first enters an actual
 submenu; without a submenu it switches to the next root. Backward leaves a
 nested menu one level at a time and switches to the previous root only at the
 root menu. Escape returns to that root trigger. Host ExitMenu must make Tab and
-Shift+Tab leave the complete bar boundary. Root hover does not automatically open
-or switch menus in this version; click and keyboard activation are explicit.
+Shift+Tab leave the complete bar boundary. Moving the mouse or pen over another root switches the open menu.
+`open_on_hover(true)` also opens a closed bar on actual pointer movement and
+closes it when the pointer leaves the bar and its menus. Touch uses activation.
+`loop_focus(false)` stops arrow navigation at the ends. Controlled refusal,
+disabled roots and Owner retirement use the same admission path as activation.
+
+`position(AnchorPlacement)` configures the bar's anchored popup placement.
+Each `menubar_menu` may override `position` and set `width(80.0..=1000.0)`.
+All placements and widths validate before mounting roots. The shared host
+layer applies placement, flipping and shifting; widgets do not inspect the DOM.
+The documentation site now has separate composition, trigger/loop, submenu,
+checkbox/radio, controlled, placement and keyboard examples, each displaying
+the exact Rust module compiled for its preview.
 
 Configuration admission stops at 32 roots plus one rejection sentinel, with
 1024 total root triggers/menu entries, 256 entries per menu level and menu depth

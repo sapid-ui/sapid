@@ -8,6 +8,7 @@ use glory::ui::{Result, Widget};
 use glory::{Cage, Scope, Vary};
 
 pub(crate) mod dynamic;
+pub(crate) mod skin;
 
 /// Panel shells and their relations always exist. This controls the lifetime of
 /// the content inside the shell, independently from its semantic visibility.

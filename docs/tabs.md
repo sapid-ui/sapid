@@ -1,5 +1,16 @@
 # Tabs
 
+`variant(TabsVariant::{Default,Outline,Pills})` configures the default skin for
+both static and keyed tabs. Default uses a baseline and selected indicator;
+Outline uses bordered triggers and Pills a filled selection. `grow(true)` gives
+horizontal triggers equal shares of the available row. Controls wrap at trigger
+boundaries without breaking labels into individual letters. Vertical orientation
+places the tab list beside the panel container, retaining the same focus and
+selection controller. `unstyled` removes theme paint.
+
+The public guide separates variants, orientation/RTL, manual controlled selection,
+panel lifetime and keyed reordering into standalone examples and source panels.
+
 `tabs(namespace)` uses real TabList, Tab and TabPanel semantics. It supports
 automatic activation after observed focus and manual activation on Enter/Space.
 `orientation(Orientation::{Horizontal,Vertical})`, `direction(Direction::{Ltr,Rtl})`

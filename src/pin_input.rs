@@ -1,4 +1,4 @@
-//! A single real editor with adjacent passive cells and a bounded String model.
+//! A single real editor with font-aligned passive cells and a bounded String model.
 use crate::FieldControl;
 use crate::appearance::{Common, common_methods};
 use crate::composite::{self, Callback, Observers};
@@ -7,7 +7,8 @@ use crate::pin_model::{PinAlphabet, PinDomain, PinRejection};
 use crate::state::{Control, Dirty, Value};
 use glory::render::{Event, EventKind, InputAssist, InputAutofill, InputMode, Purpose, Semantics};
 use glory::style::{
-    BorderStyle, Color, Display, Edges, Family, Length, PointerEvents, Position, Style,
+    BorderStyle, Color, Display, Edges, Family, Length, Limit, Overflow, PointerEvents, Position,
+    Style,
 };
 use glory::ui::{Result, WeakScope, Widget};
 use glory::{Cage, Scope, Vary};
@@ -170,6 +171,8 @@ pub struct PinInput {
     value: Value<String>,
     domain: PinDomain,
     masked: bool,
+    gap: f64,
+    cell_padding: Option<f64>,
     autofill: Option<InputAutofill>,
     field: Option<FieldControl>,
     required: Vary<bool>,
@@ -192,6 +195,8 @@ pub fn pin_input() -> PinInput {
         value: Value::default(),
         domain: PinDomain::default(),
         masked: false,
+        gap: 8.,
+        cell_padding: None,
         autofill: None,
         field: None,
         required: false.into(),
@@ -210,6 +215,16 @@ pub fn input_otp() -> PinInput {
 }
 impl PinInput {
     common_methods!();
+    /// Space between passive glyph cells; one native editor owns the whole code.
+    pub fn gap(mut self, value: f64) -> Self {
+        self.gap = value;
+        self
+    }
+    /// Horizontal padding on each side of the actual zero-glyph advance.
+    pub fn cell_padding(mut self, value: f64) -> Self {
+        self.cell_padding = Some(value);
+        self
+    }
     pub fn length(mut self, length: usize) -> Self {
         self.domain.length = length;
         self
@@ -278,6 +293,24 @@ impl Widget for PinInput {
     fn build(&mut self, scope: &Scope) -> Result {
         let domain = self.domain;
         domain.validate().map_err(|_| invalid())?;
+        let gap = self.gap;
+        let padding = self
+            .cell_padding
+            .unwrap_or(self.common.theme.tokens.control(self.common.size).padding_x);
+        if !gap.is_finite()
+            || !(0.0..=32.0).contains(&gap)
+            || !padding.is_finite()
+            || !(0.0..=32.0).contains(&padding)
+        {
+            return Err(invalid());
+        }
+        let tracking = padding * 2. + gap;
+        // Reserve the native editor's trailing advance and caret. Cell geometry
+        // and text advances share the same real font-relative ch term.
+        let editor_width = Length::ChPx {
+            ch: domain.length as f64,
+            px: domain.length as f64 * tracking + padding + 1.,
+        };
         if let Some(source) = &self.value.source {
             source
                 .try_with(|v| domain.validate_value(v))?
@@ -338,6 +371,9 @@ impl Widget for PinInput {
             {
                 return Err(invalid());
             }
+            if style.letter_spacing.is_some() {
+                return Err(invalid());
+            }
             Ok(())
         })?;
         let dirty = Dirty::new(scope);
@@ -376,20 +412,16 @@ impl Widget for PinInput {
                 s.font_family = Some(vec![Family::Mono]);
                 s.font_size.get_or_insert(font);
                 s.line_height.get_or_insert(font * 1.55);
-                s.width.get_or_insert(Length::Ch(domain.length as f64));
+                s.width.get_or_insert(editor_width);
+                s.min_width.get_or_insert(Length::Px(0.));
+                s.max_width.get_or_insert(Limit::Percent(100.));
+                s.overflow_x.get_or_insert(Overflow::Auto);
                 let default_height = match height {
                     Length::Px(h) => Length::Px(h.max(font * 1.55)),
                     _ => height,
                 };
                 s.height.get_or_insert(default_height);
                 if themed {
-                    s.background.get_or_insert(
-                        if accepted.with(|v| v.enabled && !v.metadata.readonly) {
-                            theme.input
-                        } else {
-                            theme.disabled
-                        },
-                    );
                     s.color.get_or_insert(if accepted.with(|v| v.enabled) {
                         theme.foreground
                     } else {
@@ -406,10 +438,16 @@ impl Widget for PinInput {
             Style::new().display(Display::InlineFlex),
         );
         let outer = scope.cage(None);
+        let focused = scope.cage(false);
         glory::ui::view()
             .class(classes)
             .style(appearance)
             .node_ref(outer)
+            .on(EventKind::FocusWithin, move |event| {
+                if let Event::FocusWithin { focused: value, .. } = event {
+                    focused.revise(|old| *old = value);
+                }
+            })
             .show_in(scope)?;
         let parent = scope.child_in(outer.try_get()?.ok_or(glory::ui::Error::Gone)?)?;
         let frame = scope.cage(None);
@@ -422,7 +460,7 @@ impl Widget for PinInput {
                     ..Style::new()
                 }
                 .position(Position::Relative)
-                .width(Length::Ch(domain.length as f64))
+                .width(editor_width)
                 .height(s.height.filter(|h| *h != Length::Auto).unwrap_or(height))
             }))
             .node_ref(frame)
@@ -435,24 +473,39 @@ impl Widget for PinInput {
                 .style(scope.bond(move || {
                     let mut s = Style::new()
                         .position(Position::Absolute)
-                        .left(Length::Ch(index as f64))
+                        .left(Length::ChPx {
+                            ch: index as f64,
+                            px: index as f64 * tracking,
+                        })
                         .top(Length::Px(0.))
-                        .width(Length::Ch(1.))
+                        .width(Length::ChPx {
+                            ch: 1.,
+                            px: padding * 2.,
+                        })
                         .height(Length::Percent(100.))
                         .pointer_events(PointerEvents::None);
                     if themed {
                         s = s
                             .border_width(Edges {
-                                left: if index == 0 { 1. } else { 0. },
+                                left: if index == 0 || gap > 0. { 1. } else { 0. },
                                 right: 1.,
                                 top: 1.,
                                 bottom: 1.,
                             })
                             .border_style(BorderStyle::Solid)
+                            .radius(theme.radius)
                             .border_color(if accepted.with(|v| v.metadata.invalid) {
                                 theme.danger
+                            } else if focused.get() {
+                                theme.accent
                             } else {
                                 theme.border
+                            });
+                        s.background =
+                            Some(if accepted.with(|v| v.enabled && !v.metadata.readonly) {
+                                theme.input
+                            } else {
+                                theme.disabled
                             });
                     }
                     s
@@ -481,11 +534,17 @@ impl Widget for PinInput {
                     ..Style::new()
                 }
                 .position(Position::Relative)
-                .width(Length::Ch(domain.length as f64))
+                .width(editor_width)
                 .height(Length::Percent(100.))
                 .min_width(Length::Px(0.))
-                .padding(Edges::all(0.))
+                .padding(Edges {
+                    left: padding,
+                    right: 1.,
+                    top: 0.,
+                    bottom: 0.,
+                })
                 .border_width(Edges::all(0.))
+                .letter_spacing(tracking)
                 .font_family([Family::Mono]),
             );
         if let Some(name) = self.common.name.take() {

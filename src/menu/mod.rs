@@ -293,6 +293,8 @@ pub struct Menu {
     delay: Option<Delay>,
     trigger: Option<Cage<Option<NodeId>>>,
     dropdown: bool,
+    position: Option<glory::render::AnchorPlacement>,
+    panel_width: Option<f64>,
     context: Option<ContextConfig>,
     bar: Option<bar::BarItem>,
 }
@@ -313,6 +315,8 @@ pub fn menu(key: impl Into<String>) -> Menu {
         delay: None,
         trigger: None,
         dropdown: false,
+        position: None,
+        panel_width: None,
         context: None,
         bar: None,
     }
@@ -1744,10 +1748,10 @@ impl Widget for Menu {
                 .bond(move || LayerPlacement::ContextPoint(point.get()))
                 .into()
         } else {
-            LayerPlacement::Anchor(glory::render::AnchorPlacement::new(
+            LayerPlacement::Anchor(self.position.unwrap_or(glory::render::AnchorPlacement::new(
                 glory::render::AnchorSide::Bottom,
                 glory::render::AnchorAlign::Start,
-            ))
+            )))
             .into()
         };
         let anchor = if self.dropdown {
@@ -1764,6 +1768,12 @@ impl Widget for Menu {
         } else {
             Some(self.return_focus.clone().unwrap_or_else(|| anchor.clone()))
         };
+        if let Some(width) = self.panel_width {
+            let style = self.common.style.clone();
+            self.common.style = scope
+                .bond(move || style.get().width(Length::Px(width)))
+                .into();
+        }
         let context_anchor = anchor.clone();
         let trigger = self.trigger.unwrap_or_else(|| scope.cage(None));
         let enabled = self.common.enabled.clone();
@@ -1947,7 +1957,12 @@ impl Widget for Menu {
                     menu_observers.emit(instance, event);
                 });
             if !unstyled {
-                button = button.style(theme.control(size));
+                let mut style = theme.control(size);
+                if is_bar {
+                    style.background = Some(glory::style::Color(0, 0, 0, 0));
+                    style.border_width = Some(Edges::all(0.));
+                }
+                button = button.style(style);
             }
             button.show_in(scope)?;
             if let Some(config) = bar

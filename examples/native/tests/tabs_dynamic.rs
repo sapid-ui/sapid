@@ -32,6 +32,55 @@ fn bounds(app: &glory::App, node: NodeId) -> Rect {
 }
 
 #[test]
+fn vertical_tab_variants_place_the_active_panel_beside_the_same_native_triggers() {
+    for variant in [
+        sapid::TabsVariant::Default,
+        sapid::TabsVariant::Outline,
+        sapid::TabsVariant::Pills,
+    ] {
+        let host = WindowApp::new();
+        host.renderer().set_viewport(480, 480, 1.).unwrap();
+        let app = host.app();
+        let panel = app.scope().cage(None);
+        host.mount(
+            sapid::tabs("vertical")
+                .variant(variant)
+                .orientation(glory::render::Orientation::Vertical)
+                .style(glory::style::Style::new().width(glory::style::Length::Px(360.)))
+                .tab(
+                    sapid::tab("first")
+                        .label("First")
+                        .panel_ref(panel)
+                        .content(|| glory::ui::text().content("A vertical panel")),
+                )
+                .tab(
+                    sapid::tab("second")
+                        .label("Second")
+                        .content(|| glory::ui::text().content("Another panel")),
+                ),
+        )
+        .unwrap();
+        app.settle(16).unwrap();
+        let first = button(app, "First");
+        let second = button(app, "Second");
+        let a = bounds(app, first);
+        let b = bounds(app, second);
+        let body = bounds(app, panel.get().unwrap());
+        assert!(
+            body.x >= a.x + a.width - 0.1,
+            "{variant:?}: {a:?}, {body:?}"
+        );
+        assert!(b.y >= a.y + a.height - 0.1);
+        app.dispatch(second, Event::Activate).unwrap();
+        app.settle(16).unwrap();
+        assert_eq!(button(app, "First"), first);
+        assert_eq!(button(app, "Second"), second);
+        app.clear().unwrap();
+        assert!(app.tree().is_empty());
+    }
+}
+
+#[test]
 fn four_theme_dynamic_tabs_keep_engine_editor_identity_and_actual_focus_on_member_changes() {
     for theme in [
         sapid::Theme::blue_light(),

@@ -310,7 +310,9 @@
           "src/accordion/mod.rs",
           "src/collection.rs",
           "src/composite/mod.rs",
-          "docs/accordion.md"
+          "docs/accordion.md",
+          "src/composite/skin.rs",
+          "examples/web/src/showcase_composite_docs/mod.rs"
         ],
         "tests": [
           "tests/composite_dynamic.rs (8 passed)",
@@ -320,7 +322,10 @@
           "examples/native/tests/accordion_dynamic.rs (1 passed, four themes)",
           "D:/BuildCache/sapid/accordion-dynamic-native.log",
           "examples/web/accordion-dynamic-acceptance.js",
-          "D:/BuildCache/sapid/accordion-dynamic-browser-root17.json (8 passed, Chromium 148.0.7778.96)"
+          "D:/BuildCache/sapid/accordion-dynamic-browser-root17.json (8 passed, Chromium 148.0.7778.96)",
+          "D:/BuildCache/sapid/remediation-composites-unit.log (2026-11-04: 46 library regressions)",
+          "D:/BuildCache/sapid/remediation-composites-native.log (2026-11-04: 4 native engine regressions including vertical tabs and connector geometry)",
+          "scripts/showcase-remediation-composites.cjs (2026-11-04: 24 four-theme desktop/mobile reports; D:/BuildCache/sapid/remediation/composite-remediation.json)"
         ]
       }
     },
@@ -339,14 +344,19 @@
         "implementation": [
           "src/tabs/mod.rs",
           "src/tabs/dynamic.rs",
-          "docs/tabs.md"
+          "docs/tabs.md",
+          "src/composite/skin.rs",
+          "examples/web/src/showcase_composite_docs/mod.rs"
         ],
         "tests": [
           "tests/tabs_dynamic.rs (10 passed)",
           "examples/native/tests/tabs_dynamic.rs (1 passed, four themes)",
           "examples/web/tabs-dynamic-acceptance.js",
           "D:/BuildCache/sapid/tabs-dynamic-native.log",
-          "D:/BuildCache/sapid/tabs-dynamic-browser-menubar-next.json (9 passed, Chromium 148.0.7778.96)"
+          "D:/BuildCache/sapid/tabs-dynamic-browser-menubar-next.json (9 passed, Chromium 148.0.7778.96)",
+          "D:/BuildCache/sapid/remediation-composites-unit.log (2026-11-04: 46 library regressions)",
+          "D:/BuildCache/sapid/remediation-composites-native.log (2026-11-04: 4 native engine regressions including vertical tabs and connector geometry)",
+          "scripts/showcase-remediation-composites.cjs (2026-11-04: 24 four-theme desktop/mobile reports; D:/BuildCache/sapid/remediation/composite-remediation.json)"
         ]
       }
     },
@@ -746,7 +756,7 @@
       "sources": [
         "M:PasswordInput"
       ],
-      "work": "独立 PasswordInput、具名显隐动作、受控/本地可见性和 Field 禁用；Purpose 更新保持节点、值版本、UTF-16 选区及组合协议。原生引擎身份/原始值已验收，实际 OS IME/读屏仍待平台验收。",
+      "work": "独立 PasswordInput、具名显隐动作、受控/本地可见性和 Field 禁用；Purpose 更新保持节点、值版本、UTF-16 选区及组合协议。原生引擎身份/原始值已验收，实际 OS IME/读屏仍待平台验收。输入框内眼睛切换、加载互斥和自定义右区替换已实现。",
       "baseline_at_snapshot": false,
       "evidence": {
         "implementation": [
@@ -768,7 +778,11 @@
           "D:/BuildCache/sapid/inputs-native-profile.log",
           "D:/BuildCache/sapid/browser-results.json",
           "D:/BuildCache/sapid/inputs-browser.log (Chromium 148.0.7778.96; 30 reports, zero errors across all suites)",
-          "tests/placeholders.rs"
+          "tests/placeholders.rs",
+          "tests/inputs.rs (8 passed; inset decorative eye, accessible visibility name, stable input/revision, custom right section and loading replacement)",
+          "scripts/showcase-layout-acceptance.cjs",
+          "D:/BuildCache/sapid/layout-acceptance/showcase-layout-acceptance.json (12 passed across four themes for PasswordInput/AppShell/Menubar; Chromium 156.0.8078.4)",
+          "D:/BuildCache/sapid/layout-fixture-acceptance.json (28 passed: Input 9, AppShell 9, Menubar 10; themed CSR/hydration, dirty adoption, focus/selection, retirement and classic stream)"
         ]
       }
     },
@@ -1119,7 +1133,9 @@
       "evidence": {
         "implementation": [
           "src/actions.rs",
-          "docs/burger.md"
+          "docs/burger.md",
+          "docs/navigation.md",
+          "examples/web/src/showcase_navigation_docs/mod.rs"
         ],
         "tests": [
           "tests/actions.rs (14 passed)",
@@ -1127,7 +1143,8 @@
           "examples/web/burger-acceptance.js",
           "D:/BuildCache/sapid/burger-browser.json (9 passed, Chromium 148.0.7778.96, Web15)",
           "D:/BuildCache/sapid/graphic-transition-hidden-native.log",
-          "D:/BuildCache/sapid/gate-snapshot15.log"
+          "D:/BuildCache/sapid/gate-snapshot15.log",
+          "scripts/showcase-remediation-navigation.cjs (2026-11-04: 40 four-theme desktop/mobile reports; D:/BuildCache/sapid/remediation/navigation-remediation.json)"
         ]
       }
     },
@@ -1293,13 +1310,16 @@
         "implementation": [
           "src/anchor.rs",
           "docs/anchor.md",
-          "../glory/crates/render/tests/links.rs"
+          "../glory/crates/render/tests/links.rs",
+          "docs/navigation.md",
+          "examples/web/src/showcase_navigation_docs/mod.rs"
         ],
         "tests": [
           "tests/anchors.rs",
           "examples/native/tests/typography.rs",
           "D:/BuildCache/sapid/typography-browser.json",
-          "D:/BuildCache/sapid/links-toggle-native.log"
+          "D:/BuildCache/sapid/links-toggle-native.log",
+          "scripts/showcase-remediation-navigation.cjs (2026-11-04: 40 four-theme desktop/mobile reports; D:/BuildCache/sapid/remediation/navigation-remediation.json)"
         ]
       }
     },
@@ -1674,7 +1694,9 @@
         "implementation": [
           "src/separator.rs",
           "src/timeline.rs",
-          "docs/timeline-separator.md"
+          "docs/timeline-separator.md",
+          "src/composite/skin.rs",
+          "examples/web/src/showcase_composite_docs/mod.rs"
         ],
         "tests": [
           "tests/separator.rs",
@@ -1682,7 +1704,10 @@
           "examples/native/tests/timeline.rs",
           "../glory/crates/render/tests/separator.rs",
           "../glory/crates/html/tests/separator.rs",
-          "D:/BuildCache/sapid/timeline-browser.json (8 passed; errors=[])"
+          "D:/BuildCache/sapid/timeline-browser.json (8 passed; errors=[])",
+          "D:/BuildCache/sapid/remediation-composites-unit.log (2026-11-04: 46 library regressions)",
+          "D:/BuildCache/sapid/remediation-composites-native.log (2026-11-04: 4 native engine regressions including vertical tabs and connector geometry)",
+          "scripts/showcase-remediation-composites.cjs (2026-11-04: 24 four-theme desktop/mobile reports; D:/BuildCache/sapid/remediation/composite-remediation.json)"
         ]
       }
     },
@@ -1802,14 +1827,15 @@
         "M:Menubar",
         "S:Menubar"
       ],
-      "work": "Menubar/MenuItemAction根语义、互斥受控根菜单、水平/RTL/typeahead和嵌套菜单/Tab边界已实现；Glory原生协议和AX关系现已连接，四主题实际消费端及原有浏览器证据保留；系统菜单栏/OS读屏分开验收。",
+      "work": "Menubar/MenuItemAction根语义、互斥受控根菜单、水平/RTL/typeahead和嵌套菜单/Tab边界已实现；Glory原生协议和AX关系现已连接，四主题实际消费端及原有浏览器证据保留；系统菜单栏/OS读屏分开验收。新增根菜单悬停切换/可选悬停打开、整栏及单菜单弹出位置和宽度，并提供七段独立文档示例。",
       "baseline_at_snapshot": false,
       "evidence": {
         "implementation": [
           "src/menu/bar/mod.rs",
           "src/menu/mod.rs",
           "docs/menubar.md",
-          "../glory/crates/render/src/semantics.rs"
+          "../glory/crates/render/src/semantics.rs",
+          "examples/web/src/showcase_menubar/mod.rs"
         ],
         "tests": [
           "src/menu/bar/tests.rs (4 passed)",
@@ -1819,7 +1845,11 @@
           "examples/web/menubar-acceptance.js",
           "D:/BuildCache/sapid/menubar-browser-menubar-final-rating-next.json (10 passed, Chromium 148.0.7778.96)",
           "/Volumes/Data/Caches/glory/menu-consumer-tests.log (8 actual native consumer tests; four themes where applicable)",
-          "/Volumes/Data/Caches/glory/native-menus/browser-results.json (49 reports across Menu/Menubar/ContextMenu/Command; four-theme CSR/hydration)"
+          "/Volumes/Data/Caches/glory/native-menus/browser-results.json (49 reports across Menu/Menubar/ContextMenu/Command; four-theme CSR/hydration)",
+          "src/menu/bar/tests.rs (6 passed; includes opt-in hover, open-root switching, controlled refusal and per-menu placement/width validation)",
+          "scripts/showcase-layout-acceptance.cjs",
+          "D:/BuildCache/sapid/layout-acceptance/showcase-layout-acceptance.json (12 passed across four themes for PasswordInput/AppShell/Menubar; Chromium 156.0.8078.4)",
+          "D:/BuildCache/sapid/layout-fixture-acceptance.json (28 passed: Input 9, AppShell 9, Menubar 10; themed CSR/hydration, dirty adoption, focus/selection, retirement and classic stream)"
         ]
       }
     },
@@ -2438,13 +2468,17 @@
         "implementation": [
           "src/navigation.rs",
           "docs/navigation.md",
-          "../glory/crates/render/tests/current.rs"
+          "../glory/crates/render/tests/current.rs",
+          "examples/web/src/showcase_navigation_docs/mod.rs"
         ],
         "tests": [
           "tests/navigation.rs (15 passed)",
           "examples/native/tests/navigation.rs",
           "D:/BuildCache/sapid/navigation-browser.json (9 passed; errors=[])",
-          "D:/BuildCache/sapid/navigation-native-fixed.log (2 passed)"
+          "D:/BuildCache/sapid/navigation-native-fixed.log (2 passed)",
+          "scripts/showcase-remediation-navigation.cjs (2026-11-04: 40 four-theme desktop/mobile reports; D:/BuildCache/sapid/remediation/navigation-remediation.json)",
+          "tests/navigation.rs (2026-11-04: 18 tests including optional controls, separator updates and rich link identity)",
+          "examples/native/tests/navigation.rs (2026-11-04: 3 engine tests; D:/BuildCache/sapid/remediation-navigation-native.log)"
         ]
       }
     },
@@ -2463,13 +2497,17 @@
         "implementation": [
           "src/navigation.rs",
           "docs/navigation.md",
-          "../glory/crates/render/tests/current.rs"
+          "../glory/crates/render/tests/current.rs",
+          "examples/web/src/showcase_navigation_docs/mod.rs"
         ],
         "tests": [
           "tests/navigation.rs (15 passed)",
           "examples/native/tests/navigation.rs",
           "D:/BuildCache/sapid/navigation-browser.json (9 passed; errors=[])",
-          "D:/BuildCache/sapid/navigation-native-fixed.log (2 passed)"
+          "D:/BuildCache/sapid/navigation-native-fixed.log (2 passed)",
+          "scripts/showcase-remediation-navigation.cjs (2026-11-04: 40 four-theme desktop/mobile reports; D:/BuildCache/sapid/remediation/navigation-remediation.json)",
+          "tests/navigation.rs (2026-11-04: 18 tests including optional controls, separator updates and rich link identity)",
+          "examples/native/tests/navigation.rs (2026-11-04: 3 engine tests; D:/BuildCache/sapid/remediation-navigation-native.log)"
         ]
       }
     },
@@ -2489,13 +2527,17 @@
           "src/navigation.rs",
           "src/navigation_menu/mod.rs",
           "docs/navigation-menu.md",
-          "docs/navigation.md"
+          "docs/navigation.md",
+          "examples/web/src/showcase_navigation_docs/mod.rs"
         ],
         "tests": [
           "tests/navigation_menu.rs (13 passed)",
           "examples/native/tests/navigation_menu.rs (2 passed)",
           "examples/web/navigation-menu-acceptance.js",
-          "D:/BuildCache/sapid/navigation-menu-browser.json (9 passed, Chromium 148.0.7778.96)"
+          "D:/BuildCache/sapid/navigation-menu-browser.json (9 passed, Chromium 148.0.7778.96)",
+          "scripts/showcase-remediation-navigation.cjs (2026-11-04: 40 four-theme desktop/mobile reports; D:/BuildCache/sapid/remediation/navigation-remediation.json)",
+          "tests/navigation.rs (2026-11-04: 18 tests including optional controls, separator updates and rich link identity)",
+          "examples/native/tests/navigation.rs (2026-11-04: 3 engine tests; D:/BuildCache/sapid/remediation-navigation-native.log)"
         ]
       }
     },
@@ -2530,18 +2572,23 @@
       "sources": [
         "M:AppShell"
       ],
-      "work": "真实Banner/ContentInfo/Main与侧栏布局、局部ShellLayout尺寸/断点context、Resize响应式及skip link实际聚焦已实现；不绑定路由，同一导航Owner/控件身份跨布局保持。",
+      "work": "真实Banner/ContentInfo/Main与侧栏布局、局部ShellLayout尺寸/断点context、Resize响应式及skip link实际聚焦已实现；不绑定路由，同一导航Owner/控件身份跨布局保持。工作区预览和头部/侧栏/主区/页脚样式已重整，附响应式与折叠导航独立示例。",
       "baseline_at_snapshot": false,
       "evidence": {
         "implementation": [
           "src/app_shell.rs",
-          "docs/sidebar-app-shell.md"
+          "docs/sidebar-app-shell.md",
+          "examples/web/src/showcase_shell/mod.rs"
         ],
         "tests": [
           "tests/app_shell.rs (10 passed)",
           "examples/native/tests/app_shell.rs (2 passed, four themes)",
           "examples/web/shell-acceptance.js",
-          "D:/BuildCache/sapid/shell-browser.json (9 passed, Chromium 148.0.7778.96)"
+          "D:/BuildCache/sapid/shell-browser.json (9 passed, Chromium 148.0.7778.96)",
+          "tests/app_shell.rs (10 passed); examples/web/src/showcase_examples.rs::shell_and_menubar_documentation_sections_mount_real_widgets_and_retire",
+          "scripts/showcase-layout-acceptance.cjs",
+          "D:/BuildCache/sapid/layout-acceptance/showcase-layout-acceptance.json (12 passed across four themes for PasswordInput/AppShell/Menubar; Chromium 156.0.8078.4)",
+          "D:/BuildCache/sapid/layout-fixture-acceptance.json (28 passed: Input 9, AppShell 9, Menubar 10; themed CSR/hydration, dirty adoption, focus/selection, retirement and classic stream)"
         ]
       }
     },

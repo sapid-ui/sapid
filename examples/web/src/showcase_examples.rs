@@ -3032,6 +3032,12 @@ fn tree_sections(theme: sapid::Theme) -> Vec<DetailSection> {
 
 pub fn detail_sections(id: &str, theme: sapid::Theme) -> Vec<DetailSection> {
     match id {
+        "accordion" | "tabs" | "timeline" => super::showcase_composite_docs::sections(id, theme),
+        "anchor" | "burger" | "nav-link" | "pagination" | "breadcrumbs" => {
+            super::showcase_navigation_docs::sections(id, theme)
+        }
+        "menubar" => super::showcase_menubar::sections(theme),
+        "app-shell" => super::showcase_shell::sections(theme),
         "color-input" => color_input_sections(theme),
         "color-picker" => color_picker_sections(theme),
         "modal" => modal_sections(theme),
@@ -3054,6 +3060,16 @@ pub fn detail_sections(id: &str, theme: sapid::Theme) -> Vec<DetailSection> {
 
 pub fn detail_navigation(id: &str) -> Vec<(&'static str, &'static str)> {
     match id {
+        "accordion" | "tabs" | "timeline" => super::showcase_composite_docs::navigation(id),
+        "anchor" | "burger" | "nav-link" | "pagination" | "breadcrumbs" => {
+            super::showcase_navigation_docs::navigation(id)
+        }
+        "menubar" => super::showcase_menubar::navigation(),
+        "app-shell" => vec![
+            ("Layout regions", "#shell-regions"),
+            ("Responsive navigation", "#shell-responsive"),
+            ("Collapsed navigation", "#shell-collapsed"),
+        ],
         "date-picker" | "date-picker-input" => vec![
             ("Multiple and range", "#date-picker-modes"),
             ("Number of columns", "#date-picker-columns"),
@@ -3202,6 +3218,35 @@ pub fn detail_navigation(id: &str) -> Vec<(&'static str, &'static str)> {
 mod tests {
     use super::*;
     use glory::render::{Event, Props};
+
+    #[test]
+    fn shell_and_menubar_documentation_sections_mount_real_widgets_and_retire() {
+        for (slug, count) in [
+            ("app-shell", 3),
+            ("menubar", 7),
+            ("anchor", 2),
+            ("burger", 1),
+            ("nav-link", 2),
+            ("breadcrumbs", 2),
+            ("pagination", 3),
+            ("accordion", 4),
+            ("tabs", 5),
+            ("timeline", 3),
+        ] {
+            let sections = detail_sections(slug, sapid::Theme::blue_light());
+            assert_eq!(sections.len(), count);
+            assert_eq!(detail_navigation(slug).len(), count);
+            for section in sections {
+                assert!(section.source.contains("pub fn demo("));
+                let app = App::memory();
+                app.mount(section.example)
+                    .unwrap_or_else(|error| panic!("{}: {error}", section.id));
+                assert!(!app.tree().is_empty(), "{}", section.id);
+                app.clear().unwrap();
+                assert_eq!(app.stats().nodes, 0, "{}", section.id);
+            }
+        }
+    }
 
     #[test]
     fn clean_examples_build_real_widgets_and_retire_their_owned_state() {

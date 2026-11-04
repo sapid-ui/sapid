@@ -38,6 +38,26 @@ fn model() -> sapid::Timeline {
         .item(timeline_item("build").title("Build"))
         .item(timeline_item("ship").title("Ship"))
 }
+
+#[test]
+fn invalid_marker_geometry_fails_before_mount_and_zero_width_omits_connectors() {
+    for widget in [
+        model().bullet_size(0.),
+        model().bullet_size(f64::NAN),
+        model().line_width(-1.),
+        model().line_width(f64::INFINITY),
+    ] {
+        let app = App::memory();
+        assert!(app.mount(widget).is_err());
+        assert!(app.tree().roots().is_empty());
+    }
+    let app = App::memory();
+    app.mount(model().line_width(0.)).unwrap();
+    let tree = app.tree();
+    for item in &tree.node(tree.roots()[0]).unwrap().children {
+        assert_eq!(tree.node(*item).unwrap().children.len(), 2);
+    }
+}
 #[test]
 fn ordered_timeline_uses_real_list_items_in_source_order_and_readable_progress() {
     let app = App::memory();
