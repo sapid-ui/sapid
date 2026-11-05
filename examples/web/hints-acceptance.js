@@ -41,7 +41,7 @@ async (hostPage, baseURL='http://127.0.0.1:8794') => {
       await outside.focus();await about.hover();await settle();await profile.hover();await settle();
       const cdp=await context.newCDPSession(page),ax=await cdp.send('Accessibility.getFullAXTree');await cdp.detach();
       assert(ax.nodes.some(node=>node.role?.value==='dialog'&&node.name?.value==='Ada profile')&&ax.nodes.some(node=>node.role?.value==='link'&&node.name?.value==='Read Ada profile'),`${mode}: real AX dialog and interactive descendants`);
-      await page.screenshot({path:`D:/BuildCache/sapid/${mode}.png`,fullPage:true});
+      await page.screenshot({path:`target/verification/sapid/${mode}.png`,fullPage:true});
       await page.setViewportSize({width:390,height:844});await tick();const narrow=await card.boundingBox();assert(narrow&&narrow.x>=0&&narrow.x+narrow.width<=391,`${mode}: narrow viewport collision`);await page.setViewportSize({width:1100,height:900});
       await page.mouse.move(1080,850);await outside.focus();await settle();await save.hover();await page.waitForTimeout(20);await page.evaluate(()=>demo.unmount_hints());await settle();assert(await page.locator('#app').evaluate(e=>e.childElementCount===0),`${mode}: Owner retirement cancels a pending timer`);
       reports.push({suite:mode,status:'passed',checks:'true Tooltip/description, no popup/expanded, hover+focus, open/close delay cancellation and gap, preserved actual focus, trigger/foreign Escape, controlled rejection, live descendant focus/Tab/action, Input value, AX, child/Owner cleanup, viewport collision'});

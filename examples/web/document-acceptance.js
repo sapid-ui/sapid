@@ -50,7 +50,7 @@ async (hostPage) => {
       await page.setViewportSize({ width: 390, height: 844 }); await tick();
       assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `${mode}: mobile overflow`);
       await page.setViewportSize({ width: 1440, height: 1000 });
-      if (hydration) await page.screenshot({ path: `D:/BuildCache/sapid/${mode}.png`, fullPage: true });
+      if (hydration) await page.screenshot({ path: `target/verification/sapid/${mode}.png`, fullPage: true });
       await page.evaluate(() => window.demo.unmount_display());
       assert(await page.locator('#app').evaluate(e => e.childElementCount === 0), `${mode}: teardown`);
       reports.push({ suite: mode, status: 'passed', checks: 'intrinsic tags/list nesting/dt-dd relations, reactive text identity, exact Unicode highlight and cross-mark selection, passive Item/actions, explicit Kbd platform, AX roles, theme/mobile, teardown' });

@@ -22,7 +22,7 @@ async(hostPage)=>{
       await page.getByRole('button',{name:'Reset timeline',exact:true}).click();await tick();assert((await states()).every(value=>value==='Upcoming'),`${mode}: reset`);
       const cdp=await context.newCDPSession(page);const ax=await cdp.send('Accessibility.getFullAXTree');await cdp.detach();assert(ax.nodes.filter(node=>String(node.role?.value).toLowerCase()==='separator').length===2,`${mode}: AX separators`);assert(ax.nodes.some(node=>node.role?.value==='list'&&node.name?.value==='Release progress'),`${mode}: AX ordered timeline`);
       await page.setViewportSize({width:390,height:844});await tick();assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`${mode}: mobile overflow`);await page.setViewportSize({width:1440,height:1000});
-      if(hydration)await page.screenshot({path:`D:/BuildCache/sapid/${mode}.png`,fullPage:true});
+      if(hydration)await page.screenshot({path:`target/verification/sapid/${mode}.png`,fullPage:true});
       await page.evaluate(()=>window.demo.unmount_display());assert(await page.locator('#app').evaluate(element=>element.childElementCount===0),`${mode}: teardown`);
       reports.push({suite:mode,status:'passed',checks:'passive/decorative separator role/orientation/geometry, chronological list/status text, controlled progress, item/draft/caret identity, AX, mobile, teardown'});
     }

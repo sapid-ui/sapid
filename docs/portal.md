@@ -64,3 +64,10 @@ Evidence under `D:/BuildCache/sapid`:
 These browser checks do not establish OS IME or screen-reader acceptance. This
 API introduces no HTML protocol field; the fixed artifact uses HTML9 and classic
 stream envelope2.
+
+## Public destination examples
+
+The public page has a project-note editor that moves between bordered targets,
+a disappearing destination that parks and restores its draft, and enabled
+attachment control. The sources register their own context and actual targets;
+none relies on implicit body access. See [full page contracts](misc-pages.md).

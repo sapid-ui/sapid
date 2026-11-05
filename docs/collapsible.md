@@ -29,7 +29,7 @@ SSR 没有物理完成观察，关闭直接采用逻辑内容策略。Apace 现�
 
 ## 协议与证据
 
-高度能力使用共享有限 `CollapseConfig`、`CollapseComplete` 和显式 completion capability，HTML Snapshot 为 v5、classic envelope 为 v2。classic End 后采用重新开始客户端 revision 生命周期；整个子树验证成功才原地重置计数，保留编辑器身份、dirty 值、焦点与选择。旧、未来、重复完成分别遵守丢弃、拒绝和单次终态约束。
+高度能力使用共享有限 `CollapseConfig`、`CollapseComplete` 和显式 completion capability，当前 HTML shape/wire 为 v19、classic envelope 为 v2。classic End 后采用重新开始客户端 revision 生命周期；整个子树验证成功才原地重置计数，保留编辑器身份、dirty 值、焦点与选择。旧、未来、重复完成分别遵守丢弃、拒绝和单次终态约束。
 
 - `tests/collapse_motion.rs`：4 项，包含延迟 Owner、旧/未来/重复完成、受控静默、KeepMounted、无完成宿主及四主题整树退休回归。
 - Glory render 5 项共享与 conformance、2 项有限配置单测；HTML 2 项 full-shape oracle；SSR 同步 1 项、stream 1 项；Apace 5 项 native conformance/几何/CPU/retarget/生命周期回归。
@@ -39,3 +39,13 @@ SSR 没有物理完成观察，关闭直接采用逻辑内容策略。Apace 现�
 Chromium 148.0.7778.96 的独立同源 `command-next` 快照最终通过 12/12，`errors: []`，报告为 `D:/BuildCache/sapid/collapse-motion-browser-command-next.json`。真实进入中间高度约 29px、目标 128px，退出中间约 98px；反向关键帧使用当前 `calc-size` 系数，内容增长后达到 212px。classic End 的 revision 1 原地采用为客户端 0，dirty 输入、选择和焦点保留，关闭终态只观察一次。四张采用截图已保存并检查绿色暗色 390px 移动视口。
 
 原始 Web19 清理计数器 Disposed 失败保留在 `D:/BuildCache/sapid/collapse-motion-browser-failure.json`；清理回调已改为可失败写入，并增加整树 Owner 退休回归。独立快照的通过记录不冒充 Web19 通过。Rust producer 校验完整有限配置；classic JS 解释有限 HTML edits，WASM 采用端额外验证规范 counter，未引入第二套业务语义解释器。
+
+## 完成回调与公开示例
+
+`.on_transition_end(|open| ...)` 接收当前有效高度配置的宿主完成事件。未配置时长时启用
+180 ms；显式时长、零时长和停用动画保持有效。初始呈现静默，当前 revision 最多调用
+一次；旧 revision 和重复回执不会通知应用。反向、时长或动态策略改变以当前终态为准，
+所以配置变化也可能在逻辑 open 未变时产生一个新的终态。SSR/Memory 不伪造宿主完成。
+
+公开 Collapse 页面包含真实送货草稿、受控拒绝/恢复、内容增长、动画切换和 KeepMounted
+身份保留；完整源码与验收边界见 [杂项页说明](misc-pages.md#collapse-completion)。

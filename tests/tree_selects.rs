@@ -18,6 +18,55 @@ fn nodes() -> Vec<TreeNode> {
     ]
 }
 #[test]
+fn search_reveals_matching_ancestors_without_writing_controlled_expansion() {
+    let app = App::memory();
+    let expanded = app.scope().cage(BTreeSet::<String>::new());
+    let calls = Rc::new(RefCell::new(Vec::new()));
+    let output = calls.clone();
+    app.mount(
+        tree_select("search-expansion")
+            .nodes(nodes())
+            .name("Find a file")
+            .searchable(true)
+            .expanded(expanded)
+            .on_expanded_change(move |proposal| output.borrow_mut().push(proposal)),
+    )
+    .unwrap();
+    let input = named(&app, "Find a file");
+    for (query, open) in [("Beta", true), ("", false), ("Alpha", true), ("", false)] {
+        let revision = match &app.tree().node(input).unwrap().descriptor.view().props {
+            Props::Input(value) => value.revision,
+            _ => unreachable!(),
+        };
+        app.dispatch(
+            input,
+            Event::ValueChanged {
+                value: query.into(),
+                composing: false,
+                revision,
+            },
+        )
+        .unwrap();
+        app.flush().unwrap();
+        let root = named(&app, "Root");
+        assert_eq!(
+            app.tree()
+                .node(root)
+                .unwrap()
+                .descriptor
+                .view()
+                .semantics
+                .as_ref()
+                .unwrap()
+                .expanded,
+            Some(open)
+        );
+        assert!(expanded.get().is_empty());
+        assert!(calls.borrow().is_empty());
+        assert_eq!(named(&app, "Find a file"), input);
+    }
+}
+#[test]
 fn focus_loss_then_gain_between_items_in_one_tick_does_not_close_the_popup() {
     let app = App::memory();
     app.mount(
@@ -525,4 +574,86 @@ fn searchable_hide_picked_limit_rendering_and_popup_configuration_are_component_
             .classes
             .contains(&"sapid-tree-guide".to_owned())
     }));
+}
+
+#[test]
+fn cascader_can_use_compact_layout_and_select_parent_paths_without_closing_browsing() {
+    for columns in [false, true] {
+        let app = App::memory();
+        let reference = app.scope().cage(None);
+        let expanded = app.scope().cage(BTreeSet::from(["root".to_owned()]));
+        let values = Rc::new(RefCell::new(Vec::new()));
+        let output = values.clone();
+        app.mount(
+            sapid::cascader("parent-choice")
+                .name("Category")
+                .node_ref(reference)
+                .nodes(nodes())
+                .with_columns(columns)
+                .change_on_select(true)
+                .expanded(expanded)
+                .on_expanded_change(move |v| expanded.revise(|old| *old = v))
+                .default_open(true)
+                .on_value_change(move |v| output.borrow_mut().push(v)),
+        )
+        .unwrap();
+        app.dispatch(named(&app, "Root"), Event::Activate).unwrap();
+        app.flush().unwrap();
+        assert_eq!(
+            values.borrow().last().unwrap().paths()[0].keys(),
+            &["root".to_owned()]
+        );
+        assert_eq!(
+            app.tree()
+                .node(reference.get().unwrap())
+                .unwrap()
+                .descriptor
+                .view()
+                .semantics
+                .as_ref()
+                .unwrap()
+                .expanded,
+            Some(true)
+        );
+        expanded.revise(|v| *v = BTreeSet::from(["root".to_owned()]));
+        app.flush().unwrap();
+        app.dispatch(named(&app, "Alpha"), Event::Activate).unwrap();
+        app.flush().unwrap();
+        assert_eq!(
+            values.borrow().last().unwrap().paths()[0].keys(),
+            &["root".to_owned(), "a".to_owned()]
+        );
+        assert_eq!(
+            app.tree()
+                .node(reference.get().unwrap())
+                .unwrap()
+                .descriptor
+                .view()
+                .semantics
+                .as_ref()
+                .unwrap()
+                .expanded,
+            Some(false)
+        );
+        app.clear().unwrap();
+        assert_eq!(app.stats().nodes, 0);
+    }
+}
+#[test]
+fn hierarchical_clear_action_names_are_bounded_mount_configuration() {
+    let app = App::memory();
+    assert!(
+        app.mount(tree_select("clear-label").nodes(nodes()).clear_label(" "))
+            .is_err()
+    );
+    assert_eq!(app.stats().nodes, 0);
+    assert!(
+        app.mount(
+            sapid::cascader("clear-label")
+                .nodes(nodes())
+                .clear_label("x".repeat(257))
+        )
+        .is_err()
+    );
+    assert_eq!(app.stats().nodes, 0);
 }

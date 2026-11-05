@@ -4,6 +4,10 @@
 普通文字以 content 提供名称，不将纯段落改成 ARIA 名称；Title 可用 `.name(...)` 显式命名。
 内容全部作为文本转义，不解释 HTML、模板或 UI DSL。
 
+公开页现有九个专属首例及 33 段独立完整源码。真实文章、引用、代码、匹配规则、列表、
+表格滚动与表头关联、截断和标题级别的说明见 `typography-pages.md`。
+浏览器支持单行 ellipsis 与多行 clamp；原生 Apace 继续明确拒绝这些有限样式，不能把原生限制写成浏览器限制。
+
 ```rust
 sapid::typography().theme(theme).content(|context| (
     context.title(1).content("Documentation"),
@@ -45,7 +49,7 @@ Web/SSR/Record 支持此有限样式。当前固定 Apace 引擎没有相应 ell
 Text/Heading 节点。`.gradient(LinearGradient)` 是原子的 text-gradient 声明，HTML 同时输出
 gradient image、标准/前缀 text clip 和 transparent fill，避免调用方漏掉其中一条声明。
 
-当前 Apace profile v13 在实际多行 clamp 与 glyph gradient paint 支持前分别拒绝 LineClamp 和
+当前 Apace profile 在实际多行 clamp 与 glyph gradient paint 支持前分别拒绝 LineClamp 和
 TextGradient；普通 Text/Title/Typography 仍可原生排版。HTML format v16 让旧水合快照在这些
 字段不一致时先拒绝接管。本契约不接受任意 HTML 字符串或富编辑器文档协议。
 

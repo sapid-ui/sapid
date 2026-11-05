@@ -1,15 +1,21 @@
 # Finite typed plot families
 
-Enable `charts` and import `sapid::charts`. Eighteen constructors select distinct
+Enable `charts` and import `sapid::charts`. Seventeen constructors select distinct
 geometry on the common `Plot` builder: `pie_chart`, `donut_chart`,
 `radial_bar_chart`, `scatter_chart`, `bubble_chart`, `candlestick_chart`,
-`radar_chart`, `funnel_chart`, `sparkline`, `heatmap`, `matrix_chart`,
+`radar_chart`, `funnel_chart`, `sparkline`, `matrix_chart`,
 `waffle_chart`, `bars_list`, `bullet_chart`, `gauge_chart`, `treemap`,
 `sunburst_chart` and `sankey_chart`. Drawing uses the existing portable vector
 protocol; no chart runtime, parser, serde or JavaScript chart library is added.
 The optional feature pins the pure Rust `libm` 0.2.16 trigonometric primitives
 so native SSR and WASM construct identical paths rather than depending on each
 platform's last-bit differences in the system sine/cosine functions.
+
+The public `heatmap` builder now has a separate dated contribution model and
+week/day geometry. See [Heatmap](heatmap.md); pass matrix data to `matrix_chart`.
+The low-level `PlotKind::Heatmap` color-only matrix scene remains part of the
+finite plot protocol and its historical acceptance fixtures, rather than the
+public calendar heatmap API.
 
 ```rust
 use sapid::charts::*;
@@ -43,10 +49,10 @@ slices or percentages. Radial bars use concentric value arcs; Radar uses radial
 axes and true missing-value breaks; Funnel uses distinct trapezoids and
 Sparkline preserves disconnected spans. Bubble area, rather than radius,
 follows size. Candles expose open/high/low/close and up/down/unchanged values.
-Heatmap uses continuous color; Matrix also scales cell area; both include
+The low-level color-only matrix scene uses continuous color; Matrix also scales cell area; both include
 numeric labels, a five-stop numeric color legend and a full exact table. Waffle
-uses deterministic largest-remainder allocation of 100 cells while retaining
-the original values. BarsList, Bullet and Gauge expose read-only progress
+uses deterministic largest-remainder allocation of the configured cell total
+(100 by default), retaining original values. BarsList, Bullet and Gauge expose read-only progress
 ranges; targets and band boundaries remain exact table values. Treemap uses
 alternating proportional subdivisions, Sunburst weighted angular depth bands,
 and Sankey uses explicit DAG ranks and conserved incoming/outgoing flow ports.
@@ -54,7 +60,9 @@ Sankey zero flows omit ribbons. These are bounded deterministic layouts, not
 force simulations or a general-purpose graph editor.
 
 `PlotOptions` controls current-key visibility and applicable explicit XY/value
-domains. Unknown keys and irrelevant scale options are rejected. Geometry
+domains, arc angles, Donut thickness/center text, Waffle rows/columns/gap and
+Bubble radius limits. See [chart-pages.md](chart-pages.md) for finite bounds and
+complete public examples. Unknown keys and irrelevant options are rejected. Geometry
 clips explicit scales and discloses the clipped count; exact source values
 remain in the table. Legend buttons propose visibility changes. Point buttons
 and Previous/Next/Clear provide keyboard access without adding every point to

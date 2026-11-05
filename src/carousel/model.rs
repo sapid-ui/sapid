@@ -3,6 +3,7 @@
 use glory::render::{Direction, Error};
 pub const MAX_CAROUSEL_COUNT: usize = 1_000_000;
 pub const MAX_CAROUSEL_OVERSCAN: usize = 3;
+pub const MAX_CAROUSEL_INDICATORS: usize = 9;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Page {
     pub count: usize,
@@ -71,6 +72,17 @@ impl Page {
             window.extend(first..end);
         }
         window
+    }
+    pub fn indicators(self) -> Vec<usize> {
+        if self.validate().is_err() || self.count == 0 {
+            return Vec::new();
+        }
+        let length = self.count.min(MAX_CAROUSEL_INDICATORS);
+        let start = self
+            .current
+            .saturating_sub(length / 2)
+            .min(self.count - length);
+        (start..start + length).collect()
     }
     pub fn swipe(
         self,

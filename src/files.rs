@@ -20,6 +20,17 @@ pub enum FileStatus {
     Cancelled,
     Rejected(FileRejection),
 }
+fn rejection_message(reason: FileRejection) -> &'static str {
+    match reason {
+        FileRejection::Count => "too many files selected",
+        FileRejection::Type => "this file type is not accepted",
+        FileRejection::Bytes => "the selected files exceed the size limit",
+        FileRejection::Metadata => "the selected files have unsupported metadata",
+        FileRejection::Busy => "a file operation is already in progress",
+        FileRejection::Unavailable => "file selection is unavailable",
+        FileRejection::Failed => "the file operation failed",
+    }
+}
 #[derive(Clone)]
 pub struct FileController {
     scope: glory::ui::WeakScope,
@@ -29,6 +40,7 @@ pub struct FileController {
     pending: Cage<Option<u64>>,
     output_files: Option<Cage<Vec<FileInfo>>>,
     output_status: Option<Cage<FileStatus>>,
+    changed: Callback<Vec<FileInfo>>,
 }
 impl FileController {
     pub fn files(&self) -> Vary<Vec<FileInfo>> {
@@ -67,6 +79,17 @@ impl FileController {
         let (scope, node) = self.current()?;
         scope.clear_files(node)?;
         self.reset()
+    }
+    fn clear_by_user(&self) -> Result {
+        let (scope, node) = self.current()?;
+        if self.files.try_with(Vec::is_empty)? {
+            return Ok(());
+        }
+        scope.clear_files(node)?;
+        self.reset()?;
+        crate::composite::focus_node(&scope, Some(node))?;
+        self.changed.emit(scope.id(), Vec::new());
+        Ok(())
     }
     pub fn remove(&self, file: FileToken) -> Result {
         self.ensure(file)?;
@@ -157,6 +180,7 @@ pub struct FileButton {
     changed: Option<Box<dyn FnMut(Vec<FileInfo>)>>,
     result: Option<Box<dyn FnMut(FileOutcome)>>,
     force_drop: bool,
+    input_summary: bool,
 }
 pub fn file_button() -> FileButton {
     FileButton {
@@ -169,6 +193,7 @@ pub fn file_button() -> FileButton {
         changed: None,
         result: None,
         force_drop: false,
+        input_summary: false,
     }
 }
 impl FileButton {
@@ -228,10 +253,17 @@ impl FileButton {
             .configuration
             .try_with(|value| configuration(value, self.force_drop))??;
         let initial_label = self.label.try_with(|value| label(value))??;
+        if self.input_summary && self.common.name.is_none() {
+            self.common.name = Some(
+                crate::composite::validated(scope, &self.label, |value| label(value).map(|_| ()))?
+                    .into(),
+            );
+        }
         let reference = self.common.node_ref.unwrap_or_else(|| scope.cage(None));
         let files = scope.cage(Vec::new());
         let status = scope.cage(FileStatus::Idle);
         let pending = scope.cage(None);
+        let changed = Callback::new(self.changed.take());
         let control = FileController {
             scope: scope.downgrade(),
             node: reference,
@@ -240,9 +272,9 @@ impl FileButton {
             pending,
             output_files: self.files_ref,
             output_status: self.status_ref,
+            changed: changed.clone(),
         };
         control.reset()?;
-        let changed = Callback::new(self.changed.take());
         let completed = Callback::new(self.result.take());
         let changed_cleanup = changed.clone();
         let completed_cleanup = completed.clone();
@@ -271,6 +303,7 @@ impl FileButton {
         let mut accepted_config = initial_config.clone();
         let mut accepted_label = initial_label.clone();
         let force_drop = self.force_drop;
+        let input_summary = self.input_summary;
         let weak = scope.downgrade();
         let driver = control.clone();
         scope.structural(move || {
@@ -279,7 +312,16 @@ impl FileButton {
             };
             let result = (|| -> Result {
                 let next = config_source.try_with(|value| configuration(value, force_drop))??;
-                let text = label_source.try_with(|value| label(value))??;
+                let placeholder = label_source.try_with(|value| label(value))??;
+                let text = if input_summary {
+                    files.try_with(|files| match files.first() {
+                        None => placeholder,
+                        Some(file) if files.len() == 1 => file.name.clone(),
+                        Some(file) => format!("{}, +{} more", file.name, files.len() - 1),
+                    })?
+                } else {
+                    placeholder
+                };
                 let Some(node) = reference.try_get()? else {
                     return Ok(());
                 };
@@ -346,11 +388,20 @@ impl FileButton {
             .unwrap_or_default();
         let driver = control.clone();
         let unavailable = completed.clone();
+        let active = self.common.enabled.clone();
         let weak = scope.downgrade();
         inner = inner.on(EventKind::Activate, move |event| {
             let Some(scope) = weak.upgrade() else {
                 return;
             };
+            match active.try_get() {
+                Ok(true) => {}
+                Ok(false) => return,
+                Err(error) => {
+                    scope.report_error(error);
+                    return;
+                }
+            }
             let result = (|| -> Result {
                 if pending.try_get()?.is_none() {
                     let node = reference.try_get()?.ok_or(glory::ui::Error::Gone)?;
@@ -601,21 +652,28 @@ pub struct FileInput {
     preview: bool,
     description: Option<crate::composite::Factory>,
     attachment: Option<AttachmentFactory>,
+    clearable: bool,
+    show_attachments: bool,
 }
 pub type Dropzone = FileInput;
 pub fn file_input() -> FileInput {
+    let mut button = file_button();
+    button.input_summary = true;
     FileInput {
-        button: file_button(),
+        button,
         drop: false,
         preview: false,
         description: None,
         attachment: None,
+        clearable: false,
+        show_attachments: true,
     }
 }
 pub fn dropzone() -> Dropzone {
     let mut value = file_input();
     value.drop = true;
     value.button.force_drop = true;
+    value.button.input_summary = false;
     value.button.label = "Drop files or choose files".into();
     value
 }
@@ -693,6 +751,15 @@ macro_rules! file_composite_methods {
 }
 impl FileInput {
     file_composite_methods!();
+    pub fn clearable(mut self, value: bool) -> Self {
+        self.clearable = value;
+        self
+    }
+    /// Hide attachment rows without changing the selected host references.
+    pub fn show_attachments(mut self, value: bool) -> Self {
+        self.show_attachments = value;
+        self
+    }
     /// Enable explicit Preview buttons. The host validates image headers before publishing a preview resource.
     pub fn previews(mut self, value: bool) -> Self {
         self.preview = value;
@@ -746,20 +813,167 @@ impl Widget for FileInput {
         let theme = self.button.common.theme.clone();
         let plain = self.button.common.unstyled;
         let enabled = self.button.common.enabled.clone();
-        let controller = self.button.build_control(&child)?;
+        let row_scope = if !self.drop {
+            let reference = child.cage(None);
+            glory::ui::view()
+                .class("sapid-file-input-control")
+                .node_ref(reference)
+                .style(
+                    Style::new()
+                        .position(glory::style::Position::Relative)
+                        .width(Length::Percent(100.))
+                        .min_width(Length::Px(0.)),
+                )
+                .show_in(&child)?;
+            let overrides = self.button.common.style.clone();
+            let clearable = self.clearable;
+            let default_padding = theme
+                .control(self.button.common.size)
+                .padding
+                .unwrap_or(Edges::all(0.));
+            self.button.common.style = child
+                .bond(move || {
+                    let mut style = overrides.get();
+                    style.width.get_or_insert(Length::Percent(100.));
+                    style.display.get_or_insert(Display::Flex);
+                    style.align.get_or_insert(glory::style::Align::Center);
+                    style.min_width.get_or_insert(Length::Px(0.));
+                    style.justify.get_or_insert(glory::style::Justify::Start);
+                    style
+                        .white_space
+                        .get_or_insert(glory::style::WhiteSpace::NoWrap);
+                    style.overflow_x.get_or_insert(Overflow::Hidden);
+                    if clearable {
+                        let mut padding = style.padding.unwrap_or(default_padding);
+                        padding.right = padding.right.max(36.);
+                        style.padding = Some(padding);
+                    }
+                    style
+                })
+                .into();
+            Some(child.child_in(reference.get().ok_or(glory::ui::Error::Gone)?)?)
+        } else {
+            None
+        };
+        let picker_scope = row_scope.as_ref().unwrap_or(&child);
+        let controller = self.button.build_control(picker_scope)?;
         let current = controller.files();
+        if self.clearable {
+            let selected = current.clone();
+            let cap_selection = current.clone();
+            let cap_style = self.button.common.style.clone();
+            let cap_enabled = enabled.clone();
+            let cap_theme = theme.clone();
+            glory::ui::view()
+                .class("sapid-file-input-endcap")
+                .semantics(Some(Box::new(Semantics {
+                    inert: true,
+                    ..Default::default()
+                })))
+                .style(picker_scope.bond(move || {
+                    let mut style = Style::new()
+                        .display(if cap_selection.with(|files| files.is_empty()) {
+                            Display::None
+                        } else {
+                            Display::Block
+                        })
+                        .position(glory::style::Position::Absolute)
+                        .right(Length::Px(1.))
+                        .top(Length::Px(1.))
+                        .bottom(Length::Px(1.))
+                        .width(Length::Px(35.))
+                        .radius((cap_theme.radius - 1.).max(0.))
+                        .pointer_events(glory::style::PointerEvents::None);
+                    if !plain {
+                        style.background =
+                            cap_style.get().background.or(Some(if cap_enabled.get() {
+                                cap_theme.input
+                            } else {
+                                cap_theme.disabled
+                            }));
+                    }
+                    style
+                }))
+                .show_in(picker_scope)?;
+            let clear = controller.clone();
+            let active = enabled.clone();
+            let weak = picker_scope.downgrade();
+            let height = theme
+                .control(self.button.common.size)
+                .min_height
+                .unwrap_or(Length::Px(36.));
+            let top = match height {
+                Length::Px(height) => ((height - 24.) / 2.).max(0.),
+                _ => 6.,
+            };
+            crate::close_button()
+                .theme(theme.clone())
+                .icon(crate::input_actions::glyph(crate::Icon::Close, theme.muted))
+                .name("Clear selected files")
+                .class("sapid-file-input-clear")
+                .enabled(enabled.clone())
+                .style(picker_scope.bond(move || {
+                    Style::new()
+                        .display(if selected.with(|files| files.is_empty()) {
+                            Display::None
+                        } else {
+                            Display::Flex
+                        })
+                        .position(glory::style::Position::Absolute)
+                        .right(Length::Px(6.))
+                        .top(Length::Px(top))
+                        .width(Length::Px(24.))
+                        .min_width(Length::Px(24.))
+                        .height(Length::Px(24.))
+                        .min_height(Length::Px(24.))
+                }))
+                .on_press(move || {
+                    let Some(scope) = weak.upgrade() else { return };
+                    let result =
+                        active
+                            .try_get()
+                            .map_err(glory::ui::Error::from)
+                            .and_then(|enabled| {
+                                if enabled {
+                                    clear.clear_by_user()
+                                } else {
+                                    Ok(())
+                                }
+                            });
+                    if let Err(error) = result {
+                        scope.report_error(error);
+                    }
+                })
+                .show_in(picker_scope)?;
+        }
+        if let Some(row) = row_scope {
+            child.retain(row)?;
+        }
+        let status_files = current.clone();
         let status = controller.status();
         glory::ui::text()
             .class("sapid-file-status")
             .content(child.bond(move || match status.get() {
                 FileStatus::Idle => "No files selected".into(),
                 FileStatus::Choosing => "Choosing files".into(),
-                FileStatus::Selected => "Files selected".into(),
+                FileStatus::Selected => {
+                    let count = status_files.with(|files| files.len());
+                    format!(
+                        "{count} {} selected",
+                        if count == 1 { "file" } else { "files" }
+                    )
+                }
                 FileStatus::Cancelled => "Selection cancelled".into(),
-                FileStatus::Rejected(reason) => format!("Files rejected: {reason:?}"),
+                FileStatus::Rejected(reason) => {
+                    format!("Files rejected: {}", rejection_message(reason))
+                }
             }))
             .show_in(&child)?;
         let preview = self.preview;
+        if !self.show_attachments {
+            scope.retain(child)?;
+            return Ok(());
+        }
         let mut factory = self.attachment.take();
         glory::ui::each(current)
             .key(|info| info.token)

@@ -505,6 +505,8 @@ struct Controller {
     control: Control<[f64; 2]>,
     local: bool,
     accepted: Cage<Snapshot>,
+    read: Rc<dyn Fn(Option<[f64; 2]>) -> Result<Snapshot>>,
+    available: Rc<dyn Fn() -> Result<bool>>,
     root: Cage<Option<NodeId>>,
     thumbs: [Cage<Option<NodeId>>; 2],
     changed: Callback<[f64; 2]>,
@@ -531,6 +533,15 @@ impl Controller {
         if let Some(scope) = self.weak.upgrade() {
             scope.report_error(error)
         }
+    }
+    fn event_snapshot(&self) -> Result<Snapshot> {
+        self.ensure()?;
+        let accepted = self.accepted.try_get()?;
+        // Refresh configuration without treating pending external values as
+        // accepted interaction cursors. Invalid configurations retain the UI.
+        let mut current = (self.read)(Some(accepted.values)).unwrap_or(accepted);
+        current.enabled &= (self.available)()?;
+        Ok(current)
     }
     fn cancel(&self) {
         self.active.set(None);
@@ -582,6 +593,10 @@ impl Controller {
     }
     fn propose(&self, value: [f64; 2]) -> Result {
         self.ensure()?;
+        let state = self.event_snapshot()?;
+        if !state.enabled || state.readonly {
+            return Ok(());
+        }
         let before = self.stamp()?;
         self.expected.set(Some(value));
         self.confirmed.set(None);
@@ -590,6 +605,13 @@ impl Controller {
         self.confirm(value, before)
     }
     fn commit(&self, value: [f64; 2]) -> Result {
+        if self.ensure().is_err() {
+            return Ok(());
+        }
+        let state = self.event_snapshot()?;
+        if !state.enabled || state.readonly {
+            return Ok(());
+        }
         let before = self.stamp()?;
         self.committed.emit(self.owner, value);
         self.confirm(value, before)
@@ -597,7 +619,7 @@ impl Controller {
     fn key(&self, thumb: RangeThumb, command: RangeCommand) -> Result {
         self.ensure()?;
         self.cancel();
-        let state = self.accepted.try_get()?;
+        let state = self.event_snapshot()?;
         let current = self.current(&state)?;
         let bounds = state.bounds(thumb, current);
         if !state.enabled || state.readonly || bounds.min == bounds.max {
@@ -621,7 +643,7 @@ impl Controller {
         if self.active.get() != Some(ticket) || self.ensure().is_err() {
             return Ok(());
         }
-        let state = self.accepted.try_get()?;
+        let state = self.event_snapshot()?;
         let current = self.current(&state)?;
         let bounds = state.bounds(thumb, current);
         if !state.enabled || state.readonly || bounds.min == bounds.max {
@@ -735,7 +757,7 @@ impl Controller {
             }
             return Ok(());
         }
-        let state = self.accepted.try_get()?;
+        let state = self.event_snapshot()?;
         let bounds = state.bounds(thumb, state.values);
         if !state.enabled || state.readonly || bounds.min == bounds.max {
             self.cancel();
@@ -1037,7 +1059,11 @@ impl Widget for RangeSlider {
         let marks: Rc<[crate::SliderMark]> = std::mem::take(&mut self.marks).into();
         let read_marks = marks.clone();
         let restrict_to_marks = self.restrict_to_marks;
-        let read = move || -> Result<Snapshot> {
+        let current_enabled = enabled.clone();
+        let current_metadata = metadata.clone();
+        let available =
+            Rc::new(move || crate::field::check_available(&current_enabled, &current_metadata));
+        let read: Rc<dyn Fn(Option<[f64; 2]>) -> Result<Snapshot>> = Rc::new(move |values| {
             let step = step.try_get()?;
             let page = page
                 .as_ref()
@@ -1045,7 +1071,10 @@ impl Widget for RangeSlider {
             let min = min.try_get()?;
             let max = max.try_get()?;
             let mut state = Snapshot {
-                values: source.try_get()?,
+                values: match values {
+                    Some(values) => values,
+                    None => source.try_get()?,
+                },
                 min,
                 max,
                 domain: domain
@@ -1086,8 +1115,8 @@ impl Widget for RangeSlider {
                 Ok::<_, glory::ui::Error>(text.clone())
             })??;
             Ok(state)
-        };
-        let accepted = scope.cage(read()?);
+        });
+        let accepted = scope.cage(read(None)?);
         let reference = self.common.node_ref.unwrap_or_else(|| scope.cage(None));
         let thumbs = [
             self.thumbs[0].unwrap_or_else(|| scope.cage(None)),
@@ -1100,6 +1129,8 @@ impl Widget for RangeSlider {
             control,
             local,
             accepted,
+            read: read.clone(),
+            available,
             root: reference,
             thumbs,
             changed: Callback::new(self.changed.take()),
@@ -1133,7 +1164,7 @@ impl Widget for RangeSlider {
         let structural = state.clone();
         scope.structural(move || {
             let result = (|| -> Result {
-                let next = read()?;
+                let next = read(None)?;
                 let old = structural.accepted.try_get()?;
                 if next != old {
                     if !old.same_domain(&next)
@@ -1523,7 +1554,7 @@ impl Widget for RangeSlider {
                 .left(Length::Px(size / 4.))
                 .top(Length::Px(size / 4.));
             if !unstyled {
-                circle.background = Some(surface);
+                circle.background = Some(self.common.theme.control_thumb);
                 circle.border_width = Some(Edges::all(2.));
                 circle.border_style = Some(glory::style::BorderStyle::Solid);
                 circle.border_color = Some(accent);

@@ -210,6 +210,10 @@ impl State {
                 interval,
                 resource: None,
             };
+            // Activation may come from touch or accessibility without a physical
+            // focus event. Keep the inspected date/roving cursor current while
+            // leaving physical focus and controlled acceptance independent.
+            self.focused.try_revise(|current| *current = index)?;
             self.root.selection.accept(&Some(v.clone()))?;
             self.root.selected.emit(self.root.owner, v);
         }

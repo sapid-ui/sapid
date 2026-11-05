@@ -1,6 +1,8 @@
 /target/
+**/target/
 /dist/
 **/node_modules/
+**/__pycache__/
 
 
 # Library, example and benchmark resolutions are generated locally.

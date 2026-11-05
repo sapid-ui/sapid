@@ -137,6 +137,8 @@ impl Widget for PasswordInput {
         let mut callback = self.on_visibility.take();
         let side = theme.tokens.control(size).min_height;
         let source = control.source.clone();
+        let action_enabled = enabled.clone();
+        let action_loading = loading.clone();
         let enabled_icon = enabled.clone();
         let colors = theme.clone();
         let drawing = scope.bond(move || {
@@ -167,6 +169,15 @@ impl Widget for PasswordInput {
             .on(glory::render::EventKind::Activate, move |_| {
                 let Some(scope) = weak.upgrade() else { return };
                 let result = (|| -> Result {
+                    if !action_enabled.try_get()?
+                        || action_loading
+                            .as_ref()
+                            .map(Vary::try_get)
+                            .transpose()?
+                            .unwrap_or(false)
+                    {
+                        return Ok(());
+                    }
                     let proposal = !control.source.try_get()?;
                     control.accept(&proposal)?;
                     if let Some(callback) = &mut callback {

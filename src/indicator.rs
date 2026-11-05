@@ -38,6 +38,8 @@ pub struct Indicator {
     common: Common,
     position: IndicatorPosition,
     diameter: f64,
+    offset: f64,
+    color: Option<glory::style::Color>,
     visible: Vary<bool>,
     label: Option<Vary<String>>,
     children: Children,
@@ -48,6 +50,8 @@ pub fn indicator() -> Indicator {
         common: Common::default(),
         position: IndicatorPosition::default(),
         diameter: 12.0,
+        offset: 0.,
+        color: None,
         visible: true.into(),
         label: None,
         children: ().into_children(),
@@ -92,6 +96,16 @@ impl Indicator {
     /// Fixed square marker box in pixels, in 4..=128. Labels do not resize it.
     pub fn diameter(mut self, diameter: f64) -> Self {
         self.diameter = diameter;
+        self
+    }
+    /// Positive offsets inset from the selected edges; center axes stay centered.
+    /// Signed finite CSS pixels are bounded to -128..=128.
+    pub fn offset(mut self, offset: f64) -> Self {
+        self.offset = offset;
+        self
+    }
+    pub fn color(mut self, color: glory::style::Color) -> Self {
+        self.color = Some(color);
         self
     }
     pub fn visible(mut self, visible: impl Into<Vary<bool>>) -> Self {
@@ -148,6 +162,12 @@ impl Widget for Indicator {
             )
             .into());
         }
+        if !self.offset.is_finite() || !(-128. ..=128.).contains(&self.offset) {
+            return Err(glory::render::Error::InvalidProps(
+                "indicator offset must be finite and in -128..=128 pixels",
+            )
+            .into());
+        }
         // Validate all sources before any visible nodes are created.
         if let Some(label) = &self.label {
             label.try_with(|value| valid_text(value, 32))??;
@@ -167,8 +187,18 @@ impl Widget for Indicator {
             .map(|source| accepted_text(scope, source, 256))
             .transpose()?;
         let (left, top) = self.position.coordinates();
+        let inset = |axis: f64| {
+            if axis == 0. {
+                self.offset
+            } else if axis == 100. {
+                -self.offset
+            } else {
+                0.
+            }
+        };
         let mut marker_style = Style {
             position: Some(Position::Absolute),
+            pointer_events: Some(glory::style::PointerEvents::None),
             left: Some(Length::Percent(left)),
             top: Some(Length::Percent(top)),
             width: Some(Length::Px(self.diameter)),
@@ -177,8 +207,8 @@ impl Widget for Indicator {
             align: Some(Align::Center),
             justify: Some(Justify::Center),
             margin: Some(Edges {
-                top: -self.diameter / 2.0,
-                left: -self.diameter / 2.0,
+                top: -self.diameter / 2.0 + inset(top),
+                left: -self.diameter / 2.0 + inset(left),
                 right: 0.0,
                 bottom: 0.0,
             }),
@@ -186,11 +216,22 @@ impl Widget for Indicator {
         };
         if !self.common.unstyled {
             marker_style.radius = Some(self.diameter / 2.0);
-            marker_style.background = Some(self.common.theme.accent);
-            marker_style.color = Some(self.common.theme.on_accent);
+            let color = self.color.unwrap_or(self.common.theme.accent);
+            marker_style.background = Some(color);
+            marker_style.color = Some(crate::alert::filled_foreground(
+                color,
+                self.common.theme.surface,
+                self.common.theme.on_accent,
+            ));
+            marker_style.font_family = Some(vec![glory::style::Family::System]);
             marker_style.font_size = Some((self.diameter * 0.65).min(18.0));
             marker_style.font_weight = Some(600.0);
             marker_style.white_space = Some(WhiteSpace::NoWrap);
+        }
+        if self.common.unstyled
+            && let Some(color) = self.color
+        {
+            marker_style.background = Some(color);
         }
         let visible = self.visible.clone();
         let semantics = move || {

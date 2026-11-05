@@ -68,3 +68,7 @@ Post-fix focused evidence under `D:/BuildCache/sapid`:
 (1 actual four-theme test), `modals-native-handoff-clippy.log` and
 `modals-native-consumer-clippy.log` (strict). These focused reports supplement,
 rather than replace, the following complete native gate.
+
+## Runnable documentation examples
+
+See [Extension pages](extension-pages.md) for the independent complete-source examples, application ownership rules and current acceptance boundaries.

@@ -1,5 +1,10 @@
 # AngleSlider
 
+The public primary example contains the dial and a readable rotation value.
+Two complete compiled source sections separately demonstrate live step changes,
+controlled refusal/page keys and LTR/RTL/read-only/disabled states. The protocol
+workbench and its counters remain in the independent acceptance fixture.
+
 `angle_slider(key)` is a single accessible Slider with a circular degree display and a real two-dimensional pointer mapping. Zero is at the top and degrees increase clockwise. The finite domain is `0..=360`: 0 and 360 are distinct numeric endpoints at the same visual position. Values wrap only after crossing an endpoint, so Home reaches 0, End reaches 360, and successive increases from 359 produce 360 then 1.
 
 ```rust

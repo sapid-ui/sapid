@@ -2,6 +2,56 @@ use glory::render::{memory::Memory, *};
 use glory::ui::{App, Widget};
 use std::{cell::Cell, rc::Rc};
 struct MotionHost(Memory);
+
+#[test]
+fn completion_observer_ignores_initial_stale_and_duplicate_revisions_and_retires_its_capture() {
+    let app = App::new(MotionHost::from);
+    let open = app.scope().cage(false);
+    let count = Rc::new(Cell::new(0));
+    let observed = count.clone();
+    let last = Rc::new(Cell::new(None));
+    let saved = last.clone();
+    app.mount(
+        sapid::collapsible("completion-observer")
+            .open(open)
+            .height_transition(0)
+            .on_transition_end(move |open| {
+                observed.set(observed.get() + 1);
+                saved.set(Some(open));
+            })
+            .content(|| glory::ui::text().content("Transition content")),
+    )
+    .unwrap();
+    let panel = nodes(&app, "sapid-collapsible-panel")[0];
+    app.dispatch(panel, Event::CollapseComplete { revision: 0 })
+        .unwrap();
+    app.flush().unwrap();
+    assert_eq!(count.get(), 0);
+    open.revise(|v| *v = true);
+    app.flush().unwrap();
+    let opening = config(&app, panel).revision;
+    for revision in [0, opening, opening] {
+        app.dispatch(panel, Event::CollapseComplete { revision })
+            .unwrap();
+        app.flush().unwrap();
+    }
+    assert_eq!(count.get(), 1);
+    assert_eq!(last.get(), Some(true));
+    open.revise(|v| *v = false);
+    app.flush().unwrap();
+    let closing = config(&app, panel).revision;
+    for revision in [opening, closing, closing] {
+        app.dispatch(panel, Event::CollapseComplete { revision })
+            .unwrap();
+        app.flush().unwrap();
+    }
+    assert_eq!(count.get(), 2);
+    assert_eq!(last.get(), Some(false));
+    app.clear().unwrap();
+    assert_eq!(Rc::strong_count(&count), 1);
+    assert_eq!(Rc::strong_count(&last), 1);
+    assert_eq!(app.stats().nodes, 0);
+}
 impl Render for MotionHost {
     fn style_profile(&self) -> glory::style::Profile {
         glory::style::Profile::RECORD

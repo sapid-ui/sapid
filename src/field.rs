@@ -26,6 +26,9 @@ pub struct FieldControl {
     pub(crate) unstyled: bool,
 }
 impl FieldControl {
+    pub(crate) fn has_label(&self) -> bool {
+        self.label.is_some()
+    }
     pub(crate) fn success_state(&self, scope: &Scope, success: Vary<bool>) -> Vary<bool> {
         let inherited = self.success.clone();
         scope.bond(move || success.get() || inherited.get()).into()
@@ -611,4 +614,16 @@ pub(crate) fn control_metadata(
             })
         })
         .into()
+}
+
+pub(crate) fn check_available(
+    enabled: &Vary<bool>,
+    metadata: &Vary<Option<Box<Semantics>>>,
+) -> Result<bool> {
+    Ok(enabled.try_get()?
+        && !metadata.try_with(|metadata| {
+            metadata
+                .as_ref()
+                .is_some_and(|states| states.readonly || states.disabled)
+        })?)
 }

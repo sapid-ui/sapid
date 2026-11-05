@@ -70,13 +70,13 @@ const { chromium, base, outputPath, outputRoot, writeReport } = require('./showc
     await page.getByRole('button', { name: 'Choose appointment date', exact: true }).click();
     const dialog = page.getByRole('dialog', { name: 'Choose dates', exact: true });
     await dialog.waitFor();
-    await dialog.getByRole('button', { name: 'Yesterday', exact: true }).click();
+    await dialog.getByRole('button', { name: 'Wednesday, November 4, 2026', exact: true }).click();
     await dialog.waitFor({ state: 'hidden' });
     assert.equal(
       await page.getByRole('textbox', { name: 'Appointment date', exact: true }).getAttribute('value'),
-      '2024-02-28',
+      '2026-11-04',
     );
-    report.checks.push('DatePickerInput preset updates the successful input and closes the dialog');
+    report.checks.push('DatePickerInput primary selects a real calendar day and closes the dialog');
 
     const inputColumns = page.locator('#date-picker-input-columns').locator('..');
     await inputColumns.getByRole('button', { name: 'Choose travel dates', exact: true }).click();

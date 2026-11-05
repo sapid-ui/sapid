@@ -75,6 +75,8 @@ Current evidence is model/foundation evidence, not completion of Schedule views:
   Schedule/Agenda lib+component strict and native focused strict also pass in
   `schedule-clippy.log` / `schedule-native-clippy.log`.
 
-The real current-window Schedule/Agenda composition and native/Web35 evidence are
-documented in [schedule.md](schedule.md). Day/Week/Month/Year/MobileMonth and resource
-UI remain in progress; the pure lane/edit models do not claim those views exist.
+The current-window Schedule/Agenda composition is documented in
+[schedule.md](schedule.md). Day/Week/Month/Year/MobileMonth and resource views
+are now implemented; their current public examples and acceptance boundaries are
+described in [schedule-pages.md](schedule-pages.md). The historical foundation
+measurements above remain model evidence rather than UI or OS acceptance.

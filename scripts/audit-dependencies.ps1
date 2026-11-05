@@ -1,28 +1,27 @@
 param(
     [string]$ProjectRoot = (Split-Path -Parent $PSScriptRoot),
-    [string]$BuildRoot = 'D:/BuildCache/sapid/dependency-audit',
+    [string]$BuildRoot = "$PSScriptRoot/../target/verification/sapid/dependency-audit",
     [string]$AuditBinary = $(if ($env:SAPID_CARGO_AUDIT) { $env:SAPID_CARGO_AUDIT } else { 'cargo-audit' }),
     [string]$Database = '',
     [switch]$NoFetch
 )
+. "$PSScriptRoot/local-build-paths.ps1"
+
 $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $false
 # Match cargo-audit's default policy: vulnerabilities block; informational
 # notices stay visible in both raw JSON and the Actions summary.
 $BuildRoot = [IO.Path]::GetFullPath($BuildRoot)
-if ($BuildRoot -notmatch '^D:\\BuildCache\\sapid(?:\\|$)') { throw 'Audit artifacts must stay under D:/BuildCache/sapid' }
 if (-not $Database) { $Database = Join-Path $BuildRoot 'advisory-db' }
-if ([IO.Path]::GetFullPath($Database) -notmatch '^D:\\BuildCache\\sapid(?:\\|$)') { throw 'Advisory database must stay under D:/BuildCache/sapid' }
 $names = @('CARGO_HOME','CARGO_TARGET_DIR','TEMP','TMP')
 $saved = @{}
 foreach ($name in $names) { $saved[$name] = [Environment]::GetEnvironmentVariable($name, 'Process') }
 $report = @{ tool = 'cargo-audit 0.22.2'; complete = $false; locks = @(); errors = @() }
 Push-Location $ProjectRoot
 try {
-    if (-not $env:CARGO_HOME) { $env:CARGO_HOME = 'D:/BuildCache/sapid/cargo' }
-    if ([IO.Path]::GetFullPath($env:CARGO_HOME) -notmatch '^D:\\BuildCache\\[^\\]+') { throw 'CARGO_HOME must stay under D:/BuildCache' }
-    $env:CARGO_TARGET_DIR = Join-Path $BuildRoot 'target'
-    $env:TEMP = Join-Path $BuildRoot 'tmp'; $env:TMP = $env:TEMP
+
+    $env:CARGO_TARGET_DIR = Get-NormalCargoTarget
+    $env:TEMP = Join-Path $BuildRoot 'tmp';
     New-Item -ItemType Directory -Force -Path $BuildRoot,$env:TEMP | Out-Null
     $version = (& $AuditBinary --version | Out-String).Trim()
     if ($LASTEXITCODE -ne 0 -or $version -ne $report.tool) { throw "Expected $($report.tool), got $version" }

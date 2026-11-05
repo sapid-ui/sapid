@@ -51,7 +51,7 @@ async (hostPage) => {
       await page.evaluate(()=>window.demo.toggle_state('disabled',false));
       const cdp=await context.newCDPSession(page);const ax=await cdp.send('Accessibility.getFullAXTree');await cdp.detach();
       assert(ax.nodes.some(n=>n.name?.value==='Bold text'&&n.properties?.some(p=>p.name==='pressed'&&p.value.value==='true')),`${mode}: AX pressed state missing`);
-      await page.screenshot({path:`D:/BuildCache/sapid/${mode}.png`,fullPage:true});
+      await page.screenshot({path:`target/verification/sapid/${mode}.png`,fullPage:true});
       reports.push({suite:mode,status:'passed',checks:'native pressed button, pointer/Enter/Space, single clear, multiple values, roving arrows/Home/End/disabled skip, external silence/identity, controlled rejection, four-theme style, AX pressed'});
     }
     await page.goto('http://127.0.0.1:8794/toggles-hydrate-green-dark.html?manual');await page.waitForFunction(()=>window.moduleReady===true);

@@ -123,3 +123,5 @@ suppression, readonly, locale/week-start and the controlled-window boundary.
 
 These driver/protocol checks
 do not prove screen-reader announcements or OS IME.
+
+For complete runnable page examples and current ownership/editing rules, see [Schedule pages](schedule-pages.md).

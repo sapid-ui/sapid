@@ -5,6 +5,13 @@ The source remains numeric and is never modified by formatting. The component
 uses one ordinary semantic Text node, with no editable control, live region,
 network request, clock or implicit browser internationalization API.
 
+`prefix(source)` and `suffix(source)` add literal text around the complete
+formatted number, without changing sign/currency placement or the numeric
+source. Each allows 0..=256 UTF-8 bytes and rejects NUL, CR/LF and Unicode line
+separators. Reactive invalid affixes retain the last accepted output and report
+an error; subsequent valid values recover on the same Text node. Public locale,
+precision, currency and affix examples are described in `data-display-pages.md`.
+
 Locales are explicit finite `NumberLocale::{EnUs,DeDe,ZhCn}` values. The default
 is EnUs; no OS/browser/user locale is inferred. This is a small documented
 formatting set rather than a complete CLDR implementation. en-US and zh-CN use

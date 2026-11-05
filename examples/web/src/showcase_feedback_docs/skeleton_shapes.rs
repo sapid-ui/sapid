@@ -1,0 +1,29 @@
+use glory::prelude::*;
+pub fn demo(theme: sapid::Theme) -> impl Widget {
+    sapid::stack().theme(theme.clone()).gap(20.).fill((
+        sapid::group().theme(theme.clone()).gap(12.).fill((
+            sapid::skeleton().theme(theme.clone()).circle(48.),
+            sapid::stack()
+                .theme(theme.clone())
+                .gap(10.)
+                .style(Style::new().width(Length::Percent(70.)))
+                .fill((
+                    sapid::skeleton()
+                        .theme(theme.clone())
+                        .height(12.)
+                        .radius(6.),
+                    sapid::skeleton()
+                        .theme(theme.clone())
+                        .height(10.)
+                        .width(Length::Percent(80.))
+                        .radius(5.),
+                    sapid::skeleton()
+                        .theme(theme.clone())
+                        .height(10.)
+                        .width(Length::Percent(60.))
+                        .radius(5.),
+                )),
+        )),
+        sapid::skeleton().theme(theme).height(48.).radius(0.),
+    ))
+}

@@ -1,5 +1,13 @@
 # Splitter
 
+The public page now has a short editor/preview primary example, with three
+separate source sections for controlled proposals and keyboard limits, nested
+three-panel composition, and fixed navigation beside flexible content. Each
+separator is named. The controlled example can refuse resizing and reset its
+external percentage source without replacing its editor. The fixed navigation
+is capped at 35% on narrow containers; pointer movement still resolves against
+the splitter's actual local extent.
+
 `splitter(key)` owns two stable panes and one focusable separator. A horizontal
 layout uses a vertical separator line; a vertical layout uses a horizontal line.
 `.axis(Vary<Orientation>)` changes the live direction without rebuilding panes.

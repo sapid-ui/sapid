@@ -35,6 +35,102 @@ fn observe(host: &WindowApp) {
     }
 }
 #[test]
+fn compact_controls_and_bounded_indicator_hits_follow_horizontal_rtl_and_vertical_geometry() {
+    use glory::render::{Direction, Orientation};
+    for theme in [
+        sapid::Theme::blue_light(),
+        sapid::Theme::blue_dark(),
+        sapid::Theme::green_light(),
+        sapid::Theme::green_dark(),
+    ] {
+        for (axis, direction) in [
+            (Orientation::Horizontal, Direction::Ltr),
+            (Orientation::Horizontal, Direction::Rtl),
+            (Orientation::Vertical, Direction::Ltr),
+        ] {
+            let host = WindowApp::new();
+            host.renderer().set_viewport(390, 500, 1.).unwrap();
+            let app = host.app();
+            let current = app.scope().cage(0usize);
+            host.mount(
+                sapid::carousel()
+                    .theme(theme.clone())
+                    .count(12usize)
+                    .current(current)
+                    .with_indicators(true)
+                    .orientation(axis)
+                    .direction(direction)
+                    .style(Style::new().width(Length::Px(320.)))
+                    .on_current_change(move |next| current.revise(|old| *old = next))
+                    .render_slide(|index| {
+                        glory::ui::view()
+                            .style(Style::new().height(Length::Px(160.)))
+                            .fill(glory::ui::text().content(format!("Slide {index}")))
+                    }),
+            )
+            .unwrap();
+            observe(&host);
+            let viewport = bounds(app, nodes(app, "sapid-carousel-viewport")[0]);
+            let previous = bounds(app, nodes(app, "sapid-carousel-previous")[0]);
+            let next = bounds(app, nodes(app, "sapid-carousel-next")[0]);
+            for control in [previous, next] {
+                assert!(control.width <= 32.1 && control.height <= 32.1);
+                assert!(
+                    control.x >= viewport.x
+                        && control.x + control.width <= viewport.x + viewport.width + 0.2
+                );
+                assert!(
+                    control.y >= viewport.y
+                        && control.y + control.height <= viewport.y + viewport.height + 0.2
+                );
+            }
+            if axis == Orientation::Vertical {
+                assert!(previous.y < next.y);
+            } else if direction == Direction::Rtl {
+                assert!(previous.x > next.x);
+            } else {
+                assert!(previous.x < next.x);
+            }
+            let indicators = nodes(app, "sapid-carousel-indicator");
+            assert_eq!(indicators.len(), 9);
+            let target = indicators
+                .into_iter()
+                .find(|id| {
+                    app.tree()
+                        .node(*id)
+                        .unwrap()
+                        .descriptor
+                        .view()
+                        .name
+                        .as_deref()
+                        == Some("Go to slide 3")
+                })
+                .unwrap();
+            let rect = bounds(app, target);
+            let hit = host.renderer().inspect(|document| {
+                document
+                    .hit(
+                        (rect.x + rect.width / 2.) as f32,
+                        (rect.y + rect.height / 2.) as f32,
+                    )
+                    .unwrap()
+                    .node_id
+            });
+            assert_eq!(
+                hit,
+                host.renderer()
+                    .engine_id(target, glory::html::Part::Main)
+                    .unwrap()
+            );
+            app.dispatch(target, Event::Activate).unwrap();
+            observe(&host);
+            assert_eq!(current.get(), 2);
+            app.clear().unwrap();
+            assert_eq!(app.stats().nodes, 0);
+        }
+    }
+}
+#[test]
 fn four_theme_real_native_window_geometry_retained_editors_and_actual_pixels() {
     for theme in [
         sapid::Theme::blue_light(),

@@ -33,15 +33,9 @@ jobs:
       acceptance_artifact: ${{ steps.provenance.outputs.artifact_name }}
       acceptance_provenance_sha256: ${{ steps.provenance.outputs.provenance_sha256 }}
     env:
-      CARGO_HOME: D:/BuildCache/glory-semantic-ui/cargo
-      CARGO_TARGET_DIR: D:/BuildCache/sapid/target
-      RUSTUP_HOME: D:/BuildCache/sapid/rustup
-      TEMP: D:/BuildCache/sapid/tmp
-      TMP: D:/BuildCache/sapid/tmp
-      PYTHONPYCACHEPREFIX: D:/BuildCache/sapid/pycache
-      npm_config_cache: D:/BuildCache/sapid/npm
-      PLAYWRIGHT_BROWSERS_PATH: D:/BuildCache/sapid/browsers
-      SAPID_PLAYWRIGHT: D:/BuildCache/sapid/browser/node_modules/playwright
+      CARGO_TARGET_DIR: ${{ github.workspace }}/sapid/target
+      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/sapid/target/verification/sapid/browsers
+      SAPID_PLAYWRIGHT: ${{ github.workspace }}/sapid/target/verification/sapid/browser/node_modules/playwright
       SAPID_BROWSER_RUNNER: ${{ inputs.acceptance_ref && '../acceptance/scripts/browser.cjs' || 'scripts/browser.cjs' }}
       CARGO_INCREMENTAL: '0'
       CARGO_PROFILE_DEV_DEBUG: '0'
@@ -89,18 +83,18 @@ jobs:
           node-version: 24
       - name: Prepare compiler and tools
         run: |
-          New-Item -ItemType Directory -Force $env:CARGO_HOME,$env:CARGO_TARGET_DIR,$env:RUSTUP_HOME,$env:TEMP | Out-Null
+          New-Item -ItemType Directory -Force $env:CARGO_TARGET_DIR,$env:TEMP | Out-Null
           rustup toolchain install 1.98.0 --profile minimal --component rustfmt,clippy --target wasm32-unknown-unknown
           if ($LASTEXITCODE) { throw 'Compiler installation failed' }
           rustup default 1.98.0
-          cargo install wasm-bindgen-cli --version 0.2.130 --locked --root D:/BuildCache/sapid/tools
+          cargo install wasm-bindgen-cli --version 0.2.130 --locked --root ${{ github.workspace }}/sapid/target/verification/sapid/tools
           if ($LASTEXITCODE) { throw 'WASM tools installation failed' }
-          'D:/BuildCache/sapid/tools/bin' >> $env:GITHUB_PATH
-          npm install --prefix D:/BuildCache/sapid/browser --no-save --package-lock=false playwright@1.64.1
+          '${{ github.workspace }}/sapid/target/verification/sapid/tools/bin' >> $env:GITHUB_PATH
+          npm install --prefix ${{ github.workspace }}/sapid/target/verification/sapid/browser --no-save --package-lock=false playwright@1.64.1
           if ($LASTEXITCODE) { throw 'Browser tools installation failed' }
-          node D:/BuildCache/sapid/browser/node_modules/playwright/cli.js install chromium
+          node ${{ github.workspace }}/sapid/target/verification/sapid/browser/node_modules/playwright/cli.js install chromium
           if ($LASTEXITCODE) { throw 'Chromium installation failed' }
-          'NODE_PATH=D:/BuildCache/sapid/browser/node_modules' >> $env:GITHUB_ENV
+          'NODE_PATH=${{ github.workspace }}/sapid/target/verification/sapid/browser/node_modules' >> $env:GITHUB_ENV
       - name: Validate release, inventory and showcase sources
         run: |
           python -m unittest discover -s scripts -p test_release.py
@@ -119,7 +113,7 @@ jobs:
       - name: Widget, SSR, native and browser compilation checks
         run: ./scripts/check.ps1 -Web -Native
       - name: Mixed DSL hydration and native acceptance
-        run: ./scripts/check-dsl.ps1 -Browser -Native -Bindgen D:/BuildCache/sapid/tools/bin/wasm-bindgen.exe
+        run: ./scripts/check-dsl.ps1 -Browser -Native -Bindgen ${{ github.workspace }}/sapid/target/verification/sapid/tools/bin/wasm-bindgen.exe
       - name: Check out the independently versioned browser harness
         if: inputs.acceptance_ref != ''
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -135,7 +129,7 @@ jobs:
           sparse-checkout-cone-mode: false
       - name: Actual widget browser acceptance
         run: |
-          $fixture = Start-Process python -ArgumentList @('-m','http.server','8794','--protocol','HTTP/1.1','--bind','127.0.0.1','--directory','D:/BuildCache/sapid/web') -WindowStyle Hidden -PassThru
+          $fixture = Start-Process python -ArgumentList @('-m','http.server','8794','--protocol','HTTP/1.1','--bind','127.0.0.1','--directory','${{ github.workspace }}/sapid/target/verification/sapid/web') -WindowStyle Hidden -PassThru
           try {
             $ready = $false
             for ($attempt = 0; $attempt -lt 30; $attempt++) {
@@ -155,21 +149,21 @@ jobs:
           EXPECTED_ACCEPTANCE: ${{ inputs.acceptance_ref }}
         run: |
           $harnessRoot = if (Test-Path ../acceptance/.git) { '../acceptance' } else { '.' }
-          $arguments = @('--record-acceptance','--product-root','.', '--harness-root',$harnessRoot,'--fixtures-root','D:/BuildCache/sapid/web','--provenance','D:/BuildCache/sapid/browser-provenance.json')
+          $arguments = @('--record-acceptance','--product-root','.', '--harness-root',$harnessRoot,'--fixtures-root','${{ github.workspace }}/sapid/target/verification/sapid/web','--provenance','${{ github.workspace }}/sapid/target/verification/sapid/browser-provenance.json')
           if ($env:EXPECTED_PRODUCT) { $arguments += @('--expected-commit',$env:EXPECTED_PRODUCT) }
           if ($env:EXPECTED_ACCEPTANCE) { $arguments += @('--acceptance-commit',$env:EXPECTED_ACCEPTANCE) }
           python (Join-Path $harnessRoot 'scripts/release.py') @arguments
           if ($LASTEXITCODE) { throw 'Browser evidence validation failed' }
           "artifact_name=sapid-browser-acceptance-$env:GITHUB_RUN_ATTEMPT" >> $env:GITHUB_OUTPUT
-          "provenance_sha256=$((Get-FileHash D:/BuildCache/sapid/browser-provenance.json -Algorithm SHA256).Hash.ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+          "provenance_sha256=$((Get-FileHash ${{ github.workspace }}/sapid/target/verification/sapid/browser-provenance.json -Algorithm SHA256).Hash.ToLowerInvariant())" >> $env:GITHUB_OUTPUT
       - name: Preserve browser acceptance evidence
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ${{ steps.provenance.outputs.artifact_name || format('sapid-browser-acceptance-failed-{0}', github.run_attempt) }}
           path: |
-            D:/BuildCache/sapid/browser-results.json
-            D:/BuildCache/sapid/browser-progress.json
-            D:/BuildCache/sapid/browser-provenance.json
-            D:/BuildCache/sapid/library-Cargo.lock
+            ${{ github.workspace }}/sapid/target/verification/sapid/browser-results.json
+            ${{ github.workspace }}/sapid/target/verification/sapid/browser-progress.json
+            ${{ github.workspace }}/sapid/target/verification/sapid/browser-provenance.json
+            ${{ github.workspace }}/sapid/target/verification/sapid/library-Cargo.lock
           if-no-files-found: ignore

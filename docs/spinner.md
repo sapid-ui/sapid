@@ -1,13 +1,13 @@
 # Spinner and Loader
 
-`spinner()` and `loader()` construct the same circular loading indicator. The
+`spinner()` and `loader()` construct the same loading indicator. The
 default accessible name is "Loading"; `name(text)` supplies a localized name.
 A named spinner is a passive status with busy metadata. `decorative()` removes
 the name, status and busy announcement, preserving a decorative Graphic rather
 than duplicating its containing region's announcement. No button, range or
 keyboard behavior is implied.
 
-The graphic has a bounded three-quarter circular path. Animation is a finite
+The default Oval has a bounded three-quarter circular path. Animation is a finite
 host-owned rotation, not a component task, per-frame reactive write or timer.
 The browser honors prefers-reduced-motion dynamically. Native hosts explicitly
 configure a motion preference; unknown defaults to Reduce (a visible static
@@ -50,3 +50,20 @@ its controller on End. Theme screenshots are
 `D:/BuildCache/sapid/spinner-{blue|green}-{light|dark}-hydrate.png`; the green-dark
 output was visually inspected. These checks do not claim actual screen-reader
 announcements or native OS motion-preference synchronization.
+
+## Loader kinds and composition (2026-11-05)
+
+`kind(LoaderType::{Oval,Bars,Dots})` selects one of three finite presentations;
+Oval remains the default. Bars and Dots use three retained passive Graphics with
+phase-offset opacity pulses. `color(Color)` overrides their theme accent.
+`animated(Vary<bool>)` pauses every kind without replacing its graphics. Pulse
+periods use the same 16..=60000 ms budget as rotation; native and web hosts own
+frames and reduction policy. No per-frame Cage, callback or timer is installed.
+
+The Loader page includes independently compiled kinds, all five sizes/custom
+size and color, inline accessible-status composition, and a complete custom
+Widget/Graphic example. A custom loader is ordinary Widget composition, not a
+global CSS/provider registry. Use one named loading region and decorative child
+loaders to avoid repeated announcements. Runtime tests include phased drawing
+identity; native `feedback_docs` checks changing real pixels, zero source writes
+and reduced-motion cache stability in all four themes.

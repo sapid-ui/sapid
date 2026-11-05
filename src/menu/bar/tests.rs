@@ -14,7 +14,11 @@ fn nodes(app: &App) -> Vec<NodeId> {
     nodes
 }
 fn button(app: &App, label: &str) -> NodeId {
-    nodes(app).into_iter().find(|id|matches!(app.tree().node(*id).unwrap().descriptor.view().props,Props::Button(button)if button.label==label)).unwrap()
+    nodes(app).into_iter().find(|id| {
+        let tree = app.tree();
+        let value = tree.node(*id).unwrap().descriptor.view();
+        matches!(value.props, Props::Button(button) if button.label == label || value.name.as_deref() == Some(label))
+    }).unwrap()
 }
 fn panel(app: &App, name: &str) -> NodeId {
     nodes(app)

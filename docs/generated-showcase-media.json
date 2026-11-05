@@ -1,0 +1,15 @@
+{
+  "tool": "built-in image_gen",
+  "created": "2026-11-05",
+  "purpose": "Local image/avatar/card showcase assets; fictional photographic samples, no specific real person or real location claim.",
+  "assets": [
+    {
+      "path": "examples/web/assets/team-member-photo.png",
+      "prompt": "Use case: photorealistic-natural. Asset type: a small local avatar photo for a UI component documentation site. Create one photorealistic square head-and-shoulders portrait of a fictional adult woman in her early thirties with short dark wavy hair, warm approachable expression, simple neutral shirt, softly blurred indoor workspace background and natural window light. Face centered with sufficient space around the head for circular and square crops, realistic skin texture, ordinary candid portrait quality. No text, no logos, no borders, no collage, no resemblance to a specific real person. Opaque background."
+    },
+    {
+      "path": "examples/web/assets/alpine-lake-photo.png",
+      "prompt": "Use case: photorealistic-natural. Asset type: a local landscape image for demonstrating cover/contain cropping and image cards in a UI component documentation site. Create one photorealistic wide 3:2 landscape of an imaginary alpine village beside a calm lake, a small wooden pier in the foreground, varied colorful houses near the water and layered green and rocky mountains in the background, clear soft morning daylight. Give distinct recognizable details across foreground and background so different image crops are visibly distinguishable. Natural textures and believable photography. No text, no logos, no borders, no collage. Opaque background."
+    }
+  ]
+}

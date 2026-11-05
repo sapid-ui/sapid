@@ -143,6 +143,7 @@ pub struct Lightbox {
     open: Value<bool>,
     label: String,
     title: String,
+    show_trigger: bool,
     theme: crate::Theme,
     unstyled: bool,
     enabled: Vary<bool>,
@@ -161,6 +162,7 @@ pub fn lightbox(key: impl Into<String>) -> Lightbox {
         open: Value::default(),
         label: "Open image gallery".into(),
         title: "Image gallery".into(),
+        show_trigger: true,
         theme: crate::Theme::default(),
         unstyled: false,
         enabled: true.into(),
@@ -173,6 +175,12 @@ pub fn lightbox(key: impl Into<String>) -> Lightbox {
     }
 }
 impl Lightbox {
+    /// Omit the built-in opener when application thumbnail controls own opening.
+    /// The shared modal Layer still owns focus containment and restoration.
+    pub fn show_trigger(mut self, value: bool) -> Self {
+        self.show_trigger = value;
+        self
+    }
     pub fn images(mut self, value: impl Into<Vary<Vec<LightboxImage>>>) -> Self {
         self.images = value.into();
         self
@@ -366,6 +374,7 @@ impl Widget for Lightbox {
             )
         });
         let mut dialog = crate::dialog(&self.key)
+            .show_trigger(self.show_trigger)
             .class(scope.bond({
                 let class = self.class.clone();
                 move || format!("sapid-lightbox {}", class.get())

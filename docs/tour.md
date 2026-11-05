@@ -54,3 +54,16 @@ retirement/recovery, previous/Escape and Owner cancellation during queued work.
 Popover's thirteen existing groups also pass the same artifact, including old
 HTML8 rejection before mutation (`popover-browser-web29.json`). Browser protocol
 checks do not establish OS IME or screen-reader acceptance.
+
+## Public examples (2026-11-05)
+
+The primary guide now points at a real workspace-name editor and project action.
+Three complete source sections demonstrate controlled step/close refusal, current
+target disappearance/recovery and local viewport reveal with a retained draft.
+The same shared layer/controller owns focus and the current bounded query.
+See [Overlay pages](overlay-pages.md).
+
+The guide panel also now uses a real column with independent title, description
+and progress rows plus a wrapping navigation row of themed Sapid Buttons.
+Narrow native geometry checks keep these rows separate and preserve readable
+button dimensions; browser screenshots verify the same presentation.

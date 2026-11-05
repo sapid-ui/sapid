@@ -1,8 +1,10 @@
 # FloatingWindow
 
 `floating_window(key)` creates a named nonmodal Dialog in the host's viewport
-top layer. It has a real title bar, Close button, eight keyboard movement and
-resize buttons, and captured mouse/touch movement and resize regions. It uses
+top layer. Its compact title bar contains named 32px actions for closing and
+disclosing eight keyboard movement/resize commands. Commands are initially
+collapsed; `.default_actions_open(true)` initially exposes them. The title bar
+and corner handle retain captured mouse/touch movement and resize. It uses
 the shared `LayerPlacement::Viewport` policy and `Action::RaiseLayer`; component
 code does not manipulate DOM, paint order or document focus.
 
@@ -28,6 +30,13 @@ and resize. Replacing a capture cancels the old request; late old-origin events
 cannot alter the new gesture. External geometry changes, refusal and Owner
 retirement cancel pending work. No pointer history or business-source scan is
 retained.
+
+The public page starts closed and includes four independently compiled examples:
+controlled geometry/refusal, retained versus unmounted editor content, a nested
+modal confirmation, and current weak handles with disabling/disposal. Source
+panels show those exact modules. Closing remains the initial focus target, and
+expanding keyboard actions does not replace the editor. Theme borders and disabled
+opacity preserve explicit appearance overrides; unstyled mode adds no theme paint.
 
 Web uses the document-owned Layer coordinator. Native uses the genuine pinned
 engine top layer, with viewport layout, last paint/reverse hit testing and real

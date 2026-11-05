@@ -48,6 +48,29 @@ fn endpoints_remain_distinct_and_keys_wrap_only_after_crossing_them() {
         );
     }
 }
+
+#[test]
+fn a_step_change_in_the_same_host_packet_controls_the_next_key() {
+    let app = App::memory();
+    let step = app.scope().cage(15.);
+    let reference = app.scope().cage(None);
+    app.mount(
+        angle_slider("live-step")
+            .default_value(90.)
+            .step(step)
+            .node_ref(reference),
+    )
+    .unwrap();
+    let id = reference.get().unwrap();
+    key(&app, id, RangeCommand::Increase);
+    app.scope()
+        .batch(|| {
+            step.revise(|v| *v = 1.);
+            key(&app, id, RangeCommand::Increase);
+        })
+        .unwrap();
+    assert_eq!(state(&app, id).range.value, 106.);
+}
 #[test]
 fn nondivisor_steps_keep_rotational_progress_without_resnapping_to_the_old_value() {
     let app = App::memory();

@@ -20,6 +20,12 @@ than relocating it to a viewport corner. Native's style profile rejects Sticky
 explicitly until the engine implements it; HTML support does not widen native
 support. Contexts must be live construction ancestors in the same runtime.
 
+The public preview positions its action inside a responsive container. Separate
+compiled examples demonstrate deliberately opening/dismissing a viewport action,
+changing container offsets reactively, and actual sticky scrolling. Viewport mode
+refers to the browser viewport, including when invoked from a documentation
+preview; the preview is not an iframe. Each example has its own source panel.
+
 `.visible(false)` hides the wrapper while retaining its children, Owners, values
 and references. It does not create routing, persistence, observers of every DOM
 node, or background polling. The component owns `position` and all four inset

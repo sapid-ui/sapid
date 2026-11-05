@@ -24,12 +24,16 @@ mod code_block;
 #[cfg(feature = "code")]
 mod code_model;
 mod collapsible;
+mod transition;
 #[cfg(feature = "code")]
 pub use code_block::{CodeBlock, CodeHighlight, code_block, code_highlight};
 #[cfg(feature = "code")]
 pub use code_model::{
     CodeDocument, CodeError, CodeLanguage, CodeToken, CodeTokenKind, MAX_CODE_BYTES,
     MAX_CODE_COMMENT_DEPTH, MAX_CODE_LINES, MAX_CODE_TOKENS, tokenize_code,
+};
+pub use transition::{
+    Transition, TransitionEffect, TransitionStyles, TransitionTiming, transition,
 };
 pub mod collection;
 pub mod focus_scope;
@@ -69,6 +73,10 @@ mod chart_widget;
 #[cfg(feature = "charts")]
 pub mod charts;
 pub mod data_table;
+#[cfg(feature = "charts")]
+mod heatmap;
+#[cfg(feature = "charts")]
+mod heatmap_model;
 #[cfg(feature = "charts")]
 mod plot_hierarchy;
 #[cfg(feature = "charts")]
@@ -153,7 +161,7 @@ pub use time_input::{TimeInput, TimeInputDraft, time_input};
 mod time_value;
 #[cfg(feature = "dates")]
 pub use time_value::{TimeValue, time_value};
-#[cfg(feature = "dates")]
+#[cfg(any(feature = "dates", feature = "charts"))]
 pub mod dates;
 mod display;
 #[cfg(feature = "dates")]
@@ -162,7 +170,8 @@ pub use dates::*;
 mod period_picker_input;
 #[cfg(feature = "dates")]
 pub use period_picker_input::{
-    MonthPickerInput, PeriodPickerInput, YearPickerInput, month_picker_input, year_picker_input,
+    MonthPickerInput, PeriodInputFormat, PeriodPickerInput, YearPickerInput, month_picker_input,
+    year_picker_input,
 };
 #[cfg(feature = "dates")]
 mod period_picker;
@@ -201,9 +210,11 @@ pub use date_selection::*;
 #[cfg(feature = "dates")]
 mod calendar;
 #[cfg(feature = "dates")]
-pub use calendar::{
-    Calendar, MAX_CALENDAR_EXCLUDED_DATES, MAX_CALENDAR_SEARCH_DAYS, calendar, mini_calendar,
-};
+pub use calendar::{Calendar, MAX_CALENDAR_EXCLUDED_DATES, MAX_CALENDAR_SEARCH_DAYS, calendar};
+#[cfg(feature = "dates")]
+mod mini_calendar;
+#[cfg(feature = "dates")]
+pub use mini_calendar::{MAX_MINI_CALENDAR_DAYS, MiniCalendar, mini_calendar};
 mod document;
 mod field;
 mod floating_indicator;
@@ -274,6 +285,7 @@ pub use overflow_list::{
 };
 mod sheet;
 pub use sheet::{DrawerSnap, DrawerSnaps};
+mod input_actions;
 mod password_input;
 pub mod pills_input;
 mod progress;
@@ -337,13 +349,13 @@ pub use command::{
 };
 pub use composite::ContentPolicy;
 pub use display::{
-    Badge, BadgeVariant, Card, EmptyState, Paper, Pill, ShadowSize, badge, card, empty_state,
-    paper, pill,
+    Badge, BadgeSection, BadgeVariant, Card, EmptyState, Paper, Pill, ShadowSize, badge, card,
+    empty_state, paper, pill,
 };
 pub use document::{
-    Blockquote, Code, DataList, DataListItem, Highlight, Item, Kbd, KbdKey, KbdPlatform,
-    MAX_DOCUMENT_ITEMS, Mark, TextList, TextListItem, blockquote, code, data_list, data_list_item,
-    highlight, item, kbd, mark, text_list, text_list_item,
+    Blockquote, Code, DataList, DataListItem, DataListOrientation, Highlight, Item, Kbd, KbdKey,
+    KbdPlatform, MAX_DOCUMENT_ITEMS, Mark, TextList, TextListItem, blockquote, code, data_list,
+    data_list_item, highlight, item, kbd, mark, text_list, text_list_item,
 };
 pub use field::{
     Description, Field, FieldControl, FieldError, FieldSlot, Fieldset, Label, description, field,
@@ -377,9 +389,10 @@ pub use layout::{
 };
 pub use loading_overlay::{LoadingOverlay, Overlay, loading_overlay, overlay};
 pub use menu::{
-    ContextMenu, DropdownMenu, Menu, MenuEntry, MenuItem, MenuRadioGroup, MenuRadioItem,
-    MenuSubmenu, context_menu, dropdown_menu, menu, menu_checkbox, menu_item, menu_radio_group,
-    menu_radio_item, menu_submenu,
+    ContextMenu, DropdownMenu, MAX_MENU_SEARCH_BYTES, Menu, MenuEntry, MenuItem, MenuLabel,
+    MenuRadioGroup, MenuRadioItem, MenuSearch, MenuSubmenu, context_menu, dropdown_menu, menu,
+    menu_checkbox, menu_item, menu_label, menu_radio_group, menu_radio_item, menu_search,
+    menu_submenu,
 };
 pub use menu::{MAX_MENUBAR_ROOTS, Menubar, MenubarMenu, menubar, menubar_menu};
 pub use mixed_checkbox::{CheckState, MixedCheckbox, mixed_checkbox};
@@ -419,14 +432,14 @@ pub use progress::{
 pub use radio::{MAX_RADIO_GROUP_ITEMS, Radio, RadioGroup, radio, radio_group};
 pub use scroll_area::*;
 pub use segmented_control::{Segment, SegmentedControl, segment, segmented_control};
-pub use select::{Select, SelectCheckPosition, SelectOptionContent, select};
-pub use separator::{Separator, separator};
+pub use select::{Select, SelectCheckPosition, SelectOptionContent, SelectTriggerContext, select};
+pub use separator::{Separator, SeparatorLabelPosition, SeparatorVariant, separator};
 pub use skeleton::{Skeleton, skeleton};
-pub use spinner::{Spinner, loader, spinner};
+pub use spinner::{LoaderType, Spinner, loader, spinner};
 pub use splitter::*;
 pub use spoiler::{MAX_SPOILER_BYTES, Spoiler, spoiler};
 pub use stepper::*;
-pub use switch::{Switch, switch};
+pub use switch::{Switch, SwitchLabelPosition, switch};
 pub use tabs::{Tab, TabActivation, Tabs, TabsVariant, tab, tabs};
 pub use tags_input::{
     MAX_TAGS_INPUT_TAG_BYTES, MAX_TAGS_INPUT_TOTAL_BYTES, MAX_TAGS_INPUT_VALUES,
@@ -484,7 +497,10 @@ pub mod prelude {
         ThemeTokens, TypographyMetrics, TypographyRole, UiEnvironmentContext, direction_provider,
         locale_provider, responsive_root, theme_provider,
     };
-    pub use crate::{Carousel, MAX_CAROUSEL_COUNT, MAX_CAROUSEL_OVERSCAN, carousel};
+    pub use crate::{
+        Carousel, MAX_CAROUSEL_COUNT, MAX_CAROUSEL_INDICATORS, MAX_CAROUSEL_OVERSCAN, carousel,
+    };
+    pub use crate::{LoaderType, Spinner, loader, spinner};
     #[cfg(feature = "editor")]
     pub use crate::{
         RichBlock, RichBlockKind, RichDocument, RichFormat, RichMarks, RichPoint, RichRun,
@@ -558,7 +574,8 @@ pub mod prelude {
     };
     #[cfg(feature = "dates")]
     pub use crate::period_picker_input::{
-        MonthPickerInput, PeriodPickerInput, YearPickerInput, month_picker_input, year_picker_input,
+        MonthPickerInput, PeriodInputFormat, PeriodPickerInput, YearPickerInput,
+        month_picker_input, year_picker_input,
     };
     pub use crate::table::{
         MAX_TABLE_CELLS, MAX_TABLE_COLUMNS, MAX_TABLE_ROWS, Table, TableCaptionSide, TableCell,
@@ -572,20 +589,21 @@ pub mod prelude {
     pub use crate::{
         Accordion, AccordionItem, AccordionVariant, ActionIcon, ActionIconVariant, Anchor,
         AnchorAlign, AnchorArrow, AnchorArrowPosition, AnchorPlacement, AnchorRequest, AnchorSide,
-        AspectRatio, BLUE, Badge, BadgeVariant, Blockquote, Box, BreadcrumbItem, Breadcrumbs,
-        Burger, Button, ButtonGroup, ButtonVariant, Card, Center, CheckState, Checkbox,
-        CheckboxGroup, CheckboxItem, Chip, ChipGroup, ChipItem, ChipMode, CloseButton, Code,
-        Collapsible, Collection, CollectionLimits, CollectionMember, ColorScheme, Container,
-        ContentPolicy, ControlValue, Currency, DataList, DataListItem, Description, Dialog, Drawer,
-        DrawerSide, EmptyState, Field, FieldControl, FieldError, FieldOptions, FieldSlot, Fieldset,
-        Flex, Form, FormButton, FormEntry, FormError, FormField, FormFieldState, FormLimits,
-        FormState, FormStatus, GREEN, Grid, GridItem, Group, Highlight, InputAddon, InputGroup,
-        InputSection, InputSectionPosition, Item, Kbd, KbdKey, KbdPlatform, Label, Mark,
-        MixedCheckbox, MountedItem, NavLink, NavLinkVariant, NumberFormat, NumberFormatter,
-        NumberLocale, PageItem, Pagination, Palette, PaletteOverrides, Paper, PasswordInput, Pill,
-        Popover, PopoverWidth, Radio, RadioGroup, RovingFocus, Segment, SegmentedControl,
-        Separator, ShadowSize, SimpleGrid, Size, Space, Spoiler, Stack, SubmissionLimits,
-        SubmitStatus, SubmitToken, Switch, Tab, TabActivation, Tabs, TabsVariant, Text, TextField,
+        AspectRatio, BLUE, Badge, BadgeSection, BadgeVariant, Blockquote, Box, BreadcrumbItem,
+        Breadcrumbs, Burger, Button, ButtonGroup, ButtonVariant, Card, Center, CheckState,
+        Checkbox, CheckboxGroup, CheckboxItem, Chip, ChipGroup, ChipItem, ChipMode, CloseButton,
+        Code, Collapsible, Collection, CollectionLimits, CollectionMember, ColorScheme, Container,
+        ContentPolicy, ControlValue, Currency, DataList, DataListItem, DataListOrientation,
+        Description, Dialog, Drawer, DrawerSide, EmptyState, Field, FieldControl, FieldError,
+        FieldOptions, FieldSlot, Fieldset, Flex, Form, FormButton, FormEntry, FormError, FormField,
+        FormFieldState, FormLimits, FormState, FormStatus, GREEN, Grid, GridItem, Group, Highlight,
+        InputAddon, InputGroup, InputSection, InputSectionPosition, Item, Kbd, KbdKey, KbdPlatform,
+        Label, Mark, MixedCheckbox, MountedItem, NavLink, NavLinkVariant, NumberFormat,
+        NumberFormatter, NumberLocale, PageItem, Pagination, Palette, PaletteOverrides, Paper,
+        PasswordInput, Pill, Popover, PopoverWidth, Radio, RadioGroup, RovingFocus, Segment,
+        SegmentedControl, Separator, SeparatorLabelPosition, SeparatorVariant, ShadowSize,
+        SimpleGrid, Size, Space, Spoiler, Stack, SubmissionLimits, SubmitStatus, SubmitToken,
+        Switch, SwitchLabelPosition, Tab, TabActivation, Tabs, TabsVariant, Text, TextField,
         TextList, TextListItem, TextVariant, Textarea, Theme, ThemeDefinition, Timeline,
         TimelineItem, TimelineProgress, Title, Toggle, ToggleGroup, ToggleItem, ToggleMode,
         Typeahead, TypeaheadConfig, Typography, TypographyContext, ValidationErrors,
@@ -612,22 +630,24 @@ pub mod prelude {
     };
     pub use crate::{AngleSlider, angle_slider};
     pub use crate::{
-        AppShell, ShellContext, ShellLayout, ShellMode, Sidebar, SidebarContext, SidebarHandle,
-        app_shell, sidebar,
+        AppShell, ShellContext, ShellLayout, ShellMode, ShellSection, Sidebar, SidebarContext,
+        SidebarHandle, app_shell, shell_section, sidebar,
     };
     pub use crate::{
         Autocomplete, DrawerSnap, DrawerSnaps, MultiSelect, MultiSelectHandle,
         MultiSelectLoadingPosition, autocomplete, autocomplete_option, multi_select,
     };
     pub use crate::{
-        Avatar, AvatarGroup, AvatarShape, ContextMenu, DropdownMenu, Menu, MenuEntry, MenuItem,
-        MenuRadioGroup, MenuRadioItem, MenuSubmenu, VisuallyHidden, avatar, avatar_group,
-        context_menu, dropdown_menu, menu, menu_checkbox, menu_item, menu_radio_group,
-        menu_radio_item, menu_submenu, visually_hidden,
+        Avatar, AvatarGroup, AvatarShape, ContextMenu, DropdownMenu, MAX_MENU_SEARCH_BYTES, Menu,
+        MenuEntry, MenuItem, MenuLabel, MenuRadioGroup, MenuRadioItem, MenuSearch, MenuSubmenu,
+        VisuallyHidden, avatar, avatar_group, context_menu, dropdown_menu, menu, menu_checkbox,
+        menu_item, menu_label, menu_radio_group, menu_radio_item, menu_search, menu_submenu,
+        visually_hidden,
     };
     #[cfg(feature = "dates")]
     pub use crate::{
-        Calendar, MAX_CALENDAR_EXCLUDED_DATES, MAX_CALENDAR_SEARCH_DAYS, calendar, mini_calendar,
+        Calendar, MAX_CALENDAR_EXCLUDED_DATES, MAX_CALENDAR_SEARCH_DAYS, MAX_MINI_CALENDAR_DAYS,
+        MiniCalendar, calendar, mini_calendar,
     };
     #[cfg(feature = "code")]
     pub use crate::{
@@ -644,8 +664,8 @@ pub mod prelude {
         loading_overlay, overlay,
     };
     pub use crate::{
-        Decimal, MAX_NUMBER_INPUT_BYTES, NumberError, NumberInput, NumberParse, NumberValue,
-        number_input, parse_number,
+        Decimal, MAX_NUMBER_INPUT_BYTES, NumberClampBehavior, NumberError, NumberInput,
+        NumberParse, NumberValue, number_input, parse_number,
     };
     pub use crate::{
         FileEntry, Tree, TreeError, TreeKind, TreeModel, TreeNode, TreeRow, TreeSelectionMode,
@@ -680,8 +700,8 @@ pub mod prelude {
     pub use crate::{MAX_MENUBAR_ROOTS, Menubar, MenubarMenu, menubar, menubar_menu};
     pub use crate::{
         MAX_PENDING_MODALS, ModalOutcome, ModalRequest, ModalToken, ModalsHandle, ModalsManager,
-        Select, SelectCheckPosition, SelectOptionContent, confirmation_request, modal_request,
-        modals_manager, select,
+        Select, SelectCheckPosition, SelectOptionContent, SelectTriggerContext,
+        confirmation_request, modal_request, modals_manager, select,
     };
     pub use crate::{
         MAX_PENDING_SCROLL_INTENTS, OverscrollBehavior, ScrollArea, ScrollContext, ScrollHandle,
@@ -757,7 +777,7 @@ pub use number_model::{
     Decimal, MAX_NUMBER_INPUT_BYTES, NumberError, NumberParse, NumberValue, parse_number,
 };
 mod number_input;
-pub use number_input::{NumberInput, number_input};
+pub use number_input::{NumberClampBehavior, NumberInput, number_input};
 mod mask_input;
 mod mask_model;
 mod pin_input;
@@ -805,7 +825,9 @@ pub use files::{
 };
 
 mod carousel;
-pub use carousel::{Carousel, MAX_CAROUSEL_COUNT, MAX_CAROUSEL_OVERSCAN, carousel};
+pub use carousel::{
+    Carousel, MAX_CAROUSEL_COUNT, MAX_CAROUSEL_INDICATORS, MAX_CAROUSEL_OVERSCAN, carousel,
+};
 mod lightbox;
 pub use lightbox::{
     Lightbox, LightboxImage, LightboxView, LightboxZoom, MAX_LIGHTBOX_IMAGES,
@@ -821,6 +843,6 @@ pub use glory::render::{
 };
 #[cfg(feature = "editor")]
 pub use rich_editor::{
-    EditorController, EditorHistory, MAX_EDITOR_HISTORY, MAX_EDITOR_HISTORY_BYTES, RichTextEditor,
-    rich_text_editor,
+    EditorController, EditorHistory, EditorToolbarAction, MAX_EDITOR_HISTORY,
+    MAX_EDITOR_HISTORY_BYTES, MAX_EDITOR_TOOLBAR_ACTIONS, RichTextEditor, rich_text_editor,
 };

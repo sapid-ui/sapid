@@ -49,6 +49,13 @@ actual term/definition pairs. Each pair is a boxless Group, so dt/dd remain
 direct physical children of dl. Terms accept reactive text; values accept
 arbitrary valid semantic content, including links or independent action buttons.
 DataList has no implicit selection, grid cursor, sorting or editable-value model.
+`orientation(DataListOrientation::Horizontal)` is the default label/value grid;
+Vertical stacks each pair. `label_width(1..=512)` defaults to 120 pixels and
+`gap(0..=128)` defaults to 12. Essential layout, zero definition margins and
+minimum widths survive unstyled. Explicit declarations override those defaults.
+Prose wraps in the flexible value column; applications provide an overflow
+policy for unbreakable identifiers. See `data-display-pages.md` for complete
+orientation, compact spacing, long-value and real-action examples.
 Parent theme/size/unstyled settings apply to mounted list items; explicit item
 theme, size and style overrides retain precedence. Optional list names do not install an overriding
 generic Group role on native list elements.
@@ -75,6 +82,9 @@ inside TextListItem when list membership is intended. Child actions retain their
 own native accessible names, focus and disabled behavior.
 
 ## Bounded inline Highlight
+
+公开的来源/图标引用、列表、行内/块状 Code、Mark 和字面 Highlight 示例及其真实边界，
+见 `typography-pages.md`；每个分节提供完整编译源码。
 
 `highlight().content(text).query("Glory")` splits mount-time canonical text into
 ordinary inline Text and real Mark ranges. Multiple queries use earliest match,

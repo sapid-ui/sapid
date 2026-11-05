@@ -133,6 +133,83 @@ fn descendant(app: &App, node: NodeId, ancestor: NodeId) -> bool {
 }
 
 #[test]
+fn input_summary_returns_to_its_placeholder_when_configuration_revokes_the_selection() {
+    let (app, wire) = app();
+    let reference = app.scope().cage(None);
+    let config = app.scope().cage(FileConfig::default());
+    let calls = app.scope().cage(0);
+    app.mount(
+        file_input()
+            .node_ref(reference)
+            .label("Choose a document")
+            .configuration(config)
+            .on_files(move |_| calls.revise(|n| *n += 1)),
+    )
+    .unwrap();
+    let id = reference.get().unwrap();
+    app.dispatch(id, Event::Activate).unwrap();
+    selected(&wire, id, 1, 1, 0, 1);
+    app.pump().unwrap();
+    assert!(
+        matches!(app.tree().node(id).unwrap().descriptor.view().props,Props::File(p)if p.label=="file-0.txt")
+    );
+    config.revise(|v| {
+        v.multiple = true;
+        v.max_files = 2;
+    });
+    app.flush().unwrap();
+    assert!(
+        matches!(app.tree().node(id).unwrap().descriptor.view().props,Props::File(p)if p.label=="Choose a document")
+    );
+    assert_eq!(calls.get(), 1);
+}
+#[test]
+fn input_summary_and_inset_user_clear_keep_picker_identity_and_report_the_empty_selection() {
+    let (app, wire) = app();
+    let reference = app.scope().cage(None);
+    let changes = Rc::new(RefCell::new(Vec::new()));
+    let out = changes.clone();
+    app.mount(
+        file_input()
+            .name("Attachments")
+            .label("Choose files")
+            .clearable(true)
+            .show_attachments(false)
+            .node_ref(reference)
+            .configuration(FileConfig {
+                multiple: true,
+                max_files: 3,
+                ..Default::default()
+            })
+            .on_files(move |files| out.borrow_mut().push(files.len())),
+    )
+    .unwrap();
+    let id = reference.get().unwrap();
+    app.dispatch(id, Event::Activate).unwrap();
+    selected(&wire, id, 1, 1, 0, 2);
+    app.pump().unwrap();
+    let tree = app.tree();
+    let descriptor = tree.node(id).unwrap().descriptor.view();
+    assert_eq!(descriptor.name.as_deref(), Some("Attachments"));
+    assert!(matches!(descriptor.props,Props::File(p)if p.label=="file-0.txt, +1 more"));
+    drop(tree);
+    assert!(classes(&app, "sapid-file-attachment").is_empty());
+    let clear = classes(&app, "sapid-file-input-clear")[0];
+    assert!(!descendant(&app, clear, id));
+    app.dispatch(clear, Event::Activate).unwrap();
+    app.flush().unwrap();
+    assert_eq!(*changes.borrow(), [2, 0]);
+    assert_eq!(reference.get(), Some(id));
+    assert!(
+        matches!(app.tree().node(id).unwrap().descriptor.view().props,Props::File(p)if p.label=="Choose files")
+    );
+    assert!(
+        matches!(wire.actions.borrow().last(),Some(Action::ClearFiles { node, .. })if *node==id)
+    );
+    app.clear().unwrap();
+    assert!(reference.get().is_none());
+}
+#[test]
 fn selected_private_state_typed_order_external_output_is_not_input_and_clear_is_silent() {
     let (app, wire) = app();
     let scope = app.scope();

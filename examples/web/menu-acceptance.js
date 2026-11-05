@@ -1,4 +1,4 @@
-async (hostPage, baseURL = 'http://127.0.0.1:8794') => {
+async (hostPage, baseURL = 'http://127.0.0.1:8794', outputDirectory = process.env.SAPID_BROWSER_OUTPUT) => {
   const context=await hostPage.context().browser().newContext({viewport:{width:1100,height:900}}),reports=[],errors=[];
   const assert=(condition,message)=>{if(!condition)throw new Error(message);};
   try {
@@ -37,7 +37,7 @@ async (hostPage, baseURL = 'http://127.0.0.1:8794') => {
       assert(await shareMenu.isVisible()&&await email.evaluate(e=>e===document.activeElement),`${mode}: pointer crosses submenu gap without premature close`);
       const cdp=await context.newCDPSession(page),ax=await cdp.send('Accessibility.getFullAXTree');await cdp.detach();
       assert(ax.nodes.some(node=>node.role?.value==='menu'&&node.name?.value==='Tools')&&ax.nodes.some(node=>node.role?.value==='menuitemcheckbox'&&node.name?.value==='Show grid')&&ax.nodes.some(node=>node.role?.value==='menuitemradio'&&node.name?.value==='Compact'&&node.properties?.some(property=>property.name==='checked'&&property.value?.value==='true')),`${mode}: AX actual menu/check/radio roles`);
-      await page.screenshot({path:`D:/BuildCache/sapid/${mode}.png`,fullPage:true});
+      if(outputDirectory) await page.screenshot({path:`${outputDirectory}/${mode}.png`,fullPage:true});
       await email.click();await tick();assert(!await root.isVisible()&&await trigger.evaluate(e=>e===document.activeElement)&&await page.getByText('Actions performed: 1',{exact:true}).count()===1,`${mode}: nested action closes root tree and returns focus`);
       await trigger.click();await fresh.focus();await page.keyboard.press('Tab');await tick();assert(!await root.isVisible()&&await page.getByRole('button',{name:'After tools',exact:true}).evaluate(e=>e===document.activeElement),`${mode}: host Tab exits the complete Menu tree`);
       await trigger.click();await fresh.focus();await page.keyboard.press('Shift+Tab');await tick();assert(!await root.isVisible()&&await page.getByRole('button',{name:'Before tools',exact:true}).evaluate(e=>e===document.activeElement),`${mode}: host ShiftTab exits backwards`);
@@ -68,7 +68,7 @@ async (hostPage, baseURL = 'http://127.0.0.1:8794') => {
     assert(await page.locator('#stream-menu-trigger').getAttribute('aria-haspopup')==='menu'&&await page.getByRole('button',{name:'Cleared popup'}).getAttribute('aria-haspopup')===null,'classic stream finite PopupKind Set/Clear');
     assert(await page.locator('[role=menuitemcheckbox]').isChecked()&&await page.locator('[role=menuitemradio]').isChecked()&&!await page.locator('#stream-menu').evaluate(e=>e.hidden)&&await page.locator('#stream-menu').getAttribute('data-gly-layer')==='anchor'&&await page.locator('#stream-menu').getAttribute('data-gly-anchor-side')==='right','classic stream native properties, menu roles, hidden reset and side anchor');
     assert(await page.evaluate(()=>GloryStream.active()===0&&document.querySelector('#menu-stream-root').firstChild.nodeValue==='gly:v:14'&&JSON.parse(document.querySelector('#menu-stream-data').textContent).records[0].name==='menu'),'classic stream End rekey and resource handoff');
-    reports.push({suite:'menu-classic-stream',status:'passed',checks:'real Rust Shell/Patch/End, typed PopupKind Set/Clear, menu check/radio properties, hidden reset, side anchor and finite v3 rekey'});
+    reports.push({suite:'menu-classic-stream',status:'passed',checks:'real Rust Shell/Patch/End, typed PopupKind Set/Clear, menu check/radio properties, hidden reset, side anchor and current HTML format rekey'});
     assert(errors.length===0,JSON.stringify(errors));return{reports,errors};
   }finally{await context.close();}
 }

@@ -197,17 +197,36 @@ fn description_list_pairs_use_dt_dd_and_share_parent_theme_and_unstyled() {
         "sapid-data-list-term",
         "sapid-data-list-definition",
     ] {
-        assert_eq!(
-            app.tree()
-                .node(find(&app, class))
-                .unwrap()
-                .descriptor
-                .view()
-                .style
-                .clone(),
-            Style::new()
-        );
+        let tree = app.tree();
+        let style = &tree
+            .node(find(&app, class))
+            .unwrap()
+            .descriptor
+            .view()
+            .style;
+        assert!(style.color.is_none() && style.background.is_none() && style.font_family.is_none());
+        assert!(style.border_width.is_none());
     }
+    assert_eq!(
+        app.tree()
+            .node(find(&app, "sapid-data-list"))
+            .unwrap()
+            .descriptor
+            .view()
+            .style
+            .display,
+        Some(glory::style::Display::Grid)
+    );
+    assert_eq!(
+        app.tree()
+            .node(find(&app, "sapid-data-list-definition"))
+            .unwrap()
+            .descriptor
+            .view()
+            .style
+            .margin,
+        Some(glory::style::Edges::all(0.))
+    );
 }
 #[test]
 fn description_values_keep_interactive_controls_separate_from_terms() {

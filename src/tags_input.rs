@@ -6,7 +6,7 @@ use glory::render::{
     Descriptor, Event, EventKind, FormControl, Props, SelectEntry, SelectOption, SelectProps,
     SemanticId, Semantics, TagHostRejection, TagSeparators, TagsCommand,
 };
-use glory::style::{Display, FlexDirection, FlexWrap, Length, Limit, Overflow, Style};
+use glory::style::{Display, Edges, FlexDirection, Length, Limit, Overflow, Style};
 use glory::ui::{Result, Widget};
 use glory::{Cage, Scope, Vary};
 use std::rc::Rc;
@@ -275,6 +275,7 @@ impl TagsInput {
     }
 }
 struct Controller {
+    scope: glory::ui::WeakScope,
     owner: glory::core::InstanceId,
     state: Control<TagsInputState>,
     accepted: Cage<TagsInputState>,
@@ -288,6 +289,17 @@ struct Controller {
     rejected: Callback<TagRejection>,
 }
 impl Controller {
+    fn focus_editor(&self, node: Option<glory::render::NodeId>) -> Result {
+        if !self.owner.is_alive() || !self.editable.try_get()? || self.composing.try_get()? {
+            return Ok(());
+        }
+
+        if let Some(scope) = self.scope.upgrade() {
+            composite::focus_node(&scope, node)?;
+        }
+        Ok(())
+    }
+
     fn current(&self) -> Result<TagsInputState> {
         self.state.source.try_with(|value| {
             self.settings.validate(value)?;
@@ -491,6 +503,7 @@ impl Widget for TagsInput {
             })
             .into();
         let controller = Rc::new(Controller {
+            scope: scope.downgrade(),
             owner: scope.id(),
             state,
             accepted,
@@ -511,25 +524,30 @@ impl Widget for TagsInput {
             cleanup.rejected.clear();
         })?;
         let reference = self.common.node_ref.unwrap_or_else(|| scope.cage(None));
+        let frame = crate::tag::editor_frame(
+            scope,
+            &self.common,
+            enabled.clone(),
+            metadata.clone(),
+            crate::tag::EditorActions {
+                wrapped: self.clearable || shows_loading,
+                leading: shows_loading && self.loading_left,
+                trailing: self.clearable as u8 + (shows_loading && !self.loading_left) as u8,
+            },
+        );
+        self.common.style = frame.input.clone();
+        let focused = frame.focused;
+
         let root = scope.create(Descriptor::new(Props::Group))?;
-        let content = scope.child_in(root)?;
-        let tags_reference = scope.cage(None);
-        glory::ui::view()
-            .class(if self.common.unstyled {
-                "sapid-tags-input-values sapid-unstyled"
-            } else {
-                "sapid-tags-input-values"
-            })
-            .style(
-                Style::new()
-                    .display(Display::Flex)
-                    .flex_direction(FlexDirection::Row)
-                    .flex_wrap(FlexWrap::Wrap)
-                    .gap(4.0),
-            )
-            .node_ref(tags_reference)
-            .show_in(&content)?;
-        let tags_scope = scope.child_in(tags_reference.get().ok_or(glory::ui::Error::Gone)?)?;
+        let outer = scope.child_in(root)?;
+        let content = frame.mount(
+            &outer,
+            composite::id("tags-input", &self.key, "frame", "root")?,
+            "sapid-tags-input-shell sapid-tags-input-values",
+        )?;
+        scope.retain(outer)?;
+        let tags_root = content.create(Descriptor::new(Props::Group))?;
+        let tags_scope = content.child_in(tags_root)?;
         let rows = scope.bond(move || {
             accepted.with(|state| {
                 state
@@ -588,10 +606,8 @@ impl Widget for TagsInput {
                                     if command.owner.is_alive()
                                         && command.editable.try_get()?
                                         && !command.composing.try_get()?
-                                        && scope.capabilities()?.focus
-                                        && let Some(node) = reference.try_get()?
                                     {
-                                        scope.action(glory::render::Action::Focus(node))?;
+                                        command.focus_editor(reference.try_get()?)?;
                                     }
                                     Ok(())
                                 });
@@ -615,7 +631,12 @@ impl Widget for TagsInput {
                             if plain { " sapid-unstyled" } else { "" }
                         ))
                         .style(style)
-                        .fill(glory::ui::text().class("sapid-tag-label").content(label))
+                        .fill(
+                            glory::ui::text()
+                                .class("sapid-tag-label")
+                                .style(crate::tag::label_style())
+                                .content(label),
+                        )
                         .fill(remove)
                         .show_in(scope)
                 })
@@ -710,6 +731,9 @@ impl Widget for TagsInput {
             let Some(scope) = blur_weak.upgrade() else {
                 return;
             };
+            if let Event::FocusChanged(value) = event {
+                focused.revise(|old| *old = value);
+            }
             if accept_value_on_blur
                 && matches!(event, Event::FocusChanged(false))
                 && let Err(error) = blur_command.commit_search()
@@ -728,12 +752,15 @@ impl Widget for TagsInput {
             let row_ref = scope.cage(None);
             glory::ui::view()
                 .class("sapid-tags-input-editor")
-                .style(
-                    Style::new()
+                .style(Style {
+                    grow: Some(1.),
+                    shrink: Some(1.),
+                    ..Style::new()
                         .position(glory::style::Position::Relative)
-                        .display(Display::Block)
-                        .width(Length::Percent(100.)),
-                )
+                        .display(Display::Flex)
+                        .width(Length::Px(72.))
+                        .min_width(Length::Px(72.))
+                })
                 .node_ref(row_ref)
                 .show_in(&content)?;
             let row = scope.child_in(row_ref.get().ok_or(glory::ui::Error::Gone)?)?;
@@ -741,6 +768,7 @@ impl Widget for TagsInput {
                 crate::loader()
                     .theme(self.common.theme.clone())
                     .size(self.common.size)
+                    .diameter(16.)
                     .decorative()
                     .visible(loading.clone())
                     .class("sapid-tags-input-loading is-left")
@@ -748,7 +776,11 @@ impl Widget for TagsInput {
                         Style::new()
                             .position(glory::style::Position::Absolute)
                             .left(Length::Px(9.))
-                            .top(Length::Px(8.)),
+                            .top(Length::Percent(50.))
+                            .margin(Edges {
+                                top: -8.,
+                                ..Edges::all(0.)
+                            }),
                     )
                     .show_in(&row)?;
             }
@@ -783,7 +815,11 @@ impl Widget for TagsInput {
                                 Style::new()
                                     .position(glory::style::Position::Absolute)
                                     .right(Length::Px(7.))
-                                    .top(Length::Px(6.))
+                                    .top(Length::Percent(50.))
+                                    .margin(Edges {
+                                        top: -12.,
+                                        ..Edges::all(0.)
+                                    })
                                     .width(Length::Px(24.))
                                     .min_width(Length::Px(24.))
                                     .height(Length::Px(24.))
@@ -793,7 +829,10 @@ impl Widget for TagsInput {
                                 let Some(scope) = clear_weak.upgrade() else {
                                     return;
                                 };
-                                if let Err(error) = clear_command.clear() {
+                                if let Err(error) = clear_command
+                                    .clear()
+                                    .and_then(|()| clear_command.focus_editor(reference.try_get()?))
+                                {
                                     scope.report_error(error)
                                 }
                             });
@@ -809,6 +848,7 @@ impl Widget for TagsInput {
                 crate::loader()
                     .theme(self.common.theme.clone())
                     .size(self.common.size)
+                    .diameter(16.)
                     .decorative()
                     .visible(loading)
                     .class("sapid-tags-input-loading is-right")
@@ -816,7 +856,11 @@ impl Widget for TagsInput {
                         Style::new()
                             .position(glory::style::Position::Absolute)
                             .right(Length::Px(if self.clearable { 37. } else { 9. }))
-                            .top(Length::Px(8.)),
+                            .top(Length::Percent(50.))
+                            .margin(Edges {
+                                top: -8.,
+                                ..Edges::all(0.)
+                            }),
                     )
                     .show_in(&row)?;
             }

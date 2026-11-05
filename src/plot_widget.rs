@@ -14,6 +14,8 @@ fn invalid(error: ChartError) -> glory::ui::Error {
 }
 #[derive(Clone, PartialEq)]
 struct Model {
+    kind: PlotKind,
+    label_surface: glory::style::Color,
     data: PlotData,
     options: PlotOptions,
     scene: PlotScene,
@@ -34,8 +36,10 @@ pub struct Plot {
     selection: Option<Vary<Option<String>>>,
     changed: Option<Box<dyn FnMut(PlotOptions)>>,
     selected: Option<Box<dyn FnMut(Option<String>)>>,
+    rejected: Option<Box<dyn FnMut(glory::ui::Error)>>,
     show_table: bool,
     show_legend: bool,
+    show_navigation: bool,
     pointer_selection: bool,
 }
 pub fn plot(key: impl Into<String>, kind: PlotKind) -> Plot {
@@ -63,13 +67,15 @@ pub fn plot(key: impl Into<String>, kind: PlotKind) -> Plot {
         selection: None,
         changed: None,
         selected: None,
+        rejected: None,
         show_table: true,
         show_legend: true,
+        show_navigation: true,
         pointer_selection: false,
     }
 }
 macro_rules! constructors{($($name:ident:$kind:ident),+$(,)?)=>{$(pub fn $name(key:impl Into<String>)->Plot{plot(key,PlotKind::$kind)})+};}
-constructors! {pie_chart:Pie,donut_chart:Donut,radial_bar_chart:RadialBar,scatter_chart:Scatter,bubble_chart:Bubble,candlestick_chart:Candlestick,radar_chart:Radar,funnel_chart:Funnel,sparkline:Sparkline,heatmap:Heatmap,matrix_chart:Matrix,waffle_chart:Waffle,bars_list:BarsList,bullet_chart:Bullet,gauge_chart:Gauge,treemap:Treemap,sunburst_chart:Sunburst,sankey_chart:Sankey}
+constructors! {pie_chart:Pie,donut_chart:Donut,radial_bar_chart:RadialBar,scatter_chart:Scatter,bubble_chart:Bubble,candlestick_chart:Candlestick,radar_chart:Radar,funnel_chart:Funnel,sparkline:Sparkline,matrix_chart:Matrix,waffle_chart:Waffle,bars_list:BarsList,bullet_chart:Bullet,gauge_chart:Gauge,treemap:Treemap,sunburst_chart:Sunburst,sankey_chart:Sankey}
 impl Plot {
     common_methods!();
     pub fn data(mut self, value: impl Into<Vary<PlotData>>) -> Self {
@@ -104,12 +110,26 @@ impl Plot {
         self.selected = Some(Box::new(value));
         self
     }
+    /// Observe a rejected reactive update while retaining the last admitted chart.
+    /// Without a handler, the rejection is reported to the owning Glory scope.
+    /// Invalid initial declarations still fail construction.
+    pub fn on_error(mut self, callback: impl FnMut(glory::ui::Error) + 'static) -> Self {
+        self.rejected = Some(Box::new(callback));
+        self
+    }
     pub fn data_table(mut self, value: bool) -> Self {
         self.show_table = value;
         self
     }
     pub fn legend(mut self, value: bool) -> Self {
         self.show_legend = value;
+        self
+    }
+    /// Show sequential point controls and their current-value readout (default true).
+    /// A compact summary may disable this when equivalent values are supplied nearby.
+    /// This does not disable plot activation, selection callbacks or the data table.
+    pub fn navigation(mut self, value: bool) -> Self {
+        self.show_navigation = value;
         self
     }
     pub fn pointer_selection(mut self, value: bool) -> Self {
@@ -221,6 +241,13 @@ fn bounded_options(value: &PlotOptions) -> Result<PlotOptions> {
     if value.hidden.iter().any(|k| !crate::chart_model::key(k)) {
         return Err(invalid(ChartError::Key));
     }
+    if value
+        .center_label
+        .as_ref()
+        .is_some_and(|label| label.len() > 64)
+    {
+        return Err(invalid(ChartError::CenterLabel));
+    }
     Ok(value.clone())
 }
 
@@ -241,6 +268,7 @@ impl Widget for Plot {
             .clone()
             .unwrap_or_else(|| ChartTheme::from_theme(&self.common.theme));
         let show_table = self.show_table;
+        let label_surface = self.common.theme.surface;
         let read = move || -> Result<Rc<Model>> {
             let options = options.try_with(bounded_options)??;
             data.try_with(|data| {
@@ -264,6 +292,8 @@ impl Widget for Plot {
                     .map(|(i, p)| (p.key.clone(), i))
                     .collect();
                 Ok(Rc::new(Model {
+                    kind,
+                    label_surface,
                     data: data.clone(),
                     options,
                     scene,
@@ -275,6 +305,10 @@ impl Widget for Plot {
             })?
         };
         let model = scope.cage(glory::core::untracked(&read)?);
+        let observes_rejection = self.rejected.is_some();
+        let rejection = Callback::new(self.rejected.take());
+        let cleanup = rejection.clone();
+        scope.on_cleanup(move || cleanup.clear())?;
         let weak = scope.downgrade();
         scope.structural(move || {
             let Some(scope) = weak.upgrade() else {
@@ -289,7 +323,11 @@ impl Widget for Plot {
                         Some(previous.table_revision)
                     };
                     let Some(rev) = rev else {
-                        scope.report_error(invalid(ChartError::Budget));
+                        if observes_rejection {
+                            rejection.emit(scope.id(), invalid(ChartError::Budget));
+                        } else {
+                            scope.report_error(invalid(ChartError::Budget));
+                        }
                         return;
                     };
                     Rc::make_mut(&mut next).table_revision = rev;
@@ -297,7 +335,13 @@ impl Widget for Plot {
                         model.revise(|old| *old = next);
                     }
                 }
-                Err(error) => scope.report_error(error),
+                Err(error) => {
+                    if observes_rejection {
+                        rejection.emit(scope.id(), error);
+                    } else {
+                        scope.report_error(error);
+                    }
+                }
             }
         });
         let selection = scope.cage(None);
@@ -341,7 +385,10 @@ impl Widget for Plot {
             glory::ui::view(),
             scope,
             "sapid-plot",
-            composite::column(8.)
+            Style {
+                color: Some(self.common.theme.foreground),
+                ..composite::column(8.)
+            }
         )
         .node_ref(reference);
         for (kind, mut handlers) in std::mem::take(&mut self.common.handlers) {
@@ -388,73 +435,84 @@ impl Widget for Plot {
                 self.common.unstyled,
             )?;
         }
-        let controls = area.cage(None);
-        glory::ui::view()
-            .class("sapid-plot-controls")
-            .style(
-                Style::new()
-                    .display(Display::Flex)
-                    .flex_wrap(glory::style::FlexWrap::Wrap)
-                    .gap(8.),
-            )
-            .node_ref(controls)
-            .show_in(&area)?;
-        let actions = area.child_in(controls.get().ok_or(glory::ui::Error::Gone)?)?;
-        let enabled = self.common.enabled.clone();
-        let available =
-            area.bond(move || enabled.get() && model.with(|m| !m.scene.marks.is_empty()));
-        for (forward, label) in [(false, "Previous data point"), (true, "Next data point")] {
-            let state = state.clone();
+        if self.show_navigation {
+            let controls = area.cage(None);
+            glory::ui::view()
+                .class("sapid-plot-controls")
+                .style(
+                    Style::new()
+                        .display(Display::Flex)
+                        .flex_wrap(glory::style::FlexWrap::Wrap)
+                        .gap(4.),
+                )
+                .node_ref(controls)
+                .show_in(&area)?;
+            let actions = area.child_in(controls.get().ok_or(glory::ui::Error::Gone)?)?;
+            let enabled = self.common.enabled.clone();
+            let available =
+                area.bond(move || enabled.get() && model.with(|m| !m.scene.marks.is_empty()));
+            for (forward, label) in [(false, "Previous data point"), (true, "Next data point")] {
+                let state = state.clone();
+                let mut button = crate::button()
+                    .label(label)
+                    .theme(self.common.theme.clone())
+                    .variant(crate::ButtonVariant::Subtle)
+                    .size(crate::Size::ExtraSmall)
+                    .compact(true)
+                    .enabled(available)
+                    .on_press(move || state.step(forward));
+                if self.common.unstyled {
+                    button = button.unstyled();
+                }
+                button.show_in(&actions)?;
+            }
+            let clear = state.clone();
             let mut button = crate::button()
-                .label(label)
+                .label("Clear data point")
                 .theme(self.common.theme.clone())
-                .enabled(available)
-                .on_press(move || state.step(forward));
+                .variant(crate::ButtonVariant::Subtle)
+                .size(crate::Size::ExtraSmall)
+                .compact(true)
+                .enabled(self.common.enabled.clone())
+                .on_press(move || clear.choose(None));
             if self.common.unstyled {
                 button = button.unstyled();
             }
             button.show_in(&actions)?;
-        }
-        let clear = state.clone();
-        let mut button = crate::button()
-            .label("Clear data point")
-            .theme(self.common.theme.clone())
-            .enabled(self.common.enabled.clone())
-            .on_press(move || clear.choose(None));
-        if self.common.unstyled {
-            button = button.unstyled();
-        }
-        button.show_in(&actions)?;
-        if matches!(kind, PlotKind::Treemap | PlotKind::Sunburst) {
-            for (parent, label) in [(true, "Parent node"), (false, "First child")] {
-                let state = state.clone();
-                crate::button()
-                    .label(label)
-                    .theme(self.common.theme.clone())
-                    .enabled(self.common.enabled.clone())
-                    .on_press(move || state.relative(parent))
-                    .show_in(&actions)?;
+            if matches!(kind, PlotKind::Treemap | PlotKind::Sunburst) {
+                for (parent, label) in [(true, "Parent node"), (false, "First child")] {
+                    let state = state.clone();
+                    crate::button()
+                        .label(label)
+                        .theme(self.common.theme.clone())
+                        .variant(crate::ButtonVariant::Subtle)
+                        .size(crate::Size::ExtraSmall)
+                        .compact(true)
+                        .enabled(self.common.enabled.clone())
+                        .on_press(move || state.relative(parent))
+                        .show_in(&actions)?;
+                }
             }
-        }
-        area.retain(actions)?;
-        glory::ui::text()
-            .class("sapid-plot-detail")
-            .content(area.bond(move || {
-                model.with(|m| {
-                    selection.with(|s| {
-                        s.as_ref().and_then(|k| m.marks.get(k)).map_or_else(
-                            || "No data point selected".into(),
-                            |i| {
-                                format!(
-                                    "{}: {}",
-                                    m.scene.marks[*i].label, m.scene.marks[*i].value_text
-                                )
-                            },
-                        )
+            area.retain(actions)?;
+            glory::ui::text()
+                .class("sapid-plot-detail")
+                .content(area.bond(move || {
+                    model.with(|m| {
+                        selection.with(|s| {
+                            s.as_ref().and_then(|k| m.marks.get(k)).map_or_else(
+                                || "No data point selected".into(),
+                                |i| {
+                                    format!(
+                                        "{}: {}",
+                                        m.scene.marks[*i].label, m.scene.marks[*i].value_text
+                                    )
+                                },
+                            )
+                        })
                     })
-                })
-            }))
-            .show_in(&area)?;
+                }))
+                .show_in(&area)?;
+        }
         glory::ui::text()
             .class("sapid-plot-empty")
             .content(area.bond(move || {
@@ -562,6 +620,80 @@ fn build_drawing(
                     .style(scope.bond(move || {
                         model.with(|m| {
                             let label = &m.scene.labels[i];
+                            if matches!(m.kind, PlotKind::Scatter | PlotKind::Bubble)
+                                && i >= m.scene.labels.len().saturating_sub(2)
+                            {
+                                return Style {
+                                    font_size: Some(11.),
+                                    ..Style::new()
+                                        .position(Position::Absolute)
+                                        .left(Length::Percent(label.x / frame.width * 100.))
+                                        .top(Length::Percent(label.y / frame.height * 100.))
+                                        .width(Length::Percent(90.))
+                                        .height(Length::Px(20.))
+                                        .overflow_x(Overflow::Hidden)
+                                        .overflow_y(Overflow::Hidden)
+                                };
+                            }
+                            if let PlotData::Matrix(data) = &m.data {
+                                let row = i < data.rows.len();
+                                let column = i >= data.rows.len()
+                                    && i < data.rows.len() + data.columns.len();
+                                let width = (frame.width - 144.) / data.columns.len().max(1) as f64;
+                                let mut style = Style {
+                                    font_size: Some(11.),
+                                    pointer_events: Some(glory::style::PointerEvents::None),
+                                    ..Style::new()
+                                        .position(Position::Absolute)
+                                        .left(Length::Percent(label.x / frame.width * 100.))
+                                        .top(Length::Percent(label.y / frame.height * 100.))
+                                        .height(Length::Px(16.))
+                                        .overflow_x(Overflow::Hidden)
+                                        .overflow_y(Overflow::Hidden)
+                                };
+                                if column {
+                                    style.width = Some(Length::Percent(width / frame.width * 100.));
+                                    style.display = Some(Display::Flex);
+                                    style.justify = Some(glory::style::Justify::Center);
+                                } else {
+                                    style.margin = Some(Edges {
+                                        top: -7.,
+                                        right: 0.,
+                                        bottom: 0.,
+                                        left: 0.,
+                                    });
+                                    if row {
+                                        style.width =
+                                            Some(Length::Percent(112. / frame.width * 100.));
+                                    } else {
+                                        style.max_width = Some(glory::style::Limit::Percent(
+                                            width / frame.width * 45.,
+                                        ));
+                                        style.background = Some(m.label_surface);
+                                    }
+                                }
+                                return style;
+                            }
+                            if m.options.center_label.is_some() {
+                                let diameter = (frame.width.min(frame.height) - 40.)
+                                    * m.options.donut_inner_ratio.unwrap_or(0.62);
+                                let width = diameter * 0.85 / frame.width * 100.;
+                                return Style {
+                                    font_size: Some(14.),
+                                    display: Some(Display::Flex),
+                                    align: Some(glory::style::Align::Center),
+                                    justify: Some(glory::style::Justify::Center),
+                                    pointer_events: Some(glory::style::PointerEvents::None),
+                                    ..Style::new()
+                                        .position(Position::Absolute)
+                                        .left(Length::Percent(50. - width / 2.))
+                                        .top(Length::Percent(50. - 10. / frame.height * 100.))
+                                        .width(Length::Percent(width))
+                                        .height(Length::Px(20.))
+                                        .overflow_x(Overflow::Hidden)
+                                        .overflow_y(Overflow::Hidden)
+                                };
+                            }
                             Style {
                                 font_size: Some(11.),
                                 ..Style::new()
@@ -710,67 +842,84 @@ fn build_legend(scope: &Scope, state: &State, theme: crate::Theme, unstyled: boo
         })
     });
     let state = state.clone();
-    glory::ui::each(keys)
-        .key(|k| k.clone())
-        .children(move |entry| {
-            let key = entry.value;
-            let key = key.get_untracked();
-            let state = state.clone();
-            let theme = theme.clone();
-            glory::ui::widget(move |scope| {
-                let label_key = key.clone();
-                let color_key = key.clone();
-                let toggle = key.clone();
-                let state = state.clone();
-                let label = scope.bond(move || {
-                    model.with(|m| {
-                        m.scene
-                            .legend
-                            .iter()
-                            .find(|l| l.key == label_key)
-                            .map_or_else(
-                                || "Removed plot series".into(),
-                                |l| {
-                                    format!(
-                                        "{} {}",
-                                        if m.options.hidden.contains(&label_key) {
-                                            "Show"
-                                        } else {
-                                            "Hide"
-                                        },
-                                        l.label
-                                    )
-                                },
-                            )
-                    })
-                });
-                let swatch = glory::ui::graphic()
-                    .drawing(scope.bond(move || {
-                        model.with(|m| {
-                            crate::chart_aux::swatch(
+    glory::ui::view()
+        .class("sapid-plot-legend")
+        .style(
+            Style::new()
+                .display(Display::Flex)
+                .flex_wrap(glory::style::FlexWrap::Wrap)
+                .gap(4.),
+        )
+        .fill(
+            glory::ui::each(keys)
+                .key(|k| k.clone())
+                .children(move |entry| {
+                    let key = entry.value;
+                    let key = key.get_untracked();
+                    let state = state.clone();
+                    let theme = theme.clone();
+                    glory::ui::widget(move |scope| {
+                        let label_key = key.clone();
+                        let color_key = key.clone();
+                        let toggle = key.clone();
+                        let pressed_key = key.clone();
+                        let pressed = scope
+                            .bond(move || model.with(|m| !m.options.hidden.contains(&pressed_key)));
+                        let state = state.clone();
+                        let label = scope.bond(move || {
+                            model.with(|m| {
                                 m.scene
                                     .legend
                                     .iter()
-                                    .find(|l| l.key == color_key)
-                                    .expect("live plot legend")
-                                    .color,
-                            )
-                        })
-                    }))
-                    .style(Style::new().width(Length::Px(12.)).height(Length::Px(12.)));
-                let mut button = crate::button()
-                    .class("sapid-plot-legend-item")
-                    .label(label)
-                    .left_section(swatch)
-                    .theme(theme.clone())
-                    .enabled(state.enabled.clone())
-                    .on_press(move || state.toggle(&toggle));
-                if unstyled {
-                    button = button.unstyled();
-                }
-                button.show_in(scope)
-            })
-        })
+                                    .find(|l| l.key == label_key)
+                                    .map_or_else(
+                                        || "Removed plot series".into(),
+                                        |l| {
+                                            format!(
+                                                "{} {}",
+                                                if m.options.hidden.contains(&label_key) {
+                                                    "Show"
+                                                } else {
+                                                    "Hide"
+                                                },
+                                                l.label
+                                            )
+                                        },
+                                    )
+                            })
+                        });
+                        let swatch = glory::ui::graphic()
+                            .drawing(scope.bond(move || {
+                                model.with(|m| {
+                                    crate::chart_aux::swatch(
+                                        m.scene
+                                            .legend
+                                            .iter()
+                                            .find(|l| l.key == color_key)
+                                            .expect("live plot legend")
+                                            .color,
+                                    )
+                                })
+                            }))
+                            .style(Style::new().width(Length::Px(12.)).height(Length::Px(12.)));
+                        let mut button = crate::button()
+                            .class("sapid-plot-legend-item")
+                            .pressed(pressed)
+                            .label(label)
+                            .left_section(swatch)
+                            .theme(theme.clone())
+                            .variant(crate::ButtonVariant::Subtle)
+                            .size(crate::Size::ExtraSmall)
+                            .compact(true)
+                            .enabled(state.enabled.clone())
+                            .on_press(move || state.toggle(&toggle));
+                        if unstyled {
+                            button = button.unstyled();
+                        }
+                        button.show_in(scope)
+                    })
+                }),
+        )
         .show_in(scope)
 }
 fn build_tables(

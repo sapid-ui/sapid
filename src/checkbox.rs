@@ -117,8 +117,8 @@ impl Widget for Checkbox {
         )
         .label(self.label.clone())
         .checked(initial)
-        .enabled(enabled)
-        .semantics(metadata)
+        .enabled(enabled.clone())
+        .semantics(metadata.clone())
         .node_ref(reference);
 
         let mut on_change = self.on_change.take();
@@ -134,6 +134,19 @@ impl Widget for Checkbox {
         inner = inner.on(EventKind::CheckedChanged, move |event| {
             let Some(scope) = weak.upgrade() else { return };
             if let Event::CheckedChanged(value) = &event {
+                match crate::field::check_available(&enabled, &metadata) {
+                    Ok(true) => {}
+                    Ok(false) => {
+                        if let Err(error) = pulse.touch() {
+                            scope.report_error(error);
+                        }
+                        return;
+                    }
+                    Err(error) => {
+                        scope.report_error(error);
+                        return;
+                    }
+                }
                 if let Err(error) = accept.accept(value).and_then(|()| pulse.touch()) {
                     scope.report_error(error);
                     return;

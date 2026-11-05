@@ -147,6 +147,7 @@ struct State {
     opened: Callback<bool>,
     within: Cell<Option<bool>>,
     max_values: usize,
+    keep_branch_open: bool,
 }
 impl State {
     fn report(&self, result: Result) {
@@ -213,6 +214,7 @@ impl State {
                     !node.disabled
                         && (node.kind == TreeKind::Leaf
                             || accepted.model.policy() == TreeChoicePolicy::AnyNode)
+                        && (!self.keep_branch_open || node.kind == TreeKind::Leaf)
                 })
             {
                 self.open(false)?;
@@ -223,7 +225,15 @@ impl State {
         self.value.accept(&next)?;
         self.dirty.touch()?;
         self.changed.emit(self.owner, next);
-        if self.owner.is_alive() && !accepted.model.multiple() {
+        if self.owner.is_alive()
+            && !accepted.model.multiple()
+            && (!self.keep_branch_open
+                || accepted
+                    .model
+                    .tree()
+                    .index(key)
+                    .is_some_and(|i| accepted.model.tree().nodes()[i].kind == TreeKind::Leaf))
+        {
             self.open(false)?
         }
         Ok(())
@@ -272,6 +282,7 @@ pub struct TreeSelect {
     direction: Direction,
     placeholder: String,
     clearable: bool,
+    clear_label: String,
     searchable: bool,
     hide_picked: bool,
     max_values: usize,
@@ -288,6 +299,7 @@ pub struct TreeSelect {
     readonly: Vary<bool>,
     invalid: Vary<bool>,
     columns: bool,
+    keep_branch_open: bool,
 }
 pub fn tree_select(key: impl Into<String>) -> TreeSelect {
     TreeSelect {
@@ -308,6 +320,7 @@ pub fn tree_select(key: impl Into<String>) -> TreeSelect {
         direction: Direction::Ltr,
         placeholder: "Choose an item".into(),
         clearable: false,
+        clear_label: "Clear tree selection".into(),
         searchable: false,
         hide_picked: false,
         max_values: MAX_TREE_CHOICES,
@@ -324,12 +337,23 @@ pub fn tree_select(key: impl Into<String>) -> TreeSelect {
         readonly: false.into(),
         invalid: false.into(),
         columns: false,
+        keep_branch_open: false,
     }
 }
 impl TreeSelect {
+    pub fn clear_label(mut self, value: impl Into<String>) -> Self {
+        self.clear_label = value.into();
+        self
+    }
+
     common_methods!();
     pub(crate) fn cascading_columns(mut self) -> Self {
         self.columns = true;
+        self.keep_branch_open = true;
+        self
+    }
+    pub(crate) fn columns(mut self, value: bool) -> Self {
+        self.columns = value;
         self
     }
     pub fn nodes(mut self, value: impl Into<Vary<Vec<TreeNode>>>) -> Self {
@@ -484,6 +508,14 @@ impl TreeSelect {
 }
 impl Widget for TreeSelect {
     fn build(&mut self, scope: &Scope) -> Result {
+        if self.clear_label.trim().is_empty()
+            || self.clear_label.len() > 256
+            || self.clear_label.contains(['\0', '\r', '\n'])
+        {
+            return Err(error(TreeError::Label));
+        }
+        let trigger_ref = self.common.node_ref.unwrap_or_else(|| scope.cage(None));
+        self.common.node_ref = Some(trigger_ref);
         if self.placeholder.len() > 256
             || self.placeholder.contains(['\0', '\r', '\n'])
             || self.nothing_found.len() > 256
@@ -561,6 +593,7 @@ impl Widget for TreeSelect {
             opened: Callback::new(self.opened.take()),
             within: Cell::new(None),
             max_values: self.max_values,
+            keep_branch_open: self.keep_branch_open,
         });
         let weak = Rc::downgrade(&state);
         scope.on_cleanup(move || {
@@ -857,7 +890,7 @@ impl Widget for TreeSelect {
             tree = tree.unstyled();
         }
         if self.columns {
-            tree = tree.column_layout();
+            tree = tree.column_layout(self.policy == TreeChoicePolicy::AnyNode);
         }
         if let Some(renderer) = self.render_node.take() {
             tree = tree.render_label(move |node| (renderer.borrow_mut())(node));
@@ -866,7 +899,23 @@ impl Widget for TreeSelect {
             tree = tree
                 .checked(accepted.map(|a| a.model.checked(&a.values).expect("admitted choices")));
         }
-        tree = tree.expanded(expanded.source.clone());
+        let expansion_source = expanded.source.clone();
+        // Search reveals its retained ancestor paths without publishing a
+        // replacement for the application's ordinary expansion state.
+        let shown_expansion = scope.bond(move || {
+            if accepted_search.get().trim().is_empty() {
+                expansion_source.get()
+            } else {
+                nodes.with(|nodes| {
+                    nodes
+                        .iter()
+                        .filter(|node| node.kind == TreeKind::Branch)
+                        .map(|node| node.key.clone())
+                        .collect()
+                })
+            }
+        });
+        tree = tree.expanded(shown_expansion);
         let expansion = Callback::new(self.expansion.take());
         let cleanup = expansion.clone();
         scope.on_cleanup(move || cleanup.clear())?;
@@ -906,7 +955,7 @@ impl Widget for TreeSelect {
                     .size(crate::Size::Small)
                     .unstyled()
                     .class("sapid-tree-select-clear")
-                    .name("Clear tree selection")
+                    .name(self.clear_label.clone())
                     .enabled(clear_visible.clone())
                     .style(scope.bond(move || Style {
                         position: Some(glory::style::Position::Absolute),
@@ -927,7 +976,18 @@ impl Widget for TreeSelect {
                         color: Some(action_color),
                         ..Style::new()
                     }))
-                    .on_press(move || s.report(s.clear())),
+                    .on_press(move || {
+                        let result = s.clear().and_then(|()| {
+                            if s.owner.is_alive()
+                                && s.editable.try_get()?
+                                && let Some(scope) = s.weak.upgrade()
+                            {
+                                composite::focus_node(&scope, trigger_ref.try_get()?)?;
+                            }
+                            Ok(())
+                        });
+                        s.report(result);
+                    }),
             ));
         }
         controls.push(Box::new(

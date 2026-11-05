@@ -1,8 +1,8 @@
 //! Read-only numeric progress, with shared finite line and Bezier views.
 use crate::appearance::{Common, configure, merge};
 use glory::render::{
-    GraphicPoint as Point, GraphicProps, GraphicStroke, NodeId, PathCommand as Path, ProgressValue,
-    Role, Semantics, StrokeCap,
+    GraphicAnimation, GraphicFit, GraphicPoint as Point, GraphicProps, GraphicStroke, NodeId,
+    PathCommand as Path, ProgressValue, Role, Semantics, StrokeCap,
 };
 use glory::style::{Align, Color, Display, Justify, Length, Overflow, Position, Style};
 use glory::ui::{Result, Widget};
@@ -80,6 +80,8 @@ pub struct Progress {
     ring_round_caps: bool,
     ring_root_color: Option<Color>,
     sections: Vec<ProgressSection>,
+    section_labels: Vec<(usize, String)>,
+    animated: Vary<bool>,
 }
 fn create(view: View, value: impl Into<Vary<f64>>) -> Progress {
     let common = Common {
@@ -111,6 +113,8 @@ fn create(view: View, value: impl Into<Vary<f64>>) -> Progress {
         ring_round_caps: false,
         ring_root_color: None,
         sections: Vec::new(),
+        section_labels: Vec::new(),
+        animated: true.into(),
     }
 }
 pub fn progress(value: impl Into<Vary<f64>>) -> Progress {
@@ -154,6 +158,18 @@ impl Progress {
     }
     pub fn indeterminate(mut self, value: impl Into<Vary<bool>>) -> Self {
         self.indeterminate = value.into();
+        self
+    }
+    pub fn animated(mut self, value: impl Into<Vary<bool>>) -> Self {
+        self.animated = value.into();
+        self
+    }
+    /// Passive text clipped inside one horizontal linear section. Choose a
+    /// sufficient thickness and expose a readable breakdown through value_text.
+    pub fn section_label(mut self, index: usize, value: impl Into<String>) -> Self {
+        if self.section_labels.len() <= 16 {
+            self.section_labels.push((index, value.into()));
+        }
         self
     }
     pub fn value_text(mut self, text: impl Into<Vary<String>>) -> Self {
@@ -240,7 +256,7 @@ impl Progress {
     /// the accepted progress value. Compound sections are supported by line
     /// and ring views; the semicircle remains a single-value indicator.
     pub fn sections(mut self, sections: impl IntoIterator<Item = ProgressSection>) -> Self {
-        self.sections = sections.into_iter().collect();
+        self.sections = sections.into_iter().take(17).collect();
         self
     }
 }
@@ -436,6 +452,28 @@ fn arc_span(
 }
 impl Widget for Progress {
     fn build(&mut self, scope: &Scope) -> Result {
+        if self.section_labels.len() > 16
+            || !self.section_labels.is_empty()
+                && (self.view != View::Line || self.orientation == ProgressOrientation::Vertical)
+        {
+            return Err(invalid(
+                "inline section labels require horizontal linear progress and at most 16 labels",
+            ));
+        }
+        for (position, (index, label)) in self.section_labels.iter().enumerate() {
+            if *index >= self.sections.len()
+                || self.section_labels[..position]
+                    .iter()
+                    .any(|(old, _)| old == index)
+                || label.trim().is_empty()
+                || label.len() > 256
+                || label.contains(['\0', '\r', '\n'])
+            {
+                return Err(invalid(
+                    "section labels require unique known indices and nonempty single-line text within 256 bytes",
+                ));
+            }
+        }
         if !self.size.is_finite()
             || !(16.0..=512.0).contains(&self.size)
             || !self.thickness.is_finite()
@@ -586,7 +624,7 @@ impl Widget for Progress {
         } else {
             merge(required, custom.get()).into()
         };
-        let mut base = Style::new();
+        let mut base = self.common.theme.label(self.common.size).font_weight(400.);
         if self.view == View::Line {
             base.background = Some(self.common.theme.border);
             base.radius = Some(self.thickness / 2.);
@@ -621,6 +659,7 @@ impl Widget for Progress {
             .semantics(metadata);
         if self.sections.is_empty() {
             if self.view == View::Line {
+                let animated = self.animated.clone();
                 root = root.fill(
                     glory::ui::view()
                         .class("sapid-progress-fill")
@@ -647,9 +686,39 @@ impl Widget for Progress {
                                 style.width = Some(Length::Percent(fraction.unwrap_or(0.3) * 100.));
                                 style.height = Some(Length::Percent(100.));
                             }
-                            style.background = Some(color);
                             style
-                        })),
+                        }))
+                        .fill(
+                            glory::ui::graphic()
+                                .class("sapid-progress-activity")
+                                .style(
+                                    Style::new()
+                                        .display(Display::Block)
+                                        .width(Length::Percent(100.))
+                                        .height(Length::Percent(100.)),
+                                )
+                                .drawing(scope.bond(move || GraphicProps {
+                                    width: 100.,
+                                    height: 100.,
+                                    fit: GraphicFit::Stretch,
+                                    commands: vec![
+                                        Path::Move(Point::new(0., 0.)),
+                                        Path::Line(Point::new(100., 0.)),
+                                        Path::Line(Point::new(100., 100.)),
+                                        Path::Line(Point::new(0., 100.)),
+                                        Path::Close,
+                                    ],
+                                    fill: Some(color),
+                                    animation:
+                                        (value.get().current.is_none() && animated.get()).then_some(
+                                            GraphicAnimation::Pulse {
+                                                period_millis: 1000,
+                                                phase_millis: 0,
+                                            },
+                                        ),
+                                    ..Default::default()
+                                })),
+                        ),
                 );
             } else {
                 let semi = self.view == View::SemiCircle;
@@ -678,11 +747,13 @@ impl Widget for Progress {
                             .style(drawing_style.clone()),
                     );
                 }
+                let animated = self.animated.clone();
                 root = root.fill(
                     glory::ui::graphic()
                         .class("sapid-progress-arc")
-                        .drawing(value.map(move |value| {
-                            arc_span(
+                        .drawing(scope.bond(move || {
+                            let value = value.get();
+                            let mut drawing = arc_span(
                                 size,
                                 thickness,
                                 geometry,
@@ -692,7 +763,20 @@ impl Widget for Progress {
                                     .expect("accepted progress is finite")
                                     .unwrap_or(0.25),
                                 color,
-                            )
+                            );
+                            if value.current.is_none() && animated.get() {
+                                drawing.animation = Some(if semi {
+                                    GraphicAnimation::Pulse {
+                                        period_millis: 1000,
+                                        phase_millis: 0,
+                                    }
+                                } else {
+                                    GraphicAnimation::Rotate {
+                                        period_millis: 1000,
+                                    }
+                                });
+                            }
+                            drawing
                         }))
                         .style(drawing_style),
                 );
@@ -730,11 +814,11 @@ impl Widget for Progress {
         } else if self.view == View::Line {
             let span = max - min;
             let mut offset = 0.;
-            for section in &self.sections {
+            for (index, section) in self.sections.iter().enumerate() {
                 let start = offset / span * 100.;
                 let extent = section.value / span * 100.;
                 offset += section.value;
-                root = root.fill(glory::ui::view().class("sapid-progress-section").style({
+                let mut segment = glory::ui::view().class("sapid-progress-section").style({
                     let mut style = Style::new().position(Position::Absolute);
                     if vertical {
                         style.bottom = Some(Length::Percent(start));
@@ -748,8 +832,38 @@ impl Widget for Progress {
                         style.height = Some(Length::Percent(100.));
                     }
                     style.background = Some(section.color);
+                    style.display = Some(Display::Flex);
+                    style.align = Some(Align::Center);
+                    style.justify = Some(Justify::Center);
+                    style.overflow_x = Some(Overflow::Hidden);
+                    style.overflow_y = Some(Overflow::Hidden);
                     style
-                }));
+                });
+                if let Some((_, label)) =
+                    self.section_labels.iter().find(|(slot, _)| *slot == index)
+                {
+                    segment = segment.fill(
+                        glory::ui::text()
+                            .class("sapid-progress-section-label")
+                            .content(label.clone())
+                            .style(Style {
+                                color: Some(crate::alert::filled_foreground(
+                                    section.color,
+                                    self.common.theme.surface,
+                                    self.common.theme.on_accent,
+                                )),
+                                ..self
+                                    .common
+                                    .theme
+                                    .label(self.common.size)
+                                    .font_weight(600.)
+                                    .min_width(Length::Px(0.))
+                                    .max_width(glory::style::Limit::Percent(100.))
+                                    .white_space(glory::style::WhiteSpace::NoWrap)
+                            }),
+                    );
+                }
+                root = root.fill(segment);
             }
         } else {
             let drawing_style = Style::new()

@@ -1,6 +1,23 @@
 use glory::prelude::*;
 use sapid::charts::*;
 
+fn contribution_range() -> HeatmapRange {
+    HeatmapRange::new(
+        CivilDate::parse_iso("2024-01-01").unwrap(),
+        CivilDate::parse_iso("2024-03-31").unwrap(),
+    )
+    .unwrap()
+}
+fn contributions() -> HeatmapData {
+    let range = contribution_range();
+    HeatmapData::new(
+        (0..range.len())
+            .filter(|i| i % 4 != 0)
+            .map(|i| (range.date(i).unwrap(), (i % 11) as f64)),
+    )
+    .unwrap()
+}
+
 fn cartesian_data() -> ChartData {
     ChartData {
         categories: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"]
@@ -449,11 +466,14 @@ pub fn demo_for(id: &str, theme: sapid::Theme) -> Box<dyn Widget> {
             "Heatmap" => Box::new(grid(vec![card(
                 theme.clone(),
                 "Heatmap",
-                "Product intensity across three quarters, including negative values.",
+                "Dated contributions arranged by week and weekday.",
                 heatmap("heatmap-demo")
                     .theme(theme)
-                    .data(matrix())
-                    .data_table(false),
+                    .range(contribution_range())
+                    .data(contributions())
+                    .with_month_labels(true)
+                    .with_weekday_labels(true)
+                    .with_legend(true),
             )])),
             "MatrixChart" => Box::new(grid(vec![card(
                 theme.clone(),
@@ -740,11 +760,14 @@ pub fn demo_for(id: &str, theme: sapid::Theme) -> Box<dyn Widget> {
             card(
                 theme.clone(),
                 "Heatmap",
-                "Product intensity across three quarters, including negative values.",
+                "Dated contributions arranged by week and weekday.",
                 heatmap("heatmap-demo")
                     .theme(theme.clone())
-                    .data(matrix())
-                    .data_table(false),
+                    .range(contribution_range())
+                    .data(contributions())
+                    .with_month_labels(true)
+                    .with_weekday_labels(true)
+                    .with_legend(true),
             ),
             card(
                 theme.clone(),

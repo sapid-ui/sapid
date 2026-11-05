@@ -1,5 +1,21 @@
 # TableOfContents
 
+## Public article examples
+
+The main example indexes a real getting-started article with nested headings,
+paragraphs and a bounded local scroll viewport. Its hierarchy comes from
+registered heading levels and order; the active marker follows that viewport.
+It has no engineering owner switches or synthetic empty section spacers.
+
+Three complete compiled source sections explain dynamic registration/rename/
+reordering and cleanup, heading offsets and explicit reveal, and nested levels
+with an application-supplied current marker. An explicit current source changes
+the presentation; it does not implicitly scroll. Omit it to use scroll-derived
+activity. One context owns one live scrolling document, with up to 256 headings.
+The Rust API uses explicit registration rather than scanning arbitrary DOM
+selectors or executing host callbacks. Shared host queries/actions provide
+scrolling and bounds; this widget installs no competing browser controller.
+
 `toc_context(scope, key)` owns at most 256 live headings. Pass that context to one
 `toc_document(context, key)`, register real `toc_heading(context, key, level)`
 nodes inside its content, and render `table_of_contents(context, key)` wherever

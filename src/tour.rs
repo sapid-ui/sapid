@@ -624,15 +624,25 @@ impl Widget for Tour {
                 }
             }
         });
+        let mut style = Style::new()
+            .width(Length::Px(320.))
+            .padding(Edges::all(16.))
+            .display(glory::style::Display::Flex)
+            .flex_direction(glory::style::FlexDirection::Column)
+            .gap(12.);
         if !self.common.unstyled {
-            let mut style = Style::new()
-                .width(Length::Px(320.))
-                .padding(Edges::all(16.))
-                .radius(self.common.theme.radius);
+            style = crate::appearance::merge(
+                self.common
+                    .theme
+                    .description(self.common.size)
+                    .font_weight(400.),
+                style,
+            );
+            style.radius = Some(self.common.theme.radius);
             style.background = Some(self.common.theme.surface);
             style.color = Some(self.common.theme.foreground);
-            panel = panel.style(style);
         }
+        panel = panel.style(style);
         let s = state.clone();
         let title = scope.bond(move || s.steps[s.current.source.get()].title.clone());
         let s = state.clone();
@@ -658,52 +668,96 @@ impl Widget for Tour {
         let weak = scope.downgrade();
         let previous_scope = weak.clone();
         let next_scope = weak.clone();
+        let mut previous_button = crate::button()
+            .theme(self.common.theme.clone())
+            .size(crate::Size::Small)
+            .variant(crate::ButtonVariant::Outline)
+            .label("Previous step")
+            .enabled(previous_enabled)
+            .on_press(move || {
+                if let Err(error) = previous.previous()
+                    && let Some(scope) = previous_scope.upgrade()
+                {
+                    scope.report_error(error);
+                }
+            });
+        let mut next_button = crate::button()
+            .theme(self.common.theme.clone())
+            .size(crate::Size::Small)
+            .label(next_label)
+            .on_press(move || {
+                if let Err(error) = next.next()
+                    && let Some(scope) = next_scope.upgrade()
+                {
+                    scope.report_error(error);
+                }
+            });
+        let mut cancel_button = crate::button()
+            .theme(self.common.theme.clone())
+            .size(crate::Size::Small)
+            .variant(crate::ButtonVariant::Subtle)
+            .label("Cancel tour")
+            .on_press(move || {
+                if let Err(error) = cancel.cancel()
+                    && let Some(scope) = weak.upgrade()
+                {
+                    scope.report_error(error);
+                }
+            });
+        let mut title_style = Style::new().margin(Edges::all(0.));
+        let mut description_style = Style::new();
+        let mut progress_style = Style::new();
+        if self.common.unstyled {
+            previous_button = previous_button.unstyled();
+            next_button = next_button.unstyled();
+            cancel_button = cancel_button.unstyled();
+        } else {
+            title_style = crate::appearance::merge(
+                self.common.theme.label(self.common.size).font_weight(600.),
+                title_style,
+            );
+            description_style = self.common.theme.description(self.common.size);
+            progress_style = self
+                .common
+                .theme
+                .description(crate::Size::Small)
+                .font_weight(400.);
+        }
         panel
             .fill((
                 glory::ui::text()
+                    .class("sapid-tour-title")
                     .kind(TextKind::Heading(2))
                     .content(title)
+                    .style(title_style)
                     .semantics(composite::metadata(Semantics {
                         id: Some(title_id),
                         ..Default::default()
                     })),
                 glory::ui::text()
+                    .class("sapid-tour-description")
                     .content(description)
+                    .style(description_style)
                     .semantics(composite::metadata(Semantics {
                         id: Some(desc_id),
                         ..Default::default()
                     })),
                 glory::ui::text()
                     .class("sapid-tour-progress")
-                    .content(progress),
-                glory::ui::button()
-                    .label("Previous step")
-                    .enabled(previous_enabled)
-                    .on(EventKind::Activate, move |_| {
-                        if let Err(error) = previous.previous()
-                            && let Some(scope) = previous_scope.upgrade()
-                        {
-                            scope.report_error(error);
-                        }
-                    }),
-                glory::ui::button()
-                    .label(next_label)
-                    .on(EventKind::Activate, move |_| {
-                        if let Err(error) = next.next()
-                            && let Some(scope) = next_scope.upgrade()
-                        {
-                            scope.report_error(error);
-                        }
-                    }),
-                glory::ui::button()
-                    .label("Cancel tour")
-                    .on(EventKind::Activate, move |_| {
-                        if let Err(error) = cancel.cancel()
-                            && let Some(scope) = weak.upgrade()
-                        {
-                            scope.report_error(error);
-                        }
-                    }),
+                    .content(progress)
+                    .style(progress_style),
+                glory::ui::view()
+                    .class("sapid-tour-navigation")
+                    .style(Style {
+                        justify: Some(glory::style::Justify::End),
+                        align: Some(glory::style::Align::Center),
+                        ..Style::new()
+                            .display(glory::style::Display::Flex)
+                            .flex_wrap(glory::style::FlexWrap::Wrap)
+                            .gap(8.)
+                            .min_width(Length::Px(0.))
+                    })
+                    .fill((previous_button, next_button, cancel_button)),
             ))
             .show_in(scope)?;
         let s = state.clone();

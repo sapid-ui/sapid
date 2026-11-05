@@ -90,7 +90,7 @@ async (hostPage) => {
       assert((await status()).factories===7&&(await status()).proposals===beforeEmpty,`${mode}: empty/restore history or proposal`);
       await page.setViewportSize({width:390,height:900});await turn();
       assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`${mode}: mobile overflow`);
-      if(hydrate)await page.screenshot({path:`D:/BuildCache/sapid/${mode}.png`,fullPage:true});
+      if(hydrate)await page.screenshot({path:`target/verification/sapid/${mode}.png`,fullPage:true});
       reports.push({mode,realAX:{role:axTab.role.value,name:axTab.name.value},identity:true,controlledAbsent:true,rtl:true,manual:true,mobile:true});
       await page.evaluate(()=>window.demo.unmount_display());await turn();
       assert(await page.locator('#app').textContent()==='',`${mode}: Owner cleanup`);

@@ -4,7 +4,7 @@ use crate::composite::{self, Callback};
 use crate::state::{Control, Dirty, Value};
 use crate::{Decimal, NumberValue, TimePrecision};
 use glory::render::{NodeId, Role};
-use glory::style::{Align, Display, FlexDirection, Length, Style};
+use glory::style::{Display, FlexDirection, Length, Style};
 use glory::ui::{Result, WeakScope, Widget};
 use glory::{Cage, Scope, Vary};
 use std::{cell::Cell, rc::Rc};
@@ -558,16 +558,24 @@ impl Widget for DurationPicker {
         }
         widget.show_in(scope)?;
         let content = scope.child_in(root.get().ok_or(glory::ui::Error::Gone)?)?;
-        let row = scope.cage(None);
-        glory::ui::view()
-            .class("sapid-time-segments sapid-duration-segments")
-            .style(Style {
-                align: Some(Align::Center),
-                ..Style::new().display(Display::Flex).gap(4.)
-            })
-            .node_ref(row)
-            .show_in(&content)?;
-        let editors = scope.child_in(row.get().ok_or(glory::ui::Error::Gone)?)?;
+        let visible_parts = state.parts;
+        let visible_count = if self.precision == TimePrecision::Second {
+            3
+        } else {
+            2
+        };
+        let visible = scope.bond(move || {
+            visible_parts[..visible_count]
+                .iter()
+                .any(|part| !matches!(part.get(), NumberValue::Empty))
+        });
+        let clearable = self.clearable;
+        let actions_visible = scope.bond(move || clearable && visible.get());
+        let (editors, actions) = crate::input_actions::segmented_row(
+            &content,
+            "sapid-time-segments sapid-duration-segments",
+            actions_visible.into(),
+        )?;
         for index in 0..if self.precision == TimePrecision::Second {
             3
         } else {
@@ -649,20 +657,10 @@ impl Widget for DurationPicker {
         if self.clearable {
             let clear = state.clone();
             let label = self.clear_label.clone();
-            let visible_parts = state.parts;
-            let visible_count = if self.precision == TimePrecision::Second {
-                3
-            } else {
-                2
-            };
-            let visible = scope.bond(move || {
-                visible_parts[..visible_count]
-                    .iter()
-                    .any(|part| !matches!(part.get(), NumberValue::Empty))
-            });
             let theme = self.common.theme.clone();
             let size = self.common.size;
             let unstyled = self.common.unstyled;
+            let action_style = crate::input_actions::flow_action_style(&self.common);
             glory::ui::when(visible, move || {
                 let clear = clear.clone();
                 let mut button = crate::button()
@@ -672,14 +670,15 @@ impl Widget for DurationPicker {
                     .compact(true)
                     .class("sapid-duration-picker-clear")
                     .name(label.clone())
-                    .label(label.clone())
+                    .style(action_style.clone())
+                    .fill(crate::input_actions::glyph(crate::Icon::Close, theme.muted))
                     .on_press(move || clear.report(clear.choose(None)));
                 if unstyled {
                     button = button.unstyled();
                 }
                 button
             })
-            .show_in(&editors)?;
+            .show_in(&actions)?;
         }
         let weak = Rc::downgrade(&state);
         let mut previous = initial;
@@ -699,6 +698,7 @@ impl Widget for DurationPicker {
                 previous = value;
             }
         });
+        scope.retain(actions)?;
         scope.retain(editors)?;
         scope.retain(content)?;
         scope.retain(state)

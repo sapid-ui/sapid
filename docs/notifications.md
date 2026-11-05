@@ -53,3 +53,25 @@ hydration 与实际时钟验收由 `notifications-acceptance.js` 执行。
 与 Owner 退休。另两组检查真实时钟的 hover/focus/manual 暂停、排队后晋升开始
 计时和退休后 late wake。精确残余毫秒与单 task 断言仍以 fake clock 模型测试
 为证据，不从墙钟测试推断。green-dark hydration 截图已目视检查。
+
+## Inline Notification loading and presentation (2026-11-05)
+
+`notification(key)` also supports `icon(children)`, `loading(Vary<bool>)`,
+`variant(AlertVariant)` and `color(Color)`. Loading temporarily displays a
+20 px decorative Loader in place of the retained custom icon and blocks the
+24 px icon-only close control, including a pending loading update in the same
+packet. When loading ends the original icon returns with its identity intact;
+without a custom icon there is no empty icon gutter. Actions remain application
+commands. A loading flag introduces no Toaster queue, deadline or timer.
+
+`visible(source)` remains read-only: `on_close` proposes dismissal and the
+application may refuse it. Alert and Notification accept a reactive localized
+`close_label`; the close graphic does not replace its accessible name. Filled
+variants choose a readable foreground for their actual background. Exact-source
+examples demonstrate icons/variants/long content, busy toggling, controlled
+refusal and real details actions. Runtime and native `feedback_docs` retain
+icon identity and check close geometry across all four themes.
+
+## Runnable documentation examples
+
+See [Extension pages](extension-pages.md) for the independent complete-source examples, application ownership rules and current acceptance boundaries.

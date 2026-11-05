@@ -54,8 +54,8 @@ fn all(app: &App) -> Vec<NodeId> {
     }
     out
 }
-fn button(app: &App, name: &str) -> NodeId {
-    all(app).into_iter().find(|id|{let tree=app.tree();matches!(tree.node(*id).unwrap().descriptor.view().props,Props::Button(p)if p.label.starts_with(name))}).unwrap_or_else(||panic!("missing {name}"))
+fn button(app: &App, wanted: &str) -> NodeId {
+    all(app).into_iter().find(|id|{let tree=app.tree();let value=tree.node(*id).unwrap().descriptor.view();matches!(value.props,Props::Button(props) if value.name.as_ref().is_some_and(|name|name.starts_with(wanted))||props.label.starts_with(wanted))}).unwrap_or_else(||panic!("missing button: {wanted}"))
 }
 fn count_class(app: &App, class: &str) -> usize {
     all(app)
@@ -359,6 +359,17 @@ fn unified_schedule_view_controls_switch_real_views_after_application_window_acc
     .unwrap();
     assert_eq!(count_class(&app, "sapid-week-view"), 1);
     let day = button(&app, "Day");
+    assert_eq!(
+        app.tree()
+            .node(day)
+            .unwrap()
+            .descriptor
+            .view()
+            .semantics
+            .as_ref()
+            .and_then(|value| value.pressed),
+        Some(false)
+    );
     app.dispatch(day, Event::Activate).unwrap();
     app.flush().unwrap();
     assert_eq!(changed.get(), 1);
@@ -366,6 +377,17 @@ fn unified_schedule_view_controls_switch_real_views_after_application_window_acc
     assert_eq!(count_class(&app, "sapid-day-view"), 1);
     assert_eq!(count_class(&app, "sapid-week-view"), 0);
     assert_eq!(button(&app, "Day"), day);
+    assert_eq!(
+        app.tree()
+            .node(day)
+            .unwrap()
+            .descriptor
+            .view()
+            .semantics
+            .as_ref()
+            .and_then(|value| value.pressed),
+        Some(true)
+    );
 
     let refused = App::memory();
     let proposals = refused.scope().cage(0usize);
@@ -385,4 +407,71 @@ fn unified_schedule_view_controls_switch_real_views_after_application_window_acc
     assert_eq!(proposals.get(), 1);
     assert_eq!(count_class(&refused, "sapid-week-view"), 1);
     assert_eq!(count_class(&refused, "sapid-day-view"), 0);
+}
+
+#[test]
+fn multiple_unified_schedules_use_their_own_namespaces_at_the_full_key_budget() {
+    let app = App::memory();
+    let source = app.scope().cage(data());
+    let second = app.scope().cage(None);
+    app.mount(
+        glory::ui::view().fill((
+            schedule("a".repeat(48), source)
+                .view(ScheduleView::Week)
+                .available_views([ScheduleView::Week]),
+            schedule("second", data())
+                .view(ScheduleView::Week)
+                .available_views([ScheduleView::Week])
+                .node_ref(second),
+        )),
+    )
+    .unwrap();
+    let retained = second.get();
+    assert_eq!(count_class(&app, "sapid-week-view"), 2);
+    source.revise(|current| {
+        *current = ScheduleData::new(
+            current.zone().clone(),
+            ScheduleWindow::days(d("2024-03-04"), 7).unwrap(),
+            current.events().iter().cloned(),
+        )
+        .unwrap()
+    });
+    app.flush().unwrap();
+    assert_eq!(second.get(), retained);
+    assert_eq!(count_class(&app, "sapid-week-view"), 2);
+    app.clear().unwrap();
+    assert_eq!(second.get(), None);
+    for key in [String::new(), "bad key".into(), "a".repeat(49)] {
+        let rejected = App::memory();
+        assert!(
+            rejected
+                .mount(
+                    schedule(key, data())
+                        .view(ScheduleView::Week)
+                        .available_views([ScheduleView::Week])
+                )
+                .is_err()
+        );
+        assert_eq!(rejected.stats().nodes, 0);
+    }
+}
+
+#[test]
+fn unified_agenda_never_registers_grid_interest_on_its_group_root() {
+    let app = App::memory();
+    let view = app.scope().cage(ScheduleView::Week);
+    app.mount(
+        schedule("agenda-switch", data())
+            .view_value(view)
+            .available_views([ScheduleView::Week, ScheduleView::Agenda])
+            .on_view_change(move |next| view.revise(|old| *old = next)),
+    )
+    .unwrap();
+    app.dispatch(button(&app, "Agenda"), Event::Activate)
+        .unwrap();
+    app.flush().unwrap();
+    assert_eq!(count_class(&app, "sapid-agenda-view"), 1);
+    app.dispatch(button(&app, "Week"), Event::Activate).unwrap();
+    app.flush().unwrap();
+    assert_eq!(count_class(&app, "sapid-week-view"), 1);
 }

@@ -17,7 +17,14 @@ fn nodes(app: &App) -> Vec<NodeId> {
     result
 }
 fn button(app: &App, label: &str) -> NodeId {
-    nodes(app).into_iter().find(|id|matches!(&app.tree().node(*id).unwrap().descriptor.view().props.clone(),Props::Button(p)if p.label==label)).unwrap()
+    nodes(app)
+        .into_iter()
+        .find(|id| {
+            let tree = app.tree();
+            let node = tree.node(*id).unwrap().descriptor.view();
+            matches!(node.props, Props::Button(_)) && node.name.as_deref() == Some(label)
+        })
+        .unwrap()
 }
 fn query(app: &App, query: Query) -> QueryValue {
     let result = Rc::new(RefCell::new(None));

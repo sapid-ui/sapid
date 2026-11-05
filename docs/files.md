@@ -16,6 +16,23 @@ share file read rights. A source revision change, explicit clear/removal or Owne
 retirement revokes read/preview acceptance. The platform operations that already
 started keep their admission permits until their Promises actually settle.
 
+`FileInput` presents an input-like filename summary on its same real picker
+control. For multiple files it shows the first filename and the remaining count;
+attachment rows retain full filenames and removal actions. Long names stay inside
+the bounded input. The picker accessible name stays independent from selected
+filenames. `clearable(true)` adds a compact inset named clear action; user clearing
+emits `on_files(Vec::new())` after releasing the current references. It does not
+forge a picker result. On focus-capable hosts it returns focus to the same picker
+before notifying the application. `FileController::clear()` remains silent programmatic
+clearing. `show_attachments(false)` hides rows while retaining current references;
+it does not prepopulate them. FileButton and Dropzone retain their action/drop
+labels. Both `multiple` and `max_files` must be configured for multiple selection.
+
+The public FileInput page separates single summary/clear, multiple/long names,
+count/type/byte limits, and disabled/cancelled/unavailable behavior into four
+complete compiled examples. Choosing files is an explicit user action; those
+examples never synthesize a selected FileInfo or grant access from a display name.
+
 Finite domains are independent:
 
 | Domain | Maximum |
@@ -123,6 +140,16 @@ named remove button, and optional explicit preview. PNG/JPEG previews use a real
 with an alternative, bounded header admission and ordinary Image load/error behavior;
 other formats remain metadata-only. Networking/upload cancellation belongs to the
 application; these widgets revoke local selection/read acceptance only.
+
+The Dropzone public page starts with an actual large chooser/drop button and
+explicit type/count/byte limits. Four independently compiled examples demonstrate
+atomic rejection while preserving accepted attachments, explicit PNG/JPEG previews,
+an Owner-bound text read limited to 4 KiB, and reactive enabling/configuration.
+Selection status reports the current file count; rejection status uses readable
+messages rather than Rust enum debug text. The actual File button is the drop
+target. Eligibility is checked on completed selection/drop; the component does
+not promise MIME-specific feedback before drop or automatic uploads. The current
+finite border contract supports solid borders.
 
 One actual browser Document shares a chooser admission slot, four irreversible read
 slots, one pending raw-drop handle snapshot, 128 selected references, 128 KiB of

@@ -116,3 +116,7 @@ complete-source clipboard writes, Chrome Tree AX and focused SSR adoption.
 `code-copy-acceptance.js` passed eight additional four-theme/CSR/hydrate actual
 copy groups on the same artifact (`code-copy-browser-web29.json`), including
 collapsed JSON values. CopyButton nine-group regression also passed Web29.
+
+## Runnable documentation examples
+
+See [Extension pages](extension-pages.md) for the independent complete-source examples, application ownership rules and current acceptance boundaries.

@@ -49,15 +49,22 @@ pub struct SegmentedControl {
     inner: Option<RadioGroup>,
     class: Vary<String>,
     segments: Vec<Segment>,
+    full_width: Vary<bool>,
 }
 pub fn segmented_control(key: impl Into<String>) -> SegmentedControl {
     SegmentedControl {
         inner: Some(radio_group(key).orientation(Orientation::Horizontal)),
         class: "".into(),
         segments: Vec::new(),
+        full_width: false.into(),
     }
 }
 impl SegmentedControl {
+    /// Fill the available row with equal-width segments, retaining the same controls.
+    pub fn full_width(mut self, value: impl Into<Vary<bool>>) -> Self {
+        self.full_width = value.into();
+        self
+    }
     fn map(mut self, update: impl FnOnce(RadioGroup) -> RadioGroup) -> Self {
         self.inner = self.inner.take().map(update);
         self
@@ -153,6 +160,7 @@ impl Widget for SegmentedControl {
             .inner
             .take()
             .ok_or(glory::ui::Error::Gone)?
+            .stretch_segments(self.full_width.clone())
             .class(scope.bond(move || format!("sapid-segmented-control {}", class.get())));
         for segment in self.segments.drain(..) {
             let class = segment.class;

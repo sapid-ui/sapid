@@ -30,7 +30,7 @@ impl MenubarMenu {
     dropdown_methods! {
         label(value: impl Into<Vary<String>>); item(item: impl Into<MenuEntry>);
         items(items: impl IntoIterator<Item=MenuItem>); radio_group(group:MenuRadioGroup);
-        submenu(submenu:MenuSubmenu); separator(key:impl Into<String>);
+        submenu(submenu:MenuSubmenu); separator(key:impl Into<String>); search(editor:MenuSearch);
         enabled(value:impl Into<Vary<bool>>);
     }
 }
@@ -416,6 +416,9 @@ impl Widget for Menubar {
         let mut keys = Vec::with_capacity(self.menus.len());
         let mut names = HashSet::new();
         for root in &mut self.menus {
+            if let Some(editor) = &root.inner.editor {
+                editor.validate()?;
+            }
             if root
                 .inner
                 .panel_width

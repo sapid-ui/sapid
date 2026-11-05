@@ -10,7 +10,7 @@ async(hostPage)=>{
  assert((await page.locator('.explicit-space').boundingBox()).height===24,`${mode}: explicit space`);
  await page.getByRole('button',{name:'Toggle layout padding',exact:true}).click();await tick();assert(await child.evaluate(e=>e===window.savedLayoutChild),`${mode}: stable child after style patch`);
  await page.setViewportSize({width:390,height:844});await tick();outer=await container.boundingBox();inner=await child.boundingBox();assert(inner.width<=outer.width-39&&inner.width>0,`${mode}: responsive cap and changed padding`);assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`${mode}: mobile overflow`);
- await page.setViewportSize({width:1440,height:1000});await tick();if(hydrate)await page.screenshot({path:`D:/BuildCache/sapid/${mode}.png`,fullPage:true});await page.evaluate(()=>window.demo.unmount_display());assert(await page.locator('#app').evaluate(e=>e.childElementCount===0),`${mode}: teardown`);reports.push({suite:mode,status:'passed'});
+ await page.setViewportSize({width:1440,height:1000});await tick();if(hydrate)await page.screenshot({path:`target/verification/sapid/${mode}.png`,fullPage:true});await page.evaluate(()=>window.demo.unmount_display());assert(await page.locator('#app').evaluate(e=>e.childElementCount===0),`${mode}: teardown`);reports.push({suite:mode,status:'passed'});
  }
  assert(errors.length===0,JSON.stringify(errors));return {reports,errors};}finally{await context.close()}
 }

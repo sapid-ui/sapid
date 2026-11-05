@@ -1,6 +1,6 @@
 //! Bounded notifications with a single owner-bound timer for visible deadlines.
 use crate::{AlertSeverity, Announcement, Theme, composite::Callback, state::OwnerDelay};
-use glory::ui::{Result, WeakScope, Widget};
+use glory::ui::{Children, IntoChildren, Result, WeakScope, Widget};
 use glory::{Cage, Scope};
 use std::{
     cell::Cell,
@@ -45,6 +45,8 @@ pub struct Notification {
     unstyled: bool,
     class: glory::Vary<String>,
     action: Option<NotificationAction>,
+    icon: Option<Children>,
+    loading: glory::Vary<bool>,
 }
 pub fn notification(key: impl Into<String>) -> Notification {
     Notification {
@@ -53,9 +55,27 @@ pub fn notification(key: impl Into<String>) -> Notification {
         unstyled: false,
         class: "".into(),
         action: None,
+        icon: None,
+        loading: false.into(),
     }
 }
 impl Notification {
+    pub fn icon(mut self, value: impl IntoChildren) -> Self {
+        self.icon = Some(value.into_children());
+        self
+    }
+    pub fn loading(mut self, value: impl Into<glory::Vary<bool>>) -> Self {
+        self.loading = value.into();
+        self
+    }
+    pub fn variant(mut self, value: crate::AlertVariant) -> Self {
+        self.inner = self.inner.variant(value);
+        self
+    }
+    pub fn color(mut self, value: glory::style::Color) -> Self {
+        self.inner = self.inner.color(value);
+        self
+    }
     pub fn title(mut self, value: impl Into<glory::Vary<String>>) -> Self {
         self.inner = self.inner.title(value);
         self
@@ -128,6 +148,46 @@ impl Widget for Notification {
         let class = self.class.clone();
         let mut inner = std::mem::replace(&mut self.inner, crate::alert(String::new()))
             .class(scope.bond(move || format!("sapid-notification {}", class.get())));
+        let loading = self.loading.clone();
+        if loading.is_reactive() || loading.get() {
+            let has_icon = self.icon.is_some();
+            let visible = loading.clone();
+            inner = inner
+                .busy(loading.clone())
+                .icon_visible(scope.bond(move || has_icon || visible.get()).into());
+            let theme = self.theme.clone();
+            let color = inner.icon_color();
+            let unstyled = self.unstyled;
+            let mut icon = self.icon.take();
+            inner = inner.icon(glory::ui::widget(move |scope| {
+                if let Some(icon) = icon.take() {
+                    let loading = loading.clone();
+                    glory::ui::view()
+                        .class("sapid-notification-icon-content")
+                        .semantics(scope.bond(move || {
+                            Some(Box::new(glory::render::Semantics {
+                                hidden: loading.get(),
+                                ..Default::default()
+                            }))
+                        }))
+                        .fill(icon)
+                        .show_in(scope)?;
+                }
+                let mut spinner = crate::loader()
+                    .theme(theme.clone())
+                    .color(color)
+                    .diameter(20.)
+                    .decorative()
+                    .visible(loading.clone())
+                    .class("sapid-notification-loader");
+                if unstyled {
+                    spinner = spinner.unstyled();
+                }
+                spinner.show_in(scope)
+            }));
+        } else if let Some(icon) = self.icon.take() {
+            inner = inner.icon(icon);
+        }
         if let Some((label, callback)) = self.action.take() {
             let label = crate::composite::validated(scope, &label, |label| text(label, 256))?;
             let mut action = crate::button()

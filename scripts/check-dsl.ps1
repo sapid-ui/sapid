@@ -1,41 +1,47 @@
 param(
     [switch]$Browser,
     [switch]$Native,
-    [string]$Bindgen = 'D:/BuildCache/glory-v2-dioxus-20261028/tools/wasm-bindgen-0.2.130-x86_64-pc-windows-msvc/wasm-bindgen.exe',
-    [string]$BuildRoot = 'D:/BuildCache/sapid'
+    [string]$Bindgen = 'wasm-bindgen',
+    [string]$BuildRoot = ''
 )
+. "$PSScriptRoot/local-build-paths.ps1"
+
 $ErrorActionPreference = 'Stop'
+if (-not $BuildRoot) { $BuildRoot = Join-Path (Get-NormalCargoTarget) 'verification/sapid' }
 $taskBuild = [IO.Path]::GetFullPath($BuildRoot)
 $saved = @{}
-foreach ($key in @('CARGO_HOME','CARGO_TARGET_DIR','TEMP','TMP','CARGO_INCREMENTAL','CARGO_PROFILE_DEV_DEBUG','CARGO_PROFILE_TEST_DEBUG','CARGO_BUILD_JOBS','SAPID_DSL_SITE')) {
+foreach ($key in @('SAPID_DSL_SITE')) {
     $saved[$key] = [Environment]::GetEnvironmentVariable($key, 'Process')
 }
-function Invoke-Cargo([string[]]$Arguments) {
-    & cargo @Arguments
-    if ($LASTEXITCODE -ne 0) { throw "cargo $Arguments failed" }
+function Invoke-Cargo {
+    param([string[]]$Arguments)
+    $manifestIndex = [Array]::IndexOf($Arguments, '--manifest-path')
+    $directory = Split-Path -Parent $PSScriptRoot
+    if ($manifestIndex -ge 0) {
+        $Arguments[$manifestIndex + 1] = [IO.Path]::GetFullPath((Join-Path $directory $Arguments[$manifestIndex + 1]))
+        $directory = Split-Path -Parent $Arguments[$manifestIndex + 1]
+    }
+    Push-Location $directory
+    try {
+        & cargo @Arguments
+        if ($LASTEXITCODE -ne 0) { throw "cargo $Arguments failed" }
+    } finally { Pop-Location }
 }
 function Confirm-Target([string]$manifest) {
-    $metadata = & cargo metadata --manifest-path $manifest --no-deps --format-version 1 | ConvertFrom-Json
-    if ($LASTEXITCODE -ne 0 -or [IO.Path]::GetFullPath($metadata.target_directory) -ne [IO.Path]::GetFullPath($env:CARGO_TARGET_DIR)) { throw 'Unexpected Cargo target directory' }
-    Write-Output "Verified target: $($metadata.target_directory)"
+    $target = Get-NormalCargoTarget -ManifestPath (Join-Path (Split-Path -Parent $PSScriptRoot) $manifest)
+    Write-Output "Verified target: $target"
 }
 function Set-DslBuildPaths([string]$Root, [switch]$Native) {
     $absolute = [IO.Path]::GetFullPath($Root)
-    if ($absolute -notmatch '^D:\\BuildCache\\sapid(?:\\|$)') { throw 'BuildRoot must be inside D:/BuildCache/sapid' }
-    if (-not $env:CARGO_HOME) { $env:CARGO_HOME = 'D:/BuildCache/glory-semantic-ui/cargo' }
-    if ([IO.Path]::GetFullPath($env:CARGO_HOME) -notmatch '^D:\\BuildCache\\[^\\]+') { throw 'CARGO_HOME must be on D drive' }
-    $env:CARGO_TARGET_DIR = Join-Path $absolute $(if ($Native) { 'native-target' } else { 'target' })
-    $env:TEMP = Join-Path $absolute 'tmp'
-    $env:TMP = $env:TEMP
+
+    $target = Get-NormalCargoTarget
     $env:SAPID_DSL_SITE = Join-Path $absolute 'dsl'
-    # Each stage must stand alone on a fresh runner. In particular, MSVC link
-    # cannot create its lnk*.tmp files when the selected TEMP directory is absent.
-    New-Item -ItemType Directory -Force -Path $env:CARGO_TARGET_DIR,$env:TEMP | Out-Null
+    New-Item -ItemType Directory -Force -Path $target,$env:SAPID_DSL_SITE,$env:TEMP | Out-Null
 }
 Push-Location (Split-Path -Parent $PSScriptRoot)
 try {
     Set-DslBuildPaths -Root $taskBuild
-    $env:CARGO_INCREMENTAL = '0'; $env:CARGO_PROFILE_DEV_DEBUG = '0'; $env:CARGO_PROFILE_TEST_DEBUG = '0'; $env:CARGO_BUILD_JOBS = '2'
+
     Confirm-Target 'Cargo.toml'
     & python "$PSScriptRoot/library_lock.py" --manifest-path Cargo.toml
     if ($LASTEXITCODE -ne 0) { throw 'Library lock preparation failed' }
@@ -44,11 +50,12 @@ try {
     if ($Browser) {
         $manifest = 'examples/web/Cargo.toml'
         Confirm-Target $manifest
+        $webTarget = Get-NormalCargoTarget -ManifestPath (Join-Path (Split-Path -Parent $PSScriptRoot) $manifest)
         Invoke-Cargo -Arguments @('clippy','--locked','--manifest-path',$manifest,'--lib','--target','wasm32-unknown-unknown','--','-D','warnings')
         Invoke-Cargo -Arguments @('build','--locked','--manifest-path',$manifest,'--lib','--target','wasm32-unknown-unknown')
         New-Item -ItemType Directory -Force -Path $env:SAPID_DSL_SITE | Out-Null
         if ((& $Bindgen --version).Trim() -ne 'wasm-bindgen 0.2.130') { throw 'Expected wasm-bindgen 0.2.130' }
-        & $Bindgen "$env:CARGO_TARGET_DIR/wasm32-unknown-unknown/debug/sapid_web_example.wasm" --target web --out-dir $env:SAPID_DSL_SITE
+        & $Bindgen "$webTarget/wasm32-unknown-unknown/debug/sapid_web_example.wasm" --target web --out-dir $env:SAPID_DSL_SITE
         if ($LASTEXITCODE -ne 0) { throw 'wasm-bindgen failed' }
         Copy-Item -LiteralPath styles/sapid.css -Destination "$env:SAPID_DSL_SITE/sapid.css"
         Invoke-Cargo -Arguments @('run','--locked','--manifest-path',$manifest,'--bin','dsl-ssr','--',$env:SAPID_DSL_SITE)
@@ -57,7 +64,7 @@ try {
     }
     if ($Native) {
         Set-DslBuildPaths -Root $taskBuild -Native
-        $env:CARGO_BUILD_JOBS = '1'
+
         Confirm-Target 'examples/native/Cargo.toml'
         Invoke-Cargo -Arguments @('test','--locked','--manifest-path','examples/native/Cargo.toml','--test','mixed_dsl','--','--test-threads=1')
     }

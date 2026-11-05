@@ -104,6 +104,7 @@ pub struct RadioGroup {
     typeahead: Option<TypeaheadConfig>,
     on_change: Option<Box<dyn FnMut(String)>>,
     member_gap: f64,
+    stretch_segments: Option<Vary<bool>>,
 }
 pub fn radio_group(key: impl Into<String>) -> RadioGroup {
     RadioGroup {
@@ -123,10 +124,15 @@ pub fn radio_group(key: impl Into<String>) -> RadioGroup {
         typeahead: None,
         on_change: None,
         member_gap: 8.,
+        stretch_segments: None,
     }
 }
 impl RadioGroup {
     common_methods!();
+    pub(crate) fn stretch_segments(mut self, value: Vary<bool>) -> Self {
+        self.stretch_segments = Some(value);
+        self
+    }
     pub(crate) fn member_gap(mut self, value: f64) -> Self {
         self.member_gap = value;
         self
@@ -386,6 +392,28 @@ impl Widget for RadioGroup {
         // handles events. Registration identity is independent of key reuse.
         let mut members = Vec::new();
         for (index, mut item) in self.items.drain(..).enumerate() {
+            if let Some(stretch) = self.stretch_segments.clone() {
+                let custom = item.common.style.clone();
+                let horizontal = self.orientation == Orientation::Horizontal;
+                item.common.style = scope
+                    .bond(move || {
+                        let mut base = glory::style::Style::new();
+                        if stretch.get() {
+                            base.display = Some(glory::style::Display::Flex);
+                            base.min_width = Some(glory::style::Length::Px(0.));
+                            base.justify = Some(glory::style::Justify::Center);
+                            if horizontal {
+                                base.width = Some(glory::style::Length::Px(0.));
+                                base.grow = Some(1.);
+                                base.shrink = Some(1.);
+                            } else {
+                                base.width = Some(glory::style::Length::Percent(100.));
+                            }
+                        }
+                        crate::appearance::merge(base, custom.get())
+                    })
+                    .into();
+            }
             item.common.theme = self.common.theme.clone();
             item.common.size = self.common.size;
             item.common.unstyled |= self.common.unstyled;
@@ -464,6 +492,53 @@ impl Widget for RadioGroup {
                 ..Default::default()
             }));
         let root_id = self.common.node_ref.unwrap_or_else(|| scope.cage(None));
+        if let Some(stretch) = self.stretch_segments.clone() {
+            let custom = self.common.style.clone();
+            self.common.style = scope
+                .bond(move || {
+                    let base = glory::style::Style {
+                        align: Some(if stretch.get() {
+                            glory::style::Align::Stretch
+                        } else {
+                            glory::style::Align::Start
+                        }),
+                        ..Default::default()
+                    };
+                    crate::appearance::merge(base, custom.get())
+                })
+                .into();
+        }
+        let items_base = glory::style::Style::new()
+            .display(glory::style::Display::Flex)
+            .flex_direction(if axis == Orientation::Horizontal {
+                glory::style::FlexDirection::Row
+            } else {
+                glory::style::FlexDirection::Column
+            })
+            .gap(self.member_gap);
+        let items_style: Vary<glory::style::Style> =
+            if let Some(stretch) = self.stretch_segments.clone() {
+                scope
+                    .bond(move || {
+                        let mut style = items_base.clone();
+                        style.width = Some(if stretch.get() {
+                            glory::style::Length::Percent(100.)
+                        } else {
+                            glory::style::Length::Auto
+                        });
+                        style.max_width = Some(glory::style::Limit::Percent(100.));
+                        style.flex_wrap = Some(if stretch.get() {
+                            glory::style::FlexWrap::NoWrap
+                        } else {
+                            glory::style::FlexWrap::Wrap
+                        });
+                        style.align = Some(glory::style::Align::Stretch);
+                        style
+                    })
+                    .into()
+            } else {
+                items_base.into()
+            };
         let base = composite::column(8.0);
         let mut root = configure!(
             self.common,
@@ -490,16 +565,7 @@ impl Widget for RadioGroup {
         .fill(
             glory::ui::view()
                 .class("sapid-radio-group-items")
-                .style(
-                    glory::style::Style::new()
-                        .display(glory::style::Display::Flex)
-                        .flex_direction(if axis == Orientation::Horizontal {
-                            glory::style::FlexDirection::Row
-                        } else {
-                            glory::style::FlexDirection::Column
-                        })
-                        .gap(self.member_gap),
-                )
+                .style(items_style)
                 .fill(children),
         );
         // Root listeners are installed after the finite native children exist.

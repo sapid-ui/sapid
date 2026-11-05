@@ -38,6 +38,17 @@ It validates borrowed raw syntax before editing whitespace and never decodes a
 business object into a floating-point or map representation. It is a bounded
 JSON text editor, with no schema validator, syntax highlighting or AST history.
 
+`format_on_blur(true)` opts into formatting on real editor focus loss; the
+default is false. `show_formatter(false)` independently hides the explicit
+button. Both entry points share one bounded action and use the current accepted
+source, including a final local edit earlier in the same host packet. Formatting
+proposes text through `on_value_change`, then invokes `on_format`, before generic
+blur observers. Controlled applications may refuse the proposal. Empty/invalid,
+composing, readonly and disabled drafts are left unchanged. A multiline Enter is
+still a newline. Public examples separate JSON editing, whitespace modes,
+line/column syntax errors, output budgets, blur policy and controlled states;
+debug counters remain in the acceptance fixture.
+
 `JsonLimits` defaults to 65,536 UTF-8 bytes and depth 64. Applications may lower
 both limits; maximum supported depth is 128. Byte checks precede source cloning;
 a quote/escape-aware depth scan precedes parsing. Output growth is checked at

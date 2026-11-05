@@ -2,8 +2,21 @@
 
 Enable `sapid`'s optional `dates` feature. It adds no dependency and does not enter
 the default graph. `month_picker` and `year_picker` render inline physical grids;
-`month_picker_input` and `year_picker_input` add a readonly successful Input and an
-independent Button opening the host-owned modal Dialog.
+`month_picker_input` and `year_picker_input` add a readonly display Input and an
+inset calendar Button opening the host-owned modal Dialog. A separately named
+hidden real Input carries the successful ISO value, without duplicating the
+visible Field control's name or focus stop.
+
+`.display_format(PeriodInputFormat::Localized)` follows the reactive provider's
+locale; `Iso` is the default. Month labels use the actual month/year domain and
+Chinese years include 年. Multiple labels use commas and completed ranges use
+an en dash; submission always retains ISO commas and slashes. No representative
+day is introduced. `.placeholder(...)`, `.clearable(true)` and `.clear_label(...)`
+configure the input actions. Clear proposes the mode's empty selection and
+returns focus to the same display input. Controlled refusal retains the accepted
+value, and readonly/disabled block changes. Each input page includes compiled
+examples for format/locale, controlled refusal/clear, multiple/range, and
+bounds/exclusions/Field states.
 
 ```rust
 use sapid::prelude::*;
@@ -125,3 +138,10 @@ The enhanced original joint 12/12 suite also passed against fixed FORMAT-10
 Web31 with Chromium 148.0.7778.96, errors `[]`:
 `D:/BuildCache/sapid/period-picker-browser-web31.json`. The sequential runner log
 is `dates-browser-web31.log` (copied as `period-picker-browser-web31.log`).
+
+## Complete public page examples
+
+The remaining date/time pages now have dedicated primary examples, independently
+compiled full-source sections and matching contents links. See [date page
+contracts](date-pages.md) for selection domains, editor/draft behavior, inline versus
+popup use, responsive actions and current browser/native acceptance boundaries.

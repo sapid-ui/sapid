@@ -8,10 +8,10 @@ const { chromium, base, outputPath, outputRoot, writeReport } = require('./showc
     const page = await browser.newPage(); page.on('pageerror', error => report.errors.push(error.message));
     await page.goto(`${base}/showcase.html?widget=date-time-picker&theme=blue&scheme=light`);
     await page.waitForFunction(() => window.ready && document.documentElement.getAttribute('data-sapid-widget') === 'date-time-picker');
-    const ids = ['usage','seconds','presets','time-options','controlled','inline','calendar-controls','range','inline-range','states'];
+    const ids = ['actions','usage','seconds','presets','time-options','controlled','inline','calendar-controls','range','inline-range','states'];
     for (const id of ids) assert.equal(await page.locator(`#date-time-picker-${id}`).count(), 1, id);
     const section = id => page.locator(`#${id}`).locator('..');
-    report.checks.push('All ten DateTimePicker and range behavior sections are mounted');
+    report.checks.push('All eleven DateTimePicker form and behavior sections are mounted');
 
     const seconds = section('date-time-picker-seconds');
     const secondsInput = seconds.getByRole('textbox', { name: 'Date and time with seconds', exact: true });

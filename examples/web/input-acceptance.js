@@ -68,7 +68,7 @@ async (hostPage) => {
       await page.setViewportSize({width:1440,height:1000});
       await page.reload();await page.waitForFunction(()=>window.ready===true);
       await page.locator('.sapid-textarea').scrollIntoViewIfNeeded();
-      await page.screenshot({path:`D:/BuildCache/sapid/inputs-${hue}-${scheme}.png`});
+      await page.screenshot({path:`target/verification/sapid/inputs-${hue}-${scheme}.png`});
       await page.evaluate(()=>window.demo.unmount());
       assert(await page.locator('#app').evaluate(e=>e.childElementCount===0),`${mode}: owner cleanup`);
       reports.push({suite:mode,status:'passed',checks:'intrinsic growth/shrink/wrap/cap, fields, controlled rejection, visibility identity/UTF-16/IME protocol, pointer/keyboard, AX, disabled/readonly, mobile, cleanup'});

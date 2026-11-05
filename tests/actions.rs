@@ -1,6 +1,6 @@
-use glory::render::{Event, NodeId, Orientation, Props, Role, SemanticId, Semantics};
+use glory::render::{Event, EventKind, NodeId, Orientation, Props, Role, SemanticId, Semantics};
 use glory::style::{Edges, FlexDirection, Length, Style};
-use glory::ui::App;
+use glory::ui::{App, Widget};
 use sapid::{
     ActionIconVariant, Size, Theme, action_icon, burger, button, button_group, close_button,
 };
@@ -9,6 +9,104 @@ use std::rc::Rc;
 
 fn root(app: &App) -> NodeId {
     app.tree().roots()[0]
+}
+#[test]
+fn icon_loading_keeps_the_same_named_button_and_blocks_same_packet_activation() {
+    let app = App::memory();
+    let loading = app.scope().cage(false);
+    let calls = app.scope().cage(0);
+    app.mount(
+        action_icon("Refresh data")
+            .icon(glory::ui::text().content("↻"))
+            .loading(loading)
+            .on_press(move || calls.revise(|n| *n += 1)),
+    )
+    .unwrap();
+    let id = root(&app);
+    app.scope()
+        .batch(|| {
+            loading.revise(|v| *v = true);
+            app.dispatch(id, Event::Activate).unwrap();
+        })
+        .unwrap();
+    assert_eq!(calls.get(), 0);
+    let tree = app.tree();
+    let descriptor = tree.node(id).unwrap().descriptor.view();
+    assert_eq!(descriptor.name.as_deref(), Some("Refresh data"));
+    assert!(descriptor.semantics.as_ref().unwrap().busy.unwrap());
+    assert!(matches!(descriptor.props,Props::Button(p)if !p.enabled));
+    drop(tree);
+    loading.revise(|v| *v = false);
+    app.flush().unwrap();
+    app.dispatch(id, Event::Activate).unwrap();
+    assert_eq!(calls.get(), 1);
+    assert_eq!(root(&app), id);
+    app.clear().unwrap();
+    assert_eq!(app.stats().nodes, 0);
+    assert_eq!(app.runtime_stats().tasks, 0);
+}
+#[test]
+fn action_buttons_recheck_disabled_sources_before_typed_and_generic_callbacks_in_one_packet() {
+    for kind in 0..6 {
+        let app = App::memory();
+        let enabled = app.scope().cage(true);
+        let typed = app.scope().cage(0);
+        let generic = app.scope().cage(0);
+        let widget: Box<dyn Widget> = match kind {
+            0 => Box::new(
+                button()
+                    .enabled(enabled)
+                    .label("Save")
+                    .on_press(move || typed.revise(|n| *n += 1))
+                    .on(EventKind::Activate, move |_| generic.revise(|n| *n += 1)),
+            ),
+            1 => Box::new(
+                action_icon("Refresh")
+                    .enabled(enabled)
+                    .icon(glory::ui::text().content("↻"))
+                    .on_press(move || typed.revise(|n| *n += 1))
+                    .on(EventKind::Activate, move |_| generic.revise(|n| *n += 1)),
+            ),
+            2 => Box::new(
+                close_button()
+                    .enabled(enabled)
+                    .on_press(move || typed.revise(|n| *n += 1))
+                    .on(EventKind::Activate, move |_| generic.revise(|n| *n += 1)),
+            ),
+            3 => Box::new(
+                button()
+                    .unstyled()
+                    .enabled(enabled)
+                    .label("Custom")
+                    .on_press(move || typed.revise(|n| *n += 1))
+                    .on(EventKind::Activate, move |_| generic.revise(|n| *n += 1)),
+            ),
+            4 => Box::new(
+                sapid::copy_button()
+                    .enabled(enabled)
+                    .source("Public example")
+                    .on_result(move |_| typed.revise(|n| *n += 1))
+                    .on(EventKind::Activate, move |_| generic.revise(|n| *n += 1)),
+            ),
+            _ => Box::new(
+                sapid::toggle()
+                    .enabled(enabled)
+                    .label("Bold")
+                    .on_pressed_change(move |_| typed.revise(|n| *n += 1))
+                    .on(EventKind::Activate, move |_| generic.revise(|n| *n += 1)),
+            ),
+        };
+        app.mount(widget).unwrap();
+        let id = root(&app);
+        app.scope()
+            .batch(|| {
+                enabled.revise(|v| *v = false);
+                app.dispatch(id, Event::Activate).unwrap();
+            })
+            .unwrap();
+        assert_eq!(typed.get(), 0, "kind {kind}");
+        assert_eq!(generic.get(), 0, "kind {kind}");
+    }
 }
 #[test]
 fn icon_action_is_named_native_button_with_real_content_and_square_sizes() {

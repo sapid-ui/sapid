@@ -40,6 +40,39 @@ fn change(app: &App, id: NodeId, keys: &[&str]) {
 }
 
 #[test]
+fn native_select_rechecks_current_enabled_state_in_one_packet() {
+    for inherited in [false, true] {
+        let app = App::memory();
+        let enabled = app.scope().cage(true);
+        let calls = app.scope().cage(0);
+        let control = move || {
+            native_select("live-select")
+                .default_value(Some("a".into()))
+                .option(select_option("a", "Starter"))
+                .option(select_option("b", "Pro"))
+                .on_value_change(move |_| calls.revise(|n| *n += 1))
+        };
+        if inherited {
+            app.mount(
+                sapid::field("live-select-field")
+                    .enabled(enabled)
+                    .control(move |field| control().field(field)),
+            )
+            .unwrap();
+        } else {
+            app.mount(control().enabled(enabled)).unwrap();
+        }
+        let id = node(&app);
+        app.scope()
+            .batch(|| {
+                enabled.revise(|v| *v = false);
+                change(&app, id, &["b"])
+            })
+            .unwrap();
+        assert_eq!(calls.get(), 0);
+    }
+}
+#[test]
 fn controlled_rejection_echo_and_generic_order_preserve_true_native_selection() {
     let app = App::memory();
     let source = app.scope().cage(Some("a".to_owned()));

@@ -53,7 +53,19 @@ All placements and widths validate before mounting roots. The shared host
 layer applies placement, flipping and shifting; widgets do not inspect the DOM.
 The documentation site now has separate composition, trigger/loop, submenu,
 checkbox/radio, controlled, placement and keyboard examples, each displaying
-the exact Rust module compiled for its preview.
+the exact Rust module compiled for its preview. Two additional sections cover
+independent captions/passive content slots and a searchable application menu,
+bringing the page to nine compiled examples. Its primary document menu includes
+working new/open/save actions, recent-file submenus and a ruler checkbox.
+
+`menubar_menu(...).search(menu_search())` uses the same retained editor,
+controlled query/filtering, active item and callbacks as Menu. Up/Down highlight
+and Enter invokes; horizontal arrows/Home/End remain editor caret commands.
+Switching menus closes the previous search and by default proposes an empty
+query. `clear_on_close(false)` preserves it. Root focus remains a single tab stop
+when menus are closed. Search input and filtered menu item identities survive
+closing/reopening and query changes. See [Menu](menu-implementation.md) for
+bounded queries, passive slots, intrinsic check/radio limits and host support.
 
 Configuration admission stops at 32 roots plus one rejection sentinel, with
 1024 total root triggers/menu entries, 256 entries per menu level and menu depth

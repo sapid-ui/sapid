@@ -28,7 +28,10 @@ fn active(app: &App, role: Role) -> Option<NodeId> {
     })
 }
 fn button(app: &App, label: &str) -> NodeId {
-    nodes(app).into_iter().find(|id|matches!(app.tree().node(*id).unwrap().descriptor.view().props,Props::Button(value)if value.label==label)).unwrap()
+    nodes(app).into_iter().find(|id| {
+        let tree=app.tree();let descriptor=tree.node(*id).unwrap().descriptor.view();
+        matches!(descriptor.props,Props::Button(value)if value.label==label||descriptor.name.as_deref()==Some(label))
+    }).unwrap_or_else(||panic!("missing button: {label}"))
 }
 fn query(app: &App, query: Query) -> QueryValue {
     let out = Rc::new(RefCell::new(None));
@@ -199,7 +202,18 @@ fn native_modal_manager_uses_real_fifo_layers_retains_editors_and_retires_owner_
             .unwrap()
             .node_id
         });
-        assert_eq!(hit, close_physical);
+        // Icon-only controls may hit their decorative Graphic child. The hit
+        // must still belong to this live button, never another modal surface.
+        assert!(host.renderer().inspect(|dom| {
+            let mut current = Some(hit);
+            while let Some(id) = current {
+                if id == close_physical {
+                    return true;
+                }
+                current = dom.get_node(id).and_then(|node| node.parent);
+            }
+            false
+        }));
         let mut raster = Raster::new();
         raster.draw(host.renderer()).unwrap();
         let c = theme.surface;

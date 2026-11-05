@@ -21,6 +21,7 @@ pub struct Collapsible {
     panel: Option<Cage<Option<NodeId>>>,
     height_duration: Option<Vary<u16>>,
     animated: Vary<bool>,
+    on_transition_end: Option<Box<dyn FnMut(bool)>>,
 }
 pub fn collapsible(key: impl Into<String>) -> Collapsible {
     Collapsible {
@@ -36,6 +37,7 @@ pub fn collapsible(key: impl Into<String>) -> Collapsible {
         panel: None,
         height_duration: None,
         animated: true.into(),
+        on_transition_end: None,
     }
 }
 impl Collapsible {
@@ -87,6 +89,14 @@ impl Collapsible {
     pub fn animated(mut self, animated: impl Into<Vary<bool>>) -> Self {
         self.height_duration.get_or_insert_with(|| 180.into());
         self.animated = animated.into();
+        self
+    }
+    /// Observe one matching host completion per accepted transition revision.
+    /// Receives the current logical open state. Initial presentation is silent;
+    /// zero duration/Reduce may settle immediately. Requires a completion host.
+    pub fn on_transition_end(mut self, callback: impl FnMut(bool) + 'static) -> Self {
+        self.height_duration.get_or_insert_with(|| 180.into());
+        self.on_transition_end = Some(Box::new(callback));
         self
     }
 }
@@ -172,6 +182,7 @@ impl Widget for Collapsible {
                 reference: self.panel,
                 factory: self.content.take(),
                 unstyled: self.common.unstyled,
+                on_end: self.on_transition_end.take(),
             })
         } else {
             Box::new(Panel {

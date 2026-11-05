@@ -47,6 +47,8 @@ pub struct Alert {
     close_label: Vary<String>,
     close: Option<Box<dyn FnMut(())>>,
     children: Option<Children>,
+    busy: Option<Vary<bool>>,
+    icon_visible: Vary<bool>,
 }
 pub fn alert(key: impl Into<String>) -> Alert {
     Alert {
@@ -67,9 +69,35 @@ pub fn alert(key: impl Into<String>) -> Alert {
         close_label: "Dismiss message".into(),
         close: None,
         children: None,
+        busy: None,
+        icon_visible: true.into(),
     }
 }
 impl Alert {
+    pub(crate) fn icon_color(&self) -> Color {
+        let theme = &self.common.theme;
+        let color = self.color.unwrap_or(match self.severity {
+            AlertSeverity::Info => theme.accent_text,
+            AlertSeverity::Success => theme.success,
+            AlertSeverity::Warning => theme.warning,
+            AlertSeverity::Danger => theme.danger,
+        });
+        if self.common.unstyled {
+            theme.foreground
+        } else if self.variant == AlertVariant::Filled {
+            filled_foreground(color, theme.surface, theme.on_accent)
+        } else {
+            color
+        }
+    }
+    pub(crate) fn busy(mut self, value: Vary<bool>) -> Self {
+        self.busy = Some(value);
+        self
+    }
+    pub(crate) fn icon_visible(mut self, value: Vary<bool>) -> Self {
+        self.icon_visible = value;
+        self
+    }
     pub fn variant(mut self, value: AlertVariant) -> Self {
         self.variant = value;
         self
@@ -156,6 +184,48 @@ fn message(value: &str) -> Result {
     }
     Ok(())
 }
+fn luminance(color: Color) -> f64 {
+    let channel = |value: u8| {
+        let value = f64::from(value) / 255.;
+        if value <= 0.04045 {
+            value / 12.92
+        } else {
+            ((value + 0.055) / 1.055).powf(2.4)
+        }
+    };
+    0.2126 * channel(color.0) + 0.7152 * channel(color.1) + 0.0722 * channel(color.2)
+}
+pub(crate) fn filled_foreground(background: Color, surface: Color, preferred: Color) -> Color {
+    let blend = |front: Color, back: Color| {
+        let alpha = u32::from(front.3);
+        let channel = |value: u8, back: u8| {
+            ((u32::from(value) * alpha + u32::from(back) * (255 - alpha) + 127) / 255) as u8
+        };
+        Color(
+            channel(front.0, back.0),
+            channel(front.1, back.1),
+            channel(front.2, back.2),
+            255,
+        )
+    };
+    let background = blend(background, surface);
+    let base = luminance(background);
+    let contrast = |color: Color| {
+        let text = luminance(blend(color, background));
+        (text.max(base) + 0.05) / (text.min(base) + 0.05)
+    };
+    if contrast(preferred) >= 4.5 {
+        preferred
+    } else {
+        let black = Color(0, 0, 0, 255);
+        let white = Color(255, 255, 255, 255);
+        if contrast(black) >= contrast(white) {
+            black
+        } else {
+            white
+        }
+    }
+}
 impl Widget for Alert {
     fn build(&mut self, scope: &Scope) -> Result {
         let id = composite::id("alert", &self.key, "root", "root")?;
@@ -190,12 +260,14 @@ impl Widget for Alert {
             None
         };
         let description_id = content_id.clone();
+        let busy = self.busy.clone();
         root = root.semantics(scope.bond(move || {
             Some(Box::new(Semantics {
                 id: Some(id.clone()),
                 labelled_by: labelled_by.clone(),
                 described_by: Some(description_id.clone()),
                 hidden: !source.get(),
+                busy: busy.as_ref().map(Vary::get),
                 ..Default::default()
             }))
         }));
@@ -213,12 +285,8 @@ impl Widget for Alert {
             background
         };
         let filled = self.variant == AlertVariant::Filled;
-        let foreground = if filled { theme.on_accent } else { color };
-        let message_color = if filled {
-            theme.on_accent
-        } else {
-            theme.foreground
-        };
+        let foreground = self.icon_color();
+        let message_color = if filled { foreground } else { theme.foreground };
         let mut base = Style::new()
             .display(Display::Flex)
             .flex_direction(FlexDirection::Row)
@@ -256,11 +324,25 @@ impl Widget for Alert {
         let theme = self.common.theme.clone();
         let size = self.common.size;
         let unstyled = self.common.unstyled;
+        let icon_visible = self.icon_visible.clone();
+        let busy = self.busy.clone();
+        let close_enabled: Vary<bool> = if let Some(busy) = self.busy.clone() {
+            scope.bond(move || !busy.get()).into()
+        } else {
+            true.into()
+        };
         // All child captures belong to the caller's mounting Owner.
         root.fill(glory::ui::widget(move |scope| {
             if let Some(icon) = icon.take() {
+                let icon_visible = icon_visible.clone();
                 glory::ui::view()
                     .class("sapid-alert-icon")
+                    .semantics(scope.bond(move || {
+                        Some(Box::new(Semantics {
+                            hidden: !icon_visible.get(),
+                            ..Default::default()
+                        }))
+                    }))
                     .style(Style {
                         shrink: Some(0.0),
                         ..Style::new()
@@ -273,6 +355,7 @@ impl Widget for Alert {
             let title_id = title_id.clone();
             let content_id = content_id.clone();
             let mut children = children.take();
+            let body_theme = theme.clone();
             glory::ui::view()
                 .class("sapid-alert-body")
                 .style(Style {
@@ -289,9 +372,11 @@ impl Widget for Alert {
                                 Style::new()
                             } else {
                                 Style {
-                                    font_size: Some(14.0),
-                                    line_height: Some(21.7),
-                                    ..Style::new().font_weight(700.0).margin(Edges::all(0.0))
+                                    color: Some(foreground),
+                                    ..body_theme
+                                        .label(size)
+                                        .font_weight(600.)
+                                        .margin(Edges::all(0.))
                                 }
                             })
                             .semantics(Some(Box::new(Semantics {
@@ -308,9 +393,7 @@ impl Widget for Alert {
                         } else {
                             Style {
                                 color: Some(message_color),
-                                font_size: Some(14.0),
-                                line_height: Some(21.7),
-                                ..Style::new()
+                                ..body_theme.label(size).font_weight(400.)
                             }
                         })
                         .semantics(Some(Box::new(Semantics {
@@ -328,13 +411,20 @@ impl Widget for Alert {
                 let weak = weak.clone();
                 let visible = visible.clone();
                 let close = close.clone();
+                let busy = busy.clone();
                 let button = crate::button()
                     .theme(theme.clone())
-                    .size(size)
+                    .size(crate::Size::ExtraSmall)
                     .unstyled()
+                    .enabled(close_enabled.clone())
                     .class("sapid-alert-close")
                     .name(label)
-                    .label("×")
+                    .label("")
+                    .fill(
+                        glory::ui::graphic()
+                            .drawing(crate::Icon::Close.drawing(foreground))
+                            .style(Style::new().width(Length::Px(16.)).height(Length::Px(16.))),
+                    )
                     .style(Style {
                         color: (!unstyled).then_some(foreground),
                         shrink: Some(0.0),
@@ -342,14 +432,22 @@ impl Widget for Alert {
                         line_height: Some(20.0),
                         border_width: Some(Edges::all(0.0)),
                         background: Some(Color(0, 0, 0, 0)),
+                        align: Some(Align::Center),
+                        justify: Some(glory::style::Justify::Center),
                         ..Style::new()
-                            .width(Length::Px(20.0))
-                            .height(Length::Px(20.0))
+                            .display(Display::InlineFlex)
+                            .width(Length::Px(24.0))
+                            .height(Length::Px(24.0))
+                            .min_width(Length::Px(24.0))
+                            .min_height(Length::Px(24.0))
                             .padding(Edges::all(0.0))
                             .radius(3.0)
                     })
                     .on_press(move || {
                         let Some(scope) = weak.upgrade() else { return };
+                        if busy.as_ref().is_some_and(Vary::get) || !visible.source.get() {
+                            return;
+                        }
                         match visible.accept(&false) {
                             Ok(()) => close.emit(owner, ()),
                             Err(error) => scope.report_error(error),

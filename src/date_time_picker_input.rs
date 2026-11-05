@@ -8,7 +8,7 @@ use crate::{
     TimeFormat, TimeGridSpec, YearMonth,
 };
 use glory::render::{Direction, FormControl, NodeId};
-use glory::style::{Align, Display, Length, Style};
+use glory::style::Display;
 use glory::ui::{Result, Widget};
 use glory::{Cage, Scope, Vary};
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -71,6 +71,9 @@ pub struct DateTimePicker {
     time_steps: [u8; 3],
     clearable: bool,
     clear_label: String,
+    trigger_label: Vary<String>,
+    title: Vary<String>,
+    close_label: Vary<String>,
     readonly: Vary<bool>,
     required: Vary<bool>,
     invalid: Vary<bool>,
@@ -128,6 +131,9 @@ pub fn date_time_picker(
         time_steps: [1; 3],
         clearable: false,
         clear_label: "Clear date and time".into(),
+        trigger_label: "Choose date and time".into(),
+        title: "Date and time".into(),
+        close_label: "Close date and time".into(),
         readonly: false.into(),
         required: false.into(),
         invalid: false.into(),
@@ -235,6 +241,18 @@ impl DateTimePicker {
     }
     pub fn clear_label(mut self, value: impl Into<String>) -> Self {
         self.clear_label = value.into();
+        self
+    }
+    pub fn trigger_label(mut self, value: impl Into<Vary<String>>) -> Self {
+        self.trigger_label = value.into();
+        self
+    }
+    pub fn title(mut self, value: impl Into<Vary<String>>) -> Self {
+        self.title = value.into();
+        self
+    }
+    pub fn close_label(mut self, value: impl Into<Vary<String>>) -> Self {
+        self.close_label = value.into();
         self
     }
     pub fn readonly(mut self, v: impl Into<Vary<bool>>) -> Self {
@@ -496,42 +514,32 @@ impl Widget for DateTimePicker {
             }
             Some(s)
         });
-        let wrapper = scope.cage(None);
-        glory::ui::view()
-            .class("sapid-date-time-picker")
-            .style(Style {
-                align: Some(Align::Center),
-                ..Style::new().display(Display::Flex).gap(8.)
-            })
-            .node_ref(wrapper)
-            .show_in(scope)?;
-        let content = scope.child_in(wrapper.get().ok_or(glory::ui::Error::Gone)?)?;
-        let (class, appearance) = self.common.appearance(
+        let content = crate::input_actions::frame(scope, &self.common, "sapid-date-time-picker")?;
+        let class = self.common.classes(scope, "sapid-date-time-display");
+        let style = crate::input_actions::display_style(
             scope,
-            "sapid-date-time-display",
-            self.common.theme.control(self.common.size),
+            &self.common,
+            enabled.clone(),
+            metadata.into(),
+            if self.clearable { 2 } else { 1 },
         );
-        let style = scope.bond(move || {
-            let mut s = appearance.get();
-            s.width.get_or_insert(Length::Px(260.));
-            s.min_height.get_or_insert(Length::Px(32.));
-            s
-        });
+        let display_ref = self.common.node_ref.unwrap_or_else(|| scope.cage(None));
         let mut input = glory::ui::input()
             .class(class)
             .style(style)
             .enabled(enabled.clone())
             .focus(self.common.focus)
+            .node_ref(display_ref)
             .value(accepted.map(move |v| {
                 v.0.map(|value| display_format.format(value, format))
                     .unwrap_or_default()
             }))
-            .semantics(metadata);
+            .semantics(crate::input_actions::display_metadata(
+                scope,
+                metadata.into(),
+            ));
         if let Some(v) = self.common.name.take() {
             input = input.name(v);
-        }
-        if let Some(r) = self.common.node_ref {
-            input = input.node_ref(r);
         }
         for (kind, mut handlers) in std::mem::take(&mut self.common.handlers) {
             input = input.on(kind, move |e| {
@@ -539,47 +547,64 @@ impl Widget for DateTimePicker {
             });
         }
         input.show_in(&content)?;
+        crate::input_actions::submission(
+            &content,
+            metadata.into(),
+            accepted
+                .map(|value| {
+                    value
+                        .0
+                        .map(crate::format_local_date_time)
+                        .unwrap_or_default()
+                })
+                .into(),
+            enabled.clone(),
+        )?;
         if self.clearable {
-            let clear_control = control.clone();
-            let clear_changed = changed.clone();
-            let clear_owner = owner;
-            let clear_weak = scope.downgrade();
-            let clear_visible = accepted.map(|value| value.0.is_some());
-            let clear_ready_enabled = enabled.clone();
-            let clear_ready_readonly = readonly.clone();
-            let clear_ready =
-                scope.bond(move || clear_ready_enabled.get() && !clear_ready_readonly.get());
-            let clear_label = self.clear_label.clone();
-            let theme = self.common.theme.clone();
-            let size = self.common.size;
-            let unstyled = self.common.unstyled;
-            glory::ui::when(clear_visible, move || {
-                let control = clear_control.clone();
-                let changed = clear_changed.clone();
-                let weak = clear_weak.clone();
-                let mut clear = crate::button()
-                    .theme(theme.clone())
-                    .size(size)
-                    .variant(crate::ButtonVariant::Subtle)
-                    .compact(true)
-                    .class("sapid-date-time-clear")
-                    .name(clear_label.clone())
-                    .label(clear_label.clone())
-                    .enabled(clear_ready)
-                    .on_press(move || match control.accept(&None) {
-                        Ok(()) => changed.emit(clear_owner, None),
-                        Err(error) => {
-                            if let Some(scope) = weak.upgrade() {
-                                scope.report_error(error);
-                            }
+            let clear_enabled = enabled.clone();
+            let clear_readonly = readonly.clone();
+            let available = scope.bond(move || {
+                clear_enabled.get()
+                    && !clear_readonly.get()
+                    && accepted.with(|value| value.0.is_some())
+            });
+            let style = crate::input_actions::action_style(&self.common, 1);
+            let control = control.clone();
+            let callback = changed.clone();
+            let weak = scope.downgrade();
+            glory::ui::button()
+                .name(self.clear_label.clone())
+                .class("sapid-date-time-clear")
+                .fill(crate::input_actions::glyph(
+                    crate::Icon::Close,
+                    self.common.theme.muted,
+                ))
+                .style(scope.bond(move || {
+                    let mut style = style.clone();
+                    if !accepted.with(|value| value.0.is_some()) {
+                        style.display = Some(Display::None);
+                    }
+                    style
+                }))
+                .enabled(available)
+                .on(glory::render::EventKind::Activate, move |_| {
+                    if !available.get() {
+                        return;
+                    }
+                    let Some(scope) = weak.upgrade() else { return };
+                    let result = (|| -> Result {
+                        control.accept(&None)?;
+                        callback.emit(owner, None);
+                        if owner.is_alive() {
+                            composite::focus_node(&scope, display_ref.get())?;
                         }
-                    });
-                if unstyled {
-                    clear = clear.unstyled();
-                }
-                clear
-            })
-            .show_in(&content)?;
+                        Ok(())
+                    })();
+                    if let Err(error) = result {
+                        scope.report_error(error);
+                    }
+                })
+                .show_in(&content)?;
         }
         let key = format!("{}-inline", self.key);
         let provider = self.provider.clone();
@@ -617,9 +642,14 @@ impl Widget for DateTimePicker {
         let changed_control = control.clone();
         let focus = composite::id("dialog", &format!("{}-dialog", self.key), "close", "root")?;
         let mut dialog = crate::dialog(format!("{}-dialog", self.key))
-            .label("Choose date and time")
-            .title("Date and time")
-            .close_label("Close date and time")
+            .label(self.trigger_label.clone())
+            .title(self.title.clone())
+            .close_label(self.close_label.clone())
+            .trigger_style(crate::input_actions::action_style(&self.common, 0))
+            .trigger_content({
+                let color = self.common.theme.muted;
+                move || crate::input_actions::glyph(crate::Icon::Calendar, color)
+            })
             .initial_focus(focus)
             .theme(theme.clone())
             .size(size)
@@ -656,41 +686,45 @@ impl Widget for DateTimePicker {
                         .bounds(bounds.clone())
                         .reset_revision(revision.clone())
                         .format(format)
-                        .presets(presets.clone())
-                        .time_dropdown(time_dropdown)
-                        .reverse_time_controls(time_reverse_controls)
-                        .max_time_dropdown_height(time_max_dropdown_height)
-                        .time_steps(time_steps[0], time_steps[1], time_steps[2])
-                        .theme(theme.clone())
-                        .size(size)
-                        .enabled(active.clone())
-                        .readonly(readonly.clone())
-                        .direction(direction)
-                        .default_level(default_level)
-                        .max_level(max_level)
-                        .number_of_columns(columns)
-                        .hide_outside_dates(hide_outside_dates)
-                        .hide_weekdays(hide_weekdays)
-                        .with_week_numbers(week_numbers)
-                        .on_value_change(move |v| {
-                            if owner.is_alive() && c.accept(&v).is_ok() {
-                                changed.emit(owner, v);
-                            }
-                        })
-                        .on_draft_change(move |v| drafted.emit(owner, v))
-                        .on_resolved(move |v| resolved.emit(owner, v))
-                        .on_reject(move |v| rejected.emit(owner, v))
-                        .on_month_change(move |value| month_changed.emit(owner, value))
-                        .on_level_change(move |value| level_changed.emit(owner, value))
-                        .on_commit(move |v| {
-                            committed.emit(owner, v);
-                            if owner.is_alive()
-                                && accepted_source.try_get().ok() == Some(v.map(|v| v.local))
-                                && close.accept(&false).is_ok()
-                            {
-                                opened.emit(owner, false);
-                            }
-                        });
+                        .presets(presets.clone());
+                picker = picker
+                    .time_dropdown(time_dropdown)
+                    .reverse_time_controls(time_reverse_controls)
+                    .max_time_dropdown_height(time_max_dropdown_height)
+                    .time_steps(time_steps[0], time_steps[1], time_steps[2]);
+                picker = picker
+                    .theme(theme.clone())
+                    .size(size)
+                    .enabled(active.clone())
+                    .readonly(readonly.clone())
+                    .direction(direction);
+                picker = picker
+                    .default_level(default_level)
+                    .max_level(max_level)
+                    .number_of_columns(columns)
+                    .hide_outside_dates(hide_outside_dates)
+                    .hide_weekdays(hide_weekdays)
+                    .with_week_numbers(week_numbers);
+                picker = picker
+                    .on_value_change(move |v| {
+                        if owner.is_alive() && c.accept(&v).is_ok() {
+                            changed.emit(owner, v);
+                        }
+                    })
+                    .on_draft_change(move |v| drafted.emit(owner, v))
+                    .on_resolved(move |v| resolved.emit(owner, v))
+                    .on_reject(move |v| rejected.emit(owner, v))
+                    .on_month_change(move |value| month_changed.emit(owner, value))
+                    .on_level_change(move |value| level_changed.emit(owner, value))
+                    .on_commit(move |v| {
+                        committed.emit(owner, v);
+                        if owner.is_alive()
+                            && accepted_source.try_get().ok() == Some(v.map(|v| v.local))
+                            && close.accept(&false).is_ok()
+                        {
+                            opened.emit(owner, false);
+                        }
+                    });
                 if let Some(value) = columns_to_scroll {
                     picker = picker.columns_to_scroll(value);
                 }

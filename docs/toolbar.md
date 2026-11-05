@@ -40,3 +40,20 @@ typed Navigate 以及选择栏显示切换后的相同 engine identity；typed d
 垂直及非循环、动态 disabled、真实 AX Toolbar/Group、拒绝清空再接受、手机
 宽度与 Owner 清理。报告 `D:/BuildCache/sapid/toolbar-browser-web14.json`；
 原生 `toolbar-native.log`，green-dark hydration 截图已生成。
+
+## ActionBar documentation and narrow layout (2026-11-05)
+
+The public ActionBar primary uses real local project selection and actual archive
+results. Three complete source sections cover selection, opt-in fixed placement
+and grouped RTL keyboard actions. Count text uses theme metrics; the frame and
+horizontal groups wrap while retaining single-line button labels and physical
+identities through viewport changes. Navigation remains the existing roving
+controller. See [Overlay pages](overlay-pages.md).
+
+## Complete public toolbar examples
+
+The public primary and grouped examples use actual pressed-state buttons and
+30 px icon-only Undo/Redo hit boxes with separate accessible names. Keyboard
+examples cover disabled items, group boundaries, Home/End, vertical and RTL
+direction; OverflowList composition is explicit. See [the page contracts and
+validation scope](misc-pages.md).

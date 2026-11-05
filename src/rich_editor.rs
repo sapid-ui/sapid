@@ -6,7 +6,8 @@ use glory::render::{
     RichDocument, RichFormat, RichMarks, RichSelection, RichSnapshot, Semantics,
 };
 use glory::style::{
-    Display, FlexDirection, Length, Overflow, PointerEvents, Position, Style, WhiteSpace,
+    BorderStyle, Display, Edges, FlexDirection, FlexWrap, Length, Overflow, PointerEvents,
+    Position, Style, WhiteSpace,
 };
 use glory::ui::{Result, Widget};
 use glory::{Cage, Scope, Vary};
@@ -14,6 +15,135 @@ use std::{cell::RefCell, collections::VecDeque, rc::Rc};
 
 pub const MAX_EDITOR_HISTORY: usize = 32;
 pub const MAX_EDITOR_HISTORY_BYTES: usize = 2 * 1024 * 1024;
+pub const MAX_EDITOR_TOOLBAR_ACTIONS: usize = 16;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum EditorToolbarAction {
+    Bold,
+    Italic,
+    Code,
+    Undo,
+    Redo,
+    Paragraph,
+    Heading(u8),
+    Quote,
+}
+impl EditorToolbarAction {
+    fn command(self) -> Option<RichCommand> {
+        Some(match self {
+            Self::Bold => RichCommand::Bold,
+            Self::Italic => RichCommand::Italic,
+            Self::Code => RichCommand::Code,
+            Self::Undo => RichCommand::Undo,
+            Self::Redo => RichCommand::Redo,
+            _ => return None,
+        })
+    }
+    fn block(self) -> Option<render::RichBlockKind> {
+        Some(match self {
+            Self::Paragraph => render::RichBlockKind::Paragraph,
+            Self::Heading(level) => render::RichBlockKind::Heading(level),
+            Self::Quote => render::RichBlockKind::Quote,
+            _ => return None,
+        })
+    }
+    fn name(self) -> String {
+        match self {
+            Self::Bold => "Bold".into(),
+            Self::Italic => "Italic".into(),
+            Self::Code => "Code".into(),
+            Self::Undo => "Undo".into(),
+            Self::Redo => "Redo".into(),
+            Self::Paragraph => "Paragraph".into(),
+            Self::Heading(2) => "Heading".into(),
+            Self::Heading(level) => format!("Heading {level}"),
+            Self::Quote => "Quote".into(),
+        }
+    }
+    fn glyph(self) -> &'static str {
+        match self {
+            Self::Bold => "B",
+            Self::Italic => "I",
+            Self::Code => "</>",
+            Self::Undo => "↶",
+            Self::Redo => "↷",
+            Self::Paragraph => "¶",
+            Self::Heading(1) => "H1",
+            Self::Heading(2) => "H2",
+            Self::Heading(3) => "H3",
+            Self::Heading(4) => "H4",
+            Self::Heading(5) => "H5",
+            Self::Heading(6) => "H6",
+            Self::Heading(_) => "H?",
+            Self::Quote => "❞",
+        }
+    }
+    fn pressed(self, state: ToolbarState) -> Option<bool> {
+        match self {
+            Self::Bold => Some(state.bold),
+            Self::Italic => Some(state.italic),
+            Self::Code => Some(state.code),
+            Self::Undo | Self::Redo => None,
+            _ => Some(state.block == self.block()),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+struct ToolbarState {
+    bold: bool,
+    italic: bool,
+    code: bool,
+    block: Option<render::RichBlockKind>,
+}
+fn toolbar_state(document: &RichDocument, selection: RichSelection) -> ToolbarState {
+    if document.validate_selection(selection).is_err() {
+        return ToolbarState::default();
+    }
+    let (start, end) = selection.ordered();
+    let first_kind = document.blocks[start.block].kind;
+    let mut uniform = true;
+    let (mut found, mut bold, mut italic, mut code) = (false, true, true, true);
+    for (index, block) in document
+        .blocks
+        .iter()
+        .enumerate()
+        .take(end.block + 1)
+        .skip(start.block)
+    {
+        uniform &= block.kind == first_kind;
+        if selection.is_collapsed() {
+            continue;
+        }
+        let first = if index == start.block {
+            start.offset
+        } else {
+            0
+        };
+        let last = if index == end.block {
+            end.offset
+        } else {
+            block.utf16_len()
+        };
+        let mut position = 0;
+        for run in &block.runs {
+            let length = run.text.encode_utf16().count();
+            if position < last && position + length > first {
+                found = true;
+                bold &= run.marks.bold;
+                italic &= run.marks.italic;
+                code &= run.marks.code;
+            }
+            position += length;
+        }
+    }
+    ToolbarState {
+        bold: found && bold,
+        italic: found && italic,
+        code: found && code,
+        block: uniform.then_some(first_kind),
+    }
+}
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct EditorHistory {
     pub undo: usize,
@@ -355,42 +485,12 @@ impl EditorController {
             }
             _ => {
                 self.query(move |snapshot| {
-                    let (start, end) = snapshot.selection.ordered();
-                    let mut marked = true;
-                    let mut found = false;
-                    for (index, block) in snapshot
-                        .document
-                        .blocks
-                        .iter()
-                        .enumerate()
-                        .take(end.block + 1)
-                        .skip(start.block)
-                    {
-                        let mut position = 0;
-                        for run in &block.runs {
-                            let length = run.text.encode_utf16().count();
-                            let first = if index == start.block {
-                                start.offset
-                            } else {
-                                0
-                            };
-                            let last = if index == end.block {
-                                end.offset
-                            } else {
-                                block.utf16_len()
-                            };
-                            if position < last && position + length > first {
-                                found = true;
-                                marked &= match command {
-                                    RichCommand::Bold => run.marks.bold,
-                                    RichCommand::Italic => run.marks.italic,
-                                    _ => run.marks.code,
-                                };
-                            }
-                            position += length;
-                        }
-                    }
-                    let value = !(found && marked);
+                    let flags = toolbar_state(&snapshot.document, snapshot.selection);
+                    let value = !match command {
+                        RichCommand::Bold => flags.bold,
+                        RichCommand::Italic => flags.italic,
+                        _ => flags.code,
+                    };
                     let format = match command {
                         RichCommand::Bold => RichFormat::Bold(value),
                         RichCommand::Italic => RichFormat::Italic(value),
@@ -412,6 +512,7 @@ pub struct RichTextEditor {
     initial: Rc<RichDocument>,
     readonly: Vary<bool>,
     toolbar: bool,
+    toolbar_actions: Vec<EditorToolbarAction>,
     subtle: bool,
     placeholder: Vary<String>,
     controller_ref: Option<Cage<Option<EditorController>>>,
@@ -428,6 +529,16 @@ pub fn rich_text_editor() -> RichTextEditor {
         initial: Rc::new(RichDocument::default()),
         readonly: false.into(),
         toolbar: true,
+        toolbar_actions: vec![
+            EditorToolbarAction::Bold,
+            EditorToolbarAction::Italic,
+            EditorToolbarAction::Code,
+            EditorToolbarAction::Undo,
+            EditorToolbarAction::Redo,
+            EditorToolbarAction::Paragraph,
+            EditorToolbarAction::Heading(2),
+            EditorToolbarAction::Quote,
+        ],
         subtle: false,
         placeholder: String::new().into(),
         controller_ref: None,
@@ -452,6 +563,17 @@ impl RichTextEditor {
         self.toolbar = value;
         self
     }
+    /// A static bounded command declaration; heading levels are 1–6.
+    pub fn toolbar_actions(
+        mut self,
+        actions: impl IntoIterator<Item = EditorToolbarAction>,
+    ) -> Self {
+        self.toolbar_actions = actions
+            .into_iter()
+            .take(MAX_EDITOR_TOOLBAR_ACTIONS + 1)
+            .collect();
+        self
+    }
     pub fn subtle(mut self, value: bool) -> Self {
         self.subtle = value;
         self
@@ -471,6 +593,22 @@ impl RichTextEditor {
 }
 impl Widget for RichTextEditor {
     fn build(&mut self, scope: &Scope) -> Result {
+        if self.toolbar_actions.len() > MAX_EDITOR_TOOLBAR_ACTIONS
+            || self.toolbar && self.toolbar_actions.is_empty()
+            || self
+                .toolbar_actions
+                .iter()
+                .enumerate()
+                .any(|(index, action)| {
+                    matches!(action,EditorToolbarAction::Heading(level) if !(1..=6).contains(level))
+                        || self.toolbar_actions[..index].contains(action)
+                })
+        {
+            return Err(render::Error::InvalidProps(
+                "rich toolbar requires unique finite actions and heading levels 1–6",
+            )
+            .into());
+        }
         let initial = if let Some(source) = &self.source {
             source.try_get()?
         } else {
@@ -530,74 +668,95 @@ impl Widget for RichTextEditor {
             let readonly = self.readonly.clone();
             let available =
                 scope.bond(move || enabled.get() && !readonly.get() && !composing.get());
+            let accepted = state.accepted;
+            let selection = state.accepted_selection;
+            let formatting = scope
+                .bond(move || accepted.with(|document| toolbar_state(document, selection.get())));
+            let mut toolbar_style = Style::new()
+                .flex_wrap(FlexWrap::Wrap)
+                .gap(2.)
+                .min_width(Length::Px(0.));
+            if !self.common.unstyled {
+                toolbar_style = toolbar_style.padding(Edges::all(4.));
+                if !self.subtle {
+                    toolbar_style = toolbar_style
+                        .border_style(BorderStyle::Solid)
+                        .border_color(self.common.theme.border)
+                        .border_width(Edges {
+                            top: 0.,
+                            bottom: 1.,
+                            left: 0.,
+                            right: 0.,
+                        });
+                }
+            }
             let mut toolbar = crate::button_group()
                 .toolbar(true)
+                .joined(false)
+                .class("sapid-rich-toolbar")
                 .name("Rich text formatting")
-                .theme(self.common.theme.clone());
+                .theme(self.common.theme.clone())
+                .size(self.common.size)
+                .style(toolbar_style);
             if self.common.unstyled {
                 toolbar = toolbar.unstyled();
             }
-            for (label, command) in [
-                ("Bold", RichCommand::Bold),
-                ("Italic", RichCommand::Italic),
-                ("Code", RichCommand::Code),
-                ("Undo", RichCommand::Undo),
-                ("Redo", RichCommand::Redo),
-            ] {
+            for action in self.toolbar_actions.iter().copied() {
                 let current = controller.clone();
                 let weak = scope.downgrade();
                 let active = scope.bond(move || {
                     available.get()
-                        && match command {
-                            RichCommand::Undo => history.get().undo > 0,
-                            RichCommand::Redo => history.get().redo > 0,
+                        && match action {
+                            EditorToolbarAction::Undo => history.get().undo > 0,
+                            EditorToolbarAction::Redo => history.get().redo > 0,
                             _ => true,
                         }
                 });
                 let mut button = crate::button()
-                    .label(label)
+                    .label(action.glyph())
+                    .name(action.name())
                     .theme(self.common.theme.clone())
-                    .variant(if self.subtle {
-                        crate::ButtonVariant::Subtle
-                    } else {
-                        crate::ButtonVariant::Primary
+                    .variant(crate::ButtonVariant::Subtle)
+                    .compact(true)
+                    .style(Style {
+                        shrink: Some(0.),
+                        font_weight: Some(if action == EditorToolbarAction::Bold {
+                            700.
+                        } else {
+                            400.
+                        }),
+                        ..Style::new()
+                            .min_width(Length::Px(28.))
+                            .white_space(WhiteSpace::NoWrap)
+                            .padding(Edges {
+                                top: 2.,
+                                bottom: 2.,
+                                left: 6.,
+                                right: 6.,
+                            })
                     })
                     .enabled(active)
                     .on_press(move || {
-                        if let Err(error) = current.toggle(command)
+                        let result = if let Some(command) = action.command() {
+                            current.toggle(command)
+                        } else {
+                            current
+                                .format(RichFormat::Block(
+                                    action.block().expect("validated block action"),
+                                ))
+                                .map(|_| ())
+                        };
+                        if let Err(error) = result
                             && let Some(scope) = weak.upgrade()
                         {
                             scope.report_error(error);
                         }
                     });
-                if self.common.unstyled {
-                    button = button.unstyled();
+                if action.pressed(ToolbarState::default()).is_some() {
+                    button = button.pressed(scope.bond(move || {
+                        action.pressed(formatting.get()).expect("formatting action")
+                    }));
                 }
-                toolbar = toolbar.button(button);
-            }
-            for (label, kind) in [
-                ("Paragraph", render::RichBlockKind::Paragraph),
-                ("Heading", render::RichBlockKind::Heading(2)),
-                ("Quote", render::RichBlockKind::Quote),
-            ] {
-                let current = controller.clone();
-                let weak = scope.downgrade();
-                let mut button = crate::button()
-                    .label(label)
-                    .theme(self.common.theme.clone())
-                    .variant(if self.subtle {
-                        crate::ButtonVariant::Subtle
-                    } else {
-                        crate::ButtonVariant::Primary
-                    })
-                    .enabled(available)
-                    .on_press(move || {
-                        if let Err(error) = current.format(RichFormat::Block(kind))
-                            && let Some(scope) = weak.upgrade()
-                        {
-                            scope.report_error(error);
-                        }
-                    });
                 if self.common.unstyled {
                     button = button.unstyled();
                 }

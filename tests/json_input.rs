@@ -53,6 +53,105 @@ fn edit(app: &App, id: NodeId, value: &str) {
 }
 
 #[test]
+fn blur_formatting_proposes_current_text_and_preserves_controlled_refusal() {
+    for allow in [false, true] {
+        let app = App::memory();
+        let value = app.scope().cage("{\"a\":1}".to_owned());
+        let log = Rc::new(RefCell::new(Vec::new()));
+        let changed = log.clone();
+        let formatted = log.clone();
+        let observed = log.clone();
+        app.mount(
+            json_input("blur-controlled")
+                .value(value)
+                .show_formatter(false)
+                .format_on_blur(true)
+                .on_value_change(move |next| {
+                    changed.borrow_mut().push("change");
+                    if allow {
+                        value.revise(|v| *v = next)
+                    }
+                })
+                .on_format(move |_| formatted.borrow_mut().push("format"))
+                .on(EventKind::FocusChanged, move |event| {
+                    if matches!(event, Event::FocusChanged(false)) {
+                        observed.borrow_mut().push("blur")
+                    }
+                }),
+        )
+        .unwrap();
+        let editor = find(&app, "sapid-textarea");
+        app.dispatch(editor, Event::FocusChanged(true)).unwrap();
+        app.dispatch(editor, Event::FocusChanged(false)).unwrap();
+        assert_eq!(*log.borrow(), ["change", "format", "blur"]);
+        assert_eq!(
+            props(&app, editor).value,
+            if allow {
+                "{\n  \"a\": 1\n}"
+            } else {
+                "{\"a\":1}"
+            }
+        );
+    }
+}
+#[test]
+fn blur_formatting_uses_last_edit_in_one_packet_and_leaves_invalid_composition_unavailable_drafts_alone()
+ {
+    let app = App::memory();
+    app.mount(json_input("blur-local").format_on_blur(true))
+        .unwrap();
+    let id = find(&app, "sapid-textarea");
+    app.scope()
+        .batch(|| {
+            app.dispatch(
+                id,
+                Event::ValueChanged {
+                    value: "{\"b\":2}".into(),
+                    revision: props(&app, id).revision,
+                    composing: false,
+                },
+            )
+            .unwrap();
+            app.dispatch(id, Event::FocusChanged(false)).unwrap();
+        })
+        .unwrap();
+    assert_eq!(props(&app, id).value, "{\n  \"b\": 2\n}");
+    for mode in 0..4 {
+        let app = App::memory();
+        let unavailable = app.scope().cage(false);
+        let formats = app.scope().cage(0);
+        app.mount(
+            field("blur-policy")
+                .readonly(unavailable.map(move |v| *v && mode == 2))
+                .enabled(unavailable.map(move |v| !*v || mode != 3))
+                .control(move |field| {
+                    json_input("blur-policy-editor")
+                        .field(field)
+                        .default_value(if mode == 0 { "{" } else { "{\"a\":1}" })
+                        .format_on_blur(true)
+                        .on_format(move |_| formats.revise(|n| *n += 1))
+                }),
+        )
+        .unwrap();
+        let id = find(&app, "sapid-textarea");
+        if mode == 1 {
+            app.dispatch(id, Event::Composition { active: true })
+                .unwrap();
+        }
+        app.scope()
+            .batch(|| {
+                unavailable.revise(|v| *v = true);
+                app.dispatch(id, Event::FocusChanged(false)).unwrap();
+            })
+            .unwrap();
+        assert_eq!(formats.get(), 0, "mode {mode}");
+        assert_eq!(
+            props(&app, id).value,
+            if mode == 0 { "{" } else { "{\"a\":1}" }
+        );
+    }
+}
+#[test]
 fn malformed_draft_remains_editable_and_validation_does_not_rewrite_its_value() {
     let app = App::memory();
     let states = Rc::new(RefCell::new(Vec::new()));

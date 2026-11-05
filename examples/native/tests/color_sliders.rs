@@ -155,3 +155,70 @@ fn native_hue_and_alpha_four_themes_have_real_color_pixels_and_shared_control_id
         assert_eq!(app.stats().queries, 0);
     }
 }
+
+#[test]
+fn alpha_background_alternates_in_both_axes_instead_of_a_flat_gray_gradient() {
+    for theme in [
+        sapid::Theme::blue_light(),
+        sapid::Theme::blue_dark(),
+        sapid::Theme::green_light(),
+        sapid::Theme::green_dark(),
+    ] {
+        let host = WindowApp::new();
+        let dark = theme.checker_dark;
+        let light = theme.checker_light;
+        host.mount(
+            sapid::alpha_slider("checker-pixels")
+                .theme(theme)
+                .color(light)
+                .default_value(1.)
+                .style(Style::new().width(Length::Px(240.))),
+        )
+        .unwrap();
+        let app = host.app();
+        app.settle(16).unwrap();
+        let layer = classes(app, "sapid-alpha-slider-background")[0];
+        let rect = bounds(app, layer);
+        let mut raster = Raster::new();
+        raster.draw(host.renderer()).unwrap();
+        close(
+            pixel(&raster, rect.x + 2., rect.y + 1.),
+            [dark.0, dark.1, dark.2, 255],
+        );
+        close(
+            pixel(&raster, rect.x + 2., rect.y + 3.),
+            [light.0, light.1, light.2, 255],
+        );
+        close(
+            pixel(&raster, rect.x + 7., rect.y + 1.),
+            [light.0, light.1, light.2, 255],
+        );
+        close(
+            pixel(&raster, rect.x + 7., rect.y + 3.),
+            [dark.0, dark.1, dark.2, 255],
+        );
+    }
+}
+
+#[test]
+fn hue_middle_represents_180_degree_cyan() {
+    let host = WindowApp::new();
+    host.mount(
+        sapid::hue_slider("cyan-middle")
+            .default_value(0.)
+            .style(Style::new().width(Length::Px(240.))),
+    )
+    .unwrap();
+    let app = host.app();
+    app.settle(16).unwrap();
+    let rect = bounds(app, classes(app, "sapid-color-slider-overlay")[0]);
+    let mut raster = Raster::new();
+    raster.draw(host.renderer()).unwrap();
+    let actual = pixel(&raster, rect.x + rect.width / 2., rect.y + 0.5);
+    for (actual, expected) in actual.into_iter().zip([0, 255, 255, 255]) {
+        assert!(
+            actual.abs_diff(expected) <= 4,
+            "midpoint must represent cyan, not 170-degree green-cyan"
+        );
+    }
+}

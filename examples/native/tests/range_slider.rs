@@ -61,6 +61,7 @@ fn range_slider_native_four_themes_share_real_track_geometry_and_preserve_both_t
                     .orientation(axis)
                     .direction(direction)
                     .minimum_gap(10.)
+                    .collision(sapid::RangeCollision::Clamp)
                     .node_ref(root)
                     .thumb_ref(sapid::RangeThumb::Lower, lower)
                     .thumb_ref(sapid::RangeThumb::Upper, upper)
@@ -172,6 +173,7 @@ fn range_slider_native_readonly_singleton_thumb_stays_focusable_and_recovers_wit
     host.mount(
         sapid::range_slider("fixed")
             .minimum_gap(10.)
+            .collision(sapid::RangeCollision::Clamp)
             .default_value([0., 10.])
             .thumb_ref(sapid::RangeThumb::Lower, lower)
             .thumb_ref(sapid::RangeThumb::Upper, upper),
@@ -221,5 +223,47 @@ fn range_slider_native_readonly_singleton_thumb_stays_focusable_and_recovers_wit
             .engine_id(low, glory::html::Part::Main)
             .unwrap(),
         identity
+    );
+}
+#[test]
+fn default_push_policy_moves_the_pair_without_making_a_singleton_thumb_readonly() {
+    let host = WindowApp::new();
+    let app = host.app();
+    let lower = app.scope().cage(None);
+    let upper = app.scope().cage(None);
+    host.mount(
+        sapid::range_slider("push-default")
+            .minimum_gap(10.)
+            .default_value([0., 10.])
+            .thumb_ref(sapid::RangeThumb::Lower, lower)
+            .thumb_ref(sapid::RangeThumb::Upper, upper),
+    )
+    .unwrap();
+    app.settle(16).unwrap();
+    let low = lower.get().unwrap();
+    let high = upper.get().unwrap();
+    let physical = host
+        .renderer()
+        .engine_id(low, glory::html::Part::Main)
+        .unwrap();
+    assert!(
+        app.dispatch(
+            low,
+            Event::Range {
+                from: low,
+                command: RangeCommand::Increase
+            }
+        )
+        .unwrap()
+    );
+    app.settle(16).unwrap();
+    assert_eq!([value(app, low), value(app, high)], [1., 11.]);
+    assert_eq!(lower.get(), Some(low));
+    assert_eq!(upper.get(), Some(high));
+    assert_eq!(
+        host.renderer()
+            .engine_id(low, glory::html::Part::Main)
+            .unwrap(),
+        physical
     );
 }

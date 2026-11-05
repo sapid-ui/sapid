@@ -777,12 +777,18 @@ impl Widget for InlineDateTimeRangePicker {
                 _ => String::new(),
             }))
             .show_in(&content)?;
+        let actions = crate::input_actions::footer_row(&content, "sapid-date-time-actions")?;
         for (clear, label) in [(true, "Clear date and time range"), (false, "Done")] {
             let action = state.clone();
             crate::button()
                 .theme(self.common.theme.clone())
                 .size(self.common.size)
                 .label(label)
+                .variant(if clear {
+                    crate::ButtonVariant::Subtle
+                } else {
+                    crate::ButtonVariant::Primary
+                })
                 .enabled(accepted.map(|snapshot| snapshot.enabled && !snapshot.readonly))
                 .on_press(move || {
                     action.report(if clear {
@@ -793,6 +799,7 @@ impl Widget for InlineDateTimeRangePicker {
                 })
                 .show_in(&content)?;
         }
+        scope.retain(actions)?;
         let weak = Rc::downgrade(&state);
         let mut previous = initial;
         scope.effect(move || {

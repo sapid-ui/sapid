@@ -50,7 +50,10 @@ rejection preserves the previous accepted visual and accessible value while
 leaving the external source unchanged.
 
 Each current formatted position has a short keyed Owner. Numeric positions have
-ten fixed rows (0 through 9), a monospace `1ch` cell and 24px line geometry;
+ten rows (0 through 9) and a monospace `1ch` cell. Line geometry follows the
+reactive explicit line-height, or explicit font-size with the selected theme
+line/font ratio; the original default remains 24px. Row height and translation
+distance change together on the retained reel;
 punctuation/sign/currency positions are static text. Surviving positions retain
 their reel identity. Removing a position or switching its digit/literal kind
 retires its previous Owner. New digits first appear at their accepted value;
@@ -92,3 +95,12 @@ after End and cleanup of the ready root:
 `text-motion-green-dark-hydrate.png` and `translation-green-dark-hydrate.png`
 were visually inspected. Browser AX and headless native focus/raster evidence
 do not establish screen-reader speech or OS motion preference integration.
+
+## Current public examples
+
+The Marquee page has independent complete sources for direction, cycle duration,
+pause and static presentation. It exposes one accessible original and inert visual
+copies. Browser acceptance covers live Reduce and restoration. Current native
+clock/layout checks are rerun from `examples/native/tests/text_motion.rs`; see
+[miscellaneous page contracts](misc-pages.md) and [data display changes](data-display-pages.md)
+for reactive RollingNumber font geometry and the normal-project-target evidence.

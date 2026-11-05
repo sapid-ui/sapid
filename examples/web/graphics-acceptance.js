@@ -22,7 +22,7 @@ async(hostPage)=>{
       await page.getByRole('button',{name:'Toggle marker',exact:true}).click();await page.waitForFunction(()=>getComputedStyle(document.querySelector('.graphics-indicator>.sapid-indicator-marker')).display!=='none');
       const cdp=await context.newCDPSession(page);const ax=await cdp.send('Accessibility.getFullAXTree');await cdp.detach();const images=ax.nodes.filter(node=>node.role?.value==='image'&&!node.ignored);assert(images.length===2&&images.some(node=>node.name?.value==='Closed')&&images.some(node=>node.name?.value==='Information'),`${mode}: image AX alternatives/decoration`);assert(!ax.nodes.some(node=>node.role?.value==='status'),`${mode}: passive indicator became live status`);
       await page.setViewportSize({width:390,height:844});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`${mode}: narrow overflow`);await page.setViewportSize({width:1440,height:1000});
-      if(hydrate)await page.screenshot({path:`D:/BuildCache/sapid/${mode}.png`,fullPage:true});
+      if(hydrate)await page.screenshot({path:`target/verification/sapid/${mode}.png`,fullPage:true});
       await page.evaluate(()=>window.demo.unmount_display());assert(await page.locator('#app').evaluate(e=>e.childElementCount===0),`${mode}: teardown`);reports.push({suite:mode,status:'passed',checks:'real SVG namespace/path geometry, named/decorative AX, anchored markers, reactive identity, independent content, themes/mobile, cleanup'});
     }
     await page.goto('http://127.0.0.1:8794/graphics-stream.html');await page.waitForFunction(()=>document.querySelector('#graphics-stream-root')?.dataset.glyStreamState==='ready');

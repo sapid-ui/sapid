@@ -66,7 +66,7 @@ async hostPage => {
    await page.setViewportSize({width:390,height:844});await page.goto(`${base}/${slug}.html?theme=green&scheme=dark`);await page.waitForFunction(()=>window.ready===true);await turn();
    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`${slug}: narrow viewport overflow`);
    const rect=await primary().locator('.sapid-chart-plot').boundingBox();assert(rect.width>200&&rect.x>=0&&rect.x+rect.width<=390,`${slug}: actual mobile plot bounds`);
-   await page.screenshot({path:`D:/BuildCache/sapid/${slug}-green-dark-mobile.png`,fullPage:true});reports.push({mode:`${slug}-mobile`,responsive:true});
+   await page.screenshot({path:`target/verification/sapid/${slug}-green-dark-mobile.png`,fullPage:true});reports.push({mode:`${slug}-mobile`,responsive:true});
    await page.setViewportSize({width:1440,height:1100});
   }
  } finally {await context.close()}

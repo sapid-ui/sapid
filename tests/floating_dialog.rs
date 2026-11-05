@@ -95,3 +95,59 @@ fn floating_dialog_validates_names_before_nodes_and_uses_escaped_ssr_dialog_mark
     assert!(html.contains("Task &lt;complete&gt;"));
     assert!(html.contains("A &amp; B"));
 }
+
+#[test]
+fn viewport_position_uses_shared_constraints_without_changing_focus_policy() {
+    let app = App::memory();
+    let position = glory::render::ViewportPlacement {
+        x: 24.,
+        y: 90.,
+        ..Default::default()
+    };
+    app.mount(
+        floating_dialog("positioned")
+            .title("Background task")
+            .position(position),
+    )
+    .unwrap();
+    let panel = find(&app, "sapid-floating-dialog");
+    let tree = app.tree();
+    let layer = tree
+        .node(panel)
+        .unwrap()
+        .descriptor
+        .view()
+        .semantics
+        .as_ref()
+        .unwrap()
+        .layer
+        .as_ref()
+        .unwrap();
+    assert_eq!(
+        layer.placement,
+        glory::render::LayerPlacement::Viewport(position)
+    );
+    assert_eq!(layer.focus, LayerFocus::Preserve);
+    drop(tree);
+    for position in [
+        glory::render::ViewportPlacement {
+            x: f64::NAN,
+            ..Default::default()
+        },
+        glory::render::ViewportPlacement {
+            viewport_padding: 4097.,
+            ..Default::default()
+        },
+    ] {
+        let app = App::memory();
+        assert!(
+            app.mount(
+                floating_dialog("invalid")
+                    .title("Notice")
+                    .position(position)
+            )
+            .is_err()
+        );
+        assert_eq!(app.stats().nodes, 0);
+    }
+}

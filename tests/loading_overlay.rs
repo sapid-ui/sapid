@@ -276,3 +276,69 @@ fn invalid_initial_budget_and_runtime_names_or_position_retain_the_last_valid_wi
         Some("Saved")
     );
 }
+
+#[test]
+fn configured_loader_keeps_the_region_contract_and_retains_graphics_when_paused() {
+    let app = App::memory();
+    let animated = app.scope().cage(true);
+    let loading = app.scope().cage(true);
+    app.mount(
+        loading_overlay(loading)
+            .loader_type(sapid::LoaderType::Dots)
+            .loader_size(sapid::Size::Large)
+            .loader_color(Color(200, 80, 40, 255))
+            .animated(animated)
+            .fill(button().label("Retained action")),
+    )
+    .unwrap();
+    let root = app.tree().roots()[0];
+    let content = app.tree().node(root).unwrap().children[0];
+    let mask = app.tree().node(root).unwrap().children[1];
+    let spinner = app.tree().node(mask).unwrap().children[0];
+    let graphics = app.tree().node(spinner).unwrap().children.clone();
+    assert_eq!(graphics.len(), 3);
+    for graphic in &graphics {
+        let tree = app.tree();
+        let Props::Graphic(props) = tree.node(*graphic).unwrap().descriptor.view().props else {
+            panic!("graphic")
+        };
+        assert!(props.animation.is_some());
+        assert_eq!(
+            props.stroke.as_ref().unwrap().color,
+            Color(200, 80, 40, 255)
+        );
+    }
+    animated.revise(|v| *v = false);
+    app.flush().unwrap();
+    assert_eq!(app.tree().node(spinner).unwrap().children, graphics);
+    for graphic in &graphics {
+        assert!(
+            matches!(app.tree().node(*graphic).unwrap().descriptor.view().props,Props::Graphic(props) if props.animation.is_none())
+        );
+    }
+    assert!(
+        app.tree()
+            .node(content)
+            .unwrap()
+            .descriptor
+            .view()
+            .semantics
+            .as_ref()
+            .unwrap()
+            .inert
+    );
+    loading.revise(|v| *v = false);
+    app.flush().unwrap();
+    assert!(
+        !app.tree()
+            .node(content)
+            .unwrap()
+            .descriptor
+            .view()
+            .semantics
+            .as_ref()
+            .unwrap()
+            .inert
+    );
+    assert_eq!(app.tree().node(spinner).unwrap().children, graphics);
+}

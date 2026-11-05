@@ -2,39 +2,44 @@ param(
     [switch]$Serve,
     [switch]$Browser,
     [switch]$Release,
-    [string]$BuildRoot = 'D:/BuildCache/sapid',
-    [string]$Bindgen = 'D:/BuildCache/codmin-glory/tools/bin/wasm-bindgen.exe'
+    [string]$BuildRoot = '',
+    [string]$Bindgen = 'wasm-bindgen'
 )
 $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $false
 $projectRoot = Split-Path -Parent $PSScriptRoot
+Push-Location "$projectRoot/examples/web"
+try { $metadata = & cargo metadata --no-deps --format-version 1 | ConvertFrom-Json; if ($LASTEXITCODE -ne 0) { throw 'showcase metadata failed' } }
+finally { Pop-Location }
+$showcaseTarget = [IO.Path]::GetFullPath($metadata.target_directory)
+if (-not $BuildRoot) { $BuildRoot = $showcaseTarget }
 $BuildRoot = [IO.Path]::GetFullPath($BuildRoot)
-if ($BuildRoot -notmatch '^D:\\BuildCache\\sapid(?:\\|$)') { throw 'BuildRoot must be inside D:/BuildCache/sapid' }
-$showcaseBuild = "$BuildRoot/showcase"
-$showcaseTarget = "$BuildRoot/target"
+foreach ($directory in @($BuildRoot, $showcaseTarget)) {
+    $normalized = $directory.Replace('\','/').ToLowerInvariant()
+}
+$showcaseBuild = [IO.Path]::GetFullPath((Join-Path $BuildRoot 'showcase'))
+if ([IO.Path]::GetRelativePath($BuildRoot, $showcaseBuild) -ne 'showcase') { throw 'Invalid showcase output directory' }
 $savedEnvironment = @{}
-$environmentNames = @('CARGO_HOME','CARGO_TARGET_DIR','CARGO_BUILD_JOBS','CARGO_PROFILE_DEV_DEBUG','CARGO_PROFILE_TEST_DEBUG','CARGO_INCREMENTAL','TEMP','TMP','PYTHONPYCACHEPREFIX','SAPID_BUILD_ROOT','SAPID_BROWSER_OUTPUT','SAPID_SHOWCASE_BASE','SAPID_PLAYWRIGHT','SAPID_SHOWCASE_MEDIA')
+$environmentNames = @('SAPID_BUILD_ROOT','SAPID_BROWSER_OUTPUT','SAPID_SHOWCASE_BASE','SAPID_PLAYWRIGHT','SAPID_SHOWCASE_MEDIA')
 foreach ($name in $environmentNames) { $savedEnvironment[$name] = [Environment]::GetEnvironmentVariable($name, 'Process') }
 function Invoke-ShowcaseCargo {
     param([string[]]$Arguments)
-    & cargo @Arguments
-    if ($LASTEXITCODE -ne 0) { throw "showcase cargo failed: $($Arguments -join ' ')" }
+    $manifestIndex = [Array]::IndexOf($Arguments, '--manifest-path')
+    $directory = $projectRoot
+    if ($manifestIndex -ge 0) {
+        $Arguments[$manifestIndex + 1] = [IO.Path]::GetFullPath((Join-Path $projectRoot $Arguments[$manifestIndex + 1]))
+        $directory = Split-Path -Parent $Arguments[$manifestIndex + 1]
+    }
+    Push-Location $directory
+    try {
+        & cargo @Arguments
+        if ($LASTEXITCODE -ne 0) { throw "showcase cargo failed: $($Arguments -join ' ')" }
+    } finally { Pop-Location }
 }
 Push-Location $projectRoot
 try {
-    if (-not $env:CARGO_HOME) { $env:CARGO_HOME = 'D:/BuildCache/glory-semantic-ui/cargo' }
-    if ([IO.Path]::GetFullPath($env:CARGO_HOME) -notmatch '^D:\\BuildCache\\[^\\]+') { throw 'CARGO_HOME must be on D drive' }
-    $env:CARGO_TARGET_DIR = $showcaseTarget
     $env:SAPID_BUILD_ROOT = $BuildRoot
     $env:SAPID_BROWSER_OUTPUT = $BuildRoot
-    $env:CARGO_BUILD_JOBS = '1'
-    $env:CARGO_PROFILE_DEV_DEBUG = '0'
-    $env:CARGO_PROFILE_TEST_DEBUG = '0'
-    $env:CARGO_INCREMENTAL = '0'
-    $env:TEMP = "$BuildRoot/tmp"
-    $env:TMP = $env:TEMP
-    $env:PYTHONPYCACHEPREFIX = "$BuildRoot/pycache"
-    New-Item -ItemType Directory -Force -Path $env:TEMP | Out-Null
     & python "$PSScriptRoot/library_lock.py" --manifest-path Cargo.toml
     if ($LASTEXITCODE -ne 0) { throw 'Library dependency resolution failed' }
     # A clean output prevents removed assets or obsolete HTML from leaking into a release.
@@ -43,9 +48,6 @@ try {
     $mediaDirectory = & python scripts/site-assets.py prepare $showcaseBuild examples/web/assets
     if ($LASTEXITCODE -ne 0) { throw 'Media fingerprint failed' }
     $env:SAPID_SHOWCASE_MEDIA = "/$mediaDirectory"
-    $metadata = & cargo metadata --locked --manifest-path examples/web/Cargo.toml --no-deps --format-version 1 | ConvertFrom-Json
-    if ($LASTEXITCODE -ne 0) { throw 'showcase metadata failed' }
-    if ([IO.Path]::GetFullPath($metadata.target_directory) -ne [IO.Path]::GetFullPath($showcaseTarget)) { throw "Unexpected showcase target: $($metadata.target_directory)" }
     Write-Output "Showcase target verified: $($metadata.target_directory)"
     & python scripts/showcase-catalog.py --check
     if ($LASTEXITCODE -ne 0) { throw 'showcase catalog is stale' }
@@ -55,13 +57,15 @@ try {
     Invoke-ShowcaseCargo -Arguments @('test','--locked','--manifest-path','examples/web/Cargo.toml','--test','showcase_routing')
     Invoke-ShowcaseCargo -Arguments @('test','--locked','--manifest-path','examples/web/Cargo.toml','--lib')
     Invoke-ShowcaseCargo -Arguments @('clippy','--locked','--manifest-path','examples/web/Cargo.toml','--all-targets','--','-D','warnings')
-    Invoke-ShowcaseCargo -Arguments @('clippy','--locked','--manifest-path','examples/web/Cargo.toml','--lib','--target','wasm32-unknown-unknown','--','-D','warnings')
+    Invoke-ShowcaseCargo -Arguments @('clippy','--locked','--manifest-path','examples/web/Cargo.toml','--lib','--features','public-showcase','--target','wasm32-unknown-unknown','--','-D','warnings')
     if ((& $Bindgen --version).Trim() -ne 'wasm-bindgen 0.2.130') { throw 'showcase requires wasm-bindgen-cli 0.2.130' }
     $profileName = if ($Release) { 'release' } else { 'debug' }
-    $buildArguments = @('build','--locked','--manifest-path','examples/web/Cargo.toml','--lib','--target','wasm32-unknown-unknown')
+    $buildArguments = @('build','--locked','--manifest-path','examples/web/Cargo.toml','--lib','--features','public-showcase','--target','wasm32-unknown-unknown')
     if ($Release) { $buildArguments += '--release' }
     Invoke-ShowcaseCargo -Arguments $buildArguments
-    & $Bindgen "$showcaseTarget/wasm32-unknown-unknown/$profileName/sapid_web_example.wasm" --target web --out-dir $showcaseBuild
+    $bindgenArguments = @("$showcaseTarget/wasm32-unknown-unknown/$profileName/sapid_web_example.wasm", '--target', 'web', '--out-dir', $showcaseBuild)
+    if ($Release) { $bindgenArguments += '--remove-name-section' }
+    & $Bindgen @bindgenArguments
     if ($LASTEXITCODE -ne 0) { throw 'showcase wasm-bindgen failed' }
     Copy-Item -LiteralPath examples/web/site.css -Destination "$showcaseBuild/site.css"
     Copy-Item -LiteralPath styles/sapid.css -Destination "$showcaseBuild/sapid.css"
@@ -84,8 +88,8 @@ try {
     if ($Serve) {
         $listener = Get-NetTCPConnection -LocalAddress 127.0.0.1 -LocalPort 8795 -State Listen -ErrorAction SilentlyContinue
         if (-not $listener) {
-            $server = Start-Process -FilePath 'python' -ArgumentList @('-m','http.server','8795','--bind','127.0.0.1','--directory',$showcaseBuild) -WindowStyle Hidden -PassThru -RedirectStandardOutput 'D:/BuildCache/sapid/showcase-server.log' -RedirectStandardError 'D:/BuildCache/sapid/showcase-server-errors.log'
-            $server.Id | Set-Content -LiteralPath 'D:/BuildCache/sapid/showcase-server.pid'
+            $server = Start-Process -FilePath 'python' -ArgumentList @('-m','http.server','8795','--bind','127.0.0.1','--directory',$showcaseBuild) -WindowStyle Hidden -PassThru -RedirectStandardOutput "$BuildRoot/showcase-server.log" -RedirectStandardError "$BuildRoot/showcase-server-errors.log"
+            $server.Id | Set-Content -LiteralPath "$BuildRoot/showcase-server.pid"
         }
         $serverReady = $false
         for ($attempt=0; $attempt -lt 30; $attempt++) {

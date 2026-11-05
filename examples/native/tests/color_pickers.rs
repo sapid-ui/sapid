@@ -33,6 +33,204 @@ fn pixel(raster: &Raster, x: f64, y: f64) -> [u8; 4] {
     raster.pixels()[offset..offset + 4].try_into().unwrap()
 }
 #[test]
+fn native_palette_columns_fit_the_real_popup_and_shrink_without_replacing_swatches() {
+    for theme in [
+        sapid::Theme::blue_light(),
+        sapid::Theme::blue_dark(),
+        sapid::Theme::green_light(),
+        sapid::Theme::green_dark(),
+    ] {
+        let host = WindowApp::new();
+        host.mount(
+            sapid::color_input("palette-columns")
+                .theme(theme.clone())
+                .swatches(["#fa5252", "#e64980", "#7950f2", "#228be6", "#15aabf"])
+                .swatches_per_row(5)
+                .default_open(true),
+        )
+        .unwrap();
+        let app = host.app();
+        app.settle(16).unwrap();
+        let mut squares: Vec<_> = nodes(app, "sapid-color-swatch")
+            .into_iter()
+            .filter(|id| {
+                app.tree()
+                    .node(*id)
+                    .unwrap()
+                    .descriptor
+                    .view()
+                    .name
+                    .as_deref()
+                    .is_some_and(|name| name.starts_with('#'))
+            })
+            .map(|id| bounds(app, id))
+            .collect();
+        squares.sort_by(|a, b| a.x.total_cmp(&b.x));
+        assert_eq!(squares.len(), 5);
+        assert!(
+            squares
+                .iter()
+                .all(|rect| (rect.y - squares[0].y).abs() < 1.),
+            "{squares:?}"
+        );
+        let popup = bounds(app, nodes(app, "sapid-popover")[0]);
+        assert!(
+            squares.last().unwrap().x + squares.last().unwrap().width
+                <= popup.x + popup.width - 10.
+        );
+        app.clear().unwrap();
+        let width = app.scope().cage(420.);
+        host.mount(
+            glory::ui::view()
+                .style(width.map(|v| Style::new().width(Length::Px(*v))))
+                .fill(
+                    sapid::color_picker("responsive-palette")
+                        .theme(theme)
+                        .show_picker(false)
+                        .full_width(true)
+                        .plane_size(420.)
+                        .swatches([
+                            "#fa5252", "#e64980", "#7950f2", "#228be6", "#15aabf", "#12b886",
+                            "#fd7e14",
+                        ])
+                        .swatches_per_row(7),
+                ),
+        )
+        .unwrap();
+        app.settle(16).unwrap();
+        let ids = nodes(app, "sapid-color-picker-swatch");
+        let identity = host
+            .renderer()
+            .engine_id(ids[0], glory::html::Part::Main)
+            .unwrap();
+        width.revise(|v| *v = 280.);
+        app.settle(16).unwrap();
+        let rects: Vec<_> = ids.iter().map(|id| bounds(app, *id)).collect();
+        assert!(
+            rects.iter().all(|r| (r.y - rects[0].y).abs() < 1.
+                && (r.width - r.height).abs() < 1.
+                && r.x + r.width <= 281.),
+            "{rects:?}"
+        );
+        assert_eq!(
+            host.renderer()
+                .engine_id(ids[0], glory::html::Part::Main)
+                .unwrap(),
+            identity
+        );
+    }
+}
+#[test]
+fn native_swatch_close_returns_to_the_same_editor_and_the_inset_action_can_reopen() {
+    for (theme, with_picker) in [
+        sapid::Theme::blue_light(),
+        sapid::Theme::blue_dark(),
+        sapid::Theme::green_light(),
+        sapid::Theme::green_dark(),
+    ]
+    .into_iter()
+    .flat_map(|theme| [true, false].map(move |picker| (theme.clone(), picker)))
+    {
+        let host = WindowApp::new();
+        let app = host.app();
+        let editor = app.scope().cage(None);
+        let opened = app.scope().cage(false);
+        host.mount(
+            sapid::color_input("swatch-focus")
+                .theme(theme)
+                .show_picker(with_picker)
+                .open(opened)
+                .on_open_change(move |value| opened.revise(|old| *old = value))
+                .default_value("#228be6")
+                .swatches(["#fa5252"])
+                .close_on_color_swatch_click(true)
+                .node_ref(editor),
+        )
+        .unwrap();
+        app.settle(16).unwrap();
+        let editor = editor.get().unwrap();
+        let identity = host
+            .renderer()
+            .engine_id(editor, glory::html::Part::Main)
+            .unwrap();
+        app.scope().action(Action::Focus(editor)).unwrap();
+        app.settle(16).unwrap();
+        assert_eq!(
+            nodes(app, "sapid-color-plane").len(),
+            usize::from(with_picker)
+        );
+        let swatch = nodes(app, "sapid-color-swatch")
+            .into_iter()
+            .find(|id| {
+                app.tree()
+                    .node(*id)
+                    .unwrap()
+                    .descriptor
+                    .view()
+                    .name
+                    .as_deref()
+                    == Some("#fa5252")
+            })
+            .unwrap();
+        app.scope().action(Action::Focus(swatch)).unwrap();
+        app.settle(16).unwrap();
+        app.dispatch(swatch, Event::Activate).unwrap();
+        app.settle(16).unwrap();
+        let panel = nodes(app, "sapid-popover")[0];
+        assert!(
+            app.tree()
+                .node(panel)
+                .unwrap()
+                .descriptor
+                .view()
+                .semantics
+                .as_ref()
+                .unwrap()
+                .hidden
+        );
+        let focus = Rc::new(RefCell::new(None));
+        let out = focus.clone();
+        app.request(Query::Focus(editor), move |value| {
+            *out.borrow_mut() = Some(value.unwrap())
+        })
+        .unwrap();
+        app.pump().unwrap();
+        assert_eq!(*focus.borrow(), Some(QueryValue::Focus(true)));
+        assert_eq!(
+            host.renderer()
+                .engine_id(editor, glory::html::Part::Main)
+                .unwrap(),
+            identity
+        );
+        let preview = nodes(app, "sapid-color-input-preview")[0];
+        let frame = bounds(app, editor);
+        let action = bounds(app, preview);
+        assert!(
+            action.width <= 22.
+                && action.height <= 22.
+                && action.x >= frame.x
+                && action.x + action.width <= frame.x + frame.width
+                && action.y >= frame.y
+                && action.y + action.height <= frame.y + frame.height
+        );
+        app.dispatch(preview, Event::Activate).unwrap();
+        app.settle(16).unwrap();
+        assert!(
+            !app.tree()
+                .node(panel)
+                .unwrap()
+                .descriptor
+                .view()
+                .semantics
+                .as_ref()
+                .unwrap()
+                .hidden
+        );
+        app.clear().unwrap();
+        assert!(app.tree().is_empty());
+    }
+}
+#[test]
 fn native_picker_four_themes_has_real_plane_pixels_two_axis_mapping_focus_and_stable_identity() {
     for theme in [
         sapid::Theme::blue_light(),
@@ -240,14 +438,13 @@ fn native_default_color_popup_has_real_anchor_geometry_preserves_editor_and_retu
         .unwrap();
         app.settle(16).unwrap();
         let editor = nodes(app, "sapid-color-editor")[0];
-        let trigger = nodes(app, "sapid-popover-trigger")[0];
+        let trigger = editor;
+        assert!(nodes(app, "sapid-popover-trigger").is_empty());
         let identity = host
             .renderer()
             .engine_id(editor, glory::html::Part::Main)
             .unwrap();
         app.scope().action(Action::Focus(trigger)).unwrap();
-        app.settle(16).unwrap();
-        app.dispatch(trigger, Event::Activate).unwrap();
         app.settle(16).unwrap();
         let panel = nodes(app, "sapid-popover")[0];
         let anchor = bounds(app, trigger);
@@ -280,7 +477,7 @@ fn native_default_color_popup_has_real_anchor_geometry_preserves_editor_and_retu
         let mut raster = Raster::new();
         raster.draw(host.renderer()).unwrap();
         assert!(raster.pixels().as_chunks::<4>().0.iter().any(|p| p[3] > 0));
-        app.dispatch(nodes(app, "sapid-layer-close")[0], Event::Activate)
+        app.dispatch(panel, Event::Dismiss(glory::render::DismissReason::Escape))
             .unwrap();
         app.settle(16).unwrap();
         assert!(
@@ -294,6 +491,14 @@ fn native_default_color_popup_has_real_anchor_geometry_preserves_editor_and_retu
                 .unwrap()
                 .hidden
         );
+        let focused = Rc::new(RefCell::new(None));
+        let out = focused.clone();
+        app.request(Query::Focus(editor), move |reply| {
+            *out.borrow_mut() = Some(reply.unwrap())
+        })
+        .unwrap();
+        app.pump().unwrap();
+        assert_eq!(*focused.borrow(), Some(QueryValue::Focus(true)));
         app.clear().unwrap();
         assert_eq!(app.stats().nodes, 0);
         assert_eq!(app.stats().queries, 0);

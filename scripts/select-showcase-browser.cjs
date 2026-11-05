@@ -16,7 +16,7 @@ const { chromium, base, outputPath, outputRoot, writeReport } = require('./showc
 
     const sectionIds = [
       'select-controlled', 'select-loading', 'select-content', 'select-geometry',
-      'select-searchable',
+      'select-searchable', 'select-states',
     ];
     for (const id of sectionIds) assert.equal(await page.locator(`#${id}`).count(), 1, id);
     report.checks.push('Select documentation exposes every audited behavior section');
@@ -38,6 +38,7 @@ const { chromium, base, outputPath, outputRoot, writeReport } = require('./showc
     assert.equal(await loading.locator('.sapid-select-loading').textContent(), '…');
     report.checks.push('Loading state exposes real busy metadata and bounded inline content');
 
+    await page.getByRole('combobox', { name: 'Structured option content', exact: true }).click();
     const contentListbox = page.getByRole('listbox', { name: 'Structured option content', exact: true });
     const paris = contentListbox.getByRole('option', { name: 'Paris', exact: true });
     assert.equal(await paris.locator('.sapid-select-option-leading').textContent(), 'FR');

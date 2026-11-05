@@ -1,4 +1,4 @@
-//! Named avatars with explicit text fallback and host-owned image completion.
+//! Named avatars with explicit text/vector fallback and host-owned image completion.
 use crate::appearance::{Common, configure};
 use glory::render::{NodeId, SemanticId, Semantics};
 use glory::style::{
@@ -84,6 +84,7 @@ pub struct Avatar {
     size: Option<crate::Size>,
     name: Vary<String>,
     fallback: Vary<String>,
+    fallback_icon: Option<crate::Icon>,
     shape: AvatarShape,
     id: Option<SemanticId>,
     overlap: Option<f64>,
@@ -98,6 +99,7 @@ pub fn avatar(name: impl Into<Vary<String>>) -> Avatar {
         size: None,
         name: name.into(),
         fallback: "?".into(),
+        fallback_icon: None,
         shape: AvatarShape::Circle,
         id: None,
         overlap: None,
@@ -110,7 +112,9 @@ impl Avatar {
     appearance!();
     fn validate(&self) -> Result {
         self.name.try_with(|value| valid_text(value, 256))??;
-        self.fallback.try_with(|value| valid_text(value, 64))??;
+        if self.fallback_icon.is_none() {
+            self.fallback.try_with(|value| valid_text(value, 64))??;
+        }
         if let Some(source) = &self.source {
             source.try_with(|value| crate::image::validate_source(value))??;
         }
@@ -133,6 +137,13 @@ impl Avatar {
     /// Explicit fallback text; no guessed locale-dependent initials.
     pub fn fallback(mut self, value: impl Into<Vary<String>>) -> Self {
         self.fallback = value.into();
+        self.fallback_icon = None;
+        self
+    }
+    /// A passive vector fallback, shown until the current image loads.
+    /// Calling `fallback` afterwards selects text again.
+    pub fn fallback_icon(mut self, icon: crate::Icon) -> Self {
+        self.fallback_icon = Some(icon);
         self
     }
     pub fn source(mut self, value: impl Into<Vary<String>>) -> Self {
@@ -157,7 +168,11 @@ impl Widget for Avatar {
         // Validate both initial inputs before creating any visible node.
         self.validate()?;
         let name = text_source(scope, self.name.clone(), 256)?;
-        let fallback = text_source(scope, self.fallback.clone(), 64)?;
+        let fallback = if self.fallback_icon.is_none() {
+            Some(text_source(scope, self.fallback.clone(), 64)?)
+        } else {
+            None
+        };
         let width = diameter(self.common.size);
         let mut base = self.common.theme.label(self.common.size);
         base.display = Some(Display::InlineFlex);
@@ -187,6 +202,7 @@ impl Widget for Avatar {
             base.border_style = Some(BorderStyle::Solid);
             base.border_color = Some(self.common.theme.surface);
         }
+        let color = base.color.unwrap_or(self.common.theme.accent_text);
         let mut root =
             configure!(self.common, glory::ui::view(), scope, "sapid-avatar", base).name(name);
         if let Some(id) = self.id.take() {
@@ -195,10 +211,7 @@ impl Widget for Avatar {
                 ..Default::default()
             })));
         }
-        let mut text = glory::ui::text()
-            .class("sapid-avatar-fallback")
-            .selectable(false)
-            .content(fallback);
+        let mut image_loaded = None;
         if let Some(source) = self.source.take() {
             let loaded = scope.cage(false);
             let mut previous = source.try_get()?;
@@ -222,13 +235,7 @@ impl Widget for Avatar {
                     }
                 });
             }
-            text = text.style(loaded.map(|loaded| {
-                Style::new().display(if *loaded {
-                    Display::None
-                } else {
-                    Display::Block
-                })
-            }));
+            image_loaded = Some(loaded);
             let mut on_load = self.loaded.take();
             let mut on_error = self.failed.take();
             let weak = scope.downgrade();
@@ -273,7 +280,56 @@ impl Widget for Avatar {
                     }),
             );
         }
-        root.fill(text).show_in(scope)
+        let visibility: Vary<Style> = image_loaded.map_or_else(
+            || Style::new().display(Display::Block).into(),
+            |loaded| {
+                loaded
+                    .map(|loaded| {
+                        Style::new().display(if *loaded {
+                            Display::None
+                        } else {
+                            Display::Block
+                        })
+                    })
+                    .into()
+            },
+        );
+        let placeholder: Box<dyn Widget> = if let Some(icon) = self.fallback_icon {
+            let explicit = self.common.style.clone();
+            let reactive_drawing = explicit.is_reactive();
+            let drawing = move || icon.drawing(explicit.with(|style| style.color.unwrap_or(color)));
+            let drawing: Vary<glory::render::GraphicProps> = if reactive_drawing {
+                scope.bond(drawing).into()
+            } else {
+                drawing().into()
+            };
+            let reactive = visibility.is_reactive();
+            let style = move || Style {
+                width: Some(Length::Px(width * 0.6)),
+                height: Some(Length::Px(width * 0.6)),
+                ..visibility.get()
+            };
+            let style: Vary<Style> = if reactive {
+                scope.bond(style).into()
+            } else {
+                style().into()
+            };
+            Box::new(
+                glory::ui::graphic()
+                    .class("sapid-avatar-fallback")
+                    .drawing(drawing)
+                    .style(style),
+            )
+        } else {
+            Box::new(
+                glory::ui::text()
+                    .class("sapid-avatar-fallback")
+                    .selectable(false)
+                    .content(fallback.expect("text fallback"))
+                    .style(visibility),
+            )
+        };
+        root.fill(placeholder).show_in(scope)
     }
 }
 pub struct AvatarGroup {

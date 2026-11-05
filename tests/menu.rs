@@ -28,7 +28,18 @@ fn control(app: &App, label: &str) -> NodeId {
         .into_iter()
         .find(
             |id| match &app.tree().node(*id).unwrap().descriptor.view().props {
-                Props::Button(button) => button.label == label,
+                Props::Button(button) => {
+                    button.label == label
+                        || app
+                            .tree()
+                            .node(*id)
+                            .unwrap()
+                            .descriptor
+                            .view()
+                            .name
+                            .as_deref()
+                            == Some(label)
+                }
                 Props::Check(check) => check.label == label,
                 _ => false,
             },
@@ -54,6 +65,115 @@ fn hidden(app: &App, id: NodeId) -> bool {
 }
 fn command(app: &App, from: NodeId, command: MenuCommand) {
     app.dispatch(from, Event::Menu { from, command }).unwrap();
+}
+
+#[test]
+fn passive_captions_and_sections_preserve_names_navigation_and_identity() {
+    let app = App::memory();
+    let caption = app.scope().cage("Workspace".to_owned());
+    let shown = app.scope().cage(true);
+    let count = Rc::new(Cell::new(0));
+    let presses = count.clone();
+    app.mount(
+        dropdown_menu("content-menu")
+            .label("Commands")
+            .name("Workspace commands")
+            .item(sapid::menu_label("caption", caption).visible(shown))
+            .item(
+                menu_item("save")
+                    .label("Save document")
+                    .left_section(glory::ui::text().content("S"))
+                    .right_section(glory::ui::text().content("Ctrl+S"))
+                    .on_activate(move || presses.set(presses.get() + 1)),
+            )
+            .submenu(
+                menu_submenu("export")
+                    .label("Export")
+                    .left_section(glory::ui::text().content("E"))
+                    .item(menu_item("pdf").label("PDF")),
+            ),
+    )
+    .unwrap();
+    assert_eq!(
+        app.tree()
+            .node(panels(&app)[0])
+            .unwrap()
+            .descriptor
+            .view()
+            .name
+            .as_deref(),
+        Some("Workspace commands")
+    );
+    let save = control(&app, "Save document");
+    let export = control(&app, "Export");
+    let caption_text = nodes(&app).into_iter().find(|id| {
+        matches!(app.tree().node(*id).unwrap().descriptor.view().props, Props::Text(text) if text.content == "Workspace")
+    }).unwrap();
+    let caption_node = app.tree().node(caption_text).unwrap().parent.unwrap();
+    assert!(
+        !app.tree()
+            .node(caption_node)
+            .unwrap()
+            .descriptor
+            .view()
+            .semantics
+            .as_ref()
+            .unwrap()
+            .navigation_item
+    );
+    command(&app, control(&app, "Commands"), MenuCommand::First);
+    assert_eq!(
+        app.tree().node(save).unwrap().descriptor.view().focus,
+        FocusMode::TabStop
+    );
+    app.dispatch(
+        save,
+        Event::Navigate {
+            from: save,
+            command: Navigation::Next,
+        },
+    )
+    .unwrap();
+    assert_eq!(
+        app.tree().node(export).unwrap().descriptor.view().focus,
+        FocusMode::TabStop
+    );
+    caption.revise(|old| *old = "Project files".into());
+    shown.revise(|old| *old = false);
+    app.settle(16).unwrap();
+    assert!(hidden(&app, caption_node));
+    assert_eq!(control(&app, "Save document"), save);
+    app.dispatch(save, Event::Activate).unwrap();
+    assert_eq!(count.get(), 1);
+    assert!(panels(&app).into_iter().all(|id| hidden(&app, id)));
+    app.clear().unwrap();
+}
+
+#[test]
+fn menu_passive_content_rejects_interactive_children_and_checkbox_slots() {
+    let app = App::memory();
+    assert!(
+        app.mount(
+            dropdown_menu("invalid-slot").item(
+                menu_item("outer")
+                    .label("Outer")
+                    .right_section(glory::ui::button().label("Nested"))
+            )
+        )
+        .is_err()
+    );
+    assert!(nodes(&app).is_empty());
+    assert!(
+        app.mount(
+            dropdown_menu("invalid-check-slot").item(
+                menu_checkbox("check")
+                    .label("Check")
+                    .left_section(glory::ui::text().content("Icon"))
+            )
+        )
+        .is_err()
+    );
+    assert!(nodes(&app).is_empty());
 }
 fn pointer(app: &App, from: NodeId, phase: PointerPhase) {
     app.dispatch(
@@ -333,10 +453,27 @@ fn hover_delay_has_one_owner_task_cancels_on_leave_sibling_close_and_ignores_lat
     let child = control(&app, "Child");
     let other = control(&app, "Other");
     let panel = panels(&app)[1];
-    pointer(&app, child, PointerPhase::Enter);
+    let label = nodes(&app).into_iter().find(|id| {
+        matches!(app.tree().node(*id).unwrap().descriptor.view().props, Props::Text(text) if text.content == "Child")
+    }).unwrap();
+    pointer(&app, label, PointerPhase::Enter);
     assert_eq!(executor.len(), 1);
     executor.poll_one();
     assert!(hidden(&app, panel));
+    app.dispatch(
+        label,
+        Event::Pointer {
+            from: label,
+            related: Some(child),
+            phase: PointerPhase::Leave,
+        },
+    )
+    .unwrap();
+    assert_eq!(
+        executor.len(),
+        1,
+        "moving from passive label into its button keeps the same hover task"
+    );
     let late = waker.borrow().clone().unwrap();
     pointer(&app, child, PointerPhase::Leave);
     assert!(executor.is_empty());

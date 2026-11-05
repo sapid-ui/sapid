@@ -1,5 +1,9 @@
 # Optional charts
 
+The dedicated public pages and their current presentation/control contracts are
+documented in [chart-pages.md](chart-pages.md), including the 21 primary examples,
+90 source sections, arc/grid/bubble options and local rejection feedback.
+
 Enable `sapid`'s `charts` feature and import `sapid::charts`. The feature is
 disabled by default, so ordinary applications do not include chart code or
 `libm`. Enabling it adds no chart library, JavaScript runtime, parser, serde,

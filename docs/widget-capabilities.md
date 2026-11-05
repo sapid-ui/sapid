@@ -24,7 +24,7 @@ explicit even when another variant of the same family is available.
 | [P0-09 Popover](#evidence-p0-09) | done | **tested**: Finite model and ownership rules are separately tested. | **tested**: Structural serialization/adoption shape only; SSR does not advertise an input driver. | **tested**: Finite declared contract; variant-specific limits remain in the linked canonical evidence. | **tested**: Finite declared contract; variant-specific limits remain in the linked canonical evidence. | **tested**: Actual finite semantic projection tested; OS client/speech acceptance remains separate. |
 | [P0-10 Collection / RovingFocus / Typeahead](#evidence-p0-10) | done | **tested**: Finite model and ownership rules are separately tested. | **tested**: Structural serialization/adoption shape only; SSR does not advertise an input driver. | **tested**: Mounted bounded Collection/Roving/RTL and character Typeahead are implemented with real browser keyboard evidence; no business-source scan. | **tested**: Mounted roving/RTL keyboard supported; character typeahead explicitly rejected. | **model-only**: No component-specific AT client claim; shared projection is not screen-reader acceptance. |
 | [P0-11 FocusScope / Layer / Portal](#evidence-p0-11) | done | **tested**: Finite model and ownership rules are separately tested. | **tested**: Structural serialization/adoption shape only; SSR does not advertise an input driver. | **tested**: Separate FocusScope, Portal and finite Dialog layers tested; unsupported popup facets remain rejected. | **tested**: Separate FocusScope, Portal and finite Dialog layers tested; unsupported popup facets remain rejected. | **tested**: Actual finite semantic projection tested; OS client/speech acceptance remains separate. |
-| [P0-12 Theme / Direction / Locale / Motion](#evidence-p0-12) | done | **tested**: Explicit factory context, finite language/direction and immutable theme tokens; bounded validated configuration. | **tested**: FORMAT11 dir/lang shape and stable initial token consumers; SSR has no input driver. | **tested**: Immutable Web37: original provider eleven and classic five cases pass in four themes, CSR and hydration with no console/page errors. | **tested**: Actual RTL flex layout with stable editor identity, UTF16 selection and active preedit; theme token consumers share typed styles. | **tested**: Nearest inherited and nested language projection tested; OS speech and automatic translation are outside this contract. |
+| [P0-12 Theme / Direction / Locale / Motion](#evidence-p0-12) | done | **tested**: Explicit factory context, finite language/direction and immutable theme tokens; bounded validated configuration. Independent finite presence model, monotonic revisions and Owner/lifecycle/content policy tested. | **tested**: FORMAT11 dir/lang shape and stable initial token consumers; SSR has no input driver. Presence uses current HTML18 attributes and typed stream patches; static hosts do not drive exit lifetime before WASM. | **tested**: Immutable Web37: original provider eleven and classic five cases pass in four themes, CSR and hydration with no console/page errors. Transition preset/custom opacity/transform, delay/reversal, completion and retained input passed four themes/two widths. | **tested**: Actual RTL flex layout with stable editor identity, UTF16 selection and active preedit; theme token consumers share typed styles. Transition has real clock-driven fade/custom-opacity pixels and CSS-visibility settlement; animated transforms explicitly rejected. These are engine tests, separate from OS input/readers. | **tested**: Nearest inherited and nested language projection tested; OS speech and automatic translation are outside this contract. |
 | [P0-13 VisuallyHidden](#evidence-p0-13) | done | **tested**: Finite model and ownership rules are separately tested. | **tested**: Structural serialization/adoption shape only; SSR does not advertise an input driver. | **tested**: Finite declared contract; variant-specific limits remain in the linked canonical evidence. | **tested**: Finite declared contract; variant-specific limits remain in the linked canonical evidence. | **tested**: Actual finite semantic projection tested; OS client/speech acceptance remains separate. |
 | [P0-14 Gallery / Adapter capability matrix](#evidence-p0-14) | done | **tested**: 137 explicit capability rows plus a Glory + Sapid Rust documentation site; catalogue coverage, Rust navigation and representative themes have focused tests. The original bounded static audit gallery remains separate. | **tested**: The Rust showcase builds and adopts representative pages: home, Button, TextField, dates and charts across four theme combinations. This does not claim individual SSR acceptance for all 181 routes; original SSR audit fixtures remain separate. | **tested**: The Rust showcase exposes 181 live documentation routes, search, themes, source and real controls. Chromium acceptance clicks every route and checks the Button property panel, code/copy, mobile and adoption. The original static audit gallery remains separate. | **model-only**: This is a static browser gallery and evidence ledger; no native gallery executable or AT client acceptance is claimed. | **model-only**: This is a static browser gallery and evidence ledger; no native gallery executable or AT client acceptance is claimed. |
 | [P1-01 Field / InputWrapper](#evidence-p1-01) | done | **tested**: Finite model and ownership rules are separately tested. | **tested**: Structural serialization/adoption shape only; SSR does not advertise an input driver. | **tested**: Finite declared contract; variant-specific limits remain in the linked canonical evidence. | **tested**: Finite declared contract; variant-specific limits remain in the linked canonical evidence. | **tested**: Actual finite semantic projection tested; OS client/speech acceptance remains separate. |
@@ -48,7 +48,7 @@ explicit even when another variant of the same family is available.
 | [P3-02 Center / Container / Space](#evidence-p3-02) | done | **tested**: Finite model and ownership rules are separately tested. | **tested**: Structural serialization/adoption shape only; SSR does not advertise an input driver. | **tested**: Base layout tested; responsive provider added with immutable Web36/native geometry evidence. | **tested**: Base layout tested; responsive provider added with immutable Web36/native geometry evidence. | **model-only**: No component-specific AT client claim; shared projection is not screen-reader acceptance. |
 | [P3-03 Grid / SimpleGrid](#evidence-p3-03) | done | **tested**: Finite model and ownership rules are separately tested. | **tested**: Structural serialization/adoption shape only; SSR does not advertise an input driver. | **tested**: Finite tracks/spans and breakpoint gap styles tested; track count remains explicit. | **tested**: Finite tracks/spans and breakpoint gap styles tested; track count remains explicit. | **model-only**: No component-specific AT client claim; shared projection is not screen-reader acceptance. |
 | [P3-04 AspectRatio](#evidence-p3-04) | done | **tested**: Finite model and ownership rules are separately tested. | **tested**: Structural serialization/adoption shape only; SSR does not advertise an input driver. | **tested**: Finite declared contract; variant-specific limits remain in the linked canonical evidence. | **tested**: Finite declared contract; variant-specific limits remain in the linked canonical evidence. | **model-only**: No component-specific AT client claim; shared projection is not screen-reader acceptance. |
-| [P3-05 Text / Title / Typography](#evidence-p3-05) | done | **tested**: Finite model and ownership rules are separately tested. | **tested**: Structural serialization/adoption shape only; SSR does not advertise an input driver. | **tested**: Text/heading styles supported; text-overflow ellipsis explicitly rejected. | **tested**: Text/heading styles supported; text-overflow ellipsis explicitly rejected. | **tested**: Actual finite semantic projection tested; OS client/speech acceptance remains separate. |
+| [P3-05 Text / Title / Typography](#evidence-p3-05) | done | **tested**: Finite model and ownership rules are separately tested. | **tested**: Structural serialization/adoption shape only; SSR does not advertise an input driver. | **tested**: Browser text/heading metrics, single-line ellipsis, multi-line clamp and full original semantic text are supported; native rejection does not apply to the browser. | **tested**: Ordinary wrapping text, heading/context/link layout and identity tested. Ellipsis, multi-line clamp, glyph gradients and NewContext links remain explicitly rejected by the current native profile; OS input/readers are separate. | **tested**: Actual finite semantic projection tested; OS client/speech acceptance remains separate. |
 | [P3-06 Anchor](#evidence-p3-06) | done | **tested**: Finite model and ownership rules are separately tested. | **tested**: Structural serialization/adoption shape only; SSR does not advertise an input driver. | **tested**: Current-context navigation supported; NewContext explicitly rejected. | **tested**: Current-context navigation supported; NewContext explicitly rejected. | **model-only**: No component-specific AT client claim; shared projection is not screen-reader acceptance. |
 | [P3-07 List](#evidence-p3-07) | done | **tested**: Finite model and ownership rules are separately tested. | **tested**: Structural serialization/adoption shape only; SSR does not advertise an input driver. | **tested**: Finite declared contract; variant-specific limits remain in the linked canonical evidence. | **tested**: Finite declared contract; variant-specific limits remain in the linked canonical evidence. | **tested**: Actual finite semantic projection tested; OS client/speech acceptance remains separate. |
 | [P3-08 Blockquote](#evidence-p3-08) | done | **tested**: Finite model and ownership rules are separately tested. | **tested**: Structural serialization/adoption shape only; SSR does not advertise an input driver. | **tested**: Finite declared contract; variant-specific limits remain in the linked canonical evidence. | **tested**: Finite declared contract; variant-specific limits remain in the linked canonical evidence. | **tested**: Actual finite semantic projection tested; OS client/speech acceptance remains separate. |
@@ -68,7 +68,7 @@ explicit even when another variant of the same family is available.
 | [P4-01 Menu / DropdownMenu](#evidence-p4-01) | done | **tested**: Finite model and ownership rules are separately tested. | **tested**: Structural serialization/adoption shape only; SSR does not advertise an input driver. | **tested**: Finite declared contract; variant-specific limits remain in the linked canonical evidence. | **model-only**: Current Glory supplies the shared native menu/choice/select/tags driver. Historical consumer evidence remains in the inventory; this migration has no dedicated current Sapid consumer test for this family, so it does not claim full adapter acceptance. | **model-only**: Shared native projection is available; current component-specific AT client acceptance is not established here. |
 | [P4-02 ContextMenu](#evidence-p4-02) | done | **tested**: Finite model and ownership rules are separately tested. | **tested**: Structural serialization/adoption shape only; SSR does not advertise an input driver. | **tested**: Finite declared contract; variant-specific limits remain in the linked canonical evidence. | **model-only**: Current Glory supplies the shared native menu/choice/select/tags driver. Historical consumer evidence remains in the inventory; this migration has no dedicated current Sapid consumer test for this family, so it does not claim full adapter acceptance. | **model-only**: Shared native projection is available; current component-specific AT client acceptance is not established here. |
 | [P4-03 Menubar](#evidence-p4-03) | done | **tested**: Finite model and ownership rules are separately tested. | **tested**: Structural serialization/adoption shape only; SSR does not advertise an input driver. | **tested**: Finite declared contract; variant-specific limits remain in the linked canonical evidence. | **model-only**: Current Glory supplies the shared native menu/choice/select/tags driver. Historical consumer evidence remains in the inventory; this migration has no dedicated current Sapid consumer test for this family, so it does not claim full adapter acceptance. | **model-only**: Shared native projection is available; current component-specific AT client acceptance is not established here. |
-| [P4-04 NativeSelect](#evidence-p4-04) | done | **tested**: Finite model and ownership rules are separately tested. | **tested**: Structural serialization/adoption shape only; SSR does not advertise an input driver. | **tested**: Finite declared contract; variant-specific limits remain in the linked canonical evidence. | **model-only**: Current Glory supplies the shared native menu/choice/select/tags driver. Historical consumer evidence remains in the inventory; this migration has no dedicated current Sapid consumer test for this family, so it does not claim full adapter acceptance. | **model-only**: Shared native projection is available; current component-specific AT client acceptance is not established here. |
+| [P4-04 NativeSelect](#evidence-p4-04) | done | **tested**: Finite model and ownership rules are separately tested. | **tested**: Structural serialization/adoption shape only; SSR does not advertise an input driver. | **tested**: Finite declared contract; variant-specific limits remain in the linked canonical evidence. | **tested**: Current Sapid single/grouped/multiple native controls tested with real caption updates, rejected disabled keys, physical selection writes, row geometry and stable identities across four themes. OS popup input and reader acceptance remain separate. | **model-only**: Shared native projection is available; current component-specific AT client acceptance is not established here. |
 | [P4-05 Select](#evidence-p4-05) | done | **tested**: Finite model and ownership rules are separately tested. | **tested**: Structural serialization/adoption shape only; SSR does not advertise an input driver. | **tested**: Finite declared contract; variant-specific limits remain in the linked canonical evidence. | **model-only**: Current Glory supplies the shared native menu/choice/select/tags driver. Historical consumer evidence remains in the inventory; this migration has no dedicated current Sapid consumer test for this family, so it does not claim full adapter acceptance. | **model-only**: Shared native projection is available; current component-specific AT client acceptance is not established here. |
 | [P4-06 Combobox](#evidence-p4-06) | done | **tested**: Finite model and ownership rules are separately tested. | **tested**: Structural serialization/adoption shape only; SSR does not advertise an input driver. | **tested**: Finite declared contract; variant-specific limits remain in the linked canonical evidence. | **model-only**: Current Glory supplies the shared native menu/choice/select/tags driver. Historical consumer evidence remains in the inventory; this migration has no dedicated current Sapid consumer test for this family, so it does not claim full adapter acceptance. | **model-only**: Shared native projection is available; current component-specific AT client acceptance is not established here. |
 | [P4-07 Autocomplete](#evidence-p4-07) | done | **tested**: Finite model and ownership rules are separately tested. | **tested**: Structural serialization/adoption shape only; SSR does not advertise an input driver. | **tested**: Finite declared contract; variant-specific limits remain in the linked canonical evidence. | **model-only**: Current Glory supplies the shared native menu/choice/select/tags driver. Historical consumer evidence remains in the inventory; this migration has no dedicated current Sapid consumer test for this family, so it does not claim full adapter acceptance. | **model-only**: Shared native projection is available; current component-specific AT client acceptance is not established here. |
@@ -78,7 +78,7 @@ explicit even when another variant of the same family is available.
 | [P5-01 AlertDialog](#evidence-p5-01) | done | **tested**: Finite model and ownership rules are separately tested. | **tested**: Structural serialization/adoption shape only; SSR does not advertise an input driver. | **tested**: Finite declared contract; variant-specific limits remain in the linked canonical evidence. | **tested**: Finite declared contract; variant-specific limits remain in the linked canonical evidence. | **tested**: Actual finite semantic projection tested; OS client/speech acceptance remains separate. |
 | [P5-02 Sheet / Drawer gestures](#evidence-p5-02) | done | **tested**: Finite model and ownership rules are separately tested. | **tested**: Structural serialization/adoption shape only; SSR does not advertise an input driver. | **tested**: Finite declared contract; variant-specific limits remain in the linked canonical evidence. | **rejected**: Sheet layer/gesture facet is explicitly rejected. | **rejected**: No component-specific AT client claim; shared projection is not screen-reader acceptance. |
 | [P5-03 Tooltip](#evidence-p5-03) | done | **tested**: Finite model and ownership rules are separately tested. | **tested**: Structural serialization/adoption shape only; SSR does not advertise an input driver. | **tested**: Finite declared contract; variant-specific limits remain in the linked canonical evidence. | **rejected**: Tooltip Layer are explicitly rejected. | **rejected**: No component-specific AT client claim; shared projection is not screen-reader acceptance. |
-| [P5-04 HoverCard](#evidence-p5-04) | done | **tested**: Finite model and ownership rules are separately tested. | **tested**: Structural serialization/adoption shape only; SSR does not advertise an input driver. | **tested**: Finite declared contract; variant-specific limits remain in the linked canonical evidence. | **rejected**: HoverCard Layer are explicitly rejected. | **rejected**: No component-specific AT client claim; shared projection is not screen-reader acceptance. |
+| [P5-04 HoverCard](#evidence-p5-04) | done | **tested**: Finite model and ownership rules are separately tested. | **tested**: Structural serialization/adoption shape only; SSR does not advertise an input driver. | **tested**: Finite declared contract; variant-specific limits remain in the linked canonical evidence. | **tested**: WindowApp Dialog/Preserve layout, background focus and retained editor identity tested. Native timing requires an application clock; actual OS pointer/touch and reader acceptance remain separate. | **rejected**: No component-specific AT client claim; shared projection is not screen-reader acceptance. |
 | [P5-05 Alert](#evidence-p5-05) | done | **tested**: Finite model and ownership rules are separately tested. | **tested**: Structural serialization/adoption shape only; SSR does not advertise an input driver. | **tested**: Finite declared contract; variant-specific limits remain in the linked canonical evidence. | **tested**: Finite declared contract; variant-specific limits remain in the linked canonical evidence. | **tested**: Actual finite semantic projection tested; OS client/speech acceptance remains separate. |
 | [P5-06 Notification / Toast system](#evidence-p5-06) | done | **tested**: Finite model and ownership rules are separately tested. | **tested**: Structural serialization/adoption shape only; SSR does not advertise an input driver. | **tested**: Default notifications/timer controls supported; precise hover interest unsupported. | **tested**: Default notifications/timer controls supported; precise hover interest unsupported. | **model-only**: No component-specific AT client claim; shared projection is not screen-reader acceptance. |
 | [P5-07 Spinner / Loader](#evidence-p5-07) | done | **tested**: Finite model and ownership rules are separately tested. | **tested**: Structural serialization/adoption shape only; SSR does not advertise an input driver. | **tested**: Finite declared contract; variant-specific limits remain in the linked canonical evidence. | **tested**: Finite declared contract; variant-specific limits remain in the linked canonical evidence. | **model-only**: No component-specific AT client claim; shared projection is not screen-reader acceptance. |
@@ -93,8 +93,8 @@ explicit even when another variant of the same family is available.
 | [P6-01 Breadcrumbs](#evidence-p6-01) | done | **tested**: Finite model and ownership rules are separately tested. | **tested**: Structural serialization/adoption shape only; SSR does not advertise an input driver. | **tested**: Finite declared contract; variant-specific limits remain in the linked canonical evidence. | **tested**: Finite declared contract; variant-specific limits remain in the linked canonical evidence. | **model-only**: No component-specific AT client claim; shared projection is not screen-reader acceptance. |
 | [P6-02 Pagination](#evidence-p6-02) | done | **tested**: Finite model and ownership rules are separately tested. | **tested**: Structural serialization/adoption shape only; SSR does not advertise an input driver. | **tested**: Finite declared contract; variant-specific limits remain in the linked canonical evidence. | **tested**: Finite declared contract; variant-specific limits remain in the linked canonical evidence. | **tested**: Actual finite semantic projection tested; OS client/speech acceptance remains separate. |
 | [P6-03 NavLink / NavigationMenu](#evidence-p6-03) | done | **tested**: Finite model and ownership rules are separately tested. | **tested**: Structural serialization/adoption shape only; SSR does not advertise an input driver. | **tested**: NavLink/closed navigation keyboard supported; Group navigation popup Layer explicitly rejected. | **tested**: NavLink/closed navigation keyboard supported; Group navigation popup Layer explicitly rejected. | **model-only**: No component-specific AT client claim; shared projection is not screen-reader acceptance. |
-| [P6-04 Sidebar](#evidence-p6-04) | done | **tested**: Finite model and ownership rules are separately tested. | **tested**: Structural serialization/adoption shape only; SSR does not advertise an input driver. | **tested**: Persistent/sidebar layout supported; modal Drawer variant explicitly rejected. | **tested**: Persistent/sidebar layout supported; modal Drawer variant explicitly rejected. | **model-only**: No component-specific AT client claim; shared projection is not screen-reader acceptance. |
-| [P6-05 AppShell](#evidence-p6-05) | done | **tested**: Finite model and ownership rules are separately tested. | **tested**: Structural serialization/adoption shape only; SSR does not advertise an input driver. | **tested**: Persistent shell supported; modal navigation facet explicitly rejected. | **tested**: Persistent shell supported; modal navigation facet explicitly rejected. | **model-only**: No component-specific AT client claim; shared projection is not screen-reader acceptance. |
+| [P6-04 Sidebar](#evidence-p6-04) | done | **tested**: Finite model and ownership rules are separately tested. | **tested**: Structural serialization/adoption shape only; SSR does not advertise an input driver. | **tested**: Container/viewport frame, retained responsive modal navigation, independent main/section keyboard scrolling and reactive regions tested in the browser. | **tested**: Persistent viewport/container layout, independent main/section scrolling, reactive region geometry and editor identity tested; mobile modal navigation explicitly rejected before tree movement. | **model-only**: No component-specific AT client claim; shared projection is not screen-reader acceptance. |
+| [P6-05 AppShell](#evidence-p6-05) | done | **tested**: Finite model and ownership rules are separately tested. | **tested**: Structural serialization/adoption shape only; SSR does not advertise an input driver. | **tested**: Container/viewport frame, retained responsive modal navigation, independent main/section keyboard scrolling and reactive regions tested in the browser. | **tested**: Persistent viewport/container layout, independent main/section scrolling, reactive region geometry and editor identity tested; mobile modal navigation explicitly rejected before tree movement. | **model-only**: No component-specific AT client claim; shared projection is not screen-reader acceptance. |
 | [P6-06 Stepper](#evidence-p6-06) | done | **tested**: Finite model and ownership rules are separately tested. | **tested**: Structural serialization/adoption shape only; SSR does not advertise an input driver. | **tested**: Finite declared contract; variant-specific limits remain in the linked canonical evidence. | **tested**: Finite declared contract; variant-specific limits remain in the linked canonical evidence. | **model-only**: No component-specific AT client claim; shared projection is not screen-reader acceptance. |
 | [P6-07 ScrollArea / Scroller](#evidence-p6-07) | done | **tested**: Finite model and ownership rules are separately tested. | **tested**: Structural serialization/adoption shape only; SSR does not advertise an input driver. | **tested**: Finite declared contract; variant-specific limits remain in the linked canonical evidence. | **tested**: Finite declared contract; variant-specific limits remain in the linked canonical evidence. | **model-only**: No component-specific AT client claim; shared projection is not screen-reader acceptance. |
 | [P6-08 Splitter](#evidence-p6-08) | done | **tested**: Finite model and ownership rules are separately tested. | **tested**: Structural serialization/adoption shape only; SSR does not advertise an input driver. | **tested**: Finite declared contract; variant-specific limits remain in the linked canonical evidence. | **tested**: Finite declared contract; variant-specific limits remain in the linked canonical evidence. | **tested**: Actual finite semantic projection tested; OS client/speech acceptance remains separate. |
@@ -115,7 +115,7 @@ explicit even when another variant of the same family is available.
 | [P7-09 PinInput / InputOTP](#evidence-p7-09) | done | **tested**: Finite model and ownership rules are separately tested. | **tested**: Structural serialization/adoption shape only; SSR does not advertise an input driver. | **tested**: Finite declared contract; variant-specific limits remain in the linked canonical evidence. | **tested**: Finite declared contract; variant-specific limits remain in the linked canonical evidence. | **model-only**: No component-specific AT client claim; shared projection is not screen-reader acceptance. |
 | [P7-10 MaskInput](#evidence-p7-10) | done | **tested**: Finite model and ownership rules are separately tested. | **tested**: Structural serialization/adoption shape only; SSR does not advertise an input driver. | **tested**: Finite declared contract; variant-specific limits remain in the linked canonical evidence. | **tested**: Finite declared contract; variant-specific limits remain in the linked canonical evidence. | **model-only**: No component-specific AT client claim; shared projection is not screen-reader acceptance. |
 | [P7-11 JsonInput](#evidence-p7-11) | done | **tested**: Finite model and ownership rules are separately tested. | **tested**: Structural serialization/adoption shape only; SSR does not advertise an input driver. | **tested**: Finite declared contract; variant-specific limits remain in the linked canonical evidence. | **tested**: Finite declared contract; variant-specific limits remain in the linked canonical evidence. Optional Input placeholder metadata is explicitly rejected by Apace before model/engine changes; base inputs without the hint retain their existing contract. | **model-only**: No component-specific AT client claim; shared projection is not screen-reader acceptance. Optional Input placeholder metadata is explicitly rejected by Apace before model/engine changes; base inputs without the hint retain their existing contract. |
-| [P8-01 Table](#evidence-p8-01) | done | **tested**: Finite model and ownership rules are separately tested. | **tested**: Structural serialization/adoption shape only; SSR does not advertise an input driver. | **tested**: Finite declared contract; variant-specific limits remain in the linked canonical evidence. | **tested**: Finite declared contract; variant-specific limits remain in the linked canonical evidence. | **tested**: Actual finite semantic projection tested; OS client/speech acceptance remains separate. |
+| [P8-01 Table](#evidence-p8-01) | done | **tested**: Finite model and ownership rules are separately tested. | **tested**: Structural serialization/adoption shape only; SSR does not advertise an input driver. | **tested**: Finite declared contract; variant-specific limits remain in the linked canonical evidence. | **tested**: Actual table layout, spans/header associations, top/bottom caption geometry and local horizontal scroll with retained cells tested. Sticky positioning remains explicitly rejected by the current native profile; OS input/readers are separate. | **tested**: Actual finite semantic projection tested; OS client/speech acceptance remains separate. |
 | [P8-02 DataTable](#evidence-p8-02) | done | **tested**: Finite model and ownership rules are separately tested. | **tested**: Structural serialization/adoption shape only; SSR does not advertise an input driver. | **tested**: Finite declared contract; variant-specific limits remain in the linked canonical evidence. | **tested**: Finite declared contract; variant-specific limits remain in the linked canonical evidence. | **tested**: Actual finite semantic projection tested; OS client/speech acceptance remains separate. |
 | [P8-03 Tree](#evidence-p8-03) | done | **tested**: Finite model and ownership rules are separately tested. | **tested**: Structural serialization/adoption shape only; SSR does not advertise an input driver. | **tested**: Finite declared contract; variant-specific limits remain in the linked canonical evidence. | **tested**: Finite declared contract; variant-specific limits remain in the linked canonical evidence. | **tested**: Actual finite semantic projection tested; OS client/speech acceptance remains separate. |
 | [P8-04 TreeSelect](#evidence-p8-04) | done | **tested**: Finite model and ownership rules are separately tested. | **tested**: Structural serialization/adoption shape only; SSR does not advertise an input driver. | **tested**: Finite declared contract; variant-specific limits remain in the linked canonical evidence. | **tested**: TreeSelect combines Tree and Combobox with full-path values and multiple/partial selection policies. The Glory native tree popup is connected; four-theme consumer checks cover geometry, selection, focus restoration on close and trigger identity. OS input and assistive-technology clients require separate acceptance. | **model-only**: Current shared native semantic projection is available; this migration does not add component-specific AT client or speech acceptance. |
@@ -155,7 +155,7 @@ explicit even when another variant of the same family is available.
 
 ### Evidence P0-01
 
-五档尺寸、左右插槽与独立动态标签、typed disabled颜色和busy/loading、受控静默与Owner存活回调顺序已补齐；四主题Web/SSR接管与原生实际布局/身份和AX busy已验收。
+五档尺寸、左右插槽与独立动态标签、typed disabled颜色和busy/loading、受控静默与Owner存活回调顺序已补齐；四主题Web/SSR接管与原生实际布局/身份和AX busy已验收。 2026-11-05共同页面复核：按钮批次新增完整独立源码文档、同packet动作保护、可见加载/矢量关闭图标、真实复制与文件结果反馈；56组公开站浏览器矩阵通过。
 
 Implementation:
 
@@ -163,6 +163,7 @@ Implementation:
 - `src/theme/mod.rs`
 - `docs/button.md`
 - `docs/mantine-api-comparison.md`
+- `docs/buttons.md; examples/web/src/showcase_button_docs (25 complete source sections); seven dedicated primary examples`
 
 Tests:
 
@@ -175,6 +176,8 @@ Tests:
 - `D:/BuildCache/sapid/button-native-enhancements.log`
 - `tests/button_enhancements.rs`
 - `scripts/mantine-api-browser.cjs`
+- `target/remediation/buttons-runtime-complete.log (49 related component tests); examples/native/target/remediation/buttons-native-green.log and buttons-clipboard-native.log (6 four-theme tests); strict Clippy passed`
+- `examples/web/target/remediation/buttons-final.json (56 cases, errors [], assets-70ac21f9e035d1ca724e, Chromium 148.0.7778.96); buttons-feedback-final-build.log (release gates, 46 site/library/routing tests)`
 
 ### Evidence P0-02
 
@@ -187,6 +190,8 @@ Implementation:
 - `docs/form-widgets.md`
 - `docs/mantine-api-comparison.md`
 - `../glory/docs/input-placeholder.md`
+- `src/text_field.rs: current Field availability checked before value/commit callbacks and generic observers; revision/controlled editing retained`
+- `examples/web/src/dedicated_demos/text_input.rs; showcase_text_docs: 11 independently compiled source sections across Input/TextInput/Textarea; docs/input-shell.md`
 
 Tests:
 
@@ -199,6 +204,11 @@ Tests:
 - `D:/BuildCache/sapid/browser-snapshot8-results.json`
 - `tests/placeholders.rs`
 - `scripts/mantine-api-browser.cjs`
+- `target/remediation/text-field-availability-red.log; text-field-availability-green.log: 11 Field and 9 input regressions passed; text-field-clippy.log`
+- `examples/native/target/remediation/text-docs-native-complete.log: 4 tests, four-theme fixed rows, inset action, controlled editor identity and explicit autosize rejection; text-docs-native-clippy.log`
+- `examples/web/target/remediation/data-text-build.log: release gates passed`
+- `examples/web/target/remediation/text-remediation.json: this page 8 cases, all 24 passed, errors [], assets-8560c6d31d55fb3702fb, Chromium 148.0.7778.96`
+- `web: examples/web/target/remediation/text-remediation.json: this page 8 cases, all 24 passed, errors [], assets-8560c6d31d55fb3702fb, Chromium 148.0.7778.96`
 
 ### Evidence P0-03
 
@@ -209,6 +219,8 @@ Implementation:
 - `src/checkbox.rs`
 - `docs/basic-controls.md`
 - `docs/form-widgets.md`
+- `docs/choice-inputs.md`
+- `examples/web/src/showcase_choice_docs (four pages, ten complete compiled examples)`
 
 Tests:
 
@@ -219,6 +231,10 @@ Tests:
 - `tests/basic_control_state.rs`
 - `D:/BuildCache/sapid/gate-snapshot8.log`
 - `D:/BuildCache/sapid/browser-snapshot8-results.json`
+- `tests/fields.rs (current packet guards, 4 check kinds and inherited readonly/disabled)`
+- `examples/native/tests/choice_docs.rs (3 tests, four themes, engine identity and disabled descendants)`
+- `examples/web/target/remediation/choice-remediation.json (32 passed, errors [], assets-58aa3aa6a61663088c67)`
+- `web: examples/web/target/remediation/choice-remediation.json (four-theme/dual-width real browser operations, 32 total, errors [])`
 
 ### Evidence P0-04
 
@@ -255,6 +271,8 @@ Implementation:
 - `src/collection.rs`
 - `src/composite/mod.rs`
 - `docs/accordion.md`
+- `src/composite/skin.rs`
+- `examples/web/src/showcase_composite_docs/mod.rs`
 
 Tests:
 
@@ -266,6 +284,9 @@ Tests:
 - `D:/BuildCache/sapid/accordion-dynamic-native.log`
 - `examples/web/accordion-dynamic-acceptance.js`
 - `D:/BuildCache/sapid/accordion-dynamic-browser-root17.json (8 passed, Chromium 148.0.7778.96)`
+- `D:/BuildCache/sapid/remediation-composites-unit.log (2026-11-04: 46 library regressions)`
+- `D:/BuildCache/sapid/remediation-composites-native.log (2026-11-04: 4 native engine regressions including vertical tabs and connector geometry)`
+- `scripts/showcase-remediation-composites.cjs (2026-11-04: 24 four-theme desktop/mobile reports; D:/BuildCache/sapid/remediation/composite-remediation.json)`
 
 ### Evidence P0-06
 
@@ -276,6 +297,8 @@ Implementation:
 - `src/tabs/mod.rs`
 - `src/tabs/dynamic.rs`
 - `docs/tabs.md`
+- `src/composite/skin.rs`
+- `examples/web/src/showcase_composite_docs/mod.rs`
 
 Tests:
 
@@ -284,6 +307,9 @@ Tests:
 - `examples/web/tabs-dynamic-acceptance.js`
 - `D:/BuildCache/sapid/tabs-dynamic-native.log`
 - `D:/BuildCache/sapid/tabs-dynamic-browser-menubar-next.json (9 passed, Chromium 148.0.7778.96)`
+- `D:/BuildCache/sapid/remediation-composites-unit.log (2026-11-04: 46 library regressions)`
+- `D:/BuildCache/sapid/remediation-composites-native.log (2026-11-04: 4 native engine regressions including vertical tabs and connector geometry)`
+- `scripts/showcase-remediation-composites.cjs (2026-11-04: 24 four-theme desktop/mobile reports; D:/BuildCache/sapid/remediation/composite-remediation.json)`
 
 ### Evidence P0-07
 
@@ -296,6 +322,8 @@ Implementation:
 - `../glory/crates/web/src/browser/layer_document.rs`
 - `../glory/crates/apace/src/layers.rs`
 - `../glory/docs/native-top-layers.md`
+- `docs/overlay-pages.md`
+- `examples/web/src/showcase_overlay_docs/`
 
 Tests:
 
@@ -310,6 +338,16 @@ Tests:
 - `D:/BuildCache/sapid/native-top-layer-final-provenance.log`
 - `D:/BuildCache/sapid/native-layers-final-all.log`
 - `D:/BuildCache/sapid/native-layer-final-clippy.log`
+- `src/overlay.rs: shared wrapping title/24px vector-close header and body typography; explicit FloatingDialog ViewportPlacement; same-packet trigger disable suppresses open proposals and observers; construction helpers avoid default Windows main-stack overflow`
+- `src/loading_overlay.rs: loader_type/loader_size/loader_color/animated retained finite loader configuration; src/hint.rs: theme text metrics; src/toolbar.rs: theme count and wrapping single-line actions; src/tour.rs: real text rows and themed navigation without changing current-target/query ownership`
+- `examples/web/src/dedicated_demos: eleven independent real-task primary examples; showcase_overlay_docs: 43 complete compiled source modules and matching navigation, preserving centered/full-screen Modal section IDs; controlled modal/drawer recovery action stays inside the active panel`
+- `docs/overlay-pages.md; docs/{drawer,loading-overlay,hints-implementation,toolbar,floating-indicator,tour,feedback-widgets}.md: explicit timing/source/placement/focus/content contracts and finite native boundaries`
+- `target/remediation/overlay-runtime-current.log: 51 related tests passed; overlays-root-regression-final.log: 977 all-target tests passed; overlays-root-final-clippy.log and tour-presentation-clippy.log passed strict Clippy`
+- `examples/native/target/remediation/overlays-native-final.log: 15 related tests passed; tour-presentation-native.log: seven current Tour/header/layout checks passed, including all four themes; tour-presentation-native-clippy.log passed; ordinary Dialog/Popover/nonmodal notice and HoverCard accepted, Drawer edge/Tooltip layers still explicitly refused`
+- `examples/web/target/remediation/overlay-theme-stack-trace.log / overlay-theme-stack-green.log: actual default Windows main-stack DateTimePicker failure then all 181 pages/two palettes accepted; no stack/environment/profile redirection`
+- `examples/web/target/remediation/overlays-tour-final-build.log: 19 site + 3 routing + 28 library tests, full theme audit, strict native/WASM Clippy, release bundle and SSR passed`
+- `examples/web/target/remediation/overlays-final.json: 88/88 browser cases, errors [], assets-8ffe525c155a11cf05bd, Chromium 148.0.7778.96; all four themes at 1280/390 px, actual nested/return focus, refusal/recovery, pointer gaps, retained editing, inert focus and Chrome AX exclusion, widths/edges, long-title geometry, RTL actions, target loss/recovery and local reveal; open/long-title/Tour mobile screenshots visually inspected`
+- `docs/capability-matrix.json updates HoverCard only to its tested WindowApp Dialog/Preserve subset; extra evidence annotations retained in canonical inventory records and capability-gallery.py validation preserved`
 
 ### Evidence P0-08
 
@@ -321,6 +359,8 @@ Implementation:
 - `src/sheet.rs`
 - `docs/drawer.md`
 - `docs/sheet.md`
+- `docs/overlay-pages.md`
+- `examples/web/src/showcase_overlay_docs/`
 
 Tests:
 
@@ -328,10 +368,20 @@ Tests:
 - `examples/web/sheet-acceptance.js`
 - `D:/BuildCache/sapid/drawer-browser.json (8 passed, Chromium 148.0.7778.96)`
 - `D:/BuildCache/sapid/sheet-browser.json (9 passed, Chromium 148.0.7778.96)`
+- `src/overlay.rs: shared wrapping title/24px vector-close header and body typography; explicit FloatingDialog ViewportPlacement; same-packet trigger disable suppresses open proposals and observers; construction helpers avoid default Windows main-stack overflow`
+- `src/loading_overlay.rs: loader_type/loader_size/loader_color/animated retained finite loader configuration; src/hint.rs: theme text metrics; src/toolbar.rs: theme count and wrapping single-line actions; src/tour.rs: real text rows and themed navigation without changing current-target/query ownership`
+- `examples/web/src/dedicated_demos: eleven independent real-task primary examples; showcase_overlay_docs: 43 complete compiled source modules and matching navigation, preserving centered/full-screen Modal section IDs; controlled modal/drawer recovery action stays inside the active panel`
+- `docs/overlay-pages.md; docs/{drawer,loading-overlay,hints-implementation,toolbar,floating-indicator,tour,feedback-widgets}.md: explicit timing/source/placement/focus/content contracts and finite native boundaries`
+- `target/remediation/overlay-runtime-current.log: 51 related tests passed; overlays-root-regression-final.log: 977 all-target tests passed; overlays-root-final-clippy.log and tour-presentation-clippy.log passed strict Clippy`
+- `examples/native/target/remediation/overlays-native-final.log: 15 related tests passed; tour-presentation-native.log: seven current Tour/header/layout checks passed, including all four themes; tour-presentation-native-clippy.log passed; ordinary Dialog/Popover/nonmodal notice and HoverCard accepted, Drawer edge/Tooltip layers still explicitly refused`
+- `examples/web/target/remediation/overlay-theme-stack-trace.log / overlay-theme-stack-green.log: actual default Windows main-stack DateTimePicker failure then all 181 pages/two palettes accepted; no stack/environment/profile redirection`
+- `examples/web/target/remediation/overlays-tour-final-build.log: 19 site + 3 routing + 28 library tests, full theme audit, strict native/WASM Clippy, release bundle and SSR passed`
+- `examples/web/target/remediation/overlays-final.json: 88/88 browser cases, errors [], assets-8ffe525c155a11cf05bd, Chromium 148.0.7778.96; all four themes at 1280/390 px, actual nested/return focus, refusal/recovery, pointer gaps, retained editing, inert focus and Chrome AX exclusion, widths/edges, long-title geometry, RTL actions, target loss/recovery and local reveal; open/long-title/Tour mobile screenshots visually inspected`
+- `docs/capability-matrix.json updates HoverCard only to its tested WindowApp Dialog/Preserve subset; extra evidence annotations retained in canonical inventory records and capability-gallery.py validation preserved`
 
 ### Evidence P0-09
 
-Popover完整12 placement/flip/shift/gap/padding、锚点失效与恢复、真Button trigger/close slots已完成，Web实际13及跨App12、原生12位置/焦点/paint/AX与ColorInput消费者均通过；默认非模态Manage，Preserve明确不抢焦点。
+Popover完整12 placement/flip/shift/gap/padding、锚点失效与恢复、真Button trigger/close slots已完成；新增 Auto/Target/Px 面板宽度、offset 和碰撞翻转后方向正确的有限箭头，showcase 分为基础、同宽、箭头定位和受控关闭四段并有实际浏览器几何验证。既有跨App、原生位置/焦点/paint/AX与ColorInput消费者证据保留；默认非模态Manage。 2026-11-05 共同页面审查修订：独立主例/完整源码分段、被动目标/选项内容、统一 token 编辑框和焦点返回、原生表单顺序、层级搜索展开与紧凑/父路径操作；72 组四主题双宽度浏览器验收通过。有限 API 与 OS 输入/读屏边界见当前修复文档。
 
 Implementation:
 
@@ -340,12 +390,18 @@ Implementation:
 - `../glory/crates/web/src/browser/layer_document.rs`
 - `../glory/crates/apace/src/layers.rs`
 - `../glory/docs/native-top-layers.md`
+- `examples/web/src/showcase_combobox_docs`
+- `docs/hierarchical-choices.md`
+- `docs/shared-page-remediation.json`
+- `docs/overlay-pages.md`
+- `examples/web/src/showcase_overlay_docs/`
 
 Tests:
 
 - `examples/web/overlay-acceptance.js`
 - `examples/web/popover-placement-acceptance.js`
 - `examples/web/layer-document-acceptance.js`
+- `scripts/popover-showcase-browser.cjs`
 - `../glory/crates/apace/src/layer_tests.rs (8 passed)`
 - `../glory/crates/apace/tests/layers.rs`
 - `examples/native/tests/alerts.rs`
@@ -354,6 +410,18 @@ Tests:
 - `D:/BuildCache/sapid/native-top-layer-final-provenance.log`
 - `D:/BuildCache/sapid/native-layers-final-all.log`
 - `D:/BuildCache/sapid/native-layer-final-clippy.log`
+- `D:/BuildCache/sapid/showcase-acceptance/popover-showcase.json`
+- `examples/web/target/remediation/combobox-final.json (72 passed; errors []; assets-78c3911462ca7e3fb88d)`
+- `src/overlay.rs: shared wrapping title/24px vector-close header and body typography; explicit FloatingDialog ViewportPlacement; same-packet trigger disable suppresses open proposals and observers; construction helpers avoid default Windows main-stack overflow`
+- `src/loading_overlay.rs: loader_type/loader_size/loader_color/animated retained finite loader configuration; src/hint.rs: theme text metrics; src/toolbar.rs: theme count and wrapping single-line actions; src/tour.rs: real text rows and themed navigation without changing current-target/query ownership`
+- `examples/web/src/dedicated_demos: eleven independent real-task primary examples; showcase_overlay_docs: 43 complete compiled source modules and matching navigation, preserving centered/full-screen Modal section IDs; controlled modal/drawer recovery action stays inside the active panel`
+- `docs/overlay-pages.md; docs/{drawer,loading-overlay,hints-implementation,toolbar,floating-indicator,tour,feedback-widgets}.md: explicit timing/source/placement/focus/content contracts and finite native boundaries`
+- `target/remediation/overlay-runtime-current.log: 51 related tests passed; overlays-root-regression-final.log: 977 all-target tests passed; overlays-root-final-clippy.log and tour-presentation-clippy.log passed strict Clippy`
+- `examples/native/target/remediation/overlays-native-final.log: 15 related tests passed; tour-presentation-native.log: seven current Tour/header/layout checks passed, including all four themes; tour-presentation-native-clippy.log passed; ordinary Dialog/Popover/nonmodal notice and HoverCard accepted, Drawer edge/Tooltip layers still explicitly refused`
+- `examples/web/target/remediation/overlay-theme-stack-trace.log / overlay-theme-stack-green.log: actual default Windows main-stack DateTimePicker failure then all 181 pages/two palettes accepted; no stack/environment/profile redirection`
+- `examples/web/target/remediation/overlays-tour-final-build.log: 19 site + 3 routing + 28 library tests, full theme audit, strict native/WASM Clippy, release bundle and SSR passed`
+- `examples/web/target/remediation/overlays-final.json: 88/88 browser cases, errors [], assets-8ffe525c155a11cf05bd, Chromium 148.0.7778.96; all four themes at 1280/390 px, actual nested/return focus, refusal/recovery, pointer gaps, retained editing, inert focus and Chrome AX exclusion, widths/edges, long-title geometry, RTL actions, target loss/recovery and local reveal; open/long-title/Tour mobile screenshots visually inspected`
+- `docs/capability-matrix.json updates HoverCard only to its tested WindowApp Dialog/Preserve subset; extra evidence annotations retained in canonical inventory records and capability-gallery.py validation preserved`
 
 ### Evidence P0-10
 
@@ -403,7 +471,7 @@ Tests:
 
 ### Evidence P0-12
 
-显式 Theme/Direction/Locale factory context，有限不可变 spacing/control/typography/radius tokens 被真实 Button/Input/Check/Text/Title 消费；typed inherited dir/lang 与 Native AX language，Locale 12 条显式消息，Reduce 被真实 Collapsible 过渡消费。宿主时钟和 Owner 取消复用既有能力，不宣称隐式全控件翻译。
+显式 Theme/Direction/Locale factory context，有限不可变 spacing/control/typography/radius tokens 被真实 Button/Input/Check/Text/Title 消费；typed inherited dir/lang 与 Native AX language，Locale 12 条显式消息，Reduce 被真实 Collapsible 过渡消费。宿主时钟和 Owner 取消复用既有能力，不宣称隐式全控件翻译。 2026-11-05另交付独立Transition：受控presence、预设/有界自定义样式、独立进出延迟/时长、四阶段回调、反向与旧完成拒绝、保留或完成后回收内容、Reduce与SSR静态降级；5段独立文档和8组公开站检查通过。Apace仅支持实际opacity，animated transforms与Wry明确拒绝。
 
 Implementation:
 
@@ -412,6 +480,12 @@ Implementation:
 - `src/theme/mod.rs`
 - `src/typography.rs`
 - `docs/environment.md`
+- `src/transition.rs`
+- `docs/transition.md`
+- `../glory/crates/render/src/presence.rs`
+- `../glory/crates/web/src/browser/presence.rs`
+- `../glory/crates/apace/src/presence.rs`
+- `examples/web/src/showcase_transition_docs/`
 
 Tests:
 
@@ -423,6 +497,12 @@ Tests:
 - `D:/BuildCache/sapid/environment-native-ax-tests.log`
 - `D:/BuildCache/sapid/environment-browser-web38.json (11 reports, zero errors)`
 - `D:/BuildCache/sapid/environment-stream-browser-web38.json (5 reports, zero errors)`
+- `tests/transitions.rs (4 passed)`
+- `examples/native/tests/transition.rs (4 passed)`
+- `examples/web/target/remediation/transition-remediation.json (8 passed, Chromium 148.0.7778.96)`
+- `examples/web/target/remediation/transition-stream.json (passed)`
+- `../glory/target/remediation/presence-render.log`
+- `../glory/target/remediation/presence-apace-tests.log`
 
 ### Evidence P0-13
 
@@ -489,6 +569,8 @@ Implementation:
 - `../glory/crates/web/src/browser/events.rs`
 - `../glory/crates/apace/src/shell.rs`
 - `../glory/crates/apace/src/accessibility.rs`
+- `src/text_field.rs: current Field availability checked before value/commit callbacks and generic observers; revision/controlled editing retained`
+- `examples/web/src/dedicated_demos/input.rs; showcase_text_docs: 11 independently compiled source sections across Input/TextInput/Textarea; docs/input-shell.md`
 
 Tests:
 
@@ -500,6 +582,11 @@ Tests:
 - `examples/web/field-acceptance.js (four themes, CSR/SSR, AX, draft adoption)`
 - `D:/BuildCache/sapid/fields-final-check.log`
 - `D:/BuildCache/sapid/browser-results.json`
+- `target/remediation/text-field-availability-red.log; text-field-availability-green.log: 11 Field and 9 input regressions passed; text-field-clippy.log`
+- `examples/native/target/remediation/text-docs-native-complete.log: 4 tests, four-theme fixed rows, inset action, controlled editor identity and explicit autosize rejection; text-docs-native-clippy.log`
+- `examples/web/target/remediation/data-text-build.log: release gates passed`
+- `examples/web/target/remediation/text-remediation.json: this page 8 cases, all 24 passed, errors [], assets-8560c6d31d55fb3702fb, Chromium 148.0.7778.96`
+- `web: examples/web/target/remediation/text-remediation.json: this page 8 cases, all 24 passed, errors [], assets-8560c6d31d55fb3702fb, Chromium 148.0.7778.96`
 
 ### Evidence P1-02
 
@@ -541,6 +628,8 @@ Implementation:
 - `../glory/crates/web/src/browser/events.rs`
 - `../glory/crates/apace/src/shell.rs`
 - `../glory/crates/apace/src/accessibility.rs`
+- `docs/choice-inputs.md`
+- `examples/web/src/showcase_choice_docs (four pages, ten complete compiled examples)`
 
 Tests:
 
@@ -552,6 +641,10 @@ Tests:
 - `examples/web/field-acceptance.js (four themes, CSR/SSR, AX, draft adoption)`
 - `D:/BuildCache/sapid/fields-final-check.log`
 - `D:/BuildCache/sapid/browser-results.json`
+- `tests/fields.rs (current packet guards, 4 check kinds and inherited readonly/disabled)`
+- `examples/native/tests/choice_docs.rs (3 tests, four themes, engine identity and disabled descendants)`
+- `examples/web/target/remediation/choice-remediation.json (32 passed, errors [], assets-58aa3aa6a61663088c67)`
+- `web: examples/web/target/remediation/choice-remediation.json (four-theme/dual-width real browser operations, 32 total, errors [])`
 
 ### Evidence P1-04
 
@@ -566,6 +659,8 @@ Implementation:
 - `../glory/crates/html/src/styles.rs`
 - `../glory/crates/apace/src/document.rs (Apace v5 explicitly rejects FieldSizing)`
 - `../glory/docs/input-placeholder.md`
+- `src/text_field.rs: current Field availability checked before value/commit callbacks and generic observers; revision/controlled editing retained`
+- `examples/web/src/dedicated_demos/textarea.rs; showcase_text_docs: 11 independently compiled source sections across Input/TextInput/Textarea; docs/input-shell.md`
 
 Tests:
 
@@ -582,10 +677,16 @@ Tests:
 - `D:/BuildCache/sapid/browser-results.json`
 - `D:/BuildCache/sapid/inputs-browser.log (Chromium 148.0.7778.96; 30 reports, zero errors across all suites)`
 - `tests/placeholders.rs`
+- `target/remediation/text-field-availability-red.log; text-field-availability-green.log: 11 Field and 9 input regressions passed; text-field-clippy.log`
+- `examples/native/target/remediation/text-docs-native-complete.log: 4 tests, four-theme fixed rows, inset action, controlled editor identity and explicit autosize rejection; text-docs-native-clippy.log`
+- `examples/web/target/remediation/data-text-build.log: release gates passed`
+- `examples/web/target/remediation/text-remediation.json: this page 8 cases, all 24 passed, errors [], assets-8560c6d31d55fb3702fb, Chromium 148.0.7778.96`
+- `web: examples/web/target/remediation/text-remediation.json: this page 8 cases, all 24 passed, errors [], assets-8560c6d31d55fb3702fb, Chromium 148.0.7778.96`
+- `web: HTML FieldSizing::Content actual growth/shrink tested in Chromium; native Apace explicitly rejects autosize and retains fixed-row support.`
 
 ### Evidence P1-05
 
-独立 PasswordInput、具名显隐动作、受控/本地可见性和 Field 禁用；Purpose 更新保持节点、值版本、UTF-16 选区及组合协议。原生引擎身份/原始值已验收，实际 OS IME/读屏仍待平台验收。
+独立 PasswordInput、具名显隐动作、受控/本地可见性和 Field 禁用；Purpose 更新保持节点、值版本、UTF-16 选区及组合协议。原生引擎身份/原始值已验收，实际 OS IME/读屏仍待平台验收。输入框内眼睛切换、加载互斥和自定义右区替换已实现。
 
 Implementation:
 
@@ -609,6 +710,10 @@ Tests:
 - `D:/BuildCache/sapid/browser-results.json`
 - `D:/BuildCache/sapid/inputs-browser.log (Chromium 148.0.7778.96; 30 reports, zero errors across all suites)`
 - `tests/placeholders.rs`
+- `tests/inputs.rs (8 passed; inset decorative eye, accessible visibility name, stable input/revision, custom right section and loading replacement)`
+- `scripts/showcase-layout-acceptance.cjs`
+- `D:/BuildCache/sapid/layout-acceptance/showcase-layout-acceptance.json (12 passed across four themes for PasswordInput/AppShell/Menubar; Chromium 156.0.8078.4)`
+- `D:/BuildCache/sapid/layout-fixture-acceptance.json (28 passed: Input 9, AppShell 9, Menubar 10; themed CSR/hydration, dirty adoption, focus/selection, retirement and classic stream)`
 
 ### Evidence P1-06
 
@@ -685,7 +790,7 @@ Implementation:
 
 - `src/mixed_checkbox.rs`
 - `src/checkbox_group.rs`
-- `src/switch.rs`
+- `src/switch/mod.rs`
 - `src/radio.rs`
 - `src/segmented_control.rs`
 - `docs/choices-implementation.md`
@@ -714,13 +819,16 @@ Implementation:
 
 - `src/mixed_checkbox.rs`
 - `src/checkbox_group.rs`
-- `src/switch.rs`
+- `src/switch/mod.rs`
 - `src/radio.rs`
 - `src/segmented_control.rs`
 - `docs/choices-implementation.md`
 - `../glory/crates/render/src/props.rs (CheckMode)`
 - `../glory/crates/html/src/patch.rs`
 - `../glory/crates/web/src/stream.js`
+- `src/switch/visual.rs`
+- `docs/choice-inputs.md`
+- `examples/web/src/showcase_choice_docs/`
 
 Tests:
 
@@ -731,6 +839,12 @@ Tests:
 - `D:/BuildCache/sapid/choices-browser-results.json`
 - `../glory/crates/apace/tests/check_modes.rs (3 passed; explicit mixed/radio refusal and prefix watermarks)`
 - `../glory/crates/apace/src/accessibility_tests.rs::switch_exports_independent_role_actual_engine_checked_and_live_name`
+- `target/remediation/switch-unit-current.log: 165 related unit/model tests; switch-clippy-current.log`
+- `examples/native/target/remediation/switch-native-current.log: 8 tests including 40 four-theme/size/position fixtures, actual pointer focus, CPU pixels and editor identities; switch-native-clippy-current.log`
+- `examples/web/target/remediation/switch-build.log: release gates passed`
+- `examples/web/target/remediation/switch-remediation.json: 12 cases (8 theme/width + 4 touch), errors [], assets-11ca5203747044318312, Chromium 148.0.7778.96`
+- `examples/web/target/remediation/switch-choice-regression-browser.log: 32 related page regressions passed`
+- `web: examples/web/target/remediation/switch-remediation.json: 12 theme/width/touch cases; assets-11ca5203747044318312; native CPU/pointer evidence remains separate from OS input/readers`
 
 ### Evidence P2-03
 
@@ -740,13 +854,15 @@ Implementation:
 
 - `src/mixed_checkbox.rs`
 - `src/checkbox_group.rs`
-- `src/switch.rs`
+- `src/switch/mod.rs`
 - `src/radio.rs`
 - `src/segmented_control.rs`
 - `docs/choices-implementation.md`
 - `../glory/crates/render/src/props.rs (CheckMode)`
 - `../glory/crates/html/src/patch.rs`
 - `../glory/crates/web/src/stream.js`
+- `docs/choice-inputs.md`
+- `examples/web/src/showcase_choice_docs (four pages, ten complete compiled examples)`
 
 Tests:
 
@@ -760,10 +876,14 @@ Tests:
 - `examples/native/tests/choices.rs`
 - `D:/BuildCache/sapid/native-final-v2-sync.log (2026-10-29 all-feature native regression)`
 - `docs/glory-main-migration-2026-10-29.md`
+- `tests/fields.rs (current packet guards, 4 check kinds and inherited readonly/disabled)`
+- `examples/native/tests/choice_docs.rs (3 tests, four themes, engine identity and disabled descendants)`
+- `examples/web/target/remediation/choice-remediation.json (32 passed, errors [], assets-58aa3aa6a61663088c67)`
+- `web: examples/web/target/remediation/choice-remediation.json (four-theme/dual-width real browser operations, 32 total, errors [])`
 
 ### Evidence P2-04
 
-真实Button pressed、单/多选清空、roving焦点与箭头不改值，12项组件测试、四主题原生及9组浏览器验收通过。
+真实Button pressed、单/多选清空、roving焦点与箭头不改值，12项组件测试、四主题原生及9组浏览器验收通过。 2026-11-05共同页面复核：按钮批次新增完整独立源码文档、同packet动作保护、可见加载/矢量关闭图标、真实复制与文件结果反馈；56组公开站浏览器矩阵通过。
 
 Implementation:
 
@@ -772,6 +892,7 @@ Implementation:
 - `../glory/crates/render/src/semantics.rs (pressed)`
 - `../glory/crates/html/src/semantics.rs`
 - `../glory/crates/apace/src/accessibility.rs`
+- `docs/buttons.md; examples/web/src/showcase_button_docs (25 complete source sections); seven dedicated primary examples`
 
 Tests:
 
@@ -782,6 +903,8 @@ Tests:
 - `../glory/crates/apace/src/accessibility_tests.rs::toggle_button_state_updates_accesskit_without_replacing_native_button`
 - `D:/BuildCache/sapid/toggles-native.log`
 - `D:/BuildCache/sapid/toggles-browser.json (9 passed; errors=[])`
+- `target/remediation/buttons-runtime-complete.log (49 related component tests); examples/native/target/remediation/buttons-native-green.log and buttons-clipboard-native.log (6 four-theme tests); strict Clippy passed`
+- `examples/web/target/remediation/buttons-final.json (56 cases, errors [], assets-70ac21f9e035d1ca724e, Chromium 148.0.7778.96); buttons-feedback-final-build.log (release gates, 46 site/library/routing tests)`
 
 ### Evidence P2-05
 
@@ -791,13 +914,16 @@ Implementation:
 
 - `src/mixed_checkbox.rs`
 - `src/checkbox_group.rs`
-- `src/switch.rs`
+- `src/switch/mod.rs`
 - `src/radio.rs`
 - `src/segmented_control.rs`
 - `docs/choices-implementation.md`
 - `../glory/crates/render/src/props.rs (CheckMode)`
 - `../glory/crates/html/src/patch.rs`
 - `../glory/crates/web/src/stream.js`
+- `examples/web/src/showcase_slider_docs (5 complete compiled examples)`
+- `examples/web/src/showcase_range_slider_docs (8 complete compiled examples)`
+- `examples/web/src/showcase_choice_docs (rating and segments, 6 complete compiled examples)`
 
 Tests:
 
@@ -811,6 +937,10 @@ Tests:
 - `examples/native/tests/choices.rs`
 - `D:/BuildCache/sapid/native-final-v2-sync.log (2026-10-29 all-feature native regression)`
 - `docs/glory-main-migration-2026-10-29.md`
+- `target/remediation/density-unit-final.log (58 passed)`
+- `examples/native/target/remediation/selection-contrast-native.log (15 passed, four-theme native geometry/contrast/identity)`
+- `examples/web/target/remediation/selection-remediation.json (40 passed, errors [], assets-da3cff8b982335dc1cea)`
+- `web: examples/web/target/remediation/selection-remediation.json (32 four-theme/dual-width and 8 touch cases, errors [], assets-da3cff8b982335dc1cea)`
 
 ### Evidence P2-06
 
@@ -820,6 +950,8 @@ Implementation:
 
 - `src/chip.rs`
 - `docs/choices-implementation.md`
+- `docs/choice-inputs.md`
+- `examples/web/src/showcase_choice_docs (four pages, ten complete compiled examples)`
 
 Tests:
 
@@ -829,16 +961,21 @@ Tests:
 - `examples/native/tests/choices.rs`
 - `D:/BuildCache/sapid/native-final-v2-sync.log (2026-10-29 all-feature native regression)`
 - `docs/glory-main-migration-2026-10-29.md`
+- `tests/fields.rs (current packet guards, 4 check kinds and inherited readonly/disabled)`
+- `examples/native/tests/choice_docs.rs (3 tests, four themes, engine identity and disabled descendants)`
+- `examples/web/target/remediation/choice-remediation.json (32 passed, errors [], assets-58aa3aa6a61663088c67)`
+- `web: examples/web/target/remediation/choice-remediation.json (four-theme/dual-width real browser operations, 32 total, errors [])`
 
 ### Evidence P2-07
 
-自然Tab的ButtonGroup与可选真实Toolbar roving均已实现；禁用/loading跳过、首尾/循环/RTL/垂直焦点导航不激活，Web与原生实际焦点/身份已验收。
+自然Tab的ButtonGroup与可选真实Toolbar roving均已实现；禁用/loading跳过、首尾/循环/RTL/垂直焦点导航不激活，Web与原生实际焦点/身份已验收。 2026-11-05共同页面复核：按钮批次新增完整独立源码文档、同packet动作保护、可见加载/矢量关闭图标、真实复制与文件结果反馈；56组公开站浏览器矩阵通过。
 
 Implementation:
 
 - `src/actions.rs`
 - `src/button.rs`
 - `docs/action-widgets.md`
+- `docs/buttons.md; examples/web/src/showcase_button_docs (25 complete source sections); seven dedicated primary examples`
 
 Tests:
 
@@ -847,17 +984,19 @@ Tests:
 - `examples/web/display-acceptance.js`
 - `D:/BuildCache/sapid/browser-snapshot4-results.json`
 - `examples/native/tests/toolbar.rs`
+- `target/remediation/buttons-runtime-complete.log (49 related component tests); examples/native/target/remediation/buttons-native-green.log and buttons-clipboard-native.log (6 four-theme tests); strict Clippy passed`
+- `examples/web/target/remediation/buttons-final.json (56 cases, errors [], assets-70ac21f9e035d1ca724e, Chromium 148.0.7778.96); buttons-feedback-final-build.log (release gates, 46 site/library/routing tests)`
 
 ### Evidence P2-08
 
-ActionIcon与CloseButton复用真实Button激活，强制非空名称、主题尺寸/unstyled与disabled；浏览器AX名称和原生布局已验证。新增五种 ActionIconVariant、CloseButton 自定义 icon、居中零 padding 和动态 disabled 配色；视觉复核见 showcase-style-review。
+ActionIcon与CloseButton复用真实Button激活，强制非空名称、主题尺寸/unstyled与disabled；浏览器AX名称和原生布局已验证。新增五种 ActionIconVariant、CloseButton 自定义 icon、居中零 padding 和动态 disabled 配色；视觉复核见 showcase-style-review。 2026-11-05共同页面复核：按钮批次新增完整独立源码文档、同packet动作保护、可见加载/矢量关闭图标、真实复制与文件结果反馈；56组公开站浏览器矩阵通过。
 
 Implementation:
 
 - `src/actions.rs`
 - `docs/showcase-style-review.md`
 - `docs/action-widgets.md`
-- `examples/web/src/showcase_demos/core_icon_actions.rs`
+- `docs/buttons.md; examples/web/src/showcase_button_docs (25 complete source sections); seven dedicated primary examples`
 
 Tests:
 
@@ -867,6 +1006,8 @@ Tests:
 - `examples/native/tests/display.rs`
 - `D:/BuildCache/sapid/display-native.log`
 - `scripts/showcase-style-browser.cjs`
+- `target/remediation/buttons-runtime-complete.log (49 related component tests); examples/native/target/remediation/buttons-native-green.log and buttons-clipboard-native.log (6 four-theme tests); strict Clippy passed`
+- `examples/web/target/remediation/buttons-final.json (56 cases, errors [], assets-70ac21f9e035d1ca724e, Chromium 148.0.7778.96); buttons-feedback-final-build.log (release gates, 46 site/library/routing tests)`
 
 ### Evidence P2-09
 
@@ -876,6 +1017,8 @@ Implementation:
 
 - `src/actions.rs`
 - `docs/burger.md`
+- `docs/navigation.md`
+- `examples/web/src/showcase_navigation_docs/mod.rs`
 
 Tests:
 
@@ -885,6 +1028,7 @@ Tests:
 - `D:/BuildCache/sapid/burger-browser.json (9 passed, Chromium 148.0.7778.96, Web15)`
 - `D:/BuildCache/sapid/graphic-transition-hidden-native.log`
 - `D:/BuildCache/sapid/gate-snapshot15.log`
+- `scripts/showcase-remediation-navigation.cjs (2026-11-04: 40 four-theme desktop/mobile reports; D:/BuildCache/sapid/remediation/navigation-remediation.json)`
 
 ### Evidence P3-01
 
@@ -895,6 +1039,7 @@ Implementation:
 - `src/layout.rs`
 - `docs/layout-widgets.md`
 - `../glory/crates/style/src/lib.rs (FlexWrap)`
+- `examples/web/src/showcase_layout_docs/mod.rs`
 
 Tests:
 
@@ -904,6 +1049,9 @@ Tests:
 - `../glory/crates/apace/tests/flex_wrap.rs`
 - `examples/web/layout-acceptance.js`
 - `D:/BuildCache/sapid/layout-display-browser.json (24 combined reports; errors=[])`
+- `examples/web/target/remediation/layout-remediation.json (80 passed across 10 shared layouts, four themes/two widths, errors [], assets-175211fec743fb1c04f5)`
+- `examples/native/tests/layout_docs.rs (2 passed, four-theme grid/simple-grid/flex editor identity and narrow long-content layout)`
+- `web: examples/web/target/remediation/layout-remediation.json (80 passed across 10 shared layouts, four themes/two widths, errors [], assets-175211fec743fb1c04f5)`
 
 ### Evidence P3-02
 
@@ -916,6 +1064,7 @@ Implementation:
 - `../glory/crates/style/src/lib.rs (FlexWrap)`
 - `src/responsive.rs`
 - `docs/responsive.md`
+- `examples/web/src/showcase_layout_docs/mod.rs`
 
 Tests:
 
@@ -927,6 +1076,9 @@ Tests:
 - `D:/BuildCache/sapid/layout-display-browser.json`
 - `D:/BuildCache/sapid/responsive-browser-web36.json (10 reports, zero errors)`
 - `D:/BuildCache/sapid/responsive-native-tests.log (actual layout of all five builders)`
+- `examples/web/target/remediation/layout-remediation.json (80 passed across 10 shared layouts, four themes/two widths, errors [], assets-175211fec743fb1c04f5)`
+- `examples/native/tests/layout_docs.rs (2 passed, four-theme grid/simple-grid/flex editor identity and narrow long-content layout)`
+- `web: examples/web/target/remediation/layout-remediation.json (80 passed across 10 shared layouts, four themes/two widths, errors [], assets-175211fec743fb1c04f5)`
 
 ### Evidence P3-03
 
@@ -939,6 +1091,7 @@ Implementation:
 - `../glory/crates/style/src/grid.rs`
 - `src/responsive.rs`
 - `docs/responsive.md`
+- `examples/web/src/showcase_layout_docs/mod.rs`
 
 Tests:
 
@@ -950,6 +1103,9 @@ Tests:
 - `D:/BuildCache/sapid/grid-browser.json (8 passed; errors=[])`
 - `D:/BuildCache/sapid/responsive-browser-web36.json (10 reports, zero errors)`
 - `D:/BuildCache/sapid/responsive-native-tests.log (actual layout of all five builders)`
+- `examples/web/target/remediation/layout-remediation.json (80 passed across 10 shared layouts, four themes/two widths, errors [], assets-175211fec743fb1c04f5)`
+- `examples/native/tests/layout_docs.rs (2 passed, four-theme grid/simple-grid/flex editor identity and narrow long-content layout)`
+- `web: examples/web/target/remediation/layout-remediation.json (80 passed across 10 shared layouts, four themes/two widths, errors [], assets-175211fec743fb1c04f5)`
 
 ### Evidence P3-04
 
@@ -961,6 +1117,7 @@ Implementation:
 - `docs/grid-layout.md`
 - `../glory/crates/style/src/grid.rs`
 - `examples/web/src/focused_demos/layout_controls.rs`
+- `examples/web/src/showcase_layout_docs/mod.rs`
 
 Tests:
 
@@ -971,10 +1128,13 @@ Tests:
 - `examples/native/tests/grid.rs`
 - `D:/BuildCache/sapid/grid-browser.json (8 passed; errors=[])`
 - `scripts/showcase-layout-browser.cjs (interactive layout pages; browser evidence separate from platform input acceptance)`
+- `examples/web/target/remediation/layout-remediation.json (80 passed across 10 shared layouts, four themes/two widths, errors [], assets-175211fec743fb1c04f5)`
+- `examples/native/tests/layout_docs.rs (2 passed, four-theme grid/simple-grid/flex editor identity and narrow long-content layout)`
+- `web: examples/web/target/remediation/layout-remediation.json (80 passed across 10 shared layouts, four themes/two widths, errors [], assets-175211fec743fb1c04f5)`
 
 ### Evidence P3-05
 
-Text/Title/Typography统一变体、主题字号/行高/颜色、语义段落/标题与富内容组合，typed ellipsis在Web真实验收、native显式拒绝；17项联合测试及四主题宿主证据已齐。
+Text/Title/Typography统一变体、主题字号/行高/颜色、语义段落/标题与富内容组合；新增 Glory typed lineClamp 与原子 text gradient，Web 实际验证两行几何、完整文本、渐变和真实 H2，native 在布局/paint 支持前显式拒绝。原 ellipsis 与四主题宿主证据保留。
 
 Implementation:
 
@@ -984,8 +1144,14 @@ Implementation:
 Tests:
 
 - `tests/typography.rs`
+- `scripts/typography-showcase-browser.cjs`
 - `examples/native/tests/typography.rs`
 - `D:/BuildCache/sapid/typography-browser.json (9 passed; errors=[])`
+- `D:/BuildCache/sapid/typography-showcase-browser.json (3 passed; errors=[])`
+- `docs/typography-pages.md; examples/web/src/dedicated_demos and showcase_typography_docs: 9 real primary examples / 33 independently compiled complete source sections; explicit literal/context and platform contracts`
+- `target/remediation/typography-caption-root-regression.log: 987 passed / strict Clippy; ../glory/target/caption-{style,html,render,ssr}-final.log: 441 shared tests; caption-native-final.log: 4 real CPU layout/raster cases; both support masks remain u64`
+- `examples/native/target/remediation/caption-consumer-native-final.log: final 7 cases including four-theme actual article/quote, local horizontal scroll with retained cells, bottom caption/footer geometry and explicit native ellipsis/clamp/Sticky rejection`
+- `examples/web/target/remediation/typography-final.json: 72/72 four-theme 1280/390 public cases, errors [], assets-96c72a26edbf774df57f, Chromium 148.0.7778.96; full heading Chrome AX, actual table/scroll/header/caption geometry, literal/selection semantics and mobile visual QA`
 
 ### Evidence P3-06
 
@@ -996,6 +1162,8 @@ Implementation:
 - `src/anchor.rs`
 - `docs/anchor.md`
 - `../glory/crates/render/tests/links.rs`
+- `docs/navigation.md`
+- `examples/web/src/showcase_navigation_docs/mod.rs`
 
 Tests:
 
@@ -1003,6 +1171,7 @@ Tests:
 - `examples/native/tests/typography.rs`
 - `D:/BuildCache/sapid/typography-browser.json`
 - `D:/BuildCache/sapid/links-toggle-native.log`
+- `scripts/showcase-remediation-navigation.cjs (2026-11-04: 40 four-theme desktop/mobile reports; D:/BuildCache/sapid/remediation/navigation-remediation.json)`
 
 ### Evidence P3-07
 
@@ -1026,6 +1195,10 @@ Tests:
 - `examples/native/tests/document.rs (4 themes real engine)`
 - `../glory/crates/apace/src/accessibility_document_tests.rs`
 - `D:/BuildCache/sapid/display-native.log`
+- `docs/typography-pages.md; examples/web/src/dedicated_demos and showcase_typography_docs: 9 real primary examples / 33 independently compiled complete source sections; explicit literal/context and platform contracts`
+- `target/remediation/typography-caption-root-regression.log: 987 passed / strict Clippy; ../glory/target/caption-{style,html,render,ssr}-final.log: 441 shared tests; caption-native-final.log: 4 real CPU layout/raster cases; both support masks remain u64`
+- `examples/native/target/remediation/caption-consumer-native-final.log: final 7 cases including four-theme actual article/quote, local horizontal scroll with retained cells, bottom caption/footer geometry and explicit native ellipsis/clamp/Sticky rejection`
+- `examples/web/target/remediation/typography-final.json: 72/72 four-theme 1280/390 public cases, errors [], assets-96c72a26edbf774df57f, Chromium 148.0.7778.96; full heading Chrome AX, actual table/scroll/header/caption geometry, literal/selection semantics and mobile visual QA`
 
 ### Evidence P3-08
 
@@ -1049,6 +1222,10 @@ Tests:
 - `examples/native/tests/document.rs (4 themes real engine)`
 - `../glory/crates/apace/src/accessibility_document_tests.rs`
 - `D:/BuildCache/sapid/display-native.log`
+- `docs/typography-pages.md; examples/web/src/dedicated_demos and showcase_typography_docs: 9 real primary examples / 33 independently compiled complete source sections; explicit literal/context and platform contracts`
+- `target/remediation/typography-caption-root-regression.log: 987 passed / strict Clippy; ../glory/target/caption-{style,html,render,ssr}-final.log: 441 shared tests; caption-native-final.log: 4 real CPU layout/raster cases; both support masks remain u64`
+- `examples/native/target/remediation/caption-consumer-native-final.log: final 7 cases including four-theme actual article/quote, local horizontal scroll with retained cells, bottom caption/footer geometry and explicit native ellipsis/clamp/Sticky rejection`
+- `examples/web/target/remediation/typography-final.json: 72/72 four-theme 1280/390 public cases, errors [], assets-96c72a26edbf774df57f, Chromium 148.0.7778.96; full heading Chrome AX, actual table/scroll/header/caption geometry, literal/selection semantics and mobile visual QA`
 
 ### Evidence P3-09
 
@@ -1072,10 +1249,14 @@ Tests:
 - `examples/native/tests/document.rs (4 themes real engine)`
 - `../glory/crates/apace/src/accessibility_document_tests.rs`
 - `D:/BuildCache/sapid/display-native.log`
+- `docs/typography-pages.md; examples/web/src/dedicated_demos and showcase_typography_docs: 9 real primary examples / 33 independently compiled complete source sections; explicit literal/context and platform contracts`
+- `target/remediation/typography-caption-root-regression.log: 987 passed / strict Clippy; ../glory/target/caption-{style,html,render,ssr}-final.log: 441 shared tests; caption-native-final.log: 4 real CPU layout/raster cases; both support masks remain u64`
+- `examples/native/target/remediation/caption-consumer-native-final.log: final 7 cases including four-theme actual article/quote, local horizontal scroll with retained cells, bottom caption/footer geometry and explicit native ellipsis/clamp/Sticky rejection`
+- `examples/web/target/remediation/typography-final.json: 72/72 four-theme 1280/390 public cases, errors [], assets-96c72a26edbf774df57f, Chromium 148.0.7778.96; full heading Chrome AX, actual table/scroll/header/caption geometry, literal/selection semantics and mobile visual QA`
 
 ### Evidence P3-10
 
-Badge被动展示与可移除Pill分别建模；关闭动作独立名称，受控拒绝/本地接受、禁用、稳定shell与Owner清理均已验证。
+Badge被动展示与可移除Pill分别建模；关闭动作独立名称，受控拒绝/本地接受、禁用、稳定shell与Owner清理均已验证。 2026-11-05 共同页面审查修订：独立主例/完整源码分段、被动目标/选项内容、统一 token 编辑框和焦点返回、原生表单顺序、层级搜索展开与紧凑/父路径操作；72 组四主题双宽度浏览器验收通过。有限 API 与 OS 输入/读屏边界见当前修复文档。
 
 Implementation:
 
@@ -1084,6 +1265,9 @@ Implementation:
 - `docs/showcase-style-review.md`
 - `examples/web/src/showcase_demos/core_pills.rs`
 - `src/tag.rs`
+- `examples/web/src/showcase_combobox_docs`
+- `docs/hierarchical-choices.md`
+- `docs/shared-page-remediation.json`
 
 Tests:
 
@@ -1093,6 +1277,10 @@ Tests:
 - `examples/native/tests/display.rs`
 - `D:/BuildCache/sapid/display-native.log`
 - `scripts/showcase-style-browser.cjs`
+- `examples/web/target/remediation/combobox-final.json (72 passed; errors []; assets-78c3911462ca7e3fb88d)`
+- `docs/data-display-pages.md; examples/web/src/dedicated_demos and showcase_data_display_docs: 13 dedicated primary and 42 complete compiled detail examples; public finite API/boundary documentation`
+- `target/remediation/data-display-root-regression-final.log: 986 passed / strict all-target Clippy; examples/native/target/remediation/data-layout-native-green.log: 10 final layout/motion/overflow cases; retained prior related native cases`
+- `examples/web/target/remediation/data-display-final.json: 104/104 four-theme 1280/390 public CSR cases, errors [], assets-849b55b8955d9c4fe7b6, Chromium 148.0.7778.96; actual load/fallback, focus/keyboard, retained editing, overlay hit, formatting/motion and mobile screenshots; OS input/readers separate`
 
 ### Evidence P3-11
 
@@ -1112,6 +1300,9 @@ Tests:
 - `../glory/crates/html/tests/shadow.rs`
 - `../glory/crates/apace/tests/shadow.rs`
 - `D:/BuildCache/sapid/layout-display-browser.json (includes latest 16 display/action reports and shadow checks)`
+- `docs/data-display-pages.md; examples/web/src/dedicated_demos and showcase_data_display_docs: 13 dedicated primary and 42 complete compiled detail examples; public finite API/boundary documentation`
+- `target/remediation/data-display-root-regression-final.log: 986 passed / strict all-target Clippy; examples/native/target/remediation/data-layout-native-green.log: 10 final layout/motion/overflow cases; retained prior related native cases`
+- `examples/web/target/remediation/data-display-final.json: 104/104 four-theme 1280/390 public CSR cases, errors [], assets-849b55b8955d9c4fe7b6, Chromium 148.0.7778.96; actual load/fallback, focus/keyboard, retained editing, overlay hit, formatting/motion and mobile screenshots; OS input/readers separate`
 
 ### Evidence P3-12
 
@@ -1150,10 +1341,13 @@ Tests:
 - `D:/BuildCache/sapid/image-avatar-native.log`
 - `examples/web/avatar-acceptance.js`
 - `D:/BuildCache/sapid/avatar-browser.json (8 passed, Chromium 148.0.7778.96)`
+- `docs/data-display-pages.md; examples/web/src/dedicated_demos and showcase_data_display_docs: 13 dedicated primary and 42 complete compiled detail examples; public finite API/boundary documentation`
+- `target/remediation/data-display-root-regression-final.log: 986 passed / strict all-target Clippy; examples/native/target/remediation/data-layout-native-green.log: 10 final layout/motion/overflow cases; retained prior related native cases`
+- `examples/web/target/remediation/data-display-final.json: 104/104 four-theme 1280/390 public CSR cases, errors [], assets-849b55b8955d9c4fe7b6, Chromium 148.0.7778.96; actual load/fallback, focus/keyboard, retained editing, overlay hit, formatting/motion and mobile screenshots; OS input/readers separate`
 
 ### Evidence P3-14
 
-具名/装饰Image、五值ObjectFit、占位尺寸、单次fallback及BackgroundImage内容叠放已实现；Glory版本化Source/ImageStatus与Web decode/native请求代数、旧A/B/A结果/卸载、实际资源和布局已验收。宿主拥有资源加载。
+具名/装饰Image、五值ObjectFit、占位尺寸、单次fallback、有限width-descriptor srcset/响应式sizes/加载策略及BackgroundImage内容叠放已实现；Glory HTML v17映射真实img属性，native在资源工作前拒绝responsive/lazy；版本化Source/ImageStatus、旧A/B/A结果/卸载、实际资源和布局已验收。宿主拥有资源加载。 BackgroundImage补响应式边界、本地背景资源与前景对比层，独立cover/contain及source/fallback示例；保留居中object-position与原生显式资源边界。
 
 Implementation:
 
@@ -1161,19 +1355,34 @@ Implementation:
 - `docs/avatar-images.md`
 - `../glory/docs/image-request-observations.md`
 - `../glory/docs/engine-forks.json`
+- `examples/web/src/dedicated_demos/background_image.rs`
+- `examples/web/src/showcase_geometry_docs/`
+- `examples/web/assets/mountain-evening.svg`
 
 Tests:
 
-- `tests/image.rs (8 passed)`
+- `tests/image.rs (10 passed)`
 - `tests/avatar.rs (9 passed)`
 - `examples/native/tests/image.rs`
 - `../glory/crates/apace/tests/image_events.rs`
 - `../glory/crates/apace/tests/object_fit.rs`
+- `../glory/crates/render/tests/image_revision.rs`
+- `../glory/crates/html/tests/responsive_image.rs`
+- `../glory/crates/apace/tests/style_profile.rs`
 - `D:/BuildCache/sapid/image-host-native.log`
 - `D:/BuildCache/sapid/image-avatar-native.log`
 - `examples/web/image-acceptance.js`
+- `scripts/image-showcase-browser.cjs`
+- `D:/BuildCache/sapid/image-showcase-browser.json`
 - `D:/BuildCache/sapid/image-browser.json (10 passed, Chromium 148.0.7778.96)`
 - `D:/BuildCache/sapid/engine-image-pins-check.log`
+- `scripts/showcase-remediation-geometry.cjs`
+- `D:/BuildCache/sapid/remediation/geometry-remediation.json (48 passed, Chromium 156.0.8078.4, four themes / two widths)`
+- `D:/BuildCache/sapid/remediation-geometry-unit-final.log (65 passed)`
+- `D:/BuildCache/sapid/remediation-geometry-native-final.log (14 passed; RichEditor native editing remains unsupported)`
+- `docs/data-display-pages.md; examples/web/src/dedicated_demos and showcase_data_display_docs: 13 dedicated primary and 42 complete compiled detail examples; public finite API/boundary documentation`
+- `target/remediation/data-display-root-regression-final.log: 986 passed / strict all-target Clippy; examples/native/target/remediation/data-layout-native-green.log: 10 final layout/motion/overflow cases; retained prior related native cases`
+- `examples/web/target/remediation/data-display-final.json: 104/104 four-theme 1280/390 public CSR cases, errors [], assets-849b55b8955d9c4fe7b6, Chromium 148.0.7778.96; actual load/fallback, focus/keyboard, retained editing, overlay hit, formatting/motion and mobile screenshots; OS input/readers separate`
 
 ### Evidence P3-15
 
@@ -1195,6 +1404,9 @@ Tests:
 - `../glory/crates/apace/tests/graphic_rejection.rs`
 - `examples/web/graphics-acceptance.js`
 - `D:/BuildCache/sapid/graphics-browser.json (9 passed, final web7, Chromium 148.0.7778.96)`
+- `docs/data-display-pages.md; examples/web/src/dedicated_demos and showcase_data_display_docs: 13 dedicated primary and 42 complete compiled detail examples; public finite API/boundary documentation`
+- `target/remediation/data-display-root-regression-final.log: 986 passed / strict all-target Clippy; examples/native/target/remediation/data-layout-native-green.log: 10 final layout/motion/overflow cases; retained prior related native cases`
+- `examples/web/target/remediation/data-display-final.json: 104/104 four-theme 1280/390 public CSR cases, errors [], assets-849b55b8955d9c4fe7b6, Chromium 148.0.7778.96; actual load/fallback, focus/keyboard, retained editing, overlay hit, formatting/motion and mobile screenshots; OS input/readers separate`
 
 ### Evidence P3-16
 
@@ -1218,15 +1430,20 @@ Tests:
 - `examples/native/tests/document.rs (4 themes real engine)`
 - `../glory/crates/apace/src/accessibility_document_tests.rs`
 - `D:/BuildCache/sapid/display-native.log`
+- `docs/data-display-pages.md; examples/web/src/dedicated_demos and showcase_data_display_docs: 13 dedicated primary and 42 complete compiled detail examples; public finite API/boundary documentation`
+- `target/remediation/data-display-root-regression-final.log: 986 passed / strict all-target Clippy; examples/native/target/remediation/data-layout-native-green.log: 10 final layout/motion/overflow cases; retained prior related native cases`
+- `examples/web/target/remediation/data-display-final.json: 104/104 four-theme 1280/390 public CSR cases, errors [], assets-849b55b8955d9c4fe7b6, Chromium 148.0.7778.96; actual load/fallback, focus/keyboard, retained editing, overlay hit, formatting/motion and mobile screenshots; OS input/readers separate`
 
 ### Evidence P3-17
 
-EmptyState提供标题/描述/图示/body/actions插槽，无自动alert或loading推断，真实heading/button、主题与Web/native已验证。
+EmptyState提供标题/描述/图示/body/actions插槽，无自动alert或loading推断，真实heading/button、主题与Web/native已验证。 2026-11-05补齐省略空插槽、窄屏换行后每行居中的操作区、真实搜索/重置/创建动作及独立源码文档。
 
 Implementation:
 
 - `src/display.rs`
 - `docs/display-widgets.md`
+- `docs/feedback.md`
+- `examples/web/src/showcase_feedback_docs/`
 
 Tests:
 
@@ -1235,6 +1452,14 @@ Tests:
 - `D:/BuildCache/sapid/display-browser.json`
 - `examples/native/tests/display.rs`
 - `D:/BuildCache/sapid/display-native.log`
+- `src/{alert,notifications,spinner,skeleton,progress,display}.rs: compact vector closes and contrast-aware filled text; retained busy icons; Oval/Bars/Dots loaders; inert retained Skeleton content and intrinsic stretched placeholder; bounded compound labels and host-owned unknown-progress motion; centered wrapping empty actions`
+- `examples/web/src/dedicated_demos: eight dedicated primary examples; showcase_feedback_docs: 26 independent complete source modules, retaining all nine progress comparisons on each progress page`
+- `docs/feedback.md; docs/spinner.md; docs/notifications.md; docs/progress.md; ../glory/docs/finite-graphics.md: finite Pulse/Fit contract, host reduction, source ownership and platform limits`
+- `target/remediation/feedback-runtime-final.log: 55 related tests passed; feedback-root-regression-final.log: 974 tests across all targets passed; feedback-root-final-clippy.log: strict Clippy passed`
+- `examples/native/target/remediation/feedback-native-final.log: 17 related tests passed; feedback-native-layout-final.log: six current feedback checks passed, including four-theme real pixels, group pulse/reduction, editor/icon identity and narrow/wide centered action geometry; feedback-native-layout-clippy.log passed`
+- `../glory/target/remediation/feedback-shared-protocol-regression.log: 389 render/HTML/SSR tests passed; pulse-fit-native-pixels.log: five motion/fit raster tests passed; shared differential, prepared rollback, stream End and strict Clippy retained`
+- `examples/web/target/remediation/feedback-layout-final-build.log: 18 site + 3 routing + 28 library tests, strict native/WASM Clippy, release bundle and SSR passed`
+- `examples/web/target/remediation/feedback-final.json: 64/64 browser cases, errors [], assets-56f459bdcd14dd1e6252, Chromium 148.0.7778.96; all four themes at 1280/390 px, actual close/refusal/loading/pause/reduction/value changes, narrow wrapping and retained editor/icon identity; light/dark mobile screenshots visually inspected`
 
 ### Evidence P3-18
 
@@ -1258,6 +1483,9 @@ Tests:
 - `examples/native/tests/document.rs (4 themes real engine)`
 - `../glory/crates/apace/src/accessibility_document_tests.rs`
 - `D:/BuildCache/sapid/display-native.log`
+- `docs/data-display-pages.md; examples/web/src/dedicated_demos and showcase_data_display_docs: 13 dedicated primary and 42 complete compiled detail examples; public finite API/boundary documentation`
+- `target/remediation/data-display-root-regression-final.log: 986 passed / strict all-target Clippy; examples/native/target/remediation/data-layout-native-green.log: 10 final layout/motion/overflow cases; retained prior related native cases`
+- `examples/web/target/remediation/data-display-final.json: 104/104 four-theme 1280/390 public CSR cases, errors [], assets-849b55b8955d9c4fe7b6, Chromium 148.0.7778.96; actual load/fallback, focus/keyboard, retained editing, overlay hit, formatting/motion and mobile screenshots; OS input/readers separate`
 
 ### Evidence P3-19
 
@@ -1268,6 +1496,8 @@ Implementation:
 - `src/separator.rs`
 - `src/timeline.rs`
 - `docs/timeline-separator.md`
+- `src/composite/skin.rs`
+- `examples/web/src/showcase_composite_docs/mod.rs`
 
 Tests:
 
@@ -1277,6 +1507,9 @@ Tests:
 - `../glory/crates/render/tests/separator.rs`
 - `../glory/crates/html/tests/separator.rs`
 - `D:/BuildCache/sapid/timeline-browser.json (8 passed; errors=[])`
+- `D:/BuildCache/sapid/remediation-composites-unit.log (2026-11-04: 46 library regressions)`
+- `D:/BuildCache/sapid/remediation-composites-native.log (2026-11-04: 4 native engine regressions including vertical tabs and connector geometry)`
+- `scripts/showcase-remediation-composites.cjs (2026-11-04: 24 four-theme desktop/mobile reports; D:/BuildCache/sapid/remediation/composite-remediation.json)`
 
 ### Evidence P3-20
 
@@ -1294,6 +1527,9 @@ Tests:
 - `D:/BuildCache/sapid/display-browser.json`
 - `examples/native/tests/display.rs`
 - `D:/BuildCache/sapid/display-native.log`
+- `docs/data-display-pages.md; examples/web/src/dedicated_demos and showcase_data_display_docs: 13 dedicated primary and 42 complete compiled detail examples; public finite API/boundary documentation`
+- `target/remediation/data-display-root-regression-final.log: 986 passed / strict all-target Clippy; examples/native/target/remediation/data-layout-native-green.log: 10 final layout/motion/overflow cases; retained prior related native cases`
+- `examples/web/target/remediation/data-display-final.json: 104/104 four-theme 1280/390 public CSR cases, errors [], assets-849b55b8955d9c4fe7b6, Chromium 148.0.7778.96; actual load/fallback, focus/keyboard, retained editing, overlay hit, formatting/motion and mobile screenshots; OS input/readers separate`
 
 ### Evidence P3-21
 
@@ -1310,16 +1546,25 @@ Tests:
 - `examples/native/tests/spoiler.rs (4 themes)`
 - `D:/BuildCache/sapid/spoiler-native.log`
 - `D:/BuildCache/sapid/spoiler-browser.json (8 passed; errors=[])`
+- `docs/data-display-pages.md; examples/web/src/dedicated_demos and showcase_data_display_docs: 13 dedicated primary and 42 complete compiled detail examples; public finite API/boundary documentation`
+- `target/remediation/data-display-root-regression-final.log: 986 passed / strict all-target Clippy; examples/native/target/remediation/data-layout-native-green.log: 10 final layout/motion/overflow cases; retained prior related native cases`
+- `examples/web/target/remediation/data-display-final.json: 104/104 four-theme 1280/390 public CSR cases, errors [], assets-849b55b8955d9c4fe7b6, Chromium 148.0.7778.96; actual load/fallback, focus/keyboard, retained editing, overlay hit, formatting/motion and mobile screenshots; OS input/readers separate`
 
 ### Evidence P4-01
 
-真实Menu/MenuItem/勾选单选、Collection/RTL/Typeahead、层级/指针延迟/Tab退出与受控拒绝已有实现；原生Menu Layer/输入/AX现已连接。焦点与显式显露在可见绑定后执行，关闭取消旧意图；四主题实际消费者含长菜单滚动点击通过，OS输入/读屏另验收。
+真实Menu/MenuItem/勾选单选、Collection/RTL/Typeahead、层级/指针延迟/Tab退出与受控拒绝已有实现；原生Menu Layer/输入/AX现已连接。焦点与显式显露在可见绑定后执行，关闭取消旧意图；四主题实际消费者含长菜单滚动点击通过，OS输入/读屏另验收。；2026-11-05审查修复：组标题/被动图标与快捷键槽、显隐和独立面板定位，搜索编辑器保留焦点及当前动作/复选/单选/子菜单激活、受控查询/清空/拒绝，有限当前关系、Owner回收与真实浏览器/原生验证。Menu六段和Menubar九段精确编译源码文档。
 
 Implementation:
 
 - `src/menu/mod.rs`
 - `docs/menu-implementation.md`
-- `../glory/crates/render/src/menu/mod.rs`
+- `../glory/crates/render/src/menu.rs`
+- `src/menu/content.rs`
+- `src/menu/search.rs`
+- `tests/menu_search.rs`
+- `examples/native/tests/menu.rs`
+- `../glory/crates/web/src/browser/events.rs`
+- `../glory/crates/apace/src/menu.rs`
 
 Tests:
 
@@ -1332,6 +1577,14 @@ Tests:
 - `/Volumes/Data/Caches/glory/menu-consumer-tests.log (8 actual native consumer tests; four themes where applicable)`
 - `tests/menu.rs: keyboard_focus_and_reveal_follow_visibility_and_exit_retires_older_focus_intents`
 - `/Volumes/Data/Caches/glory/native-menus/browser-results.json (49 reports across Menu/Menubar/ContextMenu/Command; four-theme CSR/hydration)`
+- `tests/menu_search.rs`
+- `examples/native/tests/menu.rs`
+- `scripts/showcase-remediation-menus.cjs`
+- `scripts/menu-regression-browser.cjs`
+- `scripts/menu-search-stream-browser.cjs`
+- `D:/BuildCache/sapid/remediation/menu-remediation.json (16 passed)`
+- `D:/BuildCache/sapid/remediation/menu-regression.json (35 passed)`
+- `D:/BuildCache/sapid/remediation/menu-search-stream.json (passed)`
 
 ### Evidence P4-02
 
@@ -1358,7 +1611,7 @@ Tests:
 
 ### Evidence P4-03
 
-Menubar/MenuItemAction根语义、互斥受控根菜单、水平/RTL/typeahead和嵌套菜单/Tab边界已实现；Glory原生协议和AX关系现已连接，四主题实际消费端及原有浏览器证据保留；系统菜单栏/OS读屏分开验收。
+Menubar/MenuItemAction根语义、互斥受控根菜单、水平/RTL/typeahead和嵌套菜单/Tab边界已实现；Glory原生协议和AX关系现已连接，四主题实际消费端及原有浏览器证据保留；系统菜单栏/OS读屏分开验收。新增根菜单悬停切换/可选悬停打开、整栏及单菜单弹出位置和宽度，并提供七段独立文档示例。；2026-11-05审查修复：组标题/被动图标与快捷键槽、显隐和独立面板定位，搜索编辑器保留焦点及当前动作/复选/单选/子菜单激活、受控查询/清空/拒绝，有限当前关系、Owner回收与真实浏览器/原生验证。Menu六段和Menubar九段精确编译源码文档。
 
 Implementation:
 
@@ -1366,6 +1619,14 @@ Implementation:
 - `src/menu/mod.rs`
 - `docs/menubar.md`
 - `../glory/crates/render/src/semantics.rs`
+- `examples/web/src/showcase_menubar/mod.rs`
+- `src/menu/content.rs`
+- `src/menu/search.rs`
+- `tests/menu_search.rs`
+- `examples/native/tests/menu.rs`
+- `../glory/crates/render/src/menu.rs`
+- `../glory/crates/web/src/browser/events.rs`
+- `../glory/crates/apace/src/menu.rs`
 
 Tests:
 
@@ -1377,6 +1638,18 @@ Tests:
 - `D:/BuildCache/sapid/menubar-browser-menubar-final-rating-next.json (10 passed, Chromium 148.0.7778.96)`
 - `/Volumes/Data/Caches/glory/menu-consumer-tests.log (8 actual native consumer tests; four themes where applicable)`
 - `/Volumes/Data/Caches/glory/native-menus/browser-results.json (49 reports across Menu/Menubar/ContextMenu/Command; four-theme CSR/hydration)`
+- `src/menu/bar/tests.rs (6 passed; includes opt-in hover, open-root switching, controlled refusal and per-menu placement/width validation)`
+- `scripts/showcase-layout-acceptance.cjs`
+- `D:/BuildCache/sapid/layout-acceptance/showcase-layout-acceptance.json (12 passed across four themes for PasswordInput/AppShell/Menubar; Chromium 156.0.8078.4)`
+- `D:/BuildCache/sapid/layout-fixture-acceptance.json (28 passed: Input 9, AppShell 9, Menubar 10; themed CSR/hydration, dirty adoption, focus/selection, retirement and classic stream)`
+- `tests/menu_search.rs`
+- `examples/native/tests/menu.rs`
+- `scripts/showcase-remediation-menus.cjs`
+- `scripts/menu-regression-browser.cjs`
+- `scripts/menu-search-stream-browser.cjs`
+- `D:/BuildCache/sapid/remediation/menu-remediation.json (16 passed)`
+- `D:/BuildCache/sapid/remediation/menu-regression.json (35 passed)`
+- `D:/BuildCache/sapid/remediation/menu-search-stream.json (passed)`
 
 ### Evidence P4-04
 
@@ -1387,6 +1660,8 @@ Implementation:
 - `src/native_select.rs`
 - `docs/native-select-implementation.md`
 - `../glory/crates/render/src/select.rs`
+- `src/native_select.rs: current own/Field enabled source checked before selection proposals and generic callbacks`
+- `examples/web/src/dedicated_demos/native_select.rs; showcase_data_input_docs/native_*.rs: four complete compiled source sections; docs/native-select.md`
 
 Tests:
 
@@ -1396,33 +1671,52 @@ Tests:
 - `../glory/crates/apace/tests/select.rs`
 - `../glory/crates/ssr/src/stream/select_tests.rs`
 - `D:/BuildCache/sapid/native-select-browser-web7.json (12 passed, final Chromium 148.0.7778.96)`
+- `target/remediation/remaining-input-unit-final.log: 77 related regressions passed; remaining-input-clippy-final.log`
+- `examples/web/target/remediation/remaining-input-build.log: release gates passed; assets-1afb6cb1c297032a1923`
+- `examples/native/target/remediation/form-input-docs-native.log: actual grouped select captions, disabled-key refusal, multiple rows/selection property writes and stable physical controls; form-file-native-clippy.log`
+- `examples/web/target/remediation/form-input-remediation.json: this page 8/8 passed, all 24 passed, errors [], assets-1afb6cb1c297032a1923, Chromium 148.0.7778.96`
+- `web: examples/web/target/remediation/form-input-remediation.json: this page 8/8 passed, all 24 passed, errors [], assets-1afb6cb1c297032a1923, Chromium 148.0.7778.96`
+- `native: examples/native/target/remediation/form-input-docs-native.log: actual grouped select captions, disabled-key refusal, multiple rows/selection property writes and stable physical controls; form-file-native-clippy.log`
 
 ### Evidence P4-05
 
-有限Listbox/Option、独立活动项与受控值、清空/分组/disabled/readonly与Field成功值代理已完成；真实Web11字符循环、同tick按键、触摸/dirty接管/AX和typed透明主题通过；native显式拒绝，classic仅有限DOM传递、不伪造pre-WASM Layer驱动。
+有限Listbox/Option、独立活动项与受控值、清空/分组/disabled/readonly与Field成功值代理已完成；新增响应式loading/busy、有限前导/描述/尾随 option content、勾选位置、dropdown高度和共享锚点。search/filter/limit/empty 由显式Combobox组合提供；五段showcase与真实鼠标子节点点击通过，Web会抑制Option后代pointerdown抢焦点。任意宿主节点renderer与无限虚拟结果不进入有限声明契约。 Select补紧凑内嵌箭头/清空、起始侧标签和占位颜色、真实焦点返回与单次解析的宽度/边距/flex占位；公开主例与6段独立编译文档覆盖受控拒绝、状态、结构化选项、边界与搜索组合。
 
 Implementation:
 
 - `src/select.rs`
 - `docs/select-implementation.md`
 - `../glory/crates/render/src/choice.rs`
+- `src/input_actions.rs`
+- `examples/web/src/dedicated_demos/select.rs`
+- `examples/web/src/showcase_select_docs/`
 
 Tests:
 
-- `src/select.rs (9 tests)`
+- `src/select.rs (11 tests)`
 - `examples/web/select-acceptance.js`
 - `D:/BuildCache/sapid/select-browser-web11.json`
+- `scripts/select-showcase-browser.cjs (6 checks, errors=[])`
+- `D:/BuildCache/sapid/showcase-acceptance/results.json (24/24 passed)`
 - `D:/BuildCache/sapid/gate-snapshot9.log`
+- `tests/input_actions.rs (6 passed)`
+- `examples/native/tests/input_actions.rs (3 passed, four themes, actual hit/focus/geometry)`
+- `scripts/showcase-remediation-inputs.cjs`
+- `D:/BuildCache/sapid/remediation/input-remediation.json (40 passed, four themes / two widths)`
+- `D:/BuildCache/sapid/remediation-input-shell-build-final.log`
 
 ### Evidence P4-06
 
-真实Input editable Combobox，active-descendant、有限过滤、composition冻结/结束协调、独立搜索/选中/open受控状态与Field/FormData已实现；新增可见结果limit、响应式busy/loading indicator。四主题CSR/hydration、dirty adoption、classic stream、真实键鼠触摸/AX及CDP组合输入通过；不宣称OS IME/屏幕阅读器验收，native Choice facet明确拒绝。
+真实Input editable Combobox，active-descendant、有限过滤、composition冻结/结束协调、独立搜索/选中/open受控状态与Field/FormData已实现；新增可见结果limit、响应式busy/loading indicator。四主题CSR/hydration、dirty adoption、classic stream、真实键鼠触摸/AX及CDP组合输入通过；不宣称OS IME/屏幕阅读器验收，native Choice facet明确拒绝。 2026-11-05 共同页面审查修订：独立主例/完整源码分段、被动目标/选项内容、统一 token 编辑框和焦点返回、原生表单顺序、层级搜索展开与紧凑/父路径操作；72 组四主题双宽度浏览器验收通过。有限 API 与 OS 输入/读屏边界见当前修复文档。
 
 Implementation:
 
 - `src/combobox.rs`
 - `docs/combobox-implementation.md`
 - `../glory/docs/input-placeholder.md`
+- `examples/web/src/showcase_combobox_docs`
+- `docs/hierarchical-choices.md`
+- `docs/shared-page-remediation.json`
 
 Tests:
 
@@ -1431,10 +1725,11 @@ Tests:
 - `D:/BuildCache/sapid/combobox-browser-web12.json (12 passed, Chromium 148.0.7778.96)`
 - `D:/BuildCache/sapid/gate-snapshot10.log`
 - `tests/placeholders.rs`
+- `examples/web/target/remediation/combobox-final.json (72 passed; errors []; assets-78c3911462ca7e3fb88d)`
 
 ### Evidence P4-07
 
-真实单行Input支持自由文字、建议value/label/key分离、过滤活动高亮、composition冻结、Field/native required与实际成功控件值；新增最多1024范围内的可见结果limit、输入时首项高亮、失焦提交高亮项、内建清空、左右响应式loading indicator和六段showcase。受控拒绝恢复、四主题CSR/hydration/dirty/触屏/IME协议/classic通过。共享Choice native明确拒绝；不宣称OS IME。
+真实单行Input支持自由文字、建议value/label/key分离、过滤活动高亮、composition冻结、Field/native required与实际成功控件值；新增最多1024范围内的可见结果limit、输入时首项高亮、失焦提交高亮项、内建清空、左右响应式loading indicator和六段showcase。受控拒绝恢复、四主题CSR/hydration/dirty/触屏/IME协议/classic通过。共享Choice native明确拒绝；不宣称OS IME。 2026-11-05 共同页面审查修订：独立主例/完整源码分段、被动目标/选项内容、统一 token 编辑框和焦点返回、原生表单顺序、层级搜索展开与紧凑/父路径操作；72 组四主题双宽度浏览器验收通过。有限 API 与 OS 输入/读屏边界见当前修复文档。
 
 Implementation:
 
@@ -1442,6 +1737,9 @@ Implementation:
 - `src/combobox.rs`
 - `docs/autocomplete-multi-select.md`
 - `../glory/docs/input-placeholder.md`
+- `examples/web/src/showcase_combobox_docs`
+- `docs/hierarchical-choices.md`
+- `docs/shared-page-remediation.json`
 
 Tests:
 
@@ -1450,10 +1748,11 @@ Tests:
 - `D:/BuildCache/sapid/choice-extras-browser-choice-extras-next.json (12 passed, Chromium 148.0.7778.96)`
 - `D:/BuildCache/sapid/browser-web14-results.json (43 suites, 378 reports)`
 - `tests/placeholders.rs`
+- `examples/web/target/remediation/combobox-final.json (72 passed; errors []; assets-78c3911462ca7e3fb88d)`
 
 ### Evidence P4-08
 
-真实 Multiple Input、独立受控搜索与 known-key Vec、动态 tags/移除、IME 保护、multiple 成功值 proxy 和有界选项已实现。弱 Owner handle 支持当前过滤且 enabled 选项的原子全选及清空；受控拒绝、只读/组合输入/退休拒绝与四主题实际浏览器已验收。新增 max_values、hide_picked_options、clearable/clear_label、真实 placeholder、可见结果limit、左右响应式loading和三段详细showcase；新增边界和宿主证据见 Mantine 全量 API 报告。
+真实 Multiple Input、独立受控搜索与 known-key Vec、动态 tags/移除、IME 保护、multiple 成功值 proxy 和有界选项已实现。弱 Owner handle 支持当前过滤且 enabled 选项的原子全选及清空；受控拒绝、只读/组合输入/退休拒绝与四主题实际浏览器已验收。新增 max_values、hide_picked_options、clearable/clear_label、真实 placeholder、可见结果limit、左右响应式loading和三段详细showcase；新增边界和宿主证据见 Mantine 全量 API 报告。 2026-11-05 共同页面审查修订：独立主例/完整源码分段、被动目标/选项内容、统一 token 编辑框和焦点返回、原生表单顺序、层级搜索展开与紧凑/父路径操作；72 组四主题双宽度浏览器验收通过。有限 API 与 OS 输入/读屏边界见当前修复文档。
 
 Implementation:
 
@@ -1461,9 +1760,11 @@ Implementation:
 - `docs/showcase-style-review.md`
 - `src/combobox.rs`
 - `docs/autocomplete-multi-select.md`
-- `examples/web/src/showcase_demos/core_multi_select.rs`
 - `src/tag.rs`
 - `docs/mantine-api-comparison.md`
+- `examples/web/src/showcase_combobox_docs`
+- `docs/hierarchical-choices.md`
+- `docs/shared-page-remediation.json`
 
 Tests:
 
@@ -1474,10 +1775,11 @@ Tests:
 - `scripts/showcase-style-browser.cjs`
 - `src/combobox_advanced_tests.rs`
 - `scripts/mantine-api-browser.cjs`
+- `examples/web/target/remediation/combobox-final.json (72 passed; errors []; assets-78c3911462ca7e3fb88d)`
 
 ### Evidence P4-09
 
-自由 TagsInput/PillsInput 的原子受控 state、重复策略、有界分隔/粘贴/删除、IME 保护、成功值 proxy 与清理已实现；新增 clearable、默认失焦接纳/显式关闭、左右响应式 loading 和 controlled/loading/max-clear/blur/parsing 五段详细 showcase。Glory 原生 host 协议和 AX textbox 现已连接，五项四主题实际消费端含 256 tags/UTF-16/拒绝恢复通过。平台剪贴板服务与 OS 输入/读屏另验收；原 Web16 14 项证据保留。
+自由 TagsInput/PillsInput 的原子受控 state、重复策略、有界分隔/粘贴/删除、IME 保护、成功值 proxy 与清理已实现；新增 clearable、默认失焦接纳/显式关闭、左右响应式 loading 和 controlled/loading/max-clear/blur/parsing 五段详细 showcase。Glory 原生 host 协议和 AX textbox 现已连接，五项四主题实际消费端含 256 tags/UTF-16/拒绝恢复通过。平台剪贴板服务与 OS 输入/读屏另验收；原 Web16 14 项证据保留。 2026-11-05 共同页面审查修订：独立主例/完整源码分段、被动目标/选项内容、统一 token 编辑框和焦点返回、原生表单顺序、层级搜索展开与紧凑/父路径操作；72 组四主题双宽度浏览器验收通过。有限 API 与 OS 输入/读屏边界见当前修复文档。
 
 Implementation:
 
@@ -1485,10 +1787,12 @@ Implementation:
 - `docs/showcase-style-review.md`
 - `src/pills_input.rs`
 - `docs/tags-input.md`
-- `examples/web/src/showcase_demos/core_tags.rs`
 - `src/tag.rs`
 - `../glory/docs/input-placeholder.md`
 - `../glory/docs/native-tags.md`
+- `examples/web/src/showcase_combobox_docs`
+- `docs/hierarchical-choices.md`
+- `docs/shared-page-remediation.json`
 
 Tests:
 
@@ -1501,6 +1805,7 @@ Tests:
 - `tests/placeholders.rs`
 - `/Volumes/Data/Caches/glory/tags-workspace-tests.log (8 native input/AX regressions within the 1032-test workspace)`
 - `/Volumes/Data/Caches/glory/tags-consumer-tests.log (5 actual native consumers, four themes)`
+- `examples/web/target/remediation/combobox-final.json (72 passed; errors []; assets-78c3911462ca7e3fb88d)`
 
 ### Evidence P4-10
 
@@ -1572,6 +1877,8 @@ Implementation:
 - `src/hint.rs`
 - `src/state.rs`
 - `docs/hints-implementation.md`
+- `docs/overlay-pages.md`
+- `examples/web/src/showcase_overlay_docs/`
 
 Tests:
 
@@ -1583,16 +1890,28 @@ Tests:
 - `D:/BuildCache/sapid/hints-browser-web7.json (10 passed)`
 - `../glory/crates/apace/tests/hints.rs`
 - `../glory/crates/apace/src/accessibility_hint_tests.rs`
+- `src/overlay.rs: shared wrapping title/24px vector-close header and body typography; explicit FloatingDialog ViewportPlacement; same-packet trigger disable suppresses open proposals and observers; construction helpers avoid default Windows main-stack overflow`
+- `src/loading_overlay.rs: loader_type/loader_size/loader_color/animated retained finite loader configuration; src/hint.rs: theme text metrics; src/toolbar.rs: theme count and wrapping single-line actions; src/tour.rs: real text rows and themed navigation without changing current-target/query ownership`
+- `examples/web/src/dedicated_demos: eleven independent real-task primary examples; showcase_overlay_docs: 43 complete compiled source modules and matching navigation, preserving centered/full-screen Modal section IDs; controlled modal/drawer recovery action stays inside the active panel`
+- `docs/overlay-pages.md; docs/{drawer,loading-overlay,hints-implementation,toolbar,floating-indicator,tour,feedback-widgets}.md: explicit timing/source/placement/focus/content contracts and finite native boundaries`
+- `target/remediation/overlay-runtime-current.log: 51 related tests passed; overlays-root-regression-final.log: 977 all-target tests passed; overlays-root-final-clippy.log and tour-presentation-clippy.log passed strict Clippy`
+- `examples/native/target/remediation/overlays-native-final.log: 15 related tests passed; tour-presentation-native.log: seven current Tour/header/layout checks passed, including all four themes; tour-presentation-native-clippy.log passed; ordinary Dialog/Popover/nonmodal notice and HoverCard accepted, Drawer edge/Tooltip layers still explicitly refused`
+- `examples/web/target/remediation/overlay-theme-stack-trace.log / overlay-theme-stack-green.log: actual default Windows main-stack DateTimePicker failure then all 181 pages/two palettes accepted; no stack/environment/profile redirection`
+- `examples/web/target/remediation/overlays-tour-final-build.log: 19 site + 3 routing + 28 library tests, full theme audit, strict native/WASM Clippy, release bundle and SSR passed`
+- `examples/web/target/remediation/overlays-final.json: 88/88 browser cases, errors [], assets-8ffe525c155a11cf05bd, Chromium 148.0.7778.96; all four themes at 1280/390 px, actual nested/return focus, refusal/recovery, pointer gaps, retained editing, inert focus and Chrome AX exclusion, widths/edges, long-title geometry, RTL actions, target loss/recovery and local reveal; open/long-title/Tour mobile screenshots visually inspected`
+- `docs/capability-matrix.json updates HoverCard only to its tested WindowApp Dialog/Preserve subset; extra evidence annotations retained in canonical inventory records and capability-gallery.py validation preserved`
 
 ### Evidence P5-04
 
-交互HoverCard复用非模态Preserve焦点Layer、真实PointerWithin与FocusWithin联合区间、可取消开闭延迟、受控拒绝及稳定内容策略已实现；四主题Web/SSR及实际焦点/Tab通过，原生Layer明确拒绝。
+具名交互式非模态 Dialog/Preserve、真实目标 adapter、hover/focus 联合、显式可取消延迟、受控开关与内容保留已实现；四段独立源码说明定位/间隙保护/触屏入口/内容交互。WindowApp 已有四主题真实布局、背景编辑器焦点和身份验收；原生延迟需要应用时钟，OS 指针/触屏及读屏仍分别验收。
 
 Implementation:
 
 - `src/hint.rs`
 - `src/state.rs`
 - `docs/hints-implementation.md`
+- `docs/overlay-pages.md`
+- `examples/web/src/showcase_overlay_docs/`
 
 Tests:
 
@@ -1600,6 +1919,18 @@ Tests:
 - `examples/web/hints-acceptance.js`
 - `D:/BuildCache/sapid/hints-browser-web7.json (10 passed)`
 - `../glory/crates/apace/tests/hints.rs`
+- `examples/native/tests/overlay_docs.rs`
+- `examples/native/target/remediation/overlay-native-current.log (four-theme Dialog/Preserve layout/background focus/editor identity; Tooltip and Drawer refusal remain explicit)`
+- `src/overlay.rs: shared wrapping title/24px vector-close header and body typography; explicit FloatingDialog ViewportPlacement; same-packet trigger disable suppresses open proposals and observers; construction helpers avoid default Windows main-stack overflow`
+- `src/loading_overlay.rs: loader_type/loader_size/loader_color/animated retained finite loader configuration; src/hint.rs: theme text metrics; src/toolbar.rs: theme count and wrapping single-line actions; src/tour.rs: real text rows and themed navigation without changing current-target/query ownership`
+- `examples/web/src/dedicated_demos: eleven independent real-task primary examples; showcase_overlay_docs: 43 complete compiled source modules and matching navigation, preserving centered/full-screen Modal section IDs; controlled modal/drawer recovery action stays inside the active panel`
+- `docs/overlay-pages.md; docs/{drawer,loading-overlay,hints-implementation,toolbar,floating-indicator,tour,feedback-widgets}.md: explicit timing/source/placement/focus/content contracts and finite native boundaries`
+- `target/remediation/overlay-runtime-current.log: 51 related tests passed; overlays-root-regression-final.log: 977 all-target tests passed; overlays-root-final-clippy.log and tour-presentation-clippy.log passed strict Clippy`
+- `examples/native/target/remediation/overlays-native-final.log: 15 related tests passed; tour-presentation-native.log: seven current Tour/header/layout checks passed, including all four themes; tour-presentation-native-clippy.log passed; ordinary Dialog/Popover/nonmodal notice and HoverCard accepted, Drawer edge/Tooltip layers still explicitly refused`
+- `examples/web/target/remediation/overlay-theme-stack-trace.log / overlay-theme-stack-green.log: actual default Windows main-stack DateTimePicker failure then all 181 pages/two palettes accepted; no stack/environment/profile redirection`
+- `examples/web/target/remediation/overlays-tour-final-build.log: 19 site + 3 routing + 28 library tests, full theme audit, strict native/WASM Clippy, release bundle and SSR passed`
+- `examples/web/target/remediation/overlays-final.json: 88/88 browser cases, errors [], assets-8ffe525c155a11cf05bd, Chromium 148.0.7778.96; all four themes at 1280/390 px, actual nested/return focus, refusal/recovery, pointer gaps, retained editing, inert focus and Chrome AX exclusion, widths/edges, long-title geometry, RTL actions, target loss/recovery and local reveal; open/long-title/Tour mobile screenshots visually inspected`
+- `docs/capability-matrix.json updates HoverCard only to its tested WindowApp Dialog/Preserve subset; extra evidence annotations retained in canonical inventory records and capability-gallery.py validation preserved`
 
 ### Evidence P5-05
 
@@ -1609,6 +1940,8 @@ Implementation:
 
 - `src/alert.rs`
 - `docs/feedback-widgets.md`
+- `docs/feedback.md`
+- `examples/web/src/showcase_feedback_docs/`
 
 Tests:
 
@@ -1617,6 +1950,14 @@ Tests:
 - `D:/BuildCache/sapid/alerts-native-final.log`
 - `examples/web/alerts-acceptance.js`
 - `D:/BuildCache/sapid/alerts-browser.json (8 passed, web8)`
+- `src/{alert,notifications,spinner,skeleton,progress,display}.rs: compact vector closes and contrast-aware filled text; retained busy icons; Oval/Bars/Dots loaders; inert retained Skeleton content and intrinsic stretched placeholder; bounded compound labels and host-owned unknown-progress motion; centered wrapping empty actions`
+- `examples/web/src/dedicated_demos: eight dedicated primary examples; showcase_feedback_docs: 26 independent complete source modules, retaining all nine progress comparisons on each progress page`
+- `docs/feedback.md; docs/spinner.md; docs/notifications.md; docs/progress.md; ../glory/docs/finite-graphics.md: finite Pulse/Fit contract, host reduction, source ownership and platform limits`
+- `target/remediation/feedback-runtime-final.log: 55 related tests passed; feedback-root-regression-final.log: 974 tests across all targets passed; feedback-root-final-clippy.log: strict Clippy passed`
+- `examples/native/target/remediation/feedback-native-final.log: 17 related tests passed; feedback-native-layout-final.log: six current feedback checks passed, including four-theme real pixels, group pulse/reduction, editor/icon identity and narrow/wide centered action geometry; feedback-native-layout-clippy.log passed`
+- `../glory/target/remediation/feedback-shared-protocol-regression.log: 389 render/HTML/SSR tests passed; pulse-fit-native-pixels.log: five motion/fit raster tests passed; shared differential, prepared rollback, stream End and strict Clippy retained`
+- `examples/web/target/remediation/feedback-layout-final-build.log: 18 site + 3 routing + 28 library tests, strict native/WASM Clippy, release bundle and SSR passed`
+- `examples/web/target/remediation/feedback-final.json: 64/64 browser cases, errors [], assets-56f459bdcd14dd1e6252, Chromium 148.0.7778.96; all four themes at 1280/390 px, actual close/refusal/loading/pause/reduction/value changes, narrow wrapping and retained editor/icon identity; light/dark mobile screenshots visually inspected`
 
 ### Evidence P5-06
 
@@ -1626,6 +1967,8 @@ Implementation:
 
 - `src/notifications.rs`
 - `docs/notifications.md`
+- `docs/feedback.md`
+- `examples/web/src/showcase_feedback_docs/`
 
 Tests:
 
@@ -1635,16 +1978,26 @@ Tests:
 - `D:/BuildCache/sapid/notifications-native-final.log`
 - `examples/web/notifications-acceptance.js`
 - `D:/BuildCache/sapid/notifications-browser-web13.json (10 passed, Chromium 148.0.7778.96)`
+- `src/{alert,notifications,spinner,skeleton,progress,display}.rs: compact vector closes and contrast-aware filled text; retained busy icons; Oval/Bars/Dots loaders; inert retained Skeleton content and intrinsic stretched placeholder; bounded compound labels and host-owned unknown-progress motion; centered wrapping empty actions`
+- `examples/web/src/dedicated_demos: eight dedicated primary examples; showcase_feedback_docs: 26 independent complete source modules, retaining all nine progress comparisons on each progress page`
+- `docs/feedback.md; docs/spinner.md; docs/notifications.md; docs/progress.md; ../glory/docs/finite-graphics.md: finite Pulse/Fit contract, host reduction, source ownership and platform limits`
+- `target/remediation/feedback-runtime-final.log: 55 related tests passed; feedback-root-regression-final.log: 974 tests across all targets passed; feedback-root-final-clippy.log: strict Clippy passed`
+- `examples/native/target/remediation/feedback-native-final.log: 17 related tests passed; feedback-native-layout-final.log: six current feedback checks passed, including four-theme real pixels, group pulse/reduction, editor/icon identity and narrow/wide centered action geometry; feedback-native-layout-clippy.log passed`
+- `../glory/target/remediation/feedback-shared-protocol-regression.log: 389 render/HTML/SSR tests passed; pulse-fit-native-pixels.log: five motion/fit raster tests passed; shared differential, prepared rollback, stream End and strict Clippy retained`
+- `examples/web/target/remediation/feedback-layout-final-build.log: 18 site + 3 routing + 28 library tests, strict native/WASM Clippy, release bundle and SSR passed`
+- `examples/web/target/remediation/feedback-final.json: 64/64 browser cases, errors [], assets-56f459bdcd14dd1e6252, Chromium 148.0.7778.96; all four themes at 1280/390 px, actual close/refusal/loading/pause/reduction/value changes, narrow wrapping and retained editor/icon identity; light/dark mobile screenshots visually inspected`
 
 ### Evidence P5-07
 
-加载名称/busy与decorative模式、有限旋转Graphic动画、动态reduced-motion及原生共享时钟已实现；四主题真实Web旋转矩阵/零逐帧DOM写与原生像素、隐藏暂停/Resume/Owner清理通过。
+加载名称/busy与decorative模式、有限旋转Graphic动画、动态reduced-motion及原生共享时钟已实现；四主题真实Web旋转矩阵/零逐帧DOM写与原生像素、隐藏暂停/Resume/Owner清理通过。 2026-11-05补齐Oval/Bars/Dots三种有限绘图、颜色/尺寸、相位pulse、受控暂停与Reduce；独立源码示例和原生/浏览器实际动画通过。
 
 Implementation:
 
 - `src/spinner.rs`
 - `docs/spinner.md`
 - `../glory/crates/apace/src/graphic_motion.rs`
+- `docs/feedback.md`
+- `examples/web/src/showcase_feedback_docs/`
 
 Tests:
 
@@ -1653,6 +2006,14 @@ Tests:
 - `examples/web/spinner-acceptance.js`
 - `D:/BuildCache/sapid/spinner-browser.json`
 - `D:/BuildCache/sapid/gate-snapshot9.log`
+- `src/{alert,notifications,spinner,skeleton,progress,display}.rs: compact vector closes and contrast-aware filled text; retained busy icons; Oval/Bars/Dots loaders; inert retained Skeleton content and intrinsic stretched placeholder; bounded compound labels and host-owned unknown-progress motion; centered wrapping empty actions`
+- `examples/web/src/dedicated_demos: eight dedicated primary examples; showcase_feedback_docs: 26 independent complete source modules, retaining all nine progress comparisons on each progress page`
+- `docs/feedback.md; docs/spinner.md; docs/notifications.md; docs/progress.md; ../glory/docs/finite-graphics.md: finite Pulse/Fit contract, host reduction, source ownership and platform limits`
+- `target/remediation/feedback-runtime-final.log: 55 related tests passed; feedback-root-regression-final.log: 974 tests across all targets passed; feedback-root-final-clippy.log: strict Clippy passed`
+- `examples/native/target/remediation/feedback-native-final.log: 17 related tests passed; feedback-native-layout-final.log: six current feedback checks passed, including four-theme real pixels, group pulse/reduction, editor/icon identity and narrow/wide centered action geometry; feedback-native-layout-clippy.log passed`
+- `../glory/target/remediation/feedback-shared-protocol-regression.log: 389 render/HTML/SSR tests passed; pulse-fit-native-pixels.log: five motion/fit raster tests passed; shared differential, prepared rollback, stream End and strict Clippy retained`
+- `examples/web/target/remediation/feedback-layout-final-build.log: 18 site + 3 routing + 28 library tests, strict native/WASM Clippy, release bundle and SSR passed`
+- `examples/web/target/remediation/feedback-final.json: 64/64 browser cases, errors [], assets-56f459bdcd14dd1e6252, Chromium 148.0.7778.96; all four themes at 1280/390 px, actual close/refusal/loading/pause/reduction/value changes, narrow wrapping and retained editor/icon identity; light/dark mobile screenshots visually inspected`
 
 ### Evidence P5-08
 
@@ -1663,6 +2024,8 @@ Implementation:
 - `src/progress.rs`
 - `docs/progress.md`
 - `../glory/crates/render/src/progress.rs`
+- `docs/feedback.md`
+- `examples/web/src/showcase_feedback_docs/`
 
 Tests:
 
@@ -1673,6 +2036,14 @@ Tests:
 - `../glory/crates/ssr/src/stream/progress_tests.rs`
 - `examples/web/progress-acceptance.js`
 - `D:/BuildCache/sapid/progress-browser.json (9 passed, final web8, Chromium 148.0.7778.96)`
+- `src/{alert,notifications,spinner,skeleton,progress,display}.rs: compact vector closes and contrast-aware filled text; retained busy icons; Oval/Bars/Dots loaders; inert retained Skeleton content and intrinsic stretched placeholder; bounded compound labels and host-owned unknown-progress motion; centered wrapping empty actions`
+- `examples/web/src/dedicated_demos: eight dedicated primary examples; showcase_feedback_docs: 26 independent complete source modules, retaining all nine progress comparisons on each progress page`
+- `docs/feedback.md; docs/spinner.md; docs/notifications.md; docs/progress.md; ../glory/docs/finite-graphics.md: finite Pulse/Fit contract, host reduction, source ownership and platform limits`
+- `target/remediation/feedback-runtime-final.log: 55 related tests passed; feedback-root-regression-final.log: 974 tests across all targets passed; feedback-root-final-clippy.log: strict Clippy passed`
+- `examples/native/target/remediation/feedback-native-final.log: 17 related tests passed; feedback-native-layout-final.log: six current feedback checks passed, including four-theme real pixels, group pulse/reduction, editor/icon identity and narrow/wide centered action geometry; feedback-native-layout-clippy.log passed`
+- `../glory/target/remediation/feedback-shared-protocol-regression.log: 389 render/HTML/SSR tests passed; pulse-fit-native-pixels.log: five motion/fit raster tests passed; shared differential, prepared rollback, stream End and strict Clippy retained`
+- `examples/web/target/remediation/feedback-layout-final-build.log: 18 site + 3 routing + 28 library tests, strict native/WASM Clippy, release bundle and SSR passed`
+- `examples/web/target/remediation/feedback-final.json: 64/64 browser cases, errors [], assets-56f459bdcd14dd1e6252, Chromium 148.0.7778.96; all four themes at 1280/390 px, actual close/refusal/loading/pause/reduction/value changes, narrow wrapping and retained editor/icon identity; light/dark mobile screenshots visually inspected`
 
 ### Evidence P5-09
 
@@ -1693,12 +2064,14 @@ Tests:
 
 ### Evidence P5-10
 
-有限像素/百分比占位尺寸、circle/radius、独立busy区域与decorative Graphic已实现；loading隐藏保持identity，不启动计时或动画，四主题Web/SSR及native paint实际geometry/身份已验收。
+有限占位尺寸/circle/radius、保留真实内容和 intrinsic height、loading 协同 busy/inert/opacity、完整 box 的 Stretch Graphic 与宿主 Pulse 已实现；支持 animated/Reduce，不引入每帧 Cage 或 timer，真实编辑器身份、原生像素和四主题浏览器已验收。
 
 Implementation:
 
 - `src/skeleton.rs`
 - `docs/feedback-widgets.md`
+- `docs/feedback.md`
+- `examples/web/src/showcase_feedback_docs/`
 
 Tests:
 
@@ -1707,6 +2080,14 @@ Tests:
 - `D:/BuildCache/sapid/alerts-native-final.log`
 - `examples/web/alerts-acceptance.js`
 - `D:/BuildCache/sapid/alerts-browser.json (8 passed, web8)`
+- `src/{alert,notifications,spinner,skeleton,progress,display}.rs: compact vector closes and contrast-aware filled text; retained busy icons; Oval/Bars/Dots loaders; inert retained Skeleton content and intrinsic stretched placeholder; bounded compound labels and host-owned unknown-progress motion; centered wrapping empty actions`
+- `examples/web/src/dedicated_demos: eight dedicated primary examples; showcase_feedback_docs: 26 independent complete source modules, retaining all nine progress comparisons on each progress page`
+- `docs/feedback.md; docs/spinner.md; docs/notifications.md; docs/progress.md; ../glory/docs/finite-graphics.md: finite Pulse/Fit contract, host reduction, source ownership and platform limits`
+- `target/remediation/feedback-runtime-final.log: 55 related tests passed; feedback-root-regression-final.log: 974 tests across all targets passed; feedback-root-final-clippy.log: strict Clippy passed`
+- `examples/native/target/remediation/feedback-native-final.log: 17 related tests passed; feedback-native-layout-final.log: six current feedback checks passed, including four-theme real pixels, group pulse/reduction, editor/icon identity and narrow/wide centered action geometry; feedback-native-layout-clippy.log passed`
+- `../glory/target/remediation/feedback-shared-protocol-regression.log: 389 render/HTML/SSR tests passed; pulse-fit-native-pixels.log: five motion/fit raster tests passed; shared differential, prepared rollback, stream End and strict Clippy retained`
+- `examples/web/target/remediation/feedback-layout-final-build.log: 18 site + 3 routing + 28 library tests, strict native/WASM Clippy, release bundle and SSR passed`
+- `examples/web/target/remediation/feedback-final.json: 64/64 browser cases, errors [], assets-56f459bdcd14dd1e6252, Chromium 148.0.7778.96; all four themes at 1280/390 px, actual close/refusal/loading/pause/reduction/value changes, narrow wrapping and retained editor/icon identity; light/dark mobile screenshots visually inspected`
 
 ### Evidence P5-11
 
@@ -1716,6 +2097,8 @@ Implementation:
 
 - `src/loading_overlay.rs`
 - `docs/loading-overlay.md`
+- `docs/overlay-pages.md`
+- `examples/web/src/showcase_overlay_docs/`
 
 Tests:
 
@@ -1724,6 +2107,16 @@ Tests:
 - `examples/web/loading-overlay-acceptance.js`
 - `D:/BuildCache/sapid/loading-overlay-browser.json (9 passed, Chromium 148.0.7778.96)`
 - `D:/BuildCache/sapid/gate-snapshot10.log`
+- `src/overlay.rs: shared wrapping title/24px vector-close header and body typography; explicit FloatingDialog ViewportPlacement; same-packet trigger disable suppresses open proposals and observers; construction helpers avoid default Windows main-stack overflow`
+- `src/loading_overlay.rs: loader_type/loader_size/loader_color/animated retained finite loader configuration; src/hint.rs: theme text metrics; src/toolbar.rs: theme count and wrapping single-line actions; src/tour.rs: real text rows and themed navigation without changing current-target/query ownership`
+- `examples/web/src/dedicated_demos: eleven independent real-task primary examples; showcase_overlay_docs: 43 complete compiled source modules and matching navigation, preserving centered/full-screen Modal section IDs; controlled modal/drawer recovery action stays inside the active panel`
+- `docs/overlay-pages.md; docs/{drawer,loading-overlay,hints-implementation,toolbar,floating-indicator,tour,feedback-widgets}.md: explicit timing/source/placement/focus/content contracts and finite native boundaries`
+- `target/remediation/overlay-runtime-current.log: 51 related tests passed; overlays-root-regression-final.log: 977 all-target tests passed; overlays-root-final-clippy.log and tour-presentation-clippy.log passed strict Clippy`
+- `examples/native/target/remediation/overlays-native-final.log: 15 related tests passed; tour-presentation-native.log: seven current Tour/header/layout checks passed, including all four themes; tour-presentation-native-clippy.log passed; ordinary Dialog/Popover/nonmodal notice and HoverCard accepted, Drawer edge/Tooltip layers still explicitly refused`
+- `examples/web/target/remediation/overlay-theme-stack-trace.log / overlay-theme-stack-green.log: actual default Windows main-stack DateTimePicker failure then all 181 pages/two palettes accepted; no stack/environment/profile redirection`
+- `examples/web/target/remediation/overlays-tour-final-build.log: 19 site + 3 routing + 28 library tests, full theme audit, strict native/WASM Clippy, release bundle and SSR passed`
+- `examples/web/target/remediation/overlays-final.json: 88/88 browser cases, errors [], assets-8ffe525c155a11cf05bd, Chromium 148.0.7778.96; all four themes at 1280/390 px, actual nested/return focus, refusal/recovery, pointer gaps, retained editing, inert focus and Chrome AX exclusion, widths/edges, long-title geometry, RTL actions, target loss/recovery and local reveal; open/long-title/Tour mobile screenshots visually inspected`
+- `docs/capability-matrix.json updates HoverCard only to its tested WindowApp Dialog/Preserve subset; extra evidence annotations retained in canonical inventory records and capability-gallery.py validation preserved`
 
 ### Evidence P5-12
 
@@ -1733,6 +2126,8 @@ Implementation:
 
 - `src/overlay.rs`
 - `docs/feedback-widgets.md`
+- `docs/overlay-pages.md`
+- `examples/web/src/showcase_overlay_docs/`
 
 Tests:
 
@@ -1742,6 +2137,16 @@ Tests:
 - `examples/web/alerts-acceptance.js`
 - `D:/BuildCache/sapid/alerts-browser.json (8 passed, web8)`
 - `D:/BuildCache/sapid/native-new-layer-consumers-final.log (7 passed across alerts/color tests)`
+- `src/overlay.rs: shared wrapping title/24px vector-close header and body typography; explicit FloatingDialog ViewportPlacement; same-packet trigger disable suppresses open proposals and observers; construction helpers avoid default Windows main-stack overflow`
+- `src/loading_overlay.rs: loader_type/loader_size/loader_color/animated retained finite loader configuration; src/hint.rs: theme text metrics; src/toolbar.rs: theme count and wrapping single-line actions; src/tour.rs: real text rows and themed navigation without changing current-target/query ownership`
+- `examples/web/src/dedicated_demos: eleven independent real-task primary examples; showcase_overlay_docs: 43 complete compiled source modules and matching navigation, preserving centered/full-screen Modal section IDs; controlled modal/drawer recovery action stays inside the active panel`
+- `docs/overlay-pages.md; docs/{drawer,loading-overlay,hints-implementation,toolbar,floating-indicator,tour,feedback-widgets}.md: explicit timing/source/placement/focus/content contracts and finite native boundaries`
+- `target/remediation/overlay-runtime-current.log: 51 related tests passed; overlays-root-regression-final.log: 977 all-target tests passed; overlays-root-final-clippy.log and tour-presentation-clippy.log passed strict Clippy`
+- `examples/native/target/remediation/overlays-native-final.log: 15 related tests passed; tour-presentation-native.log: seven current Tour/header/layout checks passed, including all four themes; tour-presentation-native-clippy.log passed; ordinary Dialog/Popover/nonmodal notice and HoverCard accepted, Drawer edge/Tooltip layers still explicitly refused`
+- `examples/web/target/remediation/overlay-theme-stack-trace.log / overlay-theme-stack-green.log: actual default Windows main-stack DateTimePicker failure then all 181 pages/two palettes accepted; no stack/environment/profile redirection`
+- `examples/web/target/remediation/overlays-tour-final-build.log: 19 site + 3 routing + 28 library tests, full theme audit, strict native/WASM Clippy, release bundle and SSR passed`
+- `examples/web/target/remediation/overlays-final.json: 88/88 browser cases, errors [], assets-8ffe525c155a11cf05bd, Chromium 148.0.7778.96; all four themes at 1280/390 px, actual nested/return focus, refusal/recovery, pointer gaps, retained editing, inert focus and Chrome AX exclusion, widths/edges, long-title geometry, RTL actions, target loss/recovery and local reveal; open/long-title/Tour mobile screenshots visually inspected`
+- `docs/capability-matrix.json updates HoverCard only to its tested WindowApp Dialog/Preserve subset; extra evidence annotations retained in canonical inventory records and capability-gallery.py validation preserved`
 
 ### Evidence P5-13
 
@@ -1768,13 +2173,15 @@ Tests:
 
 ### Evidence P5-14
 
-真实非模态top layer浮窗、受控有限移动/缩放、标题栏/键盘与mouse/touch capture、RaiseLayer焦点层级已完成；7组件+1模型、原生四主题真实Bounds/像素/编辑器/查询预算2、共享Layer10、Web28实际13条CSR/hydration/受控拒绝/碰撞/退休全过。
+真实非模态top layer浮窗、受控有限移动/缩放、标题栏/键盘与mouse/touch capture、RaiseLayer焦点层级已完成；7组件+1模型、原生四主题真实Bounds/像素/编辑器/查询预算2、共享Layer10、Web28实际13条CSR/hydration/受控拒绝/碰撞/退休全过。 补紧凑标题栏、可披露的八个移动/缩放动作、真实关闭初始焦点、主题边框与禁用外观；主例默认关闭，四段精确编译文档展示受控几何/拒绝、编辑器保留/回收、嵌套模态确认与当前弱句柄。
 
 Implementation:
 
 - `src/floating_window/mod.rs`
 - `docs/floating-window.md`
 - `../glory/crates/render/src/viewport_layer.rs`
+- `examples/web/src/dedicated_demos/floating_window.rs`
+- `examples/web/src/showcase_window_docs/`
 
 Tests:
 
@@ -1785,6 +2192,14 @@ Tests:
 - `D:/BuildCache/sapid/window-native-consumer-final2.log`
 - `D:/BuildCache/sapid/window-shared-native-final.log`
 - `D:/BuildCache/sapid/window-strict-final.log`
+- `scripts/showcase-remediation-media.cjs`
+- `D:/BuildCache/sapid/remediation/media-remediation.json (24 passed, four themes / two widths)`
+- `D:/BuildCache/sapid/remediation-media-unit-final.log (29 passed)`
+- `D:/BuildCache/sapid/remediation-media-native-final.log (9 passed)`
+- `D:/BuildCache/sapid/remediation-media-carousel-native-color.log (3 passed after contrast correction)`
+- `D:/BuildCache/sapid/remediation-media-clippy-final.log`
+- `D:/BuildCache/sapid/remediation-media-native-clippy.log`
+- `D:/BuildCache/sapid/remediation-media-build-final.log`
 
 ### Evidence P5-15
 
@@ -1795,6 +2210,8 @@ Implementation:
 - `src/tour.rs`
 - `docs/tour.md`
 - `../glory/crates/apace/src/scroll_into_view.rs`
+- `docs/overlay-pages.md`
+- `examples/web/src/showcase_overlay_docs/`
 
 Tests:
 
@@ -1805,6 +2222,16 @@ Tests:
 - `D:/BuildCache/sapid/tour-native-tests.log`
 - `D:/BuildCache/sapid/tour-browser-web29.json (12 passed, Chromium 148.0.7778.96)`
 - `D:/BuildCache/sapid/tour-native-strict.log`
+- `src/overlay.rs: shared wrapping title/24px vector-close header and body typography; explicit FloatingDialog ViewportPlacement; same-packet trigger disable suppresses open proposals and observers; construction helpers avoid default Windows main-stack overflow`
+- `src/loading_overlay.rs: loader_type/loader_size/loader_color/animated retained finite loader configuration; src/hint.rs: theme text metrics; src/toolbar.rs: theme count and wrapping single-line actions; src/tour.rs: real text rows and themed navigation without changing current-target/query ownership`
+- `examples/web/src/dedicated_demos: eleven independent real-task primary examples; showcase_overlay_docs: 43 complete compiled source modules and matching navigation, preserving centered/full-screen Modal section IDs; controlled modal/drawer recovery action stays inside the active panel`
+- `docs/overlay-pages.md; docs/{drawer,loading-overlay,hints-implementation,toolbar,floating-indicator,tour,feedback-widgets}.md: explicit timing/source/placement/focus/content contracts and finite native boundaries`
+- `target/remediation/overlay-runtime-current.log: 51 related tests passed; overlays-root-regression-final.log: 977 all-target tests passed; overlays-root-final-clippy.log and tour-presentation-clippy.log passed strict Clippy`
+- `examples/native/target/remediation/overlays-native-final.log: 15 related tests passed; tour-presentation-native.log: seven current Tour/header/layout checks passed, including all four themes; tour-presentation-native-clippy.log passed; ordinary Dialog/Popover/nonmodal notice and HoverCard accepted, Drawer edge/Tooltip layers still explicitly refused`
+- `examples/web/target/remediation/overlay-theme-stack-trace.log / overlay-theme-stack-green.log: actual default Windows main-stack DateTimePicker failure then all 181 pages/two palettes accepted; no stack/environment/profile redirection`
+- `examples/web/target/remediation/overlays-tour-final-build.log: 19 site + 3 routing + 28 library tests, full theme audit, strict native/WASM Clippy, release bundle and SSR passed`
+- `examples/web/target/remediation/overlays-final.json: 88/88 browser cases, errors [], assets-8ffe525c155a11cf05bd, Chromium 148.0.7778.96; all four themes at 1280/390 px, actual nested/return focus, refusal/recovery, pointer gaps, retained editing, inert focus and Chrome AX exclusion, widths/edges, long-title geometry, RTL actions, target loss/recovery and local reveal; open/long-title/Tour mobile screenshots visually inspected`
+- `docs/capability-matrix.json updates HoverCard only to its tested WindowApp Dialog/Preserve subset; extra evidence annotations retained in canonical inventory records and capability-gallery.py validation preserved`
 
 ### Evidence P6-01
 
@@ -1815,6 +2242,7 @@ Implementation:
 - `src/navigation.rs`
 - `docs/navigation.md`
 - `../glory/crates/render/tests/current.rs`
+- `examples/web/src/showcase_navigation_docs/mod.rs`
 
 Tests:
 
@@ -1822,6 +2250,9 @@ Tests:
 - `examples/native/tests/navigation.rs`
 - `D:/BuildCache/sapid/navigation-browser.json (9 passed; errors=[])`
 - `D:/BuildCache/sapid/navigation-native-fixed.log (2 passed)`
+- `scripts/showcase-remediation-navigation.cjs (2026-11-04: 40 four-theme desktop/mobile reports; D:/BuildCache/sapid/remediation/navigation-remediation.json)`
+- `tests/navigation.rs (2026-11-04: 18 tests including optional controls, separator updates and rich link identity)`
+- `examples/native/tests/navigation.rs (2026-11-04: 3 engine tests; D:/BuildCache/sapid/remediation-navigation-native.log)`
 
 ### Evidence P6-02
 
@@ -1832,6 +2263,7 @@ Implementation:
 - `src/navigation.rs`
 - `docs/navigation.md`
 - `../glory/crates/render/tests/current.rs`
+- `examples/web/src/showcase_navigation_docs/mod.rs`
 
 Tests:
 
@@ -1839,6 +2271,9 @@ Tests:
 - `examples/native/tests/navigation.rs`
 - `D:/BuildCache/sapid/navigation-browser.json (9 passed; errors=[])`
 - `D:/BuildCache/sapid/navigation-native-fixed.log (2 passed)`
+- `scripts/showcase-remediation-navigation.cjs (2026-11-04: 40 four-theme desktop/mobile reports; D:/BuildCache/sapid/remediation/navigation-remediation.json)`
+- `tests/navigation.rs (2026-11-04: 18 tests including optional controls, separator updates and rich link identity)`
+- `examples/native/tests/navigation.rs (2026-11-04: 3 engine tests; D:/BuildCache/sapid/remediation-navigation-native.log)`
 
 ### Evidence P6-03
 
@@ -1850,6 +2285,7 @@ Implementation:
 - `src/navigation_menu/mod.rs`
 - `docs/navigation-menu.md`
 - `docs/navigation.md`
+- `examples/web/src/showcase_navigation_docs/mod.rs`
 
 Tests:
 
@@ -1857,6 +2293,9 @@ Tests:
 - `examples/native/tests/navigation_menu.rs (2 passed)`
 - `examples/web/navigation-menu-acceptance.js`
 - `D:/BuildCache/sapid/navigation-menu-browser.json (9 passed, Chromium 148.0.7778.96)`
+- `scripts/showcase-remediation-navigation.cjs (2026-11-04: 40 four-theme desktop/mobile reports; D:/BuildCache/sapid/remediation/navigation-remediation.json)`
+- `tests/navigation.rs (2026-11-04: 18 tests including optional controls, separator updates and rich link identity)`
+- `examples/native/tests/navigation.rs (2026-11-04: 3 engine tests; D:/BuildCache/sapid/remediation-navigation-native.log)`
 
 ### Evidence P6-04
 
@@ -1873,15 +2312,18 @@ Tests:
 - `examples/native/tests/app_shell.rs (2 passed, four themes)`
 - `examples/web/shell-acceptance.js`
 - `D:/BuildCache/sapid/shell-browser.json (9 passed, Chromium 148.0.7778.96)`
+- `web: examples/web/target/remediation/shell-remediation.json (16 passed, four themes/two widths)`
+- `native: examples/native/tests/app_shell.rs (3 passed, four themes)`
 
 ### Evidence P6-05
 
-真实Banner/ContentInfo/Main与侧栏布局、局部ShellLayout尺寸/断点context、Resize响应式及skip link实际聚焦已实现；不绑定路由，同一导航Owner/控件身份跨布局保持。
+真实区域、单一导航树与受控状态之外，已实现 viewport 固定框架、主区和分区独立滚动、共享有界键盘命令、反应式尺寸/偏移/边框/显隐和右侧栏；六段真实源码文档及独立全窗口示例，四主题双宽度和原生几何验收通过。原生移动 Layer 仍明确拒绝。
 
 Implementation:
 
 - `src/app_shell.rs`
 - `docs/sidebar-app-shell.md`
+- `examples/web/src/showcase_shell/mod.rs`
 
 Tests:
 
@@ -1889,16 +2331,27 @@ Tests:
 - `examples/native/tests/app_shell.rs (2 passed, four themes)`
 - `examples/web/shell-acceptance.js`
 - `D:/BuildCache/sapid/shell-browser.json (9 passed, Chromium 148.0.7778.96)`
+- `tests/app_shell.rs (10 passed); examples/web/src/showcase_examples.rs::shell_and_menubar_documentation_sections_mount_real_widgets_and_retire`
+- `scripts/showcase-layout-acceptance.cjs`
+- `D:/BuildCache/sapid/layout-acceptance/showcase-layout-acceptance.json (12 passed across four themes for PasswordInput/AppShell/Menubar; Chromium 156.0.8078.4)`
+- `D:/BuildCache/sapid/layout-fixture-acceptance.json (28 passed: Input 9, AppShell 9, Menubar 10; themed CSR/hydration, dirty adoption, focus/selection, retirement and classic stream)`
+- `tests/app_shell.rs (12 passed, reactive regions and viewport SSR)`
+- `examples/native/tests/app_shell.rs (3 passed, four-theme viewport/section scrolling, geometry and retained editor identity)`
+- `examples/web/target/remediation/shell-remediation.json (16 passed, errors [], assets-9421a48bb4ddcb424174, Chromium 148.0.7778.96)`
+- `web: examples/web/target/remediation/shell-remediation.json (16 passed, four themes/two widths)`
+- `native: examples/native/tests/app_shell.rs (3 passed, four themes)`
 
 ### Evidence P6-06
 
-Stepper已实现Current::Step/list/状态说明、可选跳步、错误/完成、受控拒绝、KeepMounted/Unmount与实际焦点交接；FormState同步/可取消异步校验屏障显式集成，四主题CSR/水合及原生证据已通过。
+Stepper已实现Current::Step/list/状态说明、可选跳步、错误/完成、受控拒绝、KeepMounted/Unmount与实际焦点交接；FormState同步/可取消异步校验屏障显式集成，四主题CSR/水合及原生证据已通过。 2026-11-05 共同页面审查修订：真实工作流/文章/文件树主例、15 段完整源码；五尺寸圆点和双向连接线、当前可用性守卫、局部滚动与原生实际几何已验证。24 组浏览器、35 项库和 8 项原生检查通过；窄屏横轨道局部滚动，OS 输入/读屏另验收。
 
 Implementation:
 
 - `src/stepper.rs`
 - `docs/stepper.md`
 - `examples/web/src/stepper_form.rs`
+- `examples/web/src/showcase_navigation_extra_docs`
+- `docs/shared-page-remediation.json`
 
 Tests:
 
@@ -1906,10 +2359,13 @@ Tests:
 - `examples/native/tests/stepper.rs (2 passed; four themes/real focus/Unmount)`
 - `examples/web/stepper-acceptance.js`
 - `D:/BuildCache/sapid/browser-snapshot8-results.json (Stepper 9 passed; Chromium 148.0.7778.96; errors=[])`
+- `examples/web/target/remediation/navigation-extra-final.json (24 passed; errors []; assets-fb4848a41a890d09d9ea)`
+- `examples/native/tests/stepper_layout.rs`
+- `examples/native/tests/navigation_extra_docs.rs`
 
 ### Evidence P6-07
 
-ScrollArea/Scroller使用真实ScrollMetrics与有界顺序intent、viewport自身键盘、嵌套输入保留原生编辑、实际边界和focus行为已实现；Owner query取消/晚到拒绝、四主题Web/SSR/native均已验收，水平动作明确LTR边界。
+ScrollArea/Scroller使用真实ScrollMetrics与有界顺序intent、viewport自身键盘、嵌套输入保留原生编辑、实际边界和focus行为已实现；Owner query取消/晚到拒绝、四主题Web/SSR/native均已验收，水平动作明确LTR边界。 Scroller补紧凑边界箭头、20–64px尺寸、固定步长/自定义图标/无控件模式，百分比宽度只解析一次；3段独立示例含ScrollHandle与保留编辑器。鼠标拖拽滚动不作承诺。
 
 Implementation:
 
@@ -1917,6 +2373,8 @@ Implementation:
 - `docs/scroll-area.md`
 - `../glory/crates/render/src/scroll.rs`
 - `examples/web/src/focused_demos/layout_controls.rs`
+- `examples/web/src/dedicated_demos/scroller.rs`
+- `examples/web/src/showcase_scroller_docs/`
 
 Tests:
 
@@ -1927,6 +2385,10 @@ Tests:
 - `examples/web/scroll-area-acceptance.js`
 - `D:/BuildCache/sapid/scroll-area-browser.json (9 passed, final fixture, Chromium 148.0.7778.96)`
 - `scripts/showcase-layout-browser.cjs (interactive layout pages; browser evidence separate from platform input acceptance)`
+- `scripts/showcase-remediation-geometry.cjs`
+- `D:/BuildCache/sapid/remediation/geometry-remediation.json (48 passed, Chromium 156.0.8078.4, four themes / two widths)`
+- `D:/BuildCache/sapid/remediation-geometry-unit-final.log (65 passed)`
+- `D:/BuildCache/sapid/remediation-geometry-native-final.log (14 passed; RichEditor native editing remains unsupported)`
 
 ### Evidence P6-08
 
@@ -1938,6 +2400,7 @@ Implementation:
 - `docs/splitter.md`
 - `../glory/crates/render/src/range.rs`
 - `examples/web/src/focused_demos/layout_controls.rs`
+- `examples/web/src/showcase_layout_docs/mod.rs`
 
 Tests:
 
@@ -1949,15 +2412,20 @@ Tests:
 - `examples/web/splitter-acceptance.js`
 - `D:/BuildCache/sapid/splitter-browser.json (10 passed incl CDP Touch, web8, Chromium 148.0.7778.96)`
 - `scripts/showcase-layout-browser.cjs (interactive layout pages; browser evidence separate from platform input acceptance)`
+- `examples/web/target/remediation/layout-remediation.json (80 passed across 10 shared layouts, four themes/two widths, errors [], assets-175211fec743fb1c04f5)`
+- `examples/native/tests/layout_docs.rs (2 passed, four-theme grid/simple-grid/flex editor identity and narrow long-content layout)`
+- `web: examples/web/target/remediation/layout-remediation.json (80 passed across 10 shared layouts, four themes/two widths, errors [], assets-175211fec743fb1c04f5)`
 
 ### Evidence P6-09
 
-typed Fixed/right/bottom视口锚定、显式Relative容器Absolute/Sticky与响应式偏移已实现；native实际祖先scroll/viewport resize通过，Sticky仍明确拒绝。
+typed Fixed/right/bottom视口锚定、显式Relative容器Absolute/Sticky与响应式偏移已实现；native实际祖先scroll/viewport resize通过，Sticky仍明确拒绝。 公开主例改局部响应式容器，另以3段独立编译示例展示viewport显隐、反应式偏移和真实sticky滚动。
 
 Implementation:
 
 - `src/affix.rs`
 - `docs/affix.md`
+- `examples/web/src/dedicated_demos/affix.rs`
+- `examples/web/src/showcase_geometry_docs/`
 
 Tests:
 
@@ -1966,6 +2434,10 @@ Tests:
 - `examples/web/affix-acceptance.js`
 - `D:/BuildCache/sapid/affix-browser.json`
 - `D:/BuildCache/sapid/gate-snapshot9.log`
+- `scripts/showcase-remediation-geometry.cjs`
+- `D:/BuildCache/sapid/remediation/geometry-remediation.json (48 passed, Chromium 156.0.8078.4, four themes / two widths)`
+- `D:/BuildCache/sapid/remediation-geometry-unit-final.log (65 passed)`
+- `D:/BuildCache/sapid/remediation-geometry-native-final.log (14 passed; RichEditor native editing remains unsupported)`
 
 ### Evidence P6-10
 
@@ -1975,6 +2447,8 @@ Implementation:
 
 - `src/toolbar.rs`
 - `docs/toolbar.md`
+- `docs/overlay-pages.md`
+- `examples/web/src/showcase_overlay_docs/`
 
 Tests:
 
@@ -1983,16 +2457,28 @@ Tests:
 - `examples/web/toolbar-acceptance.js`
 - `D:/BuildCache/sapid/toolbar-browser-web14.json (8 passed, Chromium 148.0.7778.96)`
 - `D:/BuildCache/sapid/toolbar-native.log`
+- `src/overlay.rs: shared wrapping title/24px vector-close header and body typography; explicit FloatingDialog ViewportPlacement; same-packet trigger disable suppresses open proposals and observers; construction helpers avoid default Windows main-stack overflow`
+- `src/loading_overlay.rs: loader_type/loader_size/loader_color/animated retained finite loader configuration; src/hint.rs: theme text metrics; src/toolbar.rs: theme count and wrapping single-line actions; src/tour.rs: real text rows and themed navigation without changing current-target/query ownership`
+- `examples/web/src/dedicated_demos: eleven independent real-task primary examples; showcase_overlay_docs: 43 complete compiled source modules and matching navigation, preserving centered/full-screen Modal section IDs; controlled modal/drawer recovery action stays inside the active panel`
+- `docs/overlay-pages.md; docs/{drawer,loading-overlay,hints-implementation,toolbar,floating-indicator,tour,feedback-widgets}.md: explicit timing/source/placement/focus/content contracts and finite native boundaries`
+- `target/remediation/overlay-runtime-current.log: 51 related tests passed; overlays-root-regression-final.log: 977 all-target tests passed; overlays-root-final-clippy.log and tour-presentation-clippy.log passed strict Clippy`
+- `examples/native/target/remediation/overlays-native-final.log: 15 related tests passed; tour-presentation-native.log: seven current Tour/header/layout checks passed, including all four themes; tour-presentation-native-clippy.log passed; ordinary Dialog/Popover/nonmodal notice and HoverCard accepted, Drawer edge/Tooltip layers still explicitly refused`
+- `examples/web/target/remediation/overlay-theme-stack-trace.log / overlay-theme-stack-green.log: actual default Windows main-stack DateTimePicker failure then all 181 pages/two palettes accepted; no stack/environment/profile redirection`
+- `examples/web/target/remediation/overlays-tour-final-build.log: 19 site + 3 routing + 28 library tests, full theme audit, strict native/WASM Clippy, release bundle and SSR passed`
+- `examples/web/target/remediation/overlays-final.json: 88/88 browser cases, errors [], assets-8ffe525c155a11cf05bd, Chromium 148.0.7778.96; all four themes at 1280/390 px, actual nested/return focus, refusal/recovery, pointer gaps, retained editing, inert focus and Chrome AX exclusion, widths/edges, long-title geometry, RTL actions, target loss/recovery and local reveal; open/long-title/Tour mobile screenshots visually inspected`
+- `docs/capability-matrix.json updates HoverCard only to its tested WindowApp Dialog/Preserve subset; extra evidence annotations retained in canonical inventory records and capability-gallery.py validation preserved`
 
 ### Evidence P6-11
 
-仅存活256标题的显式注册索引、真实Location当前节链接/嵌套列表、实际Bounds滚动及Owner任务查询合并已完成。9组件+3纯模型、原生四主题geometry/CPU/focus/identity1和私有toc-next实际11项CSR/采用/移动端/dirty/退休全过；SSR与首测前确定性seed一致。
+仅存活256标题的显式注册索引、真实Location当前节链接/嵌套列表、实际Bounds滚动及Owner任务查询合并已完成。9组件+3纯模型、原生四主题geometry/CPU/focus/identity1和私有toc-next实际11项CSR/采用/移动端/dirty/退休全过；SSR与首测前确定性seed一致。 2026-11-05 共同页面审查修订：真实工作流/文章/文件树主例、15 段完整源码；五尺寸圆点和双向连接线、当前可用性守卫、局部滚动与原生实际几何已验证。24 组浏览器、35 项库和 8 项原生检查通过；窄屏横轨道局部滚动，OS 输入/读屏另验收。
 
 Implementation:
 
 - `src/table_of_contents/mod.rs`
 - `src/table_of_contents/model.rs`
 - `docs/table-of-contents.md`
+- `examples/web/src/showcase_navigation_extra_docs`
+- `docs/shared-page-remediation.json`
 
 Tests:
 
@@ -2002,6 +2488,9 @@ Tests:
 - `../glory/crates/ui/tests/ancestry.rs`
 - `../glory/crates/render/tests/current.rs`
 - `D:/BuildCache/sapid/toc-browser-root23.json (11 passed, Chromium 148.0.7778.96)`
+- `examples/web/target/remediation/navigation-extra-final.json (24 passed; errors []; assets-fb4848a41a890d09d9ea)`
+- `examples/native/tests/stepper_layout.rs`
+- `examples/native/tests/navigation_extra_docs.rs`
 
 ### Evidence P6-12
 
@@ -2025,6 +2514,9 @@ Tests:
 - `D:/BuildCache/sapid/overflow-engine-move-tests.log`
 - `D:/BuildCache/sapid/overflow-engine-full-tests.log`
 - `D:/BuildCache/sapid/overflow-engine-parallel-full-tests.log`
+- `docs/data-display-pages.md; examples/web/src/dedicated_demos and showcase_data_display_docs: 13 dedicated primary and 42 complete compiled detail examples; public finite API/boundary documentation`
+- `target/remediation/data-display-root-regression-final.log: 986 passed / strict all-target Clippy; examples/native/target/remediation/data-layout-native-green.log: 10 final layout/motion/overflow cases; retained prior related native cases`
+- `examples/web/target/remediation/data-display-final.json: 104/104 four-theme 1280/390 public CSR cases, errors [], assets-849b55b8955d9c4fe7b6, Chromium 148.0.7778.96; actual load/fallback, focus/keyboard, retained editing, overlay hit, formatting/motion and mobile screenshots; OS input/readers separate`
 
 ### Evidence P6-13
 
@@ -2035,6 +2527,8 @@ Implementation:
 - `src/floating_indicator/mod.rs`
 - `src/floating_indicator/model.rs`
 - `docs/floating-indicator.md`
+- `docs/overlay-pages.md`
+- `examples/web/src/showcase_overlay_docs/`
 
 Tests:
 
@@ -2043,6 +2537,16 @@ Tests:
 - `examples/web/floating-indicator-acceptance.js`
 - `../glory/crates/ui/tests/ancestry.rs`
 - `D:/BuildCache/sapid/floating-indicator-browser-layer-next.json (9 passed, Chromium 148.0.7778.96)`
+- `src/overlay.rs: shared wrapping title/24px vector-close header and body typography; explicit FloatingDialog ViewportPlacement; same-packet trigger disable suppresses open proposals and observers; construction helpers avoid default Windows main-stack overflow`
+- `src/loading_overlay.rs: loader_type/loader_size/loader_color/animated retained finite loader configuration; src/hint.rs: theme text metrics; src/toolbar.rs: theme count and wrapping single-line actions; src/tour.rs: real text rows and themed navigation without changing current-target/query ownership`
+- `examples/web/src/dedicated_demos: eleven independent real-task primary examples; showcase_overlay_docs: 43 complete compiled source modules and matching navigation, preserving centered/full-screen Modal section IDs; controlled modal/drawer recovery action stays inside the active panel`
+- `docs/overlay-pages.md; docs/{drawer,loading-overlay,hints-implementation,toolbar,floating-indicator,tour,feedback-widgets}.md: explicit timing/source/placement/focus/content contracts and finite native boundaries`
+- `target/remediation/overlay-runtime-current.log: 51 related tests passed; overlays-root-regression-final.log: 977 all-target tests passed; overlays-root-final-clippy.log and tour-presentation-clippy.log passed strict Clippy`
+- `examples/native/target/remediation/overlays-native-final.log: 15 related tests passed; tour-presentation-native.log: seven current Tour/header/layout checks passed, including all four themes; tour-presentation-native-clippy.log passed; ordinary Dialog/Popover/nonmodal notice and HoverCard accepted, Drawer edge/Tooltip layers still explicitly refused`
+- `examples/web/target/remediation/overlay-theme-stack-trace.log / overlay-theme-stack-green.log: actual default Windows main-stack DateTimePicker failure then all 181 pages/two palettes accepted; no stack/environment/profile redirection`
+- `examples/web/target/remediation/overlays-tour-final-build.log: 19 site + 3 routing + 28 library tests, full theme audit, strict native/WASM Clippy, release bundle and SSR passed`
+- `examples/web/target/remediation/overlays-final.json: 88/88 browser cases, errors [], assets-8ffe525c155a11cf05bd, Chromium 148.0.7778.96; all four themes at 1280/390 px, actual nested/return focus, refusal/recovery, pointer gaps, retained editing, inert focus and Chrome AX exclusion, widths/edges, long-title geometry, RTL actions, target loss/recovery and local reveal; open/long-title/Tour mobile screenshots visually inspected`
+- `docs/capability-matrix.json updates HoverCard only to its tested WindowApp Dialog/Preserve subset; extra evidence annotations retained in canonical inventory records and capability-gallery.py validation preserved`
 
 ### Evidence P6-14
 
@@ -2069,6 +2573,9 @@ Tests:
 - `../glory/crates/ssr/src/stream/translation_tests.rs`
 - `D:/BuildCache/sapid/text-motion-browser-web26.json (9 passed, Chromium 148.0.7778.96)`
 - `D:/BuildCache/sapid/translation-browser-web26.json (9 passed, Chromium 148.0.7778.96)`
+- `docs/data-display-pages.md; examples/web/src/dedicated_demos and showcase_data_display_docs: 13 dedicated primary and 42 complete compiled detail examples; public finite API/boundary documentation`
+- `target/remediation/data-display-root-regression-final.log: 986 passed / strict all-target Clippy; examples/native/target/remediation/data-layout-native-green.log: 10 final layout/motion/overflow cases; retained prior related native cases`
+- `examples/web/target/remediation/data-display-final.json: 104/104 four-theme 1280/390 public CSR cases, errors [], assets-849b55b8955d9c4fe7b6, Chromium 148.0.7778.96; actual load/fallback, focus/keyboard, retained editing, overlay hit, formatting/motion and mobile screenshots; OS input/readers separate`
 
 ### Evidence P7-01
 
@@ -2080,6 +2587,8 @@ Implementation:
 - `src/number_model.rs`
 - `docs/number-input.md`
 - `../glory/crates/render/src/spinbutton.rs`
+- `src/number_input.rs; src/number_model.rs: real blur clamping, Blur/Strict/None policies, live valid bounds/steps and current availability, full-width editor with inset edge-aligned controls`
+- `examples/web/src/dedicated_demos/number_input.rs; showcase_data_input_docs/number_*.rs: five complete compiled source sections; docs/number-input.md`
 
 Tests:
 
@@ -2089,6 +2598,11 @@ Tests:
 - `../glory/crates/html/src/patch_tests.rs`
 - `examples/web/number-input-acceptance.js`
 - `D:/BuildCache/sapid/number-input-browser-root22.json (12 passed, Chromium 148.0.7778.96)`
+- `target/remediation/remaining-input-unit-final.log: 77 related regressions passed; remaining-input-clippy-final.log`
+- `examples/web/target/remediation/remaining-input-build.log: release gates passed; assets-1afb6cb1c297032a1923`
+- `examples/native/target/remediation/number-row-native-green.log: 14 related native regressions including time/date consumers; real edge alignment and stable editors`
+- `examples/web/target/remediation/data-input-remediation.json: this page 8/8 passed, all 16 passed, errors [], assets-1afb6cb1c297032a1923, Chromium 148.0.7778.96`
+- `web: examples/web/target/remediation/data-input-remediation.json: this page 8/8 passed, all 16 passed, errors [], assets-1afb6cb1c297032a1923, Chromium 148.0.7778.96`
 
 ### Evidence P7-02
 
@@ -2098,6 +2612,9 @@ Implementation:
 
 - `src/slider/mod.rs`
 - `docs/slider.md`
+- `examples/web/src/showcase_slider_docs (5 complete compiled examples)`
+- `examples/web/src/showcase_range_slider_docs (8 complete compiled examples)`
+- `examples/web/src/showcase_choice_docs (rating and segments, 6 complete compiled examples)`
 
 Tests:
 
@@ -2108,6 +2625,10 @@ Tests:
 - `examples/web/slider-acceptance.js`
 - `D:/BuildCache/sapid/slider-browser-root15.json (10 passed, Chromium 148.0.7778.96)`
 - `D:/BuildCache/sapid/slider-browser-web16.json (10 passed, Chromium 148.0.7778.96)`
+- `target/remediation/density-unit-final.log (58 passed)`
+- `examples/native/target/remediation/selection-contrast-native.log (15 passed, four-theme native geometry/contrast/identity)`
+- `examples/web/target/remediation/selection-remediation.json (40 passed, errors [], assets-da3cff8b982335dc1cea)`
+- `web: examples/web/target/remediation/selection-remediation.json (32 four-theme/dual-width and 8 touch cases, errors [], assets-da3cff8b982335dc1cea)`
 
 ### Evidence P7-03
 
@@ -2117,6 +2638,9 @@ Implementation:
 
 - `src/range_slider.rs`
 - `docs/range-slider.md`
+- `examples/web/src/showcase_slider_docs (5 complete compiled examples)`
+- `examples/web/src/showcase_range_slider_docs (8 complete compiled examples)`
+- `examples/web/src/showcase_choice_docs (rating and segments, 6 complete compiled examples)`
 
 Tests:
 
@@ -2124,6 +2648,10 @@ Tests:
 - `examples/native/tests/range_slider.rs`
 - `examples/web/range-slider-acceptance.js`
 - `D:/BuildCache/sapid/range-slider-browser-web16.json (10 passed, Chromium 148.0.7778.96)`
+- `target/remediation/density-unit-final.log (58 passed)`
+- `examples/native/target/remediation/selection-contrast-native.log (15 passed, four-theme native geometry/contrast/identity)`
+- `examples/web/target/remediation/selection-remediation.json (40 passed, errors [], assets-da3cff8b982335dc1cea)`
+- `web: examples/web/target/remediation/selection-remediation.json (32 four-theme/dual-width and 8 touch cases, errors [], assets-da3cff8b982335dc1cea)`
 
 ### Evidence P7-04
 
@@ -2135,6 +2663,9 @@ Implementation:
 - `src/slider/mapping.rs`
 - `src/slider/mod.rs`
 - `docs/angle-slider.md`
+- `examples/web/src/showcase_color_docs (10 complete compiled examples)`
+- `examples/web/src/showcase_color_input_docs (17 complete compiled examples)`
+- `docs/shared-page-remediation.md (color controls, current runtime and native boundaries)`
 
 Tests:
 
@@ -2146,6 +2677,11 @@ Tests:
 - `D:/BuildCache/sapid/angle-slider-browser-root18.json (10 passed, Chromium 148.0.7778.96)`
 - `tests/slider_geometry.rs (3 passed)`
 - `examples/native/tests/slider_geometry.rs (1 passed, five sizes)`
+- `target/remediation/color-complete-unit.log (52 passed)`
+- `examples/native/target/remediation/color-complete-native-final.log (5 color picker tests, four themes and both popup modes)`
+- `examples/web/target/remediation/color-remediation.json (44 passed, errors [], assets-814f9b98b7bc3522d30f)`
+- `examples/web/target/remediation/color-picker-showcase-browser.json (10 passed, errors [])`
+- `web: examples/web/target/remediation/color-remediation.json (four themes, two widths and touch, 44 passed, errors [], assets-814f9b98b7bc3522d30f)`
 
 ### Evidence P7-05
 
@@ -2157,6 +2693,9 @@ Implementation:
 - `src/rating/model.rs`
 - `src/radio.rs`
 - `docs/rating.md`
+- `examples/web/src/showcase_slider_docs (5 complete compiled examples)`
+- `examples/web/src/showcase_range_slider_docs (8 complete compiled examples)`
+- `examples/web/src/showcase_choice_docs (rating and segments, 6 complete compiled examples)`
 
 Tests:
 
@@ -2168,6 +2707,10 @@ Tests:
 - `examples/native/tests/rating.rs`
 - `D:/BuildCache/sapid/native-final-v2-sync.log (2026-10-29 all-feature native regression)`
 - `docs/glory-main-migration-2026-10-29.md`
+- `target/remediation/density-unit-final.log (58 passed)`
+- `examples/native/target/remediation/selection-contrast-native.log (15 passed, four-theme native geometry/contrast/identity)`
+- `examples/web/target/remediation/selection-remediation.json (40 passed, errors [], assets-da3cff8b982335dc1cea)`
+- `web: examples/web/target/remediation/selection-remediation.json (32 four-theme/dual-width and 8 touch cases, errors [], assets-da3cff8b982335dc1cea)`
 
 ### Evidence P7-06
 
@@ -2186,6 +2729,9 @@ Tests:
 - `examples/web/color-swatch-acceptance.js`
 - `D:/BuildCache/sapid/color-swatch-browser-web15.json (9 passed, Chromium 148.0.7778.96)`
 - `D:/BuildCache/sapid/gate-snapshot15.log`
+- `docs/data-display-pages.md; examples/web/src/dedicated_demos and showcase_data_display_docs: 13 dedicated primary and 42 complete compiled detail examples; public finite API/boundary documentation`
+- `target/remediation/data-display-root-regression-final.log: 986 passed / strict all-target Clippy; examples/native/target/remediation/data-layout-native-green.log: 10 final layout/motion/overflow cases; retained prior related native cases`
+- `examples/web/target/remediation/data-display-final.json: 104/104 four-theme 1280/390 public CSR cases, errors [], assets-849b55b8955d9c4fe7b6, Chromium 148.0.7778.96; actual load/fallback, focus/keyboard, retained editing, overlay hit, formatting/motion and mobile screenshots; OS input/readers separate`
 
 ### Evidence P7-07
 
@@ -2197,6 +2743,9 @@ Implementation:
 - `src/color_model.rs`
 - `src/slider/mod.rs`
 - `docs/color-sliders.md`
+- `examples/web/src/showcase_color_docs (10 complete compiled examples)`
+- `examples/web/src/showcase_color_input_docs (17 complete compiled examples)`
+- `docs/shared-page-remediation.md (color controls, current runtime and native boundaries)`
 
 Tests:
 
@@ -2213,10 +2762,15 @@ Tests:
 - `D:/BuildCache/sapid/angle-geometry-native.log`
 - `D:/BuildCache/sapid/color-sliders-unstyled-web17-before-fix.log (regression reproduced before fix)`
 - `D:/BuildCache/sapid/color-sliders-browser-web18.json (10 passed, Chromium 148.0.7778.96)`
+- `target/remediation/color-complete-unit.log (52 passed)`
+- `examples/native/target/remediation/color-complete-native-final.log (5 color picker tests, four themes and both popup modes)`
+- `examples/web/target/remediation/color-remediation.json (44 passed, errors [], assets-814f9b98b7bc3522d30f)`
+- `examples/web/target/remediation/color-picker-showcase-browser.json (10 passed, errors [])`
+- `web: examples/web/target/remediation/color-remediation.json (four themes, two widths and touch, 44 passed, errors [], assets-814f9b98b7bc3522d30f)`
 
 ### Evidence P7-08
 
-ColorPicker/ColorInput与共享DragCapture、连续二维饱和/亮度、Hue/Alpha及可选Slider键盘精度控件已实现。ColorInput支持hex(a)/rgb(a)/hsl(a)六种格式、输入内预览、swatches/preset-only、fix-on-blur、disallow-input、loading/左右section/success和由输入框直接锚定的紧凑弹层；showcase已有6个专属区块并逐项展示18个真实输入状态。EyeDropper仍要求显式宿主服务，不调用隐式浏览器I/O。既有证据保留，完整showcase门禁与实际浏览器DOM/视觉复核通过。
+ColorPicker/ColorInput与共享DragCapture、连续二维饱和/亮度、Hue/Alpha及可选Slider键盘精度控件已实现。ColorInput支持hex(a)/rgb(a)/hsl(a)六种格式、受控草稿/commit、preserve-invalid、disallow-input、完整连续色面+全部swatches、点击色块关闭、隐藏弹层、loading/左右section及四种控件状态；EyeDropper通过应用显式注入的异步服务工作并支持自定义图标，不调用隐式浏览器I/O。ColorPicker保留无损Hsva业务值，同时以真实隐藏Input发布可选格式的表单快照。showcase现有16个ColorInput行为区块和4个ColorPicker区块，浏览器逐项验证真实输入、弹层、色块、服务和表单值。
 
 Implementation:
 
@@ -2225,10 +2779,15 @@ Implementation:
 - `src/color_input.rs`
 - `docs/color-picker.md`
 - `../glory/crates/render/src/drag.rs`
+- `examples/web/src/showcase_color_docs (10 complete compiled examples)`
+- `examples/web/src/showcase_color_input_docs (17 complete compiled examples)`
+- `docs/shared-page-remediation.md (color controls, current runtime and native boundaries)`
 
 Tests:
 
-- `tests/color_pickers.rs (11 passed)`
+- `tests/color_pickers.rs (16 passed)`
+- `scripts/color-picker-showcase-browser.cjs (10 checks)`
+- `D:/BuildCache/sapid/color-picker-showcase-browser.json (10 checks, Chromium)`
 - `examples/native/tests/color_pickers.rs (3 passed before geometry strengthening)`
 - `D:/BuildCache/sapid/color-picker-native.log`
 - `examples/web/color-picker-acceptance.js`
@@ -2240,10 +2799,15 @@ Tests:
 - `D:/BuildCache/sapid/color-picker-geometry-native20.log (3 passed, strengthened actual geometry)`
 - `D:/BuildCache/sapid/color-picker-browser-geometry20.json (11 passed, Chromium 148.0.7778.96)`
 - `D:/BuildCache/sapid/drag-capture-stream-command-next.log (missing support fixture generated before final browser replay)`
+- `target/remediation/color-complete-unit.log (52 passed)`
+- `examples/native/target/remediation/color-complete-native-final.log (5 color picker tests, four themes and both popup modes)`
+- `examples/web/target/remediation/color-remediation.json (44 passed, errors [], assets-814f9b98b7bc3522d30f)`
+- `examples/web/target/remediation/color-picker-showcase-browser.json (10 passed, errors [])`
+- `web: examples/web/target/remediation/color-remediation.json (four themes, two widths and touch, 44 passed, errors [], assets-814f9b98b7bc3522d30f)`
 
 ### Evidence P7-09
 
-PinInput/InputOTP单真实Input+紧凑连续glyph cells已实现，单String控制/完整粘贴拒绝/IME/accepted-only完成/Field与密码AX保密均补齐。typed Ch最后u64 Value位及独立OneTimeCode/Numeric hints共享实现；6模型+10组件、原生真实字体/掩码/指针caret/布局和Web23实际12项全过。OS autofill与宽间距cell不作承诺。
+PinInput/InputOTP保留单真实Input、完整String受控提案/粘贴拒绝/IME/accepted-only完成及Field/密码保密；补0–32px间距与padding、共享ChPx/letter-spacing、原生caret编辑余量和反应式掩码。公开验证码主例与3段独立文档、12组件回归、原生四主题真实字体/布局及浏览器宽窄操作通过；OS autofill不作承诺。
 
 Implementation:
 
@@ -2251,16 +2815,25 @@ Implementation:
 - `src/pin_model.rs`
 - `docs/pin-input.md`
 - `../glory/crates/render/src/input_assist.rs`
+- `examples/web/src/dedicated_demos/pin_input.rs`
+- `examples/web/src/showcase_pin_docs/`
+- `../glory/crates/style/tests/spacing.rs`
+- `../glory/crates/html/tests/spacing.rs`
+- `../glory/crates/apace/tests/spacing.rs`
 
 Tests:
 
-- `tests/pin_inputs.rs (10 passed)`
+- `tests/pin_inputs.rs (12 passed)`
 - `examples/native/tests/pin_input.rs`
 - `../glory/crates/style/tests/ch.rs`
 - `../glory/crates/render/tests/input_assist.rs`
 - `../glory/crates/html/tests/input_assist.rs`
 - `examples/web/pin-input-acceptance.js`
 - `D:/BuildCache/sapid/pin-input-browser-root23.json (12 passed, Chromium 148.0.7778.96)`
+- `scripts/showcase-remediation-geometry.cjs`
+- `D:/BuildCache/sapid/remediation/geometry-remediation.json (48 passed, Chromium 156.0.8078.4, four themes / two widths)`
+- `D:/BuildCache/sapid/remediation-geometry-unit-final.log (65 passed)`
+- `D:/BuildCache/sapid/remediation-geometry-native-final.log (14 passed; RichEditor native editing remains unsupported)`
 
 ### Evidence P7-10
 
@@ -2274,6 +2847,8 @@ Implementation:
 - `../glory/crates/render/src/input_edit.rs`
 - `../glory/crates/render/src/text_selection.rs`
 - `../glory/crates/web/src/browser/input_edit.rs`
+- `src/mask_input.rs: independent bounded reactive placeholder; same-packet Field availability before editing/commit callbacks and generic observers`
+- `examples/web/src/dedicated_demos/mask_input.rs; showcase_data_input_docs/mask_*.rs: four complete compiled source sections; docs/mask-input.md`
 
 Tests:
 
@@ -2284,6 +2859,11 @@ Tests:
 - `../glory/crates/render/tests/input_edit.rs`
 - `../glory/crates/ui/tests/text_selection.rs`
 - `D:/BuildCache/sapid/mask-input-browser-web26.json (12 passed, Chromium 148.0.7778.96)`
+- `target/remediation/remaining-input-unit-final.log: 77 related regressions passed; remaining-input-clippy-final.log`
+- `examples/web/target/remediation/remaining-input-build.log: release gates passed; assets-1afb6cb1c297032a1923`
+- `examples/native/target/remediation/form-input-docs-native.log: four-theme real editor, current hint layout and stable identity; existing mask native regressions passed`
+- `examples/web/target/remediation/form-input-remediation.json: this page 8/8 passed, all 24 passed using trusted disk-file fixtures, errors [], assets-1afb6cb1c297032a1923, Chromium 148.0.7778.96`
+- `web: examples/web/target/remediation/form-input-remediation.json: this page 8/8 passed, all 24 passed using trusted disk-file fixtures, errors [], assets-1afb6cb1c297032a1923, Chromium 148.0.7778.96`
 
 ### Evidence P7-11
 
@@ -2295,6 +2875,8 @@ Implementation:
 - `src/json_model.rs`
 - `docs/json-input.md`
 - `../glory/docs/input-placeholder.md`
+- `src/json_input.rs: optional real format_on_blur, shared bounded formatter, controlled refusal, same-packet final draft and current availability/composition guards`
+- `examples/web/src/dedicated_demos/json_input.rs; showcase_data_input_docs/json_*.rs: four independently compiled source sections; docs/json-input.md`
 
 Tests:
 
@@ -2306,6 +2888,11 @@ Tests:
 - `examples/web/json-input-acceptance.js`
 - `D:/BuildCache/sapid/json-browser-web16.json (9 passed, Chromium 148.0.7778.96)`
 - `tests/placeholders.rs`
+- `target/remediation/input-behavior-unit.log: 9 JSON tests; input-behavior-clippy.log`
+- `examples/native/target/remediation/data-input-native.log; data-input-docs-native.log; data-input-docs-native-clippy.log: real editor identity, formatting, error positions and bounded failure`
+- `examples/web/target/remediation/data-text-build.log: release gates passed`
+- `examples/web/target/remediation/data-input-remediation.json: this page 8/8 cases passed, errors []; NumberInput remains in progress; assets-8560c6d31d55fb3702fb, Chromium 148.0.7778.96`
+- `web: examples/web/target/remediation/data-input-remediation.json: this page 8/8 cases passed, errors []; NumberInput remains in progress; assets-8560c6d31d55fb3702fb, Chromium 148.0.7778.96`
 
 ### Evidence P8-01
 
@@ -2330,6 +2917,10 @@ Tests:
 - `../glory/crates/apace/src/accessibility_table_tests.rs`
 - `../glory/crates/ssr/src/stream/table_tests.rs`
 - `D:/BuildCache/sapid/table-browser-root24.json (12 passed, Chromium 148.0.7778.96)`
+- `docs/typography-pages.md; examples/web/src/dedicated_demos and showcase_typography_docs: 9 real primary examples / 33 independently compiled complete source sections; explicit literal/context and platform contracts`
+- `target/remediation/typography-caption-root-regression.log: 987 passed / strict Clippy; ../glory/target/caption-{style,html,render,ssr}-final.log: 441 shared tests; caption-native-final.log: 4 real CPU layout/raster cases; both support masks remain u64`
+- `examples/native/target/remediation/caption-consumer-native-final.log: final 7 cases including four-theme actual article/quote, local horizontal scroll with retained cells, bottom caption/footer geometry and explicit native ellipsis/clamp/Sticky rejection`
+- `examples/web/target/remediation/typography-final.json: 72/72 four-theme 1280/390 public cases, errors [], assets-96c72a26edbf774df57f, Chromium 148.0.7778.96; full heading Chrome AX, actual table/scroll/header/caption geometry, literal/selection semantics and mobile visual QA`
 
 ### Evidence P8-02
 
@@ -2360,7 +2951,7 @@ Tests:
 
 ### Evidence P8-03
 
-真实Tree/TreeItem、有限层级/同级坐标、受控展开/选择、键盘/RTL/typeahead、显式lazy与FileTree纯数据适配已完成；5模型+10组件、render3/HTML差分1、原生真实键盘AX2与四主题布局/像素/滚动/编辑器2，Web30强化12条CSR/hydration/受控拒绝/dirty/touch/禁用Fieldset全过。仅挂载当前展开的有限2048节点，不宣称任意大源窗口化。
+真实Tree/TreeItem、有限层级/同级坐标、受控展开/选择、键盘/RTL/typeahead、显式lazy与FileTree纯数据适配已完成；进一步补齐批量展开、级联/独立勾选、保留祖先过滤、连接线、Before/Inside/After真实指针拖放与allow_drop。8个组件名 showcase 章节及7条浏览器交互全过。仅挂载当前展开的有限2048节点，虚拟化由应用组合有限源，不宣称扫描任意大源。 2026-11-05 共同页面审查修订：真实工作流/文章/文件树主例、15 段完整源码；五尺寸圆点和双向连接线、当前可用性守卫、局部滚动与原生实际几何已验证。24 组浏览器、35 项库和 8 项原生检查通过；窄屏横轨道局部滚动，OS 输入/读屏另验收。
 
 Implementation:
 
@@ -2368,11 +2959,13 @@ Implementation:
 - `src/tree_model.rs`
 - `docs/tree.md`
 - `../glory/crates/render/src/tree.rs`
+- `examples/web/src/showcase_navigation_extra_docs`
+- `docs/shared-page-remediation.json`
 
 Tests:
 
-- `src/tree_model.rs (5 passed)`
-- `tests/trees.rs (10 passed)`
+- `src/tree_model.rs (8 passed)`
+- `tests/trees.rs (11 passed)`
 - `../glory/crates/render/tests/tree.rs (3 passed)`
 - `../glory/crates/html/src/tree_tests.rs (1 passed)`
 - `examples/native/tests/trees.rs (2 passed)`
@@ -2381,10 +2974,15 @@ Tests:
 - `D:/BuildCache/sapid/tree-native-components-final.log`
 - `D:/BuildCache/sapid/tree-native-strict.log`
 - `D:/BuildCache/sapid/tree-browser-web30.json (12 passed, Chromium 148.0.7778.96)`
+- `scripts/tree-showcase-browser.cjs (7 checks, errors=[])`
+- `D:/BuildCache/sapid/tree-showcase-browser.json (7 checks, Chromium)`
+- `examples/web/target/remediation/navigation-extra-final.json (24 passed; errors []; assets-fb4848a41a890d09d9ea)`
+- `examples/native/tests/stepper_layout.rs`
+- `examples/native/tests/navigation_extra_docs.rs`
 
 ### Evidence P8-04
 
-TreeSelect 复用 Tree/Combobox 与完整路径值、多选/半选策略；新版 Glory 原生树弹层已连接，四主题消费端验证真实几何、选择、关闭恢复焦点与触发器身份。
+TreeSelect 复用真实Tree popup与完整路径值，支持single/multiple、级联或独立勾选、受控值/展开/搜索、内置保留祖先过滤与空结果、hide_picked、max_values、typed node/value renderer、连接线及有限下拉宽高/锚点。8组组件名展示和7条Chromium交互通过；Glory允许editable combobox驱动Tree popup且保留有限协议验证。 2026-11-05 共同页面审查修订：独立主例/完整源码分段、被动目标/选项内容、统一 token 编辑框和焦点返回、原生表单顺序、层级搜索展开与紧凑/父路径操作；72 组四主题双宽度浏览器验收通过。有限 API 与 OS 输入/读屏边界见当前修复文档。
 
 Implementation:
 
@@ -2396,10 +2994,13 @@ Implementation:
 - `../glory/crates/render/src/tree.rs`
 - `docs/tree-choices.md`
 - `完整路径与配对admission；真实Combobox+Tree popup；TreeSelect多选/父半选/叶子策略；Cascader真实Grid分列和单祖先链/懒加载。原生组合控件已接通，当前验证见 2026-10-29 迁移记录。`
+- `examples/web/src/showcase_combobox_docs`
+- `docs/hierarchical-choices.md`
+- `docs/shared-page-remediation.json`
 
 Tests:
 
-- `tests/tree_selects.rs (7 passed)`
+- `tests/tree_selects.rs (9 passed)`
 - `tests/cascaders.rs (6 passed)`
 - `D:/BuildCache/sapid/tree-choices-final-components.log (23 tests including 10 Tree regressions)`
 - `D:/BuildCache/sapid/tree-choices-final-model.log (6 tests, including exact 64/65-depth boundary)`
@@ -2410,15 +3011,19 @@ Tests:
 - `D:/BuildCache/sapid/tree-checked-native-ax.log (1 actual AccessKit state/clear test)`
 - `examples/web/tree-choices-acceptance.js`
 - `D:/BuildCache/sapid/tree-choices-browser-web33.json (21 reports: 10 TreeSelect, 11 Cascader; zero errors)`
+- `../glory/crates/render/tests/choice.rs (11 passed)`
+- `scripts/tree-select-showcase-browser.cjs (7 checks, errors=[])`
+- `D:/BuildCache/sapid/tree-select-showcase-browser.json (7 checks, Chromium)`
 - `D:/BuildCache/sapid/tree-choices-browser-web33.log`
 - `D:/BuildCache/sapid/web33-source/source-hashes.json (immutable production and acceptance sources)`
 - `D:/BuildCache/sapid/tree-choices-final-strict.log`
 - `D:/BuildCache/sapid/native-final-v2-sync.log (2026-10-29 all-feature native regression)`
 - `docs/glory-main-migration-2026-10-29.md`
+- `examples/web/target/remediation/combobox-final.json (72 passed; errors []; assets-78c3911462ca7e3fb88d)`
 
 ### Evidence P8-05
 
-Cascader 保留分列路径、展开/返回与懒加载；新版 Glory 原生树弹层已连接，四主题消费端验证真实几何、路径选择、焦点返回与触发器身份。
+Cascader 保留分列路径、展开/返回与懒加载；新版 Glory 原生树弹层已连接，四主题消费端验证真实几何、路径选择、焦点返回与触发器身份。 2026-11-05 共同页面审查修订：独立主例/完整源码分段、被动目标/选项内容、统一 token 编辑框和焦点返回、原生表单顺序、层级搜索展开与紧凑/父路径操作；72 组四主题双宽度浏览器验收通过。有限 API 与 OS 输入/读屏边界见当前修复文档。
 
 Implementation:
 
@@ -2430,6 +3035,9 @@ Implementation:
 - `../glory/crates/render/src/tree.rs`
 - `docs/tree-choices.md`
 - `完整路径与配对admission；真实Combobox+Tree popup；TreeSelect多选/父半选/叶子策略；Cascader真实Grid分列和单祖先链/懒加载。原生组合控件已接通，当前验证见 2026-10-29 迁移记录。`
+- `examples/web/src/showcase_combobox_docs`
+- `docs/hierarchical-choices.md`
+- `docs/shared-page-remediation.json`
 
 Tests:
 
@@ -2449,6 +3057,7 @@ Tests:
 - `D:/BuildCache/sapid/tree-choices-final-strict.log`
 - `D:/BuildCache/sapid/native-final-v2-sync.log (2026-10-29 all-feature native regression)`
 - `docs/glory-main-migration-2026-10-29.md`
+- `examples/web/target/remediation/combobox-final.json (72 passed; errors []; assets-78c3911462ca7e3fb88d)`
 
 ### Evidence P9-01
 
@@ -2468,7 +3077,7 @@ Tests:
 
 ### Evidence P9-02
 
-有限42格Calendar/MiniCalendar、独立焦点/选择/today、月年跳转、禁用日/边界/locale/RTL、共享Grid键盘协议已完成；6组件+7日期模型、共享目标/HTML差分/原生键盘AX、原生四主题布局像素2、Web27b实际12条CSR/hydration/同tick导航/dirty/退休全过。
+Calendar 保持有限42格月历、自定义选择/日期内容、全宽和静态模式。MiniCalendar 在2026-11-05替换为独立的1–31天日期条，具备受控范围/选择、边界排除、locale/RTL与稳定按钮；公开主例、四段独立文档、库3项、原生2项与公开站四主题/双宽度8组验收通过。
 
 Implementation:
 
@@ -2476,10 +3085,14 @@ Implementation:
 - `src/dates.rs`
 - `docs/calendar.md`
 - `../glory/crates/render/src/grid.rs`
+- `src/mini_calendar.rs`
+- `docs/mini-calendar.md`
+- `examples/web/src/dedicated_demos/mini_calendar.rs`
+- `examples/web/src/showcase_mini_calendar_docs/`
 
 Tests:
 
-- `tests/calendars.rs (6 passed)`
+- `tests/calendars.rs (8 passed)`
 - `examples/native/tests/calendar.rs (2 passed)`
 - `examples/web/calendar-acceptance.js`
 - `../glory/crates/render/tests/grid.rs`
@@ -2487,10 +3100,14 @@ Tests:
 - `D:/BuildCache/sapid/calendar-clippy.log`
 - `D:/BuildCache/sapid/calendar-native.log`
 - `D:/BuildCache/sapid/calendar-browser-web27b.json (12 passed, Chromium 148.0.7778.96)`
+- `scripts/calendar-showcase-browser.cjs`
+- `D:/BuildCache/sapid/calendar-showcase-browser.json`
+- `tests/mini_calendars.rs (3 passed)`
+- `examples/web/target/remediation/mini-calendar-remediation.json (8 passed, Chromium 148.0.7778.96)`
 
 ### Evidence P9-03
 
-单日/固定容量32多日/有序范围、Calendar复用、Field成功值及默认真实Dialog输入弹层已完成；5模型+9组件、原生默认popup实际3（四主题布局/像素/焦点/输入身份/退休）、Web28真实12条CSR/hydration/受控拒绝/同tick/容量/dirty/touch全过。
+单日/固定容量32多日/有序范围、Calendar复用、Field成功值及默认真实Dialog输入弹层已完成；5模型+9组件、原生默认popup实际3（四主题布局/像素/焦点/输入身份/退休）、Web28真实12条CSR/hydration/受控拒绝/同tick/容量/dirty/touch全过。 DatePickerInput补内嵌日历/清空、placeholder与clear_label，清空支持三种模式并保留受控拒绝/只读/焦点和输入身份；格式化显示与独立ISO成功控件分离，公开主例及7段精确源码文档包括本地表单和重置。
 
 Implementation:
 
@@ -2498,6 +3115,10 @@ Implementation:
 - `src/date_picker.rs`
 - `src/date_picker_input.rs`
 - `docs/date-picker.md`
+- `src/input_actions.rs`
+- `tests/input_actions.rs`
+- `examples/web/src/dedicated_demos/date_picker_input.rs`
+- `examples/web/src/showcase_date_picker_docs/`
 
 Tests:
 
@@ -2509,6 +3130,11 @@ Tests:
 - `D:/BuildCache/sapid/date-picker-rust-final.log`
 - `D:/BuildCache/sapid/date-picker-native-final.log`
 - `D:/BuildCache/sapid/date-picker-web-clippy.log`
+- `tests/input_actions.rs (6 passed)`
+- `examples/native/tests/input_actions.rs (3 passed, four themes, actual hit/focus/geometry)`
+- `scripts/showcase-remediation-inputs.cjs`
+- `D:/BuildCache/sapid/remediation/input-remediation.json (40 passed, four themes / two widths)`
+- `D:/BuildCache/sapid/remediation-input-shell-build-final.log`
 
 ### Evidence P9-04
 
@@ -2533,7 +3159,7 @@ Tests:
 
 ### Evidence P9-05
 
-按月选择及范围，网格键盘导航。
+按月选择及范围，网格键盘导航。 MonthPickerInput补内嵌图标/清空、有限PeriodInputFormat及反应式locale显示，独立ISO月域成功值不引入代表日；4段独立编译文档覆盖格式、受控拒绝、多选/范围、边界/排除/字段状态。
 
 Implementation:
 
@@ -2542,6 +3168,10 @@ Implementation:
 - `src/period_picker_input.rs`
 - `docs/period-pickers.md`
 - `YearMonth/CivilYear 与 sealed DatePeriod；32 个有限选择，真实月份/十年 Grid、范围、多选、禁用、RTL、受控状态和只读 Input/Dialog。`
+- `src/input_actions.rs`
+- `tests/input_actions.rs`
+- `examples/web/src/dedicated_demos/month_picker_input.rs`
+- `examples/web/src/showcase_period_input_docs/`
 
 Tests:
 
@@ -2553,10 +3183,15 @@ Tests:
 - `D:/BuildCache/sapid/period-picker-browser-portal-next.json (12 joint Month/Year browser reports, zero errors; shared evidence counted once)`
 - `D:/BuildCache/sapid/period-picker-browser-portal-next.log`
 - `models: 6 tests, all 119988 months and 9999 years; Grid command/Calendar/native keyboard regression; see docs/period-pickers.md`
+- `tests/input_actions.rs (6 passed)`
+- `examples/native/tests/input_actions.rs (3 passed, four themes, actual hit/focus/geometry)`
+- `scripts/showcase-remediation-inputs.cjs`
+- `D:/BuildCache/sapid/remediation/input-remediation.json (40 passed, four themes / two widths)`
+- `D:/BuildCache/sapid/remediation-input-shell-build-final.log`
 
 ### Evidence P9-06
 
-年份/区间、十年视图和边界。
+年份/区间、十年视图和边界。 YearPickerInput补内嵌图标/清空、有限PeriodInputFormat与中文年标签，独立ISO年份成功值；4段独立编译文档覆盖格式、受控拒绝、多选/范围、边界/排除/字段状态。
 
 Implementation:
 
@@ -2565,6 +3200,10 @@ Implementation:
 - `src/period_picker_input.rs`
 - `docs/period-pickers.md`
 - `YearMonth/CivilYear 与 sealed DatePeriod；32 个有限选择，真实月份/十年 Grid、范围、多选、禁用、RTL、受控状态和只读 Input/Dialog。`
+- `src/input_actions.rs`
+- `tests/input_actions.rs`
+- `examples/web/src/dedicated_demos/year_picker_input.rs`
+- `examples/web/src/showcase_period_input_docs/`
 
 Tests:
 
@@ -2576,6 +3215,11 @@ Tests:
 - `D:/BuildCache/sapid/period-picker-browser-portal-next.json (12 joint Month/Year browser reports, zero errors; shared evidence counted once)`
 - `D:/BuildCache/sapid/period-picker-browser-portal-next.log`
 - `models: 6 tests, all 119988 months and 9999 years; Grid command/Calendar/native keyboard regression; see docs/period-pickers.md`
+- `tests/input_actions.rs (6 passed)`
+- `examples/native/tests/input_actions.rs (3 passed, four themes, actual hit/focus/geometry)`
+- `scripts/showcase-remediation-inputs.cjs`
+- `D:/BuildCache/sapid/remediation/input-remediation.json (40 passed, four themes / two widths)`
+- `D:/BuildCache/sapid/remediation-input-shell-build-final.log`
 
 ### Evidence P9-07
 
@@ -2605,7 +3249,7 @@ Tests:
 
 ### Evidence P9-08
 
-分段时间输入与可选时间网格、typed duration/minHoursDigits、步长/禁用值、不完整草稿可见的受控 clearable、默认/自定义分段 placeholder、presets、完整 controls dropdown、32-byte pasteSplit、受控锚定弹层、labels/focus、typed placement/width，以及十五段 showcase。
+分段时间输入与可选时间网格、typed duration/minHoursDigits、步长/禁用值、不完整草稿可见的受控 clearable、默认/自定义分段 placeholder、presets、完整 controls dropdown、32-byte pasteSplit、受控锚定弹层、labels/focus、typed placement/width，以及十五段 showcase。 TimeGrid补响应式等宽列、密集列局部横滚及显式键盘滚入视野，RTL保持同排、unstyled保留必要几何；3段独立编译文档覆盖间隔/格式、bounds/受控拒绝和状态。
 
 Implementation:
 
@@ -2616,6 +3260,9 @@ Implementation:
 - `src/duration_picker.rs`
 - `docs/time-picker.md`
 - `显式wall-clock分段SpinButton、真实Grid和真实Popover presets；有界步长/排除值、12/24h/中英、未完成段、受控clearable/open、共享placeholder、readonly/disabled。`
+- `docs/time-grid.md`
+- `examples/web/src/dedicated_demos/time_grid.rs`
+- `examples/web/src/showcase_geometry_docs/`
 
 Tests:
 
@@ -2631,16 +3278,24 @@ Tests:
 - `D:/BuildCache/sapid/time-browser-web33.log (also independent TimeInput 12 regression)`
 - `D:/BuildCache/sapid/time-browser-web33-first-tab-contract.log (test corrected to explicit Enter Commit; no production change)`
 - `examples/web/time-picker-acceptance.js`
+- `scripts/showcase-remediation-geometry.cjs`
+- `D:/BuildCache/sapid/remediation/geometry-remediation.json (48 passed, Chromium 156.0.8078.4, four themes / two widths)`
+- `D:/BuildCache/sapid/remediation-geometry-unit-final.log (65 passed)`
+- `D:/BuildCache/sapid/remediation-geometry-native-final.log (14 passed; RichEditor native editing remains unsupported)`
 
 ### Evidence P9-09
 
-DateTimePicker 与 InlineDateTimePicker：真实 input dialog、显式 resolver/fold/gap、部分草稿、presets/default time、placeholder/typed display format、受控 clearable、TimePicker controls 转发、Done/Escape/Form 边界和七段 showcase。
+DateTimePicker 与 InlineDateTimePicker：真实 input dialog、显式 resolver/fold/gap、部分草稿、presets/default time、placeholder/typed display format、受控 clearable、TimePicker controls 转发、Done/Escape/Form 边界和七段 showcase。 DateTimePicker补内嵌操作及可本地化trigger/title/close标签，友好显示与ISO成功控件分离、清空焦点返回；主例及11段独立编译文档保留预设/默认时间/分段/范围/层级功能，子控件配置构造与挂载分离减少调试栈临时值。
 
 Implementation:
 
 - `src/date_time_model.rs`
 - `src/date_time_picker.rs`
 - `docs/date-time-picker.md`
+- `src/input_actions.rs`
+- `tests/input_actions.rs`
+- `examples/web/src/dedicated_demos/date_time_picker.rs`
+- `examples/web/src/showcase_date_time_picker_docs/`
 
 Tests:
 
@@ -2651,10 +3306,15 @@ Tests:
 - `D:/BuildCache/sapid/date-time-model-rust.log (6 passed)`
 - `D:/BuildCache/sapid/date-time-native.log (2 actual tests including four themes)`
 - `D:/BuildCache/sapid/date-time-picker-browser-web35.json (12 passed, zero errors)`
+- `tests/input_actions.rs (6 passed)`
+- `examples/native/tests/input_actions.rs (3 passed, four themes, actual hit/focus/geometry)`
+- `scripts/showcase-remediation-inputs.cjs`
+- `D:/BuildCache/sapid/remediation/input-remediation.json (40 passed, four themes / two widths)`
+- `D:/BuildCache/sapid/remediation-input-shell-build-final.log`
 
 ### Evidence P10-01
 
-FileButton/FileInput 与 Dropzone/Attachment：真实可信 OS chooser/drop、有限非 ambient File 引用/版本/元数据/字节读取、filter/count/bytes 预算、四个跨 App 不可早退 read permits、当前预览 URL 安全解码/撤销、dirty adoption/Owner 清理。显式 apace-files 已接通原生选择/读取/私有预览及四主题真实消费端；桌面原生投放通道与四主题 Dropzone 真实句柄执行端已通过；移动 driver、实际 OS 拖动/chooser 输入验收仍开放，ambient 路径不支持；上传网络由应用提供。
+FileButton/FileInput 与 Dropzone/Attachment：真实可信 OS chooser/drop、有限非 ambient File 引用/版本/元数据/字节读取、filter/count/bytes 预算、四个跨 App 不可早退 read permits、当前预览 URL 安全解码/撤销、dirty adoption/Owner 清理。显式 apace-files 已接通原生选择/读取/私有预览及四主题真实消费端；桌面原生投放通道与四主题 Dropzone 真实句柄执行端已通过；移动 driver、实际 OS 拖动/chooser 输入验收仍开放，ambient 路径不支持；上传网络由应用提供。 2026-11-05共同页面复核：按钮批次新增完整独立源码文档、同packet动作保护、可见加载/矢量关闭图标、真实复制与文件结果反馈；56组公开站浏览器矩阵通过。
 
 Implementation:
 
@@ -2663,6 +3323,9 @@ Implementation:
 - `../glory/crates/web/src/browser/files.rs`
 - `src/files.rs`
 - `../glory/docs/native-files.md`
+- `src/files.rs: real input-like filename summary, inset vector clear action, protected endcap, current enabled guards, explicit empty on_files notification and supported-host focus return; FileButton/Dropzone labels and silent programmatic clear retained`
+- `examples/web/src/dedicated_demos/file_input.rs; showcase_data_input_docs/file_*.rs: four complete compiled source sections; docs/files.md`
+- `docs/buttons.md; examples/web/src/showcase_button_docs (25 complete source sections); seven dedicated primary examples`
 
 Tests:
 
@@ -2678,10 +3341,18 @@ Tests:
 - `examples/native/tests/file_drop.rs (four themes; real desktop opener, path replacement, chunk read, PNG preview, retirement; owned Wingy event source)`
 - `/Volumes/Data/Caches/glory/native-file-drop-sapid-tests.log`
 - `/Volumes/Data/Caches/glory/native-file-drop-sapid-clippy.log`
+- `target/remediation/file-input-final-config-unit.log: 8 passed including silent config revocation and stable picker; file-input-final-clippy.log`
+- `examples/native/target/remediation/file-input-clear-focus-green.log: 3 four-theme service/real geometry/pixels/focus/identity/read/preview/cancel regressions passed; file-input-final-native-clippy.log; focus red evidence retained`
+- `examples/web/target/remediation/inputs-focus-final-build.log: release gates passed`
+- `examples/web/target/remediation/inputs-final.json: this page 8 cases; all 64 cases across 8 input pages passed, errors [], assets-acbb53d887807ee803d9, Chromium 148.0.7778.96. File selections use trusted disk fixtures; cancellation is separately verified with native injected picker None, without OS-dialog claims`
+- `target/remediation/buttons-runtime-complete.log (49 related component tests); examples/native/target/remediation/buttons-native-green.log and buttons-clipboard-native.log (6 four-theme tests); strict Clippy passed`
+- `examples/web/target/remediation/buttons-final.json (56 cases, errors [], assets-70ac21f9e035d1ca724e, Chromium 148.0.7778.96); buttons-feedback-final-build.log (release gates, 46 site/library/routing tests)`
+- `web: examples/web/target/remediation/inputs-final.json: this page 8 cases; all 64 cases across 8 input pages passed, errors [], assets-acbb53d887807ee803d9, Chromium 148.0.7778.96. File selections use trusted disk fixtures; cancellation is separately verified with native injected picker None, without OS-dialog claims`
+- `native: examples/native/target/remediation/file-input-clear-focus-green.log: 3 four-theme service/real geometry/pixels/focus/identity/read/preview/cancel regressions passed; file-input-final-native-clippy.log; focus red evidence retained`
 
 ### Evidence P10-02
 
-FileButton/FileInput 与 Dropzone/Attachment：真实可信 OS chooser/drop、有限非 ambient File 引用/版本/元数据/字节读取、filter/count/bytes 预算、四个跨 App 不可早退 read permits、当前预览 URL 安全解码/撤销、dirty adoption/Owner 清理。显式 apace-files 已接通原生选择/读取/私有预览及四主题真实消费端；桌面原生投放通道与四主题 Dropzone 真实句柄执行端已通过；移动 driver、实际 OS 拖动/chooser 输入验收仍开放，ambient 路径不支持；上传网络由应用提供。
+FileButton/FileInput 与 Dropzone/Attachment：真实可信 OS chooser/drop、有限非 ambient File 引用/版本/元数据/字节读取、filter/count/bytes 预算、四个跨 App 不可早退 read permits、当前预览 URL 安全解码/撤销、dirty adoption/Owner 清理。显式 apace-files 已接通原生选择/读取/私有预览及四主题真实消费端；桌面原生投放通道与四主题 Dropzone 真实句柄执行端已通过；移动 driver、实际 OS 拖动/chooser 输入验收仍开放，ambient 路径不支持；上传网络由应用提供。 补清晰实际拖放/chooser主例和文件计数/可读拒绝反馈，四段精确编译文档分别覆盖约束与原子拒绝、显式PNG/JPEG预览、Owner绑定4KiB文本读取、自定义附件与禁用/重配置。上传仍由应用提供。
 
 Implementation:
 
@@ -2690,6 +3361,8 @@ Implementation:
 - `../glory/crates/web/src/browser/files.rs`
 - `src/files.rs`
 - `../glory/docs/native-files.md`
+- `examples/web/src/dedicated_demos/dropzone.rs`
+- `examples/web/src/showcase_dropzone_docs/`
 
 Tests:
 
@@ -2705,10 +3378,18 @@ Tests:
 - `examples/native/tests/file_drop.rs (four themes; real desktop opener, path replacement, chunk read, PNG preview, retirement; owned Wingy event source)`
 - `/Volumes/Data/Caches/glory/native-file-drop-sapid-tests.log`
 - `/Volumes/Data/Caches/glory/native-file-drop-sapid-clippy.log`
+- `scripts/showcase-remediation-media.cjs`
+- `D:/BuildCache/sapid/remediation/media-remediation.json (24 passed, four themes / two widths)`
+- `D:/BuildCache/sapid/remediation-media-unit-final.log (29 passed)`
+- `D:/BuildCache/sapid/remediation-media-native-final.log (9 passed)`
+- `D:/BuildCache/sapid/remediation-media-carousel-native-color.log (3 passed after contrast correction)`
+- `D:/BuildCache/sapid/remediation-media-clippy-final.log`
+- `D:/BuildCache/sapid/remediation-media-native-clippy.log`
+- `D:/BuildCache/sapid/remediation-media-build-final.log`
 
 ### Evidence P10-03
 
-显式带revision/request的可信宿主剪贴板action、真实成功/拒绝/不可用/失败、每文档至多一个OS写入、Owner/源替换撤销与注入计时反馈已完成；4组件、共享协议/HTML零输出差分/SSR拒绝、原生默认不可用及四主题像素1；显式可选桌面剪贴板、四主题 CopyButton/Code/Json/Tags 异步消费端和 macOS 系统往返另已通过，Android 安全 JNI/ARM64 前台系统服务独立验收，iOS driver/移动菜单仍开放；Web28实际9组写读/权限/迟到/dirty/退休全过。
+显式带revision/request的可信宿主剪贴板action、真实成功/拒绝/不可用/失败、每文档至多一个OS写入、Owner/源替换撤销与注入计时反馈已完成；4组件、共享协议/HTML零输出差分/SSR拒绝、原生默认不可用及四主题像素1；显式可选桌面剪贴板、四主题 CopyButton/Code/Json/Tags 异步消费端和 macOS 系统往返另已通过，Android 安全 JNI/ARM64 前台系统服务独立验收，iOS driver/移动菜单仍开放；Web28实际9组写读/权限/迟到/dirty/退休全过。 2026-11-05共同页面复核：按钮批次新增完整独立源码文档、同packet动作保护、可见加载/矢量关闭图标、真实复制与文件结果反馈；56组公开站浏览器矩阵通过。
 
 Implementation:
 
@@ -2717,6 +3398,7 @@ Implementation:
 - `../glory/crates/render/src/clipboard.rs`
 - `../glory/crates/web/src/browser/clipboard.rs`
 - `../glory/docs/native-clipboard.md`
+- `docs/buttons.md; examples/web/src/showcase_button_docs (25 complete source sections); seven dedicated primary examples`
 
 Tests:
 
@@ -2731,16 +3413,20 @@ Tests:
 - `examples/native/tests/clipboard_driver.rs (--features clipboard; 3 passed, four themes)`
 - `/Volumes/Data/Caches/glory/clipboard-sapid-tests.log`
 - `/Volumes/Data/Caches/glory/clipboard-macos-system.log (guarded macOS system round trip)`
+- `target/remediation/buttons-runtime-complete.log (49 related component tests); examples/native/target/remediation/buttons-native-green.log and buttons-clipboard-native.log (6 four-theme tests); strict Clippy passed`
+- `examples/web/target/remediation/buttons-final.json (56 cases, errors [], assets-70ac21f9e035d1ca724e, Chromium 148.0.7778.96); buttons-feedback-final-build.log (release gates, 46 site/library/routing tests)`
 
 ### Evidence P10-04
 
-索引轮播最多七个短 Owner、百万 count 不扫描源；受控页、RTL/Swipe、注入时钟与暂停协议已实现。新版 Glory 原生真实鼠标悬停可取消当前时钟，离开恢复；四主题几何/像素与清理验证保留。
+索引轮播最多七个短 Owner、百万 count 不扫描源；受控页、RTL/Swipe、注入时钟与暂停协议已实现。新版 Glory 原生真实鼠标悬停可取消当前时钟，离开恢复；四主题几何/像素与清理验证保留。 补紧凑内嵌方向箭头、20–64px控制尺寸/可省略箭头、最多九个当前位置指示器，修复同一任务连续命令读取旧页和外部暂停仍可本地恢复的问题；深色选中点使用可读强调色。卡片主例及四段独立文档覆盖受控拒绝、RTL/纵向、显式时钟与百万页有限Owner窗口。
 
 Implementation:
 
 - `src/carousel/mod.rs`
 - `src/carousel/model.rs`
 - `docs/carousel.md`
+- `examples/web/src/dedicated_demos/carousel.rs`
+- `examples/web/src/showcase_carousel_docs/`
 
 Tests:
 
@@ -2753,6 +3439,14 @@ Tests:
 - `D:/BuildCache/sapid/carousel-native-clippy-final.log`
 - `D:/BuildCache/sapid/native-final-v2-sync.log (2026-10-29 all-feature native regression)`
 - `docs/glory-main-migration-2026-10-29.md`
+- `scripts/showcase-remediation-media.cjs`
+- `D:/BuildCache/sapid/remediation/media-remediation.json (24 passed, four themes / two widths)`
+- `D:/BuildCache/sapid/remediation-media-unit-final.log (29 passed)`
+- `D:/BuildCache/sapid/remediation-media-native-final.log (9 passed)`
+- `D:/BuildCache/sapid/remediation-media-carousel-native-color.log (3 passed after contrast correction)`
+- `D:/BuildCache/sapid/remediation-media-clippy-final.log`
+- `D:/BuildCache/sapid/remediation-media-native-clippy.log`
+- `D:/BuildCache/sapid/remediation-media-build-final.log`
 
 ### Evidence P10-05
 
@@ -2821,7 +3515,7 @@ Tests:
 
 ### Evidence P10-08
 
-真实有限富文档/UTF16选区/marks/段落与heading、应用受控拒绝、独立32项2MiB历史、Web composition/source仲裁/真实plain clipboard；FORMAT13共享mapper/SSRstream/oracle，Web43原9+classic11+extra3全过；Native编辑与相关AX明确typed拒绝，不用Textarea冒充。
+真实有限富文档/UTF16选区/marks/段落与heading、应用受控拒绝、独立32项2MiB历史、Web composition/source仲裁/真实plain clipboard；补齐 controlled、placeholder、subtle、无工具栏/只读/禁用的公开示例。FORMAT13共享mapper/SSRstream/oracle，Web43原9+classic11+extra3全过；Native编辑与相关AX明确typed拒绝，不用Textarea冒充；任意Tiptap插件/HTML、表格、任务、媒体与源码模式保留为协议边界。 补有限可配置toolbar_actions、H1–H6与接受选区pressed状态，紧凑可换行按钮与真实undo/redo可用性；文章主例和4段独立编译文档/源码。保留有限文档、纯文本粘贴及原生拒绝边界。
 
 Implementation:
 
@@ -2830,10 +3524,16 @@ Implementation:
 - `../glory/docs/rich-editor-protocol-design.md`
 - `../glory/crates/render/src/rich.rs`
 - `../glory/crates/render/src/rich_document.rs`
+- `examples/web/src/dedicated_demos/rich_text_editor.rs`
+- `examples/web/src/showcase_editor_docs/`
 
 Tests:
 
 - `tests/rich_editor.rs`
+- `examples/web/src/focused_demos/rich_editor.rs`
+- `scripts/rich-editor-showcase-browser.cjs`
+- `D:/BuildCache/sapid/rich-editor-showcase-browser.json (6 focused showcase checks)`
+- `D:/BuildCache/sapid/rich-editor-component-tests.log (7 passed)`
 - `examples/web/rich-editor-acceptance.js`
 - `examples/web/rich-editor-stream-acceptance.js`
 - `examples/web/rich-editor-extra-acceptance.js`
@@ -2843,6 +3543,10 @@ Tests:
 - `D:/BuildCache/sapid/rich-native-final-clippy.log`
 - `D:/BuildCache/sapid/gate42-shared-allfeatures.log (655 shared tests; includes full HTML oracle and rich protocol)`
 - `D:/BuildCache/sapid/gate42-shared-strict.log`
+- `scripts/showcase-remediation-geometry.cjs`
+- `D:/BuildCache/sapid/remediation/geometry-remediation.json (48 passed, Chromium 156.0.8078.4, four themes / two widths)`
+- `D:/BuildCache/sapid/remediation-geometry-unit-final.log (65 passed)`
+- `D:/BuildCache/sapid/remediation-geometry-native-final.log (14 passed; RichEditor native editing remains unsupported)`
 
 ### Evidence P11-01
 
@@ -2871,7 +3575,7 @@ Tests:
 
 ### Evidence P11-02
 
-Line/Area/Bar/Composite 实际几何、真实空值断线、正负 bar 堆叠与非负 area 堆叠、有限刻度/显式裁剪、inclusive brush、稳定完整 key、全数据表、受控拒绝及 CSR/adoption/原生四主题验收。
+Line/Area/Bar/Composite 实际几何、真实空值断线、正负 bar 堆叠与非负 area 堆叠、有限刻度/显式裁剪、inclusive brush、稳定完整 key、全数据表、受控拒绝及 CSR/adoption/原生四主题验收。新增最多16项的 typed reference area/line/dot 与标签，按当前 brush 裁剪并进入共享 Web/Native Graphic 场景；四个公开指南各展示 usage、stack/legend、references、brush。
 
 Implementation:
 
@@ -2879,11 +3583,14 @@ Implementation:
 - `src/chart_scene.rs`
 - `src/chart_widget.rs`
 - `examples/web/src/charts_form.rs`
+- `examples/web/src/focused_demos/charts.rs`
 - `docs/charts.md`
 
 Tests:
 
 - `tests/charts.rs`
+- `scripts/cartesian-chart-showcase-browser.cjs`
+- `D:/BuildCache/sapid/cartesian-chart-showcase-browser.json`
 - `examples/native/tests/charts.rs`
 - `examples/web/charts-acceptance.js`
 - `D:/BuildCache/sapid/chart-scene-tests.log (6 geometry tests before seventh export case)`
@@ -2966,7 +3673,7 @@ Tests:
 
 ### Evidence P11-06
 
-32×32/1024cells 有限 Heatmap/面积 Matrix、明确五档数值色标和每格原值，Waffle 确定性100格余数分配；数据表分块完整保留，Web/Native 实测。
+Heatmap 在2026-11-05替换为独立日期贡献网格：1–366天、最多54周列、缺失/零值区分、反应式数据/范围/数值域、中英文和自定义标签/色阶、点击与当前键盘光标、稳定日期身份、一个当前提示。MatrixChart保留32×32/1024格面积矩阵，Waffle保留确定性100格余数分配。Heatmap的库/原生像素与8组公开站验收通过；原生明确拒绝提示层。
 
 Implementation:
 
@@ -2976,6 +3683,10 @@ Implementation:
 - `src/plot_table.rs`
 - `src/plot_widget.rs`
 - `docs/plots.md`
+- `src/heatmap.rs`
+- `src/heatmap_model.rs`
+- `docs/heatmap.md`
+- `examples/web/src/showcase_heatmap_docs/`
 
 Tests:
 
@@ -2987,6 +3698,9 @@ Tests:
 - `D:/BuildCache/sapid/plots-lightbox-native-final-tests.log (18 kinds × 4 actual themes)`
 - `D:/BuildCache/sapid/plots-browser-web39.json (60 reports, zero errors)`
 - `D:/BuildCache/sapid/plots-lightbox-native-strict.log`
+- `tests/heatmaps.rs (5 passed)`
+- `examples/native/tests/heatmap.rs (2 passed)`
+- `examples/web/target/remediation/heatmap-remediation.json (8 passed, Chromium 148.0.7778.96)`
 
 ### Evidence P11-07
 
@@ -3038,7 +3752,7 @@ Tests:
 
 ### Evidence P12-01
 
-Schedule 有限当前请求窗口、事件/资源/冲突模型、daily/weekly/monthly/yearly 重复与例外、COUNT/UNTIL/月末策略、直跳窗口而非无限预展开；civil/fixed-offset/application resolver 显式 fold/gap。Schedule 当前已交付真实 Agenda；其余视图按独立任务验收。
+Schedule 有限当前请求窗口、事件/资源/冲突模型、daily/weekly/monthly/yearly 重复与例外、COUNT/UNTIL/月末策略、直跳窗口而非无限预展开；civil/fixed-offset/application resolver 显式 fold/gap。统一 Schedule 头支持受控 Day/Week/Month/Year 等真实 keyed 视图切换；应用原子接受 view 与匹配当前窗口。各视图编辑能力仍按独立任务验收。
 
 Implementation:
 
@@ -3052,6 +3766,8 @@ Implementation:
 Tests:
 
 - `tests/schedules.rs`
+- `scripts/schedule-showcase-browser.cjs`
+- `D:/BuildCache/sapid/schedule-showcase-browser.json`
 - `D:/BuildCache/sapid/schedule-model-rust.log`
 - `D:/BuildCache/sapid/schedule-clippy.log`
 - `D:/BuildCache/sapid/schedule-browser-web35.json (12 reports, zero errors)`
@@ -3059,7 +3775,7 @@ Tests:
 
 ### Evidence P12-02
 
-Day/Week 真实时间 Grid、半开区间几何、独立重叠lane、slot/事件键盘访问、readonly/disabled、受控选择与实际 ScrollIntoView；当前有限窗口/稳定 key/Owner 清理，短日期表头在四主题 CSR/adoption 和 Native 实际布局中验收。
+Day/Week 真实时间 Grid、半开区间几何、独立重叠lane、全天区、slot/事件键盘访问、readonly/disabled、受控选择与实际 ScrollIntoView；补齐有限 slot height/header/all-day 展示选项和 Day/Week 独立 showcase。当前有限窗口/稳定 key/Owner 清理，短日期表头在四主题 CSR/adoption 和 Native 实际布局中验收。
 
 Implementation:
 
@@ -3070,6 +3786,8 @@ Implementation:
 Tests:
 
 - `tests/schedule_timelines.rs`
+- `scripts/schedule-timelines-showcase-browser.cjs`
+- `D:/BuildCache/sapid/schedule-timelines-showcase-browser.json`
 - `examples/native/tests/schedule_timeline.rs`
 - `examples/web/schedule-timeline-acceptance.js`
 - `D:/BuildCache/sapid/schedule-timeline-final-rust.log (7 passed)`
@@ -3078,7 +3796,7 @@ Tests:
 
 ### Evidence P12-03
 
-真实42日Month/12月Year Grid，weekday列标题、预览上限、有限显式详情与Mobile单日展开；受控分页/选择/readonly、首末行箭头不串列、当前禁用focus护栏，四主题Web/Native实际几何/命中/像素/清理通过。
+真实42日Month/12月Year Grid，weekday列标题、可配月外日期/显式today/预览上限/header、有限显式详情与Mobile单日展开；补齐 Month/Year/MobileMonth 独立 showcase。受控分页/选择/readonly、首末行箭头不串列、当前禁用focus护栏，四主题Web/Native实际几何/命中/像素/清理通过。
 
 Implementation:
 
@@ -3088,6 +3806,8 @@ Implementation:
 Tests:
 
 - `tests/schedule_calendars.rs`
+- `scripts/schedule-calendars-showcase-browser.cjs`
+- `D:/BuildCache/sapid/schedule-calendars-showcase-browser.json`
 - `examples/native/tests/schedule_calendar.rs`
 - `examples/web/schedule-calendar-acceptance.js`
 - `D:/BuildCache/sapid/schedule-calendar-guard-native.log (3 actual native tests)`
@@ -3115,7 +3835,7 @@ Tests:
 
 ### Evidence P12-05
 
-真实单画布资源日/周/月排程与双轴Grid，当前有限资源/日期窗口和权限，鼠标/CDP触摸/query-backed跨日跨资源移动/端点调整、键盘等价提案、受控拒绝与同tick排序/Owner取消，所有业务授权/冲突/持久化归App；Web42强化12与Native3实际通过。
+真实单画布资源日/周/月排程与双轴Grid，统一 ResourcesSchedule 受控视图头，当前有限资源/日期窗口和权限，鼠标/CDP触摸/query-backed跨日跨资源移动/端点调整、键盘等价提案、受控拒绝与同tick排序/Owner取消，所有业务授权/冲突/持久化归App；Web42强化12与Native3实际通过。
 
 Implementation:
 
@@ -3130,6 +3850,8 @@ Tests:
 
 - `tests/schedule_resource_views.rs`
 - `tests/resource_schedules.rs`
+- `scripts/resources-schedule-showcase-browser.cjs`
+- `D:/BuildCache/sapid/resources-schedule-showcase-browser.json`
 - `examples/native/tests/resource_schedule.rs`
 - `examples/web/resource-schedule-acceptance.js`
 - `D:/BuildCache/sapid/resource-schedule-final-rust.log`

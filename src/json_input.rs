@@ -20,6 +20,7 @@ pub struct JsonInput {
     limits: JsonLimits,
     format: JsonFormat,
     formatter: bool,
+    format_on_blur: bool,
     format_label: Vary<String>,
     announce: bool,
     change: Option<Box<dyn FnMut(String)>>,
@@ -42,6 +43,7 @@ pub fn json_input(key: impl Into<String>) -> JsonInput {
         limits: JsonLimits::default(),
         format: JsonFormat::default(),
         formatter: true,
+        format_on_blur: false,
         format_label: "Format JSON".into(),
         announce: false,
         change: None,
@@ -126,6 +128,12 @@ impl JsonInput {
     }
     pub fn show_formatter(mut self, value: bool) -> Self {
         self.formatter = value;
+        self
+    }
+    /// Propose whitespace formatting when the real editor loses focus.
+    /// Invalid, composing and unavailable drafts remain unchanged.
+    pub fn format_on_blur(mut self, value: bool) -> Self {
+        self.format_on_blur = value;
         self
     }
     pub fn format_label(mut self, value: impl Into<Vary<String>>) -> Self {
@@ -259,6 +267,56 @@ impl Widget for JsonInput {
             .as_ref()
             .map(|field| field.readonly_state(scope, self.readonly.clone()))
             .unwrap_or_else(|| self.readonly.clone());
+        let format_action = {
+            let ready = enabled.clone();
+            let read = readonly.clone();
+            let composing = composing_now.clone();
+            let control = control.clone();
+            let change = change.clone();
+            let formatted = formatted.clone();
+            let format_error = format_error.clone();
+            let weak = scope.downgrade();
+            let format = self.format;
+            Rc::new(move || {
+                let Some(scope) = weak.upgrade() else { return };
+                if !ready.get() || read.get() || composing.get() {
+                    return;
+                }
+                let result = control
+                    .source
+                    .try_with(|value| {
+                        draft(value, limits)?;
+                        Ok::<_, glory::ui::Error>(value.clone())
+                    })
+                    .map_err(glory::ui::Error::from)
+                    .and_then(|value| value);
+                let value = match result {
+                    Ok(value) => value,
+                    Err(error) => {
+                        scope.report_error(error);
+                        return;
+                    }
+                };
+                if !matches!(validate_json(&value, limits), JsonValidity::Valid(_)) {
+                    return;
+                }
+                match format_json(&value, format, limits) {
+                    Ok(value) => {
+                        format_failure.revise(|failure| *failure = None);
+                        if let Err(error) = control.accept(&value) {
+                            scope.report_error(error);
+                            return;
+                        }
+                        change.emit(owner, value.clone());
+                        formatted.emit(owner, value);
+                    }
+                    Err(error) => {
+                        format_failure.revise(|failure| *failure = Some(error.clone()));
+                        format_error.emit(owner, error);
+                    }
+                }
+            })
+        };
         let invalid = self.invalid.clone();
         let error_state =
             scope.bond(move || invalid.get() || matches!(status.get(), JsonValidity::Invalid(_)));
@@ -333,6 +391,20 @@ impl Widget for JsonInput {
             }
             observe(&mut composition_observers, owner, event)
         });
+        if self.format_on_blur {
+            let action = format_action.clone();
+            let mut observers = self
+                .common
+                .handlers
+                .remove(&EventKind::FocusChanged)
+                .unwrap_or_default();
+            input = input.on(EventKind::FocusChanged, move |event| {
+                if matches!(event, Event::FocusChanged(false)) {
+                    action();
+                }
+                observe(&mut observers, owner, event);
+            });
+        }
         for (kind, mut callbacks) in std::mem::take(&mut self.common.handlers) {
             input = input.on(kind, move |event| observe(&mut callbacks, owner, event))
         }
@@ -377,7 +449,6 @@ impl Widget for JsonInput {
                 })),
         );
         if self.formatter {
-            let format = self.format;
             let ready = enabled.clone();
             let read = readonly.clone();
             let check = scope.bond(move || {
@@ -387,35 +458,11 @@ impl Widget for JsonInput {
                     && matches!(status.get(), JsonValidity::Valid(_))
             });
             let label = composite::validated(scope, &self.format_label, |value| label(value))?;
-            let ready = enabled;
-            let read = readonly;
-            let weak = scope.downgrade();
             let button = crate::button()
                 .theme(self.common.theme.clone())
                 .label(label)
                 .enabled(check)
-                .on_press(move || {
-                    let Some(scope) = weak.upgrade() else { return };
-                    if !ready.get() || read.get() || composing_now.get() {
-                        return;
-                    }
-                    let result = accepted.with(|value| format_json(value, format, limits));
-                    match result {
-                        Ok(value) => {
-                            format_failure.revise(|failure| *failure = None);
-                            if let Err(error) = control.accept(&value) {
-                                scope.report_error(error);
-                                return;
-                            }
-                            change.emit(owner, value.clone());
-                            formatted.emit(owner, value)
-                        }
-                        Err(error) => {
-                            format_failure.revise(|failure| *failure = Some(error.clone()));
-                            format_error.emit(owner, error)
-                        }
-                    }
-                });
+                .on_press(move || format_action());
             root = root.fill(if self.common.unstyled {
                 button.unstyled()
             } else {

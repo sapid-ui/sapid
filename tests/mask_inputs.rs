@@ -84,6 +84,100 @@ fn edit(
     .unwrap();
 }
 #[test]
+fn placeholder_updates_preserve_the_same_masked_editor_revision_and_raw_value() {
+    let (app, _) = app();
+    let reference = app.scope().cage(None);
+    let hint = app.scope().cage("00-00".to_owned());
+    app.mount(
+        mask_input(MaskPattern::parse("##-##").unwrap())
+            .name("Reference")
+            .node_ref(reference)
+            .placeholder(hint),
+    )
+    .unwrap();
+    let id = reference.get().unwrap();
+    let revision = props(&app, id).revision;
+    hint.revise(|v| *v = "Four digits".into());
+    app.flush().unwrap();
+    assert_eq!(props(&app, id).revision, revision);
+    assert_eq!(props(&app, id).value, "");
+    assert_eq!(
+        app.tree()
+            .node(id)
+            .unwrap()
+            .descriptor
+            .view()
+            .semantics
+            .as_ref()
+            .unwrap()
+            .placeholder
+            .as_deref(),
+        Some("Four digits")
+    );
+    edit(
+        &app,
+        id,
+        "1234",
+        (4, 4),
+        Some((0, 0)),
+        InputEditIntent::Insert,
+    );
+    assert_eq!(props(&app, id).value, "12-34");
+    assert_eq!(reference.get(), Some(id));
+}
+#[test]
+fn mask_edit_and_commit_recheck_current_field_availability_in_one_packet() {
+    for disabling in [false, true] {
+        for commit_text in [false, true] {
+            let (app, _) = app();
+            let blocked = app.scope().cage(false);
+            let calls = app.scope().cage(0);
+            let reference = app.scope().cage(None);
+            app.mount(
+                sapid::field("live-mask")
+                    .readonly(blocked.map(move |v| *v && !disabling))
+                    .enabled(blocked.map(move |v| !*v || !disabling))
+                    .control(move |field| {
+                        mask_input(MaskPattern::parse("##-##").unwrap())
+                            .field(field)
+                            .node_ref(reference)
+                            .default_value("12")
+                            .on_value_change(move |_| calls.revise(|n| *n += 1))
+                            .on_commit(move |_| calls.revise(|n| *n += 1))
+                    }),
+            )
+            .unwrap();
+            let id = reference.get().unwrap();
+            app.scope()
+                .batch(|| {
+                    blocked.revise(|v| *v = true);
+                    if commit_text {
+                        app.dispatch(
+                            id,
+                            Event::Commit {
+                                value: "12-3".into(),
+                                revision: props(&app, id).revision,
+                            },
+                        )
+                        .unwrap();
+                    } else {
+                        edit(
+                            &app,
+                            id,
+                            "12-3",
+                            (4, 4),
+                            Some((3, 3)),
+                            InputEditIntent::Insert,
+                        )
+                    }
+                })
+                .unwrap();
+            assert_eq!(calls.get(), 0);
+            assert_eq!(props(&app, id).value, "12-");
+        }
+    }
+}
+#[test]
 fn raw_business_value_is_distinct_from_display_and_only_one_real_input_exists() {
     let (app, actions) = app();
     let r = app.scope().cage(None);

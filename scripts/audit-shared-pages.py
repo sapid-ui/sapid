@@ -1,8 +1,12 @@
 """Fetch current official pages and prepare the one-to-one documentation review.
 
 This is a read-only audit: it does not refresh the frozen API facts or alter UI.
-Raw upstream documents and browser artifacts stay under D:/BuildCache/sapid.
+Raw upstream documents and browser artifacts stay under project build directory/sapid.
 """
+from pathlib import Path as _BuildPath
+import sys as _build_sys
+_build_sys.path.insert(0, str(_BuildPath(__file__).resolve().parents[1] / "scripts"))
+from local_build_paths import local_build_path
 import concurrent.futures
 import datetime
 import hashlib
@@ -15,7 +19,7 @@ import time
 from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parents[1]
-OUTPUT = Path(os.environ.get("SAPID_BROWSER_OUTPUT", "D:/BuildCache/sapid/shared-page-audit"))
+OUTPUT = Path(os.environ.get("SAPID_BROWSER_OUTPUT", local_build_path('sapid/shared-page-audit')))
 OUTPUT.mkdir(parents=True, exist_ok=True)
 (OUTPUT / "upstream").mkdir(exist_ok=True)
 

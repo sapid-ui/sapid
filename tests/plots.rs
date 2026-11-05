@@ -165,11 +165,11 @@ fn ranges_expose_read_only_progress_and_full_matrix_tables_have_unique_bounded_i
             })
             .collect(),
     });
-    app.mount(heatmap("m".repeat(MAX_PLOT_KEY_BYTES)).data(data))
+    app.mount(matrix_chart("m".repeat(MAX_PLOT_KEY_BYTES)).data(data))
         .unwrap();
     assert_eq!(class(&app, "sapid-plot-point").len(), 1024);
-    let html =
-        glory::ssr::render(heatmap("matrix").data(samples::sample(PlotKind::Heatmap))).unwrap();
+    let html = glory::ssr::render(matrix_chart("matrix").data(samples::sample(PlotKind::Heatmap)))
+        .unwrap();
     assert!(html.contains("<table"));
     assert!(!html.contains("role=\"grid\""));
     assert!(text(&app).contains("1023"));
@@ -275,4 +275,52 @@ fn table_policy_keeps_all_plot_scenes_accessibility_and_selection_equivalent() {
             "empty {kind:?}"
         );
     }
+}
+
+#[test]
+fn compact_sparkline_keeps_direct_selection_and_exact_data_without_summary_controls() {
+    let app = App::memory();
+    let selected = Rc::new(RefCell::new(None));
+    let output = selected.clone();
+    app.mount(
+        sparkline("summary")
+            .data(PlotData::values([
+                ValueDatum::new("week1", "Week 1", 4.),
+                ValueDatum::new("week2", "Week 2", 7.),
+            ]))
+            .navigation(false)
+            .on_selection_change(move |v| *output.borrow_mut() = v),
+    )
+    .unwrap();
+    assert!(class(&app, "sapid-plot-controls").is_empty());
+    assert!(class(&app, "sapid-plot-detail").is_empty());
+    assert!(text(&app).contains("Week 1"));
+    let mark = class(&app, "sapid-plot-point")[0];
+    app.dispatch(mark, Event::Activate).unwrap();
+    assert!(selected.borrow().is_some());
+    let legend = named(&app, "Hide Week 1");
+    assert!(
+        app.tree()
+            .node(legend)
+            .unwrap()
+            .descriptor
+            .view()
+            .semantics
+            .as_ref()
+            .is_some_and(|s| s.pressed == Some(true))
+    );
+    app.dispatch(legend, Event::Activate).unwrap();
+    assert_eq!(named(&app, "Show Week 1"), legend);
+    assert!(
+        app.tree()
+            .node(legend)
+            .unwrap()
+            .descriptor
+            .view()
+            .semantics
+            .as_ref()
+            .is_some_and(|s| s.pressed == Some(false))
+    );
+    app.clear().unwrap();
+    assert_eq!(app.stats().nodes, 0);
 }

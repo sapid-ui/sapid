@@ -5,6 +5,10 @@
 已复现问题、功能定义差异和后续优先级；它不把当前有限实现状态等同于完整上游功能对齐。
 逐项修复及验收进度见 [修复记录](shared-page-remediation.md)。
 
+2026-11-06 的修复记录已完成全部 181 个共有页面，包含优先 27 页的交互回归。
+文档页面主标题和分节标题统一为常规字重 400；日程日期分组另以 16px 常规字重呈现。
+当前完整示例和边界见 [日程页面](schedule-pages.md) 与 [扩展页面](extension-pages.md)。
+
 ## Glory routing 接入
 
 展示站应用启用 `glory/routing`，组件库本身继续独立于路由。Router 是 URL 与历史的唯一来源，
@@ -335,7 +339,18 @@ CSS 资产 `assets-7a3f7e3005cb55775b16` 已发布到 8795；本次仅更新 CSS
 
 ## Deployment caching
 
-`check-showcase.ps1` builds into a clean D-drive output. CSS, JS, WASM and bindgen
+Public WASM builds select the example-only `public-showcase` feature. It omits
+the four original gallery mount protocols from the library entry point while
+retaining the documentation application. Default builds still export those
+protocols for the independent acceptance fixtures. This reduces published code
+without increasing the 25 MiB asset budget; it changes no Sapid/Glory library API.
+Release bindgen output also omits the Wasm debugging name section; executable
+code, exports and behavior remain subject to the same acceptance checks.
+
+`check-showcase.ps1` reads `cargo metadata` in the web example workspace and uses
+its normal target directory, with site output in `target/showcase` by default.
+Caller Cargo configuration and `TEMP`/`TMP` are preserved. Legacy central cache
+paths are rejected. CSS, JS, WASM and bindgen
 snippets share one `assets-<content-hash>/` directory; images and the favicon use
 `media-<content-hash>/`. The media prefix is computed before compilation and shared
 by CSR/SSR via `SAPID_SHOWCASE_MEDIA`, so hydration uses identical URLs. Fixtures

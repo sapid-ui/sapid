@@ -12,8 +12,10 @@ silently clamped.
 `value_text(text)` optionally supplies a localized value alternative. Names are
 nonempty and at most 256 UTF-8 bytes; value text is nonempty and at most 1024.
 `indeterminate(Vary<bool>)` omits the numeric current value without inventing
-zero. Its static partial shape communicates unknown progress without promising
-animation. The numeric source remains finite and within range while unknown.
+zero. Its partial shape communicates unknown progress. By default a host-owned opacity
+pulse animates line/semicircle shapes and rotation animates rings.
+`animated(Vary<bool>)` pauses motion; a reduced-motion host always keeps the
+visible static shape. No widget frame writes or timer tasks are installed. The numeric source remains finite and within range while unknown.
 These widgets do not register range, pointer, keyboard or click handlers and do
 not modify sources or make application callbacks. Invalid external updates
 preserve the last accepted progress metadata and shape; recovery keeps identity.
@@ -94,3 +96,23 @@ beside it. Native pixel/layout evidence is recorded in
 `D:/BuildCache/sapid/progress-native.log`, and the complete shared protocol suite
 passed in `D:/BuildCache/sapid/progress-protocol-regression.log`. These checks do
 not establish screen-reader announcements.
+
+## Compound labels and complete examples (2026-11-05)
+
+`section_label(index, text)` labels an existing horizontal linear section. It
+accepts at most 16 distinct valid indices and nonempty single-line text of at
+most 256 UTF-8 bytes. Ring and vertical labels are rejected before node creation;
+their center labels retain the existing `label` contract. Segment text clips
+inside its own colored box and receives a contrast-aware foreground; choose
+sufficient thickness (the example uses 26 px). Supply `value_text` with the
+readable category breakdown, including text hidden by a narrow segment.
+`sections` consumes at most 17 entries to detect the 16-entry budget without
+collecting an unbounded iterator. Sections remain static finite declarations.
+
+The three progress pages retain the nine comparison sections and now compile
+each displayed source as an independent module, including its data/helpers.
+Their primary examples demonstrate actual value changes rather than a common
+configuration workbench. Unknown-state examples show all three geometries with
+a shared animation control. Center labels inherit theme text/font metrics,
+including dark themes. Tests cover early rejection, accepted source identity,
+compound bounds and native real pixels with host reduction and pause.

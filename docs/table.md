@@ -1,5 +1,11 @@
 # Table
 
+公开页的项目跟踪首例和六段独立源码见 `typography-pages.md`。宽表格显式使用
+`ScrollAxes::Both`，以支持真实局部横向键盘滚动；默认纵向 ScrollArea 不提供该能力。
+Sticky 表头是已测浏览器能力；当前原生 Apace 继续明确拒绝 Sticky，普通布局/表头关联与滚动单独验收。
+`caption_side(Bottom)` 现在通过真实 `caption-side` 声明放置说明，unstyled 仍保留结构位置。
+原先只改变 DOM 顺序无法让浏览器显示在下方；原生四主题实际页脚/说明几何已单独验证。
+
 `table(key)` builds an intrinsic read-only table with `table_head`, `table_body`
 and `table_foot` row groups. Use `table_row(key)`, `table_header_cell(key)`,
 `table_row_header(key)` and `table_cell(key)` for explicit stable row/cell keys.

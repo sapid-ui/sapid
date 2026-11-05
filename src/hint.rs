@@ -622,7 +622,9 @@ fn validate_text(value: &str) -> Result {
     }
 }
 fn hint_style(common: &Common, kind: Kind) -> Style {
-    let mut style = Style::new()
+    let mut style = common
+        .theme
+        .description(common.size)
         .width(Length::Px(if kind == Kind::Tooltip {
             240.0
         } else {

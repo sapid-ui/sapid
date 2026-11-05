@@ -15,6 +15,10 @@ struct Shade {
     children: Children,
     mask_ref: Option<Cage<Option<NodeId>>>,
     content_ref: Option<Cage<Option<NodeId>>>,
+    loader_type: crate::LoaderType,
+    loader_size: crate::Size,
+    loader_color: Option<Color>,
+    animated: Vary<bool>,
 }
 impl Shade {
     fn new(loading: bool, visible: Vary<bool>) -> Self {
@@ -28,6 +32,10 @@ impl Shade {
             children: ().into_children(),
             mask_ref: None,
             content_ref: None,
+            loader_type: crate::LoaderType::Oval,
+            loader_size: crate::Size::Medium,
+            loader_color: None,
+            animated: true.into(),
         }
     }
 }
@@ -107,6 +115,23 @@ impl Overlay {
     }
 }
 impl LoadingOverlay {
+    /// Select a finite host-driven loader without changing the inert region.
+    pub fn loader_type(mut self, kind: crate::LoaderType) -> Self {
+        self.0.loader_type = kind;
+        self
+    }
+    pub fn loader_size(mut self, size: crate::Size) -> Self {
+        self.0.loader_size = size;
+        self
+    }
+    pub fn loader_color(mut self, color: Color) -> Self {
+        self.0.loader_color = Some(color);
+        self
+    }
+    pub fn animated(mut self, value: impl Into<Vary<bool>>) -> Self {
+        self.0.animated = value.into();
+        self
+    }
     pub fn loading(mut self, loading: impl Into<Vary<bool>>) -> Self {
         self.0.visible = loading.into();
         self
@@ -223,8 +248,14 @@ impl Widget for Shade {
         if loading {
             let mut spinner = crate::spinner()
                 .theme(self.common.theme.clone())
+                .kind(self.loader_type)
+                .size(self.loader_size)
+                .animated(self.animated.clone())
                 .name(self.label.clone())
                 .class("sapid-loading-overlay-spinner");
+            if let Some(color) = self.loader_color {
+                spinner = spinner.color(color);
+            }
             if self.common.unstyled {
                 spinner = spinner.unstyled();
             }

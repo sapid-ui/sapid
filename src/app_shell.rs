@@ -10,7 +10,7 @@ use glory::style::{
     Align, BorderStyle, Color, Display, Edges, FlexDirection, Justify, Length, Overflow, Position,
     Style,
 };
-use glory::ui::{Result, WeakScope, Widget};
+use glory::ui::{Children, IntoChildren, Result, WeakScope, Widget};
 use glory::{Bond, Cage, Scope, Vary};
 use std::{cell::Cell, rc::Rc};
 
@@ -23,6 +23,22 @@ fn valid_width(value: f64) -> Result {
         Ok(())
     } else {
         Err(invalid("shell widths must be finite and in 0..=1000000"))
+    }
+}
+
+/// A navigation or aside region whose middle section can scroll independently.
+pub struct ShellSection {
+    common: Common,
+    grow: bool,
+    scrollable: bool,
+    children: Children,
+}
+pub fn shell_section() -> ShellSection {
+    ShellSection {
+        common: Common::default(),
+        grow: false,
+        scrollable: false,
+        children: ().into_children(),
     }
 }
 
@@ -270,6 +286,9 @@ pub struct Sidebar {
     open_change: Option<Box<dyn FnMut(bool)>>,
     nav_ref: Option<Cage<Option<NodeId>>>,
     drawer_ref: Option<Cage<Option<NodeId>>>,
+    borders: Vary<bool>,
+    borders_explicit: bool,
+    scrollable: bool,
 }
 pub fn sidebar(key: impl Into<String>) -> Sidebar {
     Sidebar {
@@ -287,6 +306,9 @@ pub fn sidebar(key: impl Into<String>) -> Sidebar {
         open_change: None,
         nav_ref: None,
         drawer_ref: None,
+        borders: true.into(),
+        borders_explicit: false,
+        scrollable: false,
     }
 }
 macro_rules! shell_methods {
@@ -327,8 +349,93 @@ macro_rules! shell_methods {
         }
     };
 }
+impl ShellSection {
+    shell_methods!();
+    pub fn name(mut self, value: impl Into<Vary<String>>) -> Self {
+        self.common.name = Some(value.into());
+        self
+    }
+    pub fn grow(mut self, value: bool) -> Self {
+        self.grow = value;
+        self
+    }
+    /// Allocate remaining space and support ordinary wheel/touch and keyboard scrolling.
+    pub fn scrollable(mut self, value: bool) -> Self {
+        self.scrollable = value;
+        if value {
+            self.grow = true;
+        }
+        self
+    }
+    pub fn fill(mut self, value: impl IntoChildren) -> Self {
+        self.children = value.into_children();
+        self
+    }
+}
+impl Widget for ShellSection {
+    fn build(&mut self, scope: &Scope) -> Result {
+        let reference = self.common.node_ref.unwrap_or_else(|| scope.cage(None));
+        let custom = self.common.style.clone();
+        let base = Style {
+            grow: Some(if self.grow { 1. } else { 0. }),
+            shrink: Some(if self.grow { 1. } else { 0. }),
+            overflow_y: self.scrollable.then_some(Overflow::Auto),
+            ..Style::new()
+                .display(Display::Flex)
+                .flex_direction(FlexDirection::Column)
+                .min_width(Length::Px(0.))
+                .min_height(Length::Px(0.))
+        };
+        let mut root = configure!(
+            self.common,
+            glory::ui::view().role(Role::Group),
+            scope,
+            "sapid-shell-section",
+            Style::new()
+        )
+        .style(scope.bond(move || merge(base.clone(), custom.get())))
+        .focus(if self.scrollable {
+            FocusMode::TabStop
+        } else {
+            self.common.focus
+        })
+        .semantics(composite::metadata(Semantics {
+            scroll_keyboard: self
+                .scrollable
+                .then_some(glory::render::ScrollAxes::Vertical),
+            ..Default::default()
+        }));
+        if self.scrollable {
+            let observers = self
+                .common
+                .handlers
+                .remove(&EventKind::ScrollKeyboard)
+                .unwrap_or_default();
+            root = root.node_ref(reference).on(
+                EventKind::ScrollKeyboard,
+                crate::scroll_area::vertical_keyboard(scope, reference, observers)?,
+            );
+        }
+        for (kind, mut handlers) in std::mem::take(&mut self.common.handlers) {
+            let owner = scope.id();
+            root = root.on(kind, move |event| observe(&mut handlers, owner, event));
+        }
+        root.fill(std::mem::replace(&mut self.children, ().into_children()))
+            .show_in(scope)
+    }
+}
+
 impl Sidebar {
     shell_methods!(theme_explicit, size_explicit);
+    pub fn with_border(mut self, value: impl Into<Vary<bool>>) -> Self {
+        self.borders = value.into();
+        self.borders_explicit = true;
+        self
+    }
+    pub fn scrollable(mut self, value: bool) -> Self {
+        self.scrollable = value;
+        self
+    }
     pub fn name(mut self, value: impl Into<Vary<String>>) -> Self {
         self.common.name = Some(value.into());
         self
@@ -459,6 +566,7 @@ impl Sidebar {
         let common_style = self.common.style.clone();
         let theme = self.common.theme.clone();
         let unstyled = self.common.unstyled;
+        let borders = self.borders.clone();
         let base = move || {
             let state = accepted.get();
             let mut style = if unstyled {
@@ -482,9 +590,12 @@ impl Sidebar {
                 Length::Percent(100.0)
             });
             style.shrink = Some(0.0);
+            style.display = Some(Display::Flex);
+            style.flex_direction = Some(FlexDirection::Column);
+            style.min_height = Some(Length::Px(0.));
             if !unstyled {
                 style.border_width = Some(Edges {
-                    right: if embedded && state.mode == ShellMode::Desktop {
+                    right: if embedded && state.mode == ShellMode::Desktop && borders.get() {
                         1.0
                     } else {
                         0.0
@@ -521,8 +632,18 @@ impl Sidebar {
             }
             .show_in(&parent)?;
         }
-        let mut dock = glory::ui::view()
+        let dock = glory::ui::view()
             .class("sapid-sidebar-dock")
+            .style(Style {
+                grow: Some(1.),
+                ..Style::new()
+                    .display(Display::Flex)
+                    .flex_direction(FlexDirection::Column)
+                    .min_height(Length::Px(0.))
+                    .min_width(Length::Px(0.))
+                    .width(Length::Percent(100.))
+                    .overflow_x(Overflow::Hidden)
+            })
             .node_ref(handle.inner.dock)
             .semantics(scope.bond(move || {
                 composite::metadata(Semantics {
@@ -530,17 +651,6 @@ impl Sidebar {
                     ..Default::default()
                 })
             }));
-        if !self.common.unstyled {
-            dock = dock.style(scope.bond(move || {
-                Style::new()
-                    .width(Length::Px(if accepted.get().collapsed {
-                        rail
-                    } else {
-                        width
-                    }))
-                    .overflow_x(Overflow::Hidden)
-            }));
-        }
         dock.show_in(&parent)?;
         let controller = handle.inner.clone();
         let open_change = controller.clone();
@@ -612,8 +722,21 @@ impl Sidebar {
             .role(Role::Navigation)
             .name(explicit_name.unwrap_or_else(|| "Primary navigation".into()))
             .class("sapid-sidebar-nav")
-            .focus(FocusMode::Programmatic)
+            .focus(if self.scrollable {
+                FocusMode::TabStop
+            } else {
+                FocusMode::Programmatic
+            })
             .node_ref(controller.nav)
+            .style(Style {
+                grow: Some(1.),
+                overflow_y: self.scrollable.then_some(Overflow::Auto),
+                ..Style::new()
+                    .display(Display::Flex)
+                    .flex_direction(FlexDirection::Column)
+                    .min_height(Length::Px(0.))
+                    .min_width(Length::Px(0.))
+            })
             .on(EventKind::FocusWithin, move |event| {
                 if let Event::FocusWithin { node, focused, .. } = event {
                     focus.nav_focus.set(focused.then_some(node));
@@ -621,8 +744,17 @@ impl Sidebar {
             })
             .semantics(composite::metadata(Semantics {
                 id: Some(controller.nav_id.clone()),
+                scroll_keyboard: self
+                    .scrollable
+                    .then_some(glory::render::ScrollAxes::Vertical),
                 ..Default::default()
             }));
+        if self.scrollable {
+            nav = nav.on(
+                EventKind::ScrollKeyboard,
+                crate::scroll_area::vertical_keyboard(scope, controller.nav, Vec::new())?,
+            );
+        }
         if let Some(mut factory) = self.content.take() {
             let context = SidebarContext {
                 sidebar: handle.clone(),
@@ -777,6 +909,19 @@ pub struct AppShell {
     skip_label: Vary<String>,
     width_change: Option<Box<dyn FnMut(f64)>>,
     main_ref: Option<Cage<Option<NodeId>>>,
+    viewport: bool,
+    main_scrollable: bool,
+    borders: Vary<bool>,
+    header_style: Vary<Style>,
+    footer_style: Vary<Style>,
+    main_style: Vary<Style>,
+    body_style: Vary<Style>,
+    header_visible: Vary<bool>,
+    footer_visible: Vary<bool>,
+    aside: Option<Factory<ShellContext>>,
+    aside_width: f64,
+    aside_style: Vary<Style>,
+    aside_visible: Vary<bool>,
 }
 pub fn app_shell(key: impl Into<String>) -> AppShell {
     AppShell {
@@ -792,10 +937,80 @@ pub fn app_shell(key: impl Into<String>) -> AppShell {
         skip_label: "Skip to main content".into(),
         width_change: None,
         main_ref: None,
+        viewport: false,
+        main_scrollable: false,
+        borders: true.into(),
+        header_style: Style::new().into(),
+        footer_style: Style::new().into(),
+        main_style: Style::new().into(),
+        body_style: Style::new().into(),
+        header_visible: true.into(),
+        footer_visible: true.into(),
+        aside: None,
+        aside_width: 240.,
+        aside_style: Style::new().into(),
+        aside_visible: true.into(),
     }
 }
 impl AppShell {
     shell_methods!();
+    /// Fill the CSS viewport; header/footer and navigation stay outside main's scroll.
+    pub fn viewport(mut self) -> Self {
+        self.viewport = true;
+        self.main_scrollable = true;
+        self
+    }
+    pub fn main_scrollable(mut self, value: bool) -> Self {
+        self.main_scrollable = value;
+        self
+    }
+    pub fn with_border(mut self, value: impl Into<Vary<bool>>) -> Self {
+        self.borders = value.into();
+        self
+    }
+    pub fn header_style(mut self, value: impl Into<Vary<Style>>) -> Self {
+        self.header_style = value.into();
+        self
+    }
+    pub fn footer_style(mut self, value: impl Into<Vary<Style>>) -> Self {
+        self.footer_style = value.into();
+        self
+    }
+    pub fn main_style(mut self, value: impl Into<Vary<Style>>) -> Self {
+        self.main_style = value.into();
+        self
+    }
+    pub fn body_style(mut self, value: impl Into<Vary<Style>>) -> Self {
+        self.body_style = value.into();
+        self
+    }
+    pub fn header_visible(mut self, value: impl Into<Vary<bool>>) -> Self {
+        self.header_visible = value.into();
+        self
+    }
+    pub fn footer_visible(mut self, value: impl Into<Vary<bool>>) -> Self {
+        self.footer_visible = value.into();
+        self
+    }
+    pub fn aside<W: Widget>(
+        mut self,
+        mut factory: impl FnMut(ShellContext) -> W + 'static,
+    ) -> Self {
+        self.aside = Some(Box::new(move |context| Box::new(factory(context))));
+        self
+    }
+    pub fn aside_width(mut self, value: f64) -> Self {
+        self.aside_width = value;
+        self
+    }
+    pub fn aside_style(mut self, value: impl Into<Vary<Style>>) -> Self {
+        self.aside_style = value.into();
+        self
+    }
+    pub fn aside_visible(mut self, value: impl Into<Vary<bool>>) -> Self {
+        self.aside_visible = value.into();
+        self
+    }
     pub fn initial_width(mut self, value: f64) -> Self {
         self.initial_width = value;
         self
@@ -845,6 +1060,7 @@ impl AppShell {
 }
 impl Widget for AppShell {
     fn build(&mut self, scope: &Scope) -> Result {
+        valid_width(self.aside_width)?;
         let main_id = composite::id("shell", &self.key, "main", "main")?;
         let layout = if let Some(layout) = self.layout.take() {
             layout
@@ -854,6 +1070,9 @@ impl Widget for AppShell {
         layout.validate_scope(scope)?;
         let mut sidebar = self.sidebar.take();
         if let Some(sidebar) = sidebar.as_mut() {
+            if !sidebar.borders_explicit {
+                sidebar.borders = self.borders.clone();
+            }
             if !sidebar.theme_explicit {
                 sidebar.common.theme = self.common.theme.clone();
             }
@@ -893,18 +1112,30 @@ impl Widget for AppShell {
             .flex_direction(FlexDirection::Column)
             .min_width(Length::Px(0.))
             .width(Length::Percent(100.0));
+        if self.viewport {
+            base = base
+                .position(Position::Fixed)
+                .top(Length::Px(0.))
+                .left(Length::Px(0.))
+                .right(Length::Px(0.))
+                .bottom(Length::Px(0.))
+                .height(Length::Percent(100.))
+                .overflow_y(Overflow::Hidden);
+        }
         if !self.common.unstyled {
             base.background = Some(self.common.theme.surface);
             base.color = Some(self.common.theme.foreground);
         }
         let root_ref = self.common.node_ref.unwrap_or_else(|| scope.cage(None));
+        let root_style = self.common.style.clone();
         let mut root = configure!(
             self.common,
             glory::ui::view(),
             scope,
             "sapid-app-shell",
-            base
+            Style::new()
         )
+        .style(scope.bond(move || merge(base.clone(), root_style.get())))
         .node_ref(root_ref)
         .on(EventKind::Resize, move |event| {
             let Some(scope) = weak.upgrade() else { return };
@@ -948,26 +1179,47 @@ impl Widget for AppShell {
             })
             .show_in(&parent)?;
         if self.header.is_some() || handle.is_some() {
+            let visible = self.header_visible.clone();
             let mut header = glory::ui::view()
                 .role(Role::Banner)
-                .class("sapid-shell-header");
+                .class("sapid-shell-header")
+                .semantics(scope.bond(move || {
+                    composite::metadata(Semantics {
+                        hidden: !visible.get(),
+                        ..Default::default()
+                    })
+                }));
+            let mut base = Style::new().display(Display::Flex);
+            base.align = Some(Align::Center);
+            base.shrink = Some(0.);
             if !self.common.unstyled {
-                header = header.style(Style {
-                    align: Some(Align::Center),
-                    shrink: Some(0.),
-                    ..Style::new()
+                base = Style {
+                    ..base
                         .display(Display::Flex)
                         .min_height(Length::Px(60.))
                         .gap(12.0)
                         .padding(Edges::all(12.0))
-                        .border_width(Edges {
-                            bottom: 1.,
-                            ..Edges::all(0.)
-                        })
                         .border_style(BorderStyle::Solid)
                         .border_color(self.common.theme.border)
-                });
+                };
             }
+            let borders = self.borders.clone();
+            let custom = self.header_style.clone();
+            let styled = !self.common.unstyled;
+            header = header.style(scope.bond(move || {
+                let own = custom.get();
+                let mut base = base.clone();
+                if own.height.is_some() && own.min_height.is_none() {
+                    base.min_height = None;
+                }
+                if styled {
+                    base.border_width = Some(Edges {
+                        bottom: if borders.get() { 1. } else { 0. },
+                        ..Edges::all(0.)
+                    });
+                }
+                merge(base, own)
+            }));
             if let Some(handle) = handle.clone() {
                 header = header.fill(SidebarTrigger {
                     handle,
@@ -985,16 +1237,22 @@ impl Widget for AppShell {
             header.show_in(&parent)?;
         }
         let body_ref = scope.cage(None);
+        let custom_body = self.body_style.clone();
         glory::ui::view()
             .class("sapid-shell-body")
-            .style(Style {
-                grow: Some(1.0),
-                ..Style::new()
-                    .display(Display::Flex)
-                    .flex_direction(FlexDirection::Row)
-                    .min_height(Length::Px(0.))
-                    .min_width(Length::Px(0.))
-            })
+            .style(scope.bond(move || {
+                merge(
+                    Style {
+                        grow: Some(1.0),
+                        ..Style::new()
+                            .display(Display::Flex)
+                            .flex_direction(FlexDirection::Row)
+                            .min_height(Length::Px(0.))
+                            .min_width(Length::Px(0.))
+                    },
+                    custom_body.get(),
+                )
+            }))
             .node_ref(body_ref)
             .show_in(&parent)?;
         let body = scope.child_in(body_ref.try_get()?.ok_or(glory::ui::Error::Gone)?)?;
@@ -1006,25 +1264,38 @@ impl Widget for AppShell {
         }
         let mut main = glory::ui::view()
             .role(Role::Main)
-            .focus(FocusMode::Programmatic)
+            .focus(if self.main_scrollable {
+                FocusMode::TabStop
+            } else {
+                FocusMode::Programmatic
+            })
             .node_ref(reference)
             .class("sapid-shell-main")
             .semantics(composite::metadata(Semantics {
                 id: Some(main_id),
+                scroll_keyboard: self
+                    .main_scrollable
+                    .then_some(glory::render::ScrollAxes::Vertical),
                 ..Default::default()
-            }))
-            .style(Style {
-                grow: Some(1.0),
-                ..Style::new().min_width(Length::Px(0.0))
-            });
+            }));
+        let mut main_base = Style {
+            grow: Some(1.),
+            overflow_y: self.main_scrollable.then_some(Overflow::Auto),
+            ..Style::new()
+                .min_width(Length::Px(0.))
+                .min_height(Length::Px(0.))
+        };
         if !self.common.unstyled {
-            main = main.style(Style {
-                grow: Some(1.),
-                background: Some(self.common.theme.canvas),
-                ..Style::new()
-                    .min_width(Length::Px(0.))
-                    .padding(Edges::all(16.))
-            });
+            main_base.background = Some(self.common.theme.canvas);
+            main_base.padding = Some(Edges::all(16.));
+        }
+        let custom_main = self.main_style.clone();
+        main = main.style(scope.bond(move || merge(main_base.clone(), custom_main.get())));
+        if self.main_scrollable {
+            main = main.on(
+                EventKind::ScrollKeyboard,
+                crate::scroll_area::vertical_keyboard(scope, reference, Vec::new())?,
+            );
         }
         if let Some(mut factory) = self.main.take() {
             let context = context.clone();
@@ -1033,27 +1304,92 @@ impl Widget for AppShell {
             }));
         }
         main.show_in(&body)?;
+        if let Some(mut factory) = self.aside.take() {
+            let context = context.clone();
+            let visible = self.aside_visible.clone();
+            let borders = self.borders.clone();
+            let custom = self.aside_style.clone();
+            let mut base = Style {
+                shrink: Some(0.),
+                ..Style::new()
+                    .display(Display::Flex)
+                    .flex_direction(FlexDirection::Column)
+                    .width(Length::Px(self.aside_width))
+                    .min_height(Length::Px(0.))
+            };
+            let styled = !self.common.unstyled;
+            if styled {
+                base.background = Some(self.common.theme.surface);
+                base.color = Some(self.common.theme.foreground);
+                base.border_style = Some(BorderStyle::Solid);
+                base.border_color = Some(self.common.theme.border);
+                base.padding = Some(Edges::all(12.));
+            }
+            glory::ui::view()
+                .role(Role::Section)
+                .name("Secondary panel")
+                .class("sapid-shell-aside")
+                .semantics(scope.bond(move || {
+                    composite::metadata(Semantics {
+                        hidden: !visible.get(),
+                        ..Default::default()
+                    })
+                }))
+                .style(scope.bond(move || {
+                    let mut base = base.clone();
+                    if styled {
+                        base.border_width = Some(Edges {
+                            left: if borders.get() { 1. } else { 0. },
+                            ..Edges::all(0.)
+                        });
+                    }
+                    merge(base, custom.get())
+                }))
+                .fill(glory::ui::widget(move |scope| {
+                    factory(context.clone()).show_in(scope)
+                }))
+                .show_in(&body)?;
+        }
         if let Some(mut factory) = self.footer.take() {
             let context = context.clone();
+            let visible = self.footer_visible.clone();
             let mut footer = glory::ui::view()
                 .role(Role::ContentInfo)
                 .class("sapid-shell-footer")
+                .semantics(scope.bond(move || {
+                    composite::metadata(Semantics {
+                        hidden: !visible.get(),
+                        ..Default::default()
+                    })
+                }))
                 .fill(glory::ui::widget(move |scope| {
                     factory(context.clone()).show_in(scope)
                 }));
+            let mut base = Style {
+                shrink: Some(0.),
+                ..Style::new()
+            };
             if !self.common.unstyled {
-                footer = footer.style(Style {
-                    shrink: Some(0.),
-                    ..Style::new()
+                base = Style {
+                    ..base
                         .padding(Edges::all(12.0))
-                        .border_width(Edges {
-                            top: 1.,
-                            ..Edges::all(0.)
-                        })
                         .border_style(BorderStyle::Solid)
                         .border_color(self.common.theme.border)
-                });
+                };
             }
+            let borders = self.borders.clone();
+            let custom = self.footer_style.clone();
+            let styled = !self.common.unstyled;
+            footer = footer.style(scope.bond(move || {
+                let mut base = base.clone();
+                if styled {
+                    base.border_width = Some(Edges {
+                        top: if borders.get() { 1. } else { 0. },
+                        ..Edges::all(0.)
+                    });
+                }
+                merge(base, custom.get())
+            }));
             footer.show_in(&parent)?;
         }
         scope.retain(parent)?;

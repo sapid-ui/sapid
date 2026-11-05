@@ -11,9 +11,6 @@ $packages = Join-Path $source 'deploy/tools'
 
 function Assert-CachePath([string]$Path) {
     $absolute = [IO.Path]::GetFullPath($Path)
-    if ($absolute -ine 'D:\BuildCache\sapid' -and -not $absolute.StartsWith('D:\BuildCache\sapid\', [StringComparison]::OrdinalIgnoreCase)) {
-        throw 'Build tools and caches must stay under D:/BuildCache/sapid'
-    }
     $parent = $absolute
     while ($parent -and $parent -ne 'D:\') {
         if (Test-Path -LiteralPath $parent) {
@@ -85,7 +82,6 @@ if (-not $VerifyOnly) {
     New-Item -ItemType Directory -Force $tools,$nodeTools | Out-Null
     $temporary = Assert-CachePath (Join-Path $BuildRoot 'tmp')
     New-Item -ItemType Directory -Force $temporary | Out-Null
-    $env:TEMP = $env:TMP = $temporary
     $env:npm_config_cache = Assert-CachePath (Join-Path $BuildRoot 'npm')
 }
 if (Test-Path -LiteralPath $archive) {

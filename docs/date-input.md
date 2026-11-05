@@ -1,8 +1,8 @@
 # DateInput
 
 Enable the optional `dates` feature. `date_input(key, provider)` uses one real
-editable Input for civil dates and, by default, a separate named Button opening
-the shared host Dialog/Calendar. It has no browser clock, transport, IANA/DST,
+editable Input for civil dates and, by default, a separately named inset calendar
+Button opening the shared host Dialog/Calendar. It has no browser clock, transport, IANA/DST,
 serde or parser dependency. `.with_picker(false)` keeps only the editable control.
 
 ```rust
@@ -128,3 +128,11 @@ against fixed FORMAT-10 Web31 on Chromium 148.0.7778.96:
 log is `dates-browser-web31.log` (copied as `date-input-browser-web31.log`). The
 new direct application million-byte Commit guard is proved by the eleventh Rust
 component test; the browser fixture does not expose a direct Glory Commit probe.
+
+## Public page and inset action
+
+The calendar action now shares the editor border, with reserved editor padding,
+a 16px vector glyph and a theme-sized hit box. Explicit layout applies once to
+the frame; the actual input keeps Field/error/placeholder/editing semantics and
+its identity. The complete parsing, format, refusal and state examples and
+submission spelling distinction are documented in [date page contracts](date-pages.md).

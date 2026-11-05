@@ -94,3 +94,18 @@ Native 仍明确拒绝实际 Layer 和 PointerWithin 输入；AX 模型证据不
 也不替代屏幕阅读器朗读或 OS 提示行为。Tooltip 只接受有限文本，不提供交互内容槽位。
 延迟由应用/宿主提供 Future，默认零延迟；触屏长按不是 hover 的隐式替代策略。
 HoverCard 的 content 是实际 Widget factory，组件不代替应用处理其链接导航、异步数据或业务值。
+
+## Current documentation and native boundary (2026-11-05)
+
+Tooltip now has five standalone source sections and HoverCard four. Actual target
+controls keep accessible names; descriptions stay passive, and interactive card
+content has keyboard and explicit touch entry examples. Complete cancellable
+browser timer helpers are included with delayed examples; their native fallback
+is immediate, requiring application timing for native delay policy. Browser
+profile cards supply a positive close delay across the pointer gap.
+
+The earlier blanket native Layer rejection above is historical. WindowApp now
+supports HoverCard's Dialog/Preserve form, including actual background editor
+focus and identity checks in `examples/native/tests/overlay_docs.rs`. Tooltip's
+Role::Tooltip layer still returns Unsupported before a partial widget remains.
+This does not establish OS pointer/touch/reader behavior. See [Overlay pages](overlay-pages.md).

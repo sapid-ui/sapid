@@ -47,7 +47,7 @@ async (hostPage) => {
       assert(focus.active && focus.visible && focus.outline === 'solid' && focus.width === '2px',
         `${mode}: real Tab did not show the shared focus ring: ${JSON.stringify(focus)}`);
       assert(focus.contrasts.every(value => value >= 3), `${mode}: focus contrast below 3:1: ${focus.contrasts}`);
-      await page.locator('#fixture').screenshot({ path: `${process.env.SAPID_STYLE_OUTPUT || 'D:/BuildCache/sapid'}/focus-${mode}.png` });
+      await page.locator('#fixture').screenshot({ path: `${process.env.SAPID_STYLE_OUTPUT || 'target/verification/sapid'}/focus-${mode}.png` });
       reports.push({ suite: `style-focus-${mode}`, status: 'passed', contrasts: focus.contrasts });
     }
     const triggerClasses = ['sapid-accordion-trigger', 'sapid-tab', 'sapid-collapsible-trigger',

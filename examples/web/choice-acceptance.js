@@ -96,7 +96,7 @@ async (hostPage) => {
       await page.setViewportSize({width:390,height:844});await tick();
       assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`${mode}: narrow viewport overflow`);
       await page.setViewportSize({width:1100,height:900});
-      await page.screenshot({path:`D:/BuildCache/sapid/${mode}.png`,fullPage:true});
+      await page.screenshot({path:`target/verification/sapid/${mode}.png`,fullPage:true});
       await page.evaluate(()=>window.demo.unmount_choices());
       assert(await page.locator('#app').evaluate(e=>e.childElementCount===0),`${mode}: Owner cleanup`);
       reports.push({suite:mode,status:'passed',checks:'native mixed, controlled rejection, switch role/checked/Field, Space/Tab, real radio/shared Collection/RTL/typeahead/repeat/prefix/timeout/rejection/arrow/Home/End/single Tab, segmented native value/keyboard/rejection, chip single/multi/Field-required-any/readonly/keyboard/rejection, AX, group all/partial/disabled, narrow viewport, Owner cleanup'});

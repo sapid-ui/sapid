@@ -356,3 +356,116 @@ fn placeholder_and_subtle_variant_are_finite_component_features() {
 
     assert!(glory::ssr::render(rich_text_editor().placeholder("x".repeat(4097))).is_err());
 }
+
+fn toolbar_button(app: &App, name: &str) -> NodeId {
+    let tree = app.tree();
+    let mut pending = tree.roots().to_vec();
+    while let Some(id) = pending.pop() {
+        let current = tree.node(id).unwrap();
+        let descriptor = current.descriptor.view();
+        if matches!(descriptor.props, Props::Button(_)) && descriptor.name.as_deref() == Some(name)
+        {
+            return id;
+        }
+        pending.extend(current.children.iter().copied());
+    }
+    panic!("missing toolbar action {name}")
+}
+
+#[test]
+fn toolbar_tracks_accepted_selection_marks_blocks_and_history_without_replacing_controls() {
+    let app = App::memory();
+    let output = app.scope().cage(None);
+    let readonly = app.scope().cage(false);
+    app.mount(
+        rich_text_editor()
+            .default_document(doc("a😀z"))
+            .readonly(readonly)
+            .controller_ref(output)
+            .toolbar_actions([
+                EditorToolbarAction::Bold,
+                EditorToolbarAction::Heading(3),
+                EditorToolbarAction::Undo,
+            ]),
+    )
+    .unwrap();
+    let id = node(&app);
+    let bold = toolbar_button(&app, "Bold");
+    let heading = toolbar_button(&app, "Heading 3");
+    let undo = toolbar_button(&app, "Undo");
+    let controller = output.get().unwrap();
+    let selection = RichSelection {
+        anchor: RichPoint {
+            block: 0,
+            offset: 1,
+        },
+        focus: RichPoint {
+            block: 0,
+            offset: 3,
+        },
+    };
+    app.dispatch(
+        id,
+        Event::RichSelection(Box::new(RichSnapshot {
+            document: controller.document().get(),
+            selection,
+            revision: revision(&app, id),
+            composing: false,
+        })),
+    )
+    .unwrap();
+    controller
+        .format_at(selection, RichFormat::Bold(true))
+        .unwrap();
+    controller
+        .format_at(selection, RichFormat::Block(RichBlockKind::Heading(3)))
+        .unwrap();
+    app.flush().unwrap();
+    for button in [bold, heading] {
+        let tree = app.tree();
+        let descriptor = tree.node(button).unwrap().descriptor.view();
+        assert_eq!(descriptor.semantics.as_ref().unwrap().pressed, Some(true));
+        assert!(descriptor.semantics.as_ref().unwrap().navigation_item);
+    }
+    assert_eq!(toolbar_button(&app, "Bold"), bold);
+    assert!(app.tree().enabled(undo));
+    assert!(controller.undo().unwrap());
+    app.flush().unwrap();
+    assert_eq!(
+        app.tree()
+            .node(heading)
+            .unwrap()
+            .descriptor
+            .view()
+            .semantics
+            .as_ref()
+            .unwrap()
+            .pressed,
+        Some(false)
+    );
+    readonly.revise(|value| *value = true);
+    app.flush().unwrap();
+    assert!(!app.tree().enabled(bold));
+    assert!(!app.tree().enabled(undo));
+    assert_eq!(node(&app), id);
+}
+
+#[test]
+fn invalid_toolbar_configuration_rejects_before_creating_a_partial_editor() {
+    for actions in [
+        vec![],
+        vec![EditorToolbarAction::Heading(0)],
+        vec![EditorToolbarAction::Heading(7)],
+        vec![EditorToolbarAction::Bold, EditorToolbarAction::Bold],
+        vec![EditorToolbarAction::Bold; MAX_EDITOR_TOOLBAR_ACTIONS + 1],
+    ] {
+        let app = App::memory();
+        assert!(
+            app.mount(rich_text_editor().toolbar_actions(actions))
+                .is_err()
+        );
+        assert_eq!(app.stats().nodes, 0);
+        assert_eq!(app.stats().handlers, 0);
+    }
+    assert!(glory::ssr::render(rich_text_editor().toolbar(false).toolbar_actions([])).is_ok());
+}

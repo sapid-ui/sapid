@@ -206,8 +206,17 @@ impl Widget for CopyButton {
             .unwrap_or_default();
         let weak = scope.downgrade();
         let immediate = finish.clone();
+        let active = self.common.enabled.clone();
         inner = inner.on(EventKind::Activate, move |event| {
             let Some(scope) = weak.upgrade() else { return };
+            match active.try_get() {
+                Ok(true) => {}
+                Ok(false) => return,
+                Err(error) => {
+                    scope.report_error(error);
+                    return;
+                }
+            }
             let result = (|| -> Result {
                 if pending.try_get()?.is_none() {
                     delay.cancel();

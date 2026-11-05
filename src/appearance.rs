@@ -40,12 +40,7 @@ impl Default for Common {
 }
 
 impl Common {
-    pub fn appearance(
-        &self,
-        scope: &Scope,
-        class: &str,
-        base: Style,
-    ) -> (Vary<String>, Vary<Style>) {
+    pub fn classes(&self, scope: &Scope, class: &str) -> Vary<String> {
         let prefix = format!(
             "{class} {} {}{}",
             self.size.class(),
@@ -57,11 +52,19 @@ impl Common {
             let extra = classes.get();
             format!("{prefix} {extra}")
         };
-        let classes = if self.class.is_reactive() {
+        if self.class.is_reactive() {
             scope.bond(class_value).into()
         } else {
             class_value().into()
-        };
+        }
+    }
+    pub fn appearance(
+        &self,
+        scope: &Scope,
+        class: &str,
+        base: Style,
+    ) -> (Vary<String>, Vary<Style>) {
+        let classes = self.classes(scope, class);
         let base = if self.unstyled { Style::new() } else { base };
         let custom = self.style.clone();
         let style_value = move || merge(base.clone(), custom.get());
@@ -134,6 +137,7 @@ pub(crate) fn merge(mut base: Style, overrides: Style) -> Style {
         radius,
         opacity,
         box_shadow,
+        caption_side,
     );
     base
 }

@@ -1,5 +1,28 @@
 # Select
 
+## Custom passive targets and empty lists
+
+`trigger_content(|context: SelectTriggerContext| ...)` replaces only the passive
+content inside the same intrinsic button. The context exposes read-only `value`,
+`label` and `open` sources. Supply an explicit accessible name or a Field
+association. Inline text and graphics are supported by the shared button content
+rules; nested controls and layout Views are rejected. There is one Choice
+controller and one real listbox, retaining keyboard navigation, focus, disabled
+options and accepted selection.
+
+The ComboboxPopover guide uses this API rather than renaming an ordinary Popover.
+It includes complete compiled examples for custom content, groups, controlled
+opening/refusal and empty/unavailable states. It does not claim a separate popup
+search editor, multiple values or arbitrary polymorphic targets; use the
+editable Combobox, MultiSelect or TreeSelect guides for those delivered controls.
+
+`empty_message` supplies a passive single-line message of at most 1024 UTF-8
+bytes. It rejects NUL and line breaks before mounting. Default popup placement
+matches the trigger frame width; an explicit `popup_placement` can choose a
+nonmatching width. Existing maximum-height and scrolling constraints still apply.
+
+2026-11-05 输入外壳修订：触发器内嵌 16px 被动下箭头，保留完整的 combobox 名称、选中值和原有 Choice 控制器。选中标签是有界的内联文字；浏览器样式表提供省略号，原生布局裁剪长标签。`clearable(true)` 使用输入框内部的独立图标按钮，名称仍为 `Clear selection`，清空通过同一个 typed 提案回调，随后焦点返回原 combobox。readonly/disabled 不产生清空提案，受控拒绝保留原值与节点身份。宽度、百分比、边距和 flex 占位在外框解析一次；主题皮肤和显式未覆盖样式仍保留。公开页面包含可运行的使用示例与六个独立源码分节；结构化选项和搜索示例由用户打开，不再同时自动弹出多个列表。
+
 P4-05 的 `select(key)` 使用真实的 Button combobox、Listbox 和 Button Option 内在语义细化。它复用 Collection/RovingFocus/Typeahead、宿主 Layer 定位以及 NativeSelect 的有限选项声明；不会把 Tabs、普通 View 或 Popover 改名充当选择控件。
 
 ```rust

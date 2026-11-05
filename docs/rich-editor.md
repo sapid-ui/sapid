@@ -27,10 +27,10 @@ non-interactive guidance only while the accepted document is empty. `subtle(true
 uses the quieter shell and subtle toolbar controls without changing the document,
 selection, history or acceptance contract.
 
-The public showcase uses the component directly in six sections: ordinary usage,
-subtle variant, controlled document/value output, placeholder behavior, content
-without a toolbar, and readonly/disabled states. The separate protocol workbench
-remains an engineering fixture and is not used as the public component example.
+The public showcase has one article preview and four independent, compiled
+examples: toolbar configuration/selection state, controlled acceptance/history,
+safe links/controller operations, and placeholder/subtle/readonly/disabled states.
+Each example has its own source panel and document navigation entry.
 
 `controller_ref` exposes an Owner-bound `EditorController`. `format` and `insert`
 query the actual host selection; only one current query is retained and a newer
@@ -42,6 +42,21 @@ A retired controller returns a typed error and cannot affect a replacement Owner
 
 The default toolbar supplies bold/italic/code, paragraph/heading/quote and undo/
 redo. Ctrl/Meta+B, I, backtick and Z/Y/Shift+Z use the same finite commands.
+`toolbar_actions` accepts up to `MAX_EDITOR_TOOLBAR_ACTIONS` (16) unique
+`EditorToolbarAction` values, in display order. Heading levels must be 1–6.
+An enabled toolbar requires at least one action; `toolbar(false)` permits an
+empty declaration. Invalid configurations fail before mounting an editor.
+Controls use compact glyphs with full accessible names, wrap within narrow
+containers, and share the configured control size. Formatting buttons expose
+reactive `pressed` state from the accepted selection/document; history buttons
+derive availability from actual history. Readonly, disabled and composing
+states disable commands. Toolbar roving-focus buttons preserve the controller's
+selection query and editor identity.
+
+`Button::pressed` is controlled presentation and semantic state. It does not
+toggle a source implicitly; application callbacks own any change. Explicit
+button styles still override the selected skin.
+
 Safe links use `RichFormat::Link`. Clipboard paste is plain text; pasted HTML,
 images, tables, embedded widgets and arbitrary style declarations are unsupported.
 Inline formatting applies to a nonempty selection; `insert` accepts explicit

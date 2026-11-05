@@ -6,6 +6,20 @@ use std::{cell::Cell, rc::Rc};
 fn t(s: &str) -> LocalTime {
     LocalTime::parse_iso(s).unwrap()
 }
+
+#[test]
+fn unstyled_grid_retains_its_local_scroll_viewport_and_finite_track_geometry() {
+    let html = glory::ssr::render(
+        time_grid("plain-dense")
+            .unstyled()
+            .spec(TimeGridSpec::new(t("09:00"), t("15:30"), 1800, 12).unwrap()),
+    )
+    .unwrap();
+    assert!(html.contains("overflow-x:auto"));
+    assert!(html.contains("display:grid"));
+    assert!(html.contains("grid-template-columns:"));
+    assert!(!html.contains("background-color:"));
+}
 fn all(app: &App) -> Vec<NodeId> {
     let tree = app.tree();
     let mut todo = tree.roots().to_vec();

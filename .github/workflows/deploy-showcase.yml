@@ -10,17 +10,11 @@ concurrency:
   group: sapid-pages-${{ github.event_name == 'pull_request' && github.ref || 'production' }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 env:
-  BUILD_ROOT: D:/BuildCache/sapid/pages-ci
-  CARGO_HOME: D:/BuildCache/sapid/pages-ci/cargo
-  CARGO_TARGET_DIR: D:/BuildCache/sapid/pages-ci/target
-  RUSTUP_HOME: D:/BuildCache/sapid/pages-ci/rustup
-  TEMP: D:/BuildCache/sapid/pages-ci/tmp
-  TMP: D:/BuildCache/sapid/pages-ci/tmp
-  PYTHONPYCACHEPREFIX: D:/BuildCache/sapid/pages-ci/pycache
+  BUILD_ROOT: ${{ github.workspace }}/sapid/target/verification/sapid/pages-ci
+  CARGO_TARGET_DIR: ${{ github.workspace }}/sapid/target
   CARGO_INCREMENTAL: '0'
   CARGO_BUILD_JOBS: '2'
-  npm_config_cache: D:/BuildCache/sapid/pages-ci/npm
-  PLAYWRIGHT_BROWSERS_PATH: D:/BuildCache/sapid/pages-ci/browsers
+  PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/sapid/target/verification/sapid/pages-ci/browsers
   WRANGLER_SEND_METRICS: 'false'
   PYTHONUTF8: '1'
 jobs:
@@ -60,15 +54,14 @@ jobs:
           persist-credentials: false
       - name: Prepare D drive
         run: |
-          New-Item -ItemType Directory -Force $env:BUILD_ROOT,$env:CARGO_HOME,$env:CARGO_TARGET_DIR,$env:RUSTUP_HOME,$env:TEMP,D:/BuildCache/sapid/tmp | Out-Null
-          "$env:CARGO_HOME/bin" >> $env:GITHUB_PATH
+          New-Item -ItemType Directory -Force $env:BUILD_ROOT,$env:CARGO_TARGET_DIR,$env:TEMP,${{ github.workspace }}/sapid/target/verification/sapid/tmp | Out-Null
       - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: |
-            D:/BuildCache/sapid/pages-ci/cargo
-            D:/BuildCache/sapid/pages-ci/rustup
-            D:/BuildCache/sapid/pages-ci/target
-            D:/BuildCache/sapid/pages-ci/tools
+            ${{ github.workspace }}/sapid/target/verification/sapid/pages-ci/cargo
+            ${{ github.workspace }}/sapid/target/verification/sapid/pages-ci/rustup
+            ${{ github.workspace }}/sapid/target/verification/sapid/pages-ci/target
+            ${{ github.workspace }}/sapid/target/verification/sapid/pages-ci/tools
           key: sapid-pages-tools-v2-${{ runner.os }}-1.98.0-${{ hashFiles('sapid/Cargo.toml', 'sapid/examples/web/Cargo.lock', 'sapid/deploy/dependencies.json', 'sapid/deploy/build-tools.json', 'sapid/deploy/tools/package-lock.json') }}
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
@@ -108,8 +101,8 @@ jobs:
         with:
           name: sapid-showcase-dist
           path: |
-            D:/BuildCache/sapid/pages-ci/showcase
-            D:/BuildCache/sapid/pages-ci/acceptance
+            ${{ github.workspace }}/sapid/target/verification/sapid/pages-ci/showcase
+            ${{ github.workspace }}/sapid/target/verification/sapid/pages-ci/acceptance
           if-no-files-found: warn
           retention-days: 30
       - name: Deploy to Cloudflare Pages

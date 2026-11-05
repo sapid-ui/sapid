@@ -9,6 +9,9 @@ fn main() {
             .unwrap(),
     ] {
         for entry in sapid_web_example::showcase_catalog::ENTRIES {
+            if std::env::var_os("SAPID_THEME_AUDIT_TRACE").is_some() {
+                eprintln!("{}: {}", theme.class(), entry.slug);
+            }
             let app = App::memory();
             app.mount(sapid_web_example::showcase_examples::demo(
                 entry.slug,

@@ -1,5 +1,22 @@
 # DatePicker / DatePickerInput
 
+`DatePickerInput` uses inset calendar and optional clear icon buttons with full
+accessible names. `.placeholder(Vary<String>)`, `.clearable(true)` and
+`.clear_label(String)` configure the display and clear action. Clear proposes
+the empty value for the current Single/Multiple/Range mode through the normal
+callback, then returns focus to the same display input. Controlled refusal keeps
+the accepted value; readonly and disabled suppress changes. Escape and modal
+focus restoration continue through the shared Dialog controller.
+
+The readonly display input retains Field labels, errors, node_ref and focus.
+When `.form_name(...)` or Field supplies a successful-control name, a separate
+hidden real input submits the accepted ISO value exactly once. Display formats
+can use slashes, commas and an en dash without changing that ISO value. The
+hidden proxy has no accessible label or independent focus stop. Form reset and
+required validation remain application policies, demonstrated with a local form
+and explicit reset callback. Percent width, margins and flex sizing apply once
+to the full input/action frame.
+
 Enable Sapid's optional `dates` feature. It adds no dependency. Dates are civil
 Gregorian values; providers explicitly supply the reference date, optional today,
 locale, week start and bounds. No browser clock, timezone, HTTP or serialization
@@ -72,7 +89,7 @@ controlled/local selection, controlled/local `.open`, `.on_open_change`, and
 Keys are stable ASCII namespaces of at most 57 bytes; the derived Dialog key
 must fit the common 64-byte namespace budget.
 
-The readonly display remains selectable and successful. `.readonly(true)` also
+The readonly display remains selectable; a hidden input carries its ISO successful value. `.readonly(true)` also
 locks calendar selection while keeping navigation available. This picker does
 not parse arbitrary typed dates; editable date drafts belong to DateInput.
 A `Field` supplies its accessible label/description/error and successful name;
@@ -184,3 +201,10 @@ Native component tests drive typed host commands and query physical layout,
 focus, hit testing and raster output. They do not establish OS keyboard/IME or
 screen-reader announcement acceptance. IANA/DST and absolute instant conversion
 remain separate from civil date selection.
+
+## Complete public page examples
+
+The remaining date/time pages now have dedicated primary examples, independently
+compiled full-source sections and matching contents links. See [date page
+contracts](date-pages.md) for selection domains, editor/draft behavior, inline versus
+popup use, responsive actions and current browser/native acceptance boundaries.

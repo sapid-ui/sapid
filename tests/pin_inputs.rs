@@ -403,6 +403,8 @@ fn alphanumeric_and_unstyled_keep_structural_mono_geometry_without_a_fake_editor
     app.mount(
         pin_input()
             .length(4)
+            .cell_padding(12.)
+            .gap(8.)
             .alphabet(PinAlphabet::AsciiAlphanumeric)
             .unstyled()
             .node_ref(r),
@@ -413,7 +415,8 @@ fn alphanumeric_and_unstyled_keep_structural_mono_geometry_without_a_fake_editor
     assert_eq!(text(&app, id), "aZ09");
     let tree = app.tree();
     let node = tree.node(id).unwrap().descriptor.view();
-    assert_eq!(node.style.width, Some(Length::Ch(4.)));
+    assert_eq!(node.style.width, Some(Length::ChPx { ch: 4., px: 141. }));
+    assert_eq!(node.style.letter_spacing, Some(32.));
     assert_eq!(
         node.style.font_family.as_deref(),
         Some([Family::Mono].as_slice())
@@ -422,6 +425,62 @@ fn alphanumeric_and_unstyled_keep_structural_mono_geometry_without_a_fake_editor
         node.semantics.as_ref().unwrap().input_assist.unwrap().mode,
         Some(InputMode::Text)
     );
+}
+
+#[test]
+fn reactive_masking_preserves_the_same_editor_value_revision_and_hints() {
+    use glory::render::Purpose;
+    let app = App::memory();
+    let masked = app.scope().cage(true);
+    let reference = app.scope().cage(None);
+    app.mount(
+        input_otp()
+            .masked(masked)
+            .default_value("000001")
+            .node_ref(reference)
+            .on_value_change(|_| panic!("presentation is not a user edit")),
+    )
+    .unwrap();
+    let id = reference.get().unwrap();
+    let before = revision(&app, id);
+    for value in [false, true, false] {
+        masked.revise(|old| *old = value);
+        app.flush().unwrap();
+        let tree = app.tree();
+        let node = tree.node(id).unwrap().descriptor.view();
+        assert!(
+            matches!(node.props, Props::Input(input) if input.purpose == if value {Purpose::Password}else{Purpose::Text})
+        );
+        assert_eq!(
+            node.semantics
+                .as_ref()
+                .unwrap()
+                .input_assist
+                .unwrap()
+                .autofill,
+            Some(InputAutofill::OneTimeCode)
+        );
+        drop(tree);
+        assert_eq!(reference.get(), Some(id));
+        assert_eq!(revision(&app, id), before);
+        assert_eq!(text(&app, id), "000001");
+    }
+}
+
+#[test]
+fn spacing_geometry_and_conflicting_tracking_reject_before_creating_editor_nodes() {
+    for widget in [
+        pin_input().gap(-1.),
+        pin_input().gap(f64::NAN),
+        pin_input().gap(33.),
+        pin_input().cell_padding(f64::INFINITY),
+        pin_input().cell_padding(33.),
+        pin_input().style(Style::new().letter_spacing(1.)),
+    ] {
+        let app = App::memory();
+        assert!(app.mount(widget).is_err());
+        assert!(app.tree().roots().is_empty());
+    }
 }
 #[test]
 fn callback_owner_retirement_prevents_completion_observers_and_releases_references() {

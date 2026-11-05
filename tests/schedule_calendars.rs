@@ -59,8 +59,8 @@ fn named(app: &App, prefix: &str) -> NodeId {
         })
         .unwrap_or_else(|| panic!("missing {prefix}"))
 }
-fn button(app: &App, label: &str) -> NodeId {
-    all(app).into_iter().find(|id|matches!(app.tree().node(*id).unwrap().descriptor.view().props,Props::Button(v)if v.label==label)).unwrap()
+fn button(app: &App, wanted: &str) -> NodeId {
+    all(app).into_iter().find(|id|{let tree=app.tree();let value=tree.node(*id).unwrap().descriptor.view();matches!(value.props,Props::Button(props) if value.name.as_ref().is_some_and(|name|name.starts_with(wanted))||props.label.starts_with(wanted))}).unwrap_or_else(||panic!("missing button: {wanted}"))
 }
 #[test]
 fn calendar_presentation_options_hide_headings_bound_previews_and_mark_explicit_today() {
@@ -425,5 +425,39 @@ fn arrow_edges_preserve_date_and_column_instead_of_clamping_to_another_cell() {
             })
             .unwrap();
         assert!(selection.with(|v|matches!(v,Some(ScheduleSelection::Slot{interval,..})if interval.start().date()==d(expected))),"{name}/{command:?}: {:?}",selection.get());
+    }
+}
+
+#[test]
+fn mobile_date_activation_updates_details_without_requiring_physical_focus_or_accepting_a_refused_value()
+ {
+    for accept in [false, true] {
+        let app = App::memory();
+        let selection = app.scope().cage(None::<ScheduleSelection>);
+        app.mount(
+            mobile_month_view("activation", data())
+                .selection(selection)
+                .on_selection_change(move |value| {
+                    if accept {
+                        selection.revise(|old| *old = Some(value));
+                    }
+                }),
+        )
+        .unwrap();
+        assert!(class(&app, "sapid-agenda-event").is_empty());
+        let day = named(&app, "Wednesday, February 28, 2024");
+        app.dispatch(day, Event::Activate).unwrap();
+        assert_eq!(
+            class(&app, "sapid-agenda-event").len(),
+            5,
+            "activation must reveal that day's actual events even when the host does not focus buttons"
+        );
+        assert_eq!(selection.get().is_some(), accept);
+        assert_eq!(
+            app.tree().node(day).unwrap().descriptor.view().focus,
+            FocusMode::TabStop
+        );
+        app.clear().unwrap();
+        assert_eq!(app.stats().handlers, 0);
     }
 }

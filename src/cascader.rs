@@ -26,9 +26,40 @@ macro_rules! forward {
     )*};
 }
 impl Cascader {
-    forward!(theme(v:crate::Theme),size(v:crate::Size),focus(v:FocusMode),node_ref(v:Cage<Option<NodeId>>),
-        default_value(v:TreeChoices),default_open(v:bool),default_expanded(v:BTreeSet<String>),
-        direction(v:Direction),clearable(v:bool),field(v:crate::FieldControl));
+    /// Use a single-column tree presentation for compact layouts. This is mount
+    /// configuration; applications choose a layout explicitly.
+    pub fn with_columns(mut self, value: bool) -> Self {
+        self.inner = self.inner.columns(value);
+        self
+    }
+    /// Selecting a branch proposes its full path and keeps browsing open;
+    /// selecting a leaf completes the choice.
+    pub fn change_on_select(mut self, value: bool) -> Self {
+        self.inner = self.inner.policy(if value {
+            crate::TreeChoicePolicy::AnyNode
+        } else {
+            crate::TreeChoicePolicy::Leaves
+        });
+        self
+    }
+
+    pub fn clear_label(mut self, value: impl Into<String>) -> Self {
+        self.inner = self.inner.clear_label(value);
+        self
+    }
+
+    forward!(
+        theme(v: crate::Theme),
+        size(v: crate::Size),
+        focus(v: FocusMode),
+        node_ref(v: Cage<Option<NodeId>>),
+        default_value(v: TreeChoices),
+        default_open(v: bool),
+        default_expanded(v: BTreeSet<String>),
+        direction(v: Direction),
+        clearable(v: bool),
+        field(v: crate::FieldControl)
+    );
     pub fn nodes(mut self, v: impl Into<Vary<Vec<TreeNode>>>) -> Self {
         self.inner = self.inner.nodes(v);
         self

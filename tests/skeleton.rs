@@ -19,10 +19,91 @@ fn placeholder_has_busy_owner_and_one_decorative_unfocusable_graphic() {
     assert_eq!(root.children.len(), 1);
     let child = tree.node(root.children[0]).unwrap().descriptor.view();
     assert!(
-        matches!(child.props,Props::Graphic(p)if p.alternative.is_none()&&p.commands.is_empty())
+        matches!(child.props,Props::Graphic(p)if p.alternative.is_none()&&p.fill.is_some()&&!p.commands.is_empty())
     );
     assert!(child.name.is_none());
     assert_eq!(child.focus, glory::render::FocusMode::Auto);
+}
+#[test]
+fn loading_content_retains_the_real_editor_and_blocks_interaction_until_available() {
+    let app = App::memory();
+    let loading = app.scope().cage(true);
+    let editor = app.scope().cage(None);
+    let draft = app.scope().cage("Retained note".to_owned());
+    let calls = std::rc::Rc::new(std::cell::Cell::new(0));
+    let output = calls.clone();
+    app.mount(
+        skeleton().loading(loading).fill(
+            sapid::stack().fill((
+                sapid::text_field()
+                    .name("Project note")
+                    .node_ref(editor)
+                    .value(draft)
+                    .on_value_change(move |v| draft.revise(|old| *old = v)),
+                sapid::button()
+                    .class("loaded-action")
+                    .label("Save note")
+                    .on_press(move || output.set(output.get() + 1)),
+            )),
+        ),
+    )
+    .unwrap();
+    let input = editor.get().unwrap();
+    let root = app.tree().roots()[0];
+    let body = app.tree().node(root).unwrap().children[0];
+    let mut todo = vec![body];
+    let action = loop {
+        let id = todo.pop().unwrap();
+        let tree = app.tree();
+        let node = tree.node(id).unwrap();
+        if node
+            .descriptor
+            .view()
+            .classes
+            .iter()
+            .any(|s| s == "loaded-action")
+        {
+            break id;
+        }
+        todo.extend(node.children.iter().copied());
+    };
+    assert!(
+        !app.dispatch(action, glory::render::Event::Activate)
+            .unwrap()
+    );
+    assert_eq!(calls.get(), 0);
+    for value in [false, true, false] {
+        loading.revise(|old| *old = value);
+        app.flush().unwrap();
+        assert_eq!(editor.get(), Some(input));
+        let tree = app.tree();
+        let body = tree.node(body).unwrap().descriptor.view();
+        assert_eq!(body.semantics.as_ref().unwrap().inert, value);
+        assert_eq!(
+            tree.node(root).unwrap().descriptor.view().style.height,
+            None
+        );
+        assert!(
+            !tree
+                .node(root)
+                .unwrap()
+                .descriptor
+                .view()
+                .semantics
+                .as_ref()
+                .unwrap()
+                .hidden
+        );
+        assert!(
+            matches!(tree.node(input).unwrap().descriptor.view().props,Props::Input(p) if p.value=="Retained note")
+        );
+    }
+    app.dispatch(action, glory::render::Event::Activate)
+        .unwrap();
+    assert_eq!(calls.get(), 1);
+    app.clear().unwrap();
+    assert_eq!(editor.get(), None);
+    assert_eq!(app.stats().nodes, 0);
 }
 #[test]
 fn loading_hides_without_replacing_placeholder_and_owner_retirement_clears_ref() {

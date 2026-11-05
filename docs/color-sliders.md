@@ -8,6 +8,13 @@ lifetime. They retain f64 channel precision; preview quantization never writes
 back to the source. Hue endpoints are both red, with ordinary clamped Slider
 endpoints; use AngleSlider for circular keyboard wrap behavior.
 
+The shared controller reads valid live configuration for a command, including
+step changes earlier in the same host packet. It keeps the accepted value and
+confirmed callback cursor separate from unrelated pending external value writes.
+Invalid configuration still uses the last accepted configuration for requests;
+the normal structural update reports the invalid source. This preserves the
+existing controlled-value and same-value external-write rules.
+
 ```rust
 use sapid::{alpha_slider, hue_slider};
 use glory::style::Color;
@@ -27,16 +34,26 @@ sliders use the documented Slider snapshot attributes; they do not contribute
 native browser FormData entries. Keys require at most 58 ASCII bytes, leaving
 space for independent hue/alpha semantic namespaces.
 
-The trail is a bounded passive visual matching Mantine's layered rendering. Hue
-uses one continuous typed linear gradient. Alpha layers its continuous color
-gradient over one continuous neutral backing gradient; neither trail contains
-independently rasterized cells or seams. The shared `LinearGradient` declarations
-are lowered by Web, SSR and Apace. Hue uses Mantine's
-0/60/120/170/240/300/360-degree stops; alpha blends from transparent to the
-supplied opaque RGB and reverses both layers for RTL. Alpha
+The trail is a bounded passive visual. Hue uses one continuous typed linear
+gradient with 0/60/120/180/240/300/360-degree HSV stops, including real cyan at
+the middle. Alpha layers its continuous color gradient over a genuine two-tone
+checker. One passive Graphic path uses 240 commands, within the shared 256-command
+budget, without per-cell Widget identities. Its square geometry scales uniformly
+and is centered/clipped by the narrow track. It requires no image, CSS pattern
+extension or width-history cache. The former smooth neutral backing did not
+represent a checker; retained historical results describe that earlier version.
+The shared gradient and Graphic declarations are lowered by Web, SSR and Apace.
+Alpha blends from transparent to supplied opaque RGB and reverses its color
+ramp for RTL. Alpha
 ignores the supplied Color's alpha and keeps its RGB. The thumb previews the
 current quantized RGBA8 value.
 `unstyled()` retains the color data and geometry while removing theme decoration.
+
+The primary pages pair the track with a visible percentage/degree readout and a
+color swatch. Two independent source sections on each page explain controlled
+proposals, keyboard steps and unavailable states. Alpha also compares light/dark
+surroundings. Read-only and disabled behavior uses the shared Slider controller;
+color is never the only description of a value.
 
 The pure `Hsva` model validates hue 0..=360 and saturation/value/alpha 0..=1,
 rejecting nonfinite coordinates. Conversion uses HSV over sRGB channel values;

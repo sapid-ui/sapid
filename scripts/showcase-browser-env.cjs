@@ -1,17 +1,22 @@
 // Shared, environment-driven paths for browser acceptance scripts.
 const fs = require('node:fs');
 const path = require('node:path');
+const os = require('node:os');
+const { execFileSync } = require('node:child_process');
 
-const buildRootValue = process.env.SAPID_BUILD_ROOT;
-if (!buildRootValue) {
-  throw new Error('SAPID_BUILD_ROOT is required');
-}
+const buildRootValue = process.env.SAPID_BUILD_ROOT || JSON.parse(execFileSync('cargo',
+  ['metadata', '--no-deps', '--format-version', '1'],
+  { cwd: path.join(__dirname, '..', 'examples', 'web'), encoding: 'utf8' })).target_directory;
 const buildRoot = path.resolve(buildRootValue);
 const outputRoot = path.resolve(process.env.SAPID_BROWSER_OUTPUT || buildRoot);
-const tempDir = path.resolve(process.env.SAPID_BROWSER_TEMP || path.join(buildRoot, 'tmp'));
+for (const directory of [buildRoot, outputRoot]) {
+  const normalized = directory.replaceAll('\\', '/').toLowerCase();
+  if (normalized === 'd:/buildcache' || normalized.startsWith('d:/buildcache/') || normalized.includes('/.codex/build-targets')) {
+    throw new Error('Browser artifacts cannot use a prohibited legacy build directory');
+  }
+}
+const tempDir = os.tmpdir();
 fs.mkdirSync(outputRoot, { recursive: true });
-fs.mkdirSync(tempDir, { recursive: true });
-process.env.TEMP = process.env.TMP = tempDir;
 
 const playwrightModule = process.env.SAPID_PLAYWRIGHT || 'playwright';
 const { chromium } = require(playwrightModule);

@@ -18,6 +18,26 @@ struct Running {
     palette_scroll: Cell<Option<i32>>,
 }
 thread_local! {static APP:RefCell<Option<Running>>=const{RefCell::new(None)};}
+thread_local! {static SHELL_WINDOW:RefCell<Option<glory::web::WebApp>>=const{RefCell::new(None)};}
+#[wasm_bindgen]
+pub fn mount_shell_window(hue: String, scheme: String) -> Result<(), JsValue> {
+    let root = window()
+        .map_err(js)?
+        .document()
+        .and_then(|d| d.get_element_by_id("app"))
+        .ok_or_else(|| js("Missing shell root"))?;
+    let theme = crate::themes::select(
+        &hue,
+        if scheme == "dark" {
+            sapid::ColorScheme::Dark
+        } else {
+            sapid::ColorScheme::Light
+        },
+    );
+    let app = glory::web::launch_with(root, move |_| crate::shell_window(theme)).map_err(js)?;
+    SHELL_WINDOW.with(|slot| *slot.borrow_mut() = Some(app));
+    Ok(())
+}
 fn js(error: impl std::fmt::Display) -> JsValue {
     error.to_string().into()
 }

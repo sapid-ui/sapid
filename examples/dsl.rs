@@ -1,4 +1,4 @@
-//! cargo run --example dsl > D:/BuildCache/sapid/dsl.html
+//! cargo run --example dsl > target/verification/sapid/dsl.html
 #[path = "fixtures/dsl_demo.rs"]
 mod fixture;
 

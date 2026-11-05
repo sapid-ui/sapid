@@ -100,6 +100,14 @@ impl Widget for Toggle {
         let weak = scope.downgrade();
         button = button.on(EventKind::Activate, move |event| {
             let Some(scope) = weak.upgrade() else { return };
+            match enabled.try_get() {
+                Ok(true) => {}
+                Ok(false) => return,
+                Err(error) => {
+                    scope.report_error(error);
+                    return;
+                }
+            }
             let result = (|| -> Result {
                 if enabled.try_get()? {
                     let proposal = !control.source.try_get()?;

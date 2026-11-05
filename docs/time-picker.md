@@ -198,3 +198,18 @@ readonly/disabled states, flat presets, grouped presets, controlled popup state,
 custom labels/focus boundaries, typed popup placement/width, typed duration mode,
 minimum-hours digits, bounded complete-time paste/custom parsing, and the full
 hour/minute/second/period controls dropdown with reversed lists and bounded scroll.
+
+## Compact actions and complete public sources
+
+Clear and chooser actions use compact vector glyphs with their existing complete
+names and controlled behavior. Editors and separators stay together; the action
+group wraps as a unit in narrow columns and rejoins them on resize. Duration uses
+the same group geometry. The actual editors, draft/value protocol and popup anchor
+remain retained. Fifteen independently compiled public sources cover the delivered
+features; see [date page contracts](date-pages.md#time-controls-and-responsive-actions).
+
+Captured ordinary digit edits now run through the same NumberInput parser as
+normal numeric input. Whole-time parsers intercept successful complete values
+before numeric rejection; composition echoes and equal-value paste retain their
+existing bounded editor semantics. The consecutive raw-edit and atomic paste
+regressions are in `tests/date_time_pickers.rs` and `tests/time_pickers.rs`.

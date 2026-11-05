@@ -26,10 +26,11 @@ changes are silent. A visible month outside provider bounds or a selected value
 outside those bounds returns an error and preserves the accepted snapshot until
 the source becomes valid.
 
-`mini_calendar` returns the same builder with an extra-small default size and a
-compact English month label. It keeps all six date rows and the same interaction
-contract. The provider's reference date determines the initial visible month,
-clamped to its explicit bounds. Today is a separate optional value.
+`mini_calendar` now returns the independent `MiniCalendar` date-strip builder.
+It shows seven consecutive days by default, with configurable `number_of_days`
+(1–31), compact previous/next range controls and a single date row. It no longer
+uses the monthly Calendar's six rows or month/year controls. See
+[MiniCalendar](mini-calendar.md) for range, selection and customization APIs.
 
 ## Real grid and bounded editing state
 
@@ -52,8 +53,9 @@ picker family for custom calendar behavior. In this mode a day activation calls
 `on_value_change(Some(date))` without mutating the supplied projection; the
 application may accept, reject or transform that proposal, including a bounded
 multiple-date policy. `render_day(...)` is a typed Widget factory for passive
-inline day content. Its date is reactive and it does not replace the real day
-Button, GridCell coordinates, accessible date name or activation protocol.
+inline day content. It replaces the default visible number in both interactive
+and static modes. Its date is reactive; the real day Button, GridCell coordinates,
+full accessible date name and activation protocol are retained.
 
 Exactly one enabled day has a roving Tab stop when the visible month contains a
 selectable day. Other days remain programmatically focusable; native disabled
@@ -169,3 +171,10 @@ history, pending query or task is kept after retirement.
 
 Actual screen-reader announcement timing, OS IME, IANA timezone and DST handling
 are outside these claims. Calendar itself never changes an absolute instant.
+
+## Complete public page examples
+
+The remaining date/time pages now have dedicated primary examples, independently
+compiled full-source sections and matching contents links. See [date page
+contracts](date-pages.md) for selection domains, editor/draft behavior, inline versus
+popup use, responsive actions and current browser/native acceptance boundaries.

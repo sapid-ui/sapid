@@ -55,7 +55,7 @@ fn all(app: &App) -> Vec<NodeId> {
     out
 }
 fn button(app: &App, name: &str) -> NodeId {
-    all(app).into_iter().find(|id|{let tree=app.tree();matches!(tree.node(*id).unwrap().descriptor.view().props,Props::Button(p)if p.label.starts_with(name))}).unwrap()
+    all(app).into_iter().find(|id|{let tree=app.tree();let descriptor=tree.node(*id).unwrap().descriptor.view();matches!(descriptor.props,Props::Button(p)if p.label.starts_with(name)||descriptor.name.as_ref().is_some_and(|label|label.starts_with(name)))}).unwrap_or_else(||panic!("missing button: {name}"))
 }
 #[test]
 fn native_agenda_four_themes_real_lists_hit_focus_selection_pixels_and_keyed_identity() {

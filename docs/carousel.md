@@ -1,9 +1,16 @@
 # Carousel
 
 `carousel()` is an index-addressed page widget. It renders one visible slide,
-real Previous/Next buttons, a numeric position, optional keyboard/swipe input,
+compact inset Previous/Next icon buttons, a numeric position, optional keyboard/swipe input,
 and optional application-supplied autoplay. It has a named generic group with a
 tab stop; slides are named groups, without invented carousel or interactive roles.
+
+`.with_controls(false)` omits arrow buttons. `.control_size(px)` accepts finite
+20–64px values and defaults to 32px. `.with_indicators(true)` adds named, pressed
+page buttons: at most `MAX_CAROUSEL_INDICATORS` (nine) nearby positions, even for
+a million pages. Indicators follow RTL order and use the same controlled proposals
+as arrows. Each current indicator owns its bindings; departing positions retire
+them. Vertical arrows use up/down icons. Empty carousels hide arrows and indicators.
 
 ```rust
 sapid::carousel()
@@ -30,6 +37,10 @@ before generic observers. External source writes are silent. Uncontrolled
 Controlled invalid count/current pairs fail validation before building another
 window. Empty count has no slides and disables page controls. `looping(true)`
 explicitly enables wrapping; edge clamping is the default.
+
+Consecutive commands read the current accepted source, including commands queued
+before the next display reconciliation. Refusal does not optimistically advance
+the view or the next proposal.
 
 `orientation` sets horizontal or vertical input. Horizontal `direction(Rtl)`
 mirrors both arrows and swipes. Input fields and other interactive descendants
@@ -62,6 +73,13 @@ first shape and never constructs the future; `Scope::has_task_host()` observes
 only the injected service's presence. An installed closed/limited service still
 returns its usual spawn error. A stream with an explicitly installed executor
 may run its supplied clock and remains subject to its outer request lifetime.
+
+An external `paused(true)` source disables local resume and labels the action
+"Autoplay paused". A non-looping terminal page labels it "Autoplay stopped".
+The public page supplies four compiled examples for controlled refusal, control
+geometry/direction/visibility, opt-in browser autoplay and windowed local drafts.
+This remains a one-page-at-a-time carousel; Embla plugins and fractional multi-slide
+layouts are outside the delivered contract.
 
 Theme/size/class/style/name/node-ref/enabled and generic observers follow Common
 builder rules. Four themes and unstyled mode share the same semantics. Unstyled

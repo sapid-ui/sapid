@@ -9,7 +9,7 @@ use glory::render::{Direction, Event, EventKind, NodeId, Semantics};
 use glory::style::Style;
 use glory::ui::{Children, IntoChildren, Result, Widget};
 use glory::{Cage, Scope, Vary};
-use std::{future::Future, pin::Pin, rc::Rc};
+use std::{cell::Cell, future::Future, pin::Pin, rc::Rc};
 const MAX_DRAFT_BYTES: usize = 256;
 
 pub type ColorEyeDropperResult = std::result::Result<Option<glory::style::Color>, String>;
@@ -306,10 +306,11 @@ impl Widget for ColorInput {
             .into());
         }
         if !self.picker
+            && self.swatches.is_empty()
             && (self.open.source.is_some() || self.open.default || self.open_change.is_some())
         {
             return Err(glory::render::Error::InvalidProps(
-                "hex-only color input cannot configure a popup",
+                "a color input without picker or swatches cannot configure a popup",
             )
             .into());
         }
@@ -487,9 +488,9 @@ impl Widget for ColorInput {
         } else if input.field.is_none() {
             input = input.name("Color");
         }
-        if let Some(reference) = self.common.node_ref {
-            input = input.node_ref(reference);
-        }
+        let input_reference = self.common.node_ref.unwrap_or_else(|| scope.cage(None));
+        input = input.node_ref(input_reference);
+        let returning_focus = Rc::new(Cell::new(false));
         let editing = control.clone();
         let changed = change.clone();
         let weak = scope.downgrade();
@@ -505,15 +506,45 @@ impl Widget for ColorInput {
             }
         });
         let committed = commit.clone();
+        let corrected = change.clone();
         let fixing = control.clone();
         let fix_on_blur = self.fix_on_blur;
-        input = input.on_commit(move |value| {
+        let weak = scope.downgrade();
+        let finish = Rc::new(move |value: String| {
             if fix_on_blur && !value.is_empty() && parse_color(&value, format).is_err() {
                 let restored = last_valid.get();
-                let _ = fixing.accept(&restored);
+                if let Err(error) = fixing.accept(&restored) {
+                    if let Some(scope) = weak.upgrade() {
+                        scope.report_error(error);
+                    }
+                    return;
+                }
+                corrected.emit(owner, restored.clone());
                 committed.emit(owner, restored);
             } else {
                 committed.emit(owner, value)
+            }
+        });
+        let submit = finish.clone();
+        input = input.on_commit(move |value| submit(value));
+        // A browser text input commits on Enter; leaving it is a distinct
+        // focus notification. Restore invalid drafts on that real blur too.
+        let draft_source = control.source.clone();
+        let correcting_enabled = enabled.clone();
+        let correcting_readonly = readonly.clone();
+        input = input.on(EventKind::FocusChanged, move |event| {
+            if matches!(event, Event::FocusChanged(false))
+                && fix_on_blur
+                && correcting_enabled.try_get().is_ok_and(|active| active)
+                && correcting_readonly
+                    .try_get()
+                    .is_ok_and(|readonly| !readonly)
+                && composing.try_get().is_ok_and(|active| !active)
+                && let Ok(value) = draft_source.try_get()
+                && !value.is_empty()
+                && parse_color(&value, format).is_err()
+            {
+                finish(value);
             }
         });
         let mut observers = self
@@ -529,13 +560,29 @@ impl Widget for ColorInput {
         });
         if self.picker || !self.swatches.is_empty() {
             let focus_open = open.clone();
+            let returning = returning_focus.clone();
+            let changed = opened.clone();
+            let available = picker_enabled;
             let weak = scope.downgrade();
             input = input.on(EventKind::FocusChanged, move |event| {
-                if matches!(event, Event::FocusChanged(true))
-                    && let Err(error) = focus_open.accept(&true)
-                    && let Some(scope) = weak.upgrade()
-                {
-                    scope.report_error(error)
+                if let Event::FocusChanged(active) = event {
+                    if !active {
+                        returning.set(false);
+                    } else if !returning.replace(false) {
+                        let result = (|| -> Result {
+                            if !available.try_get()? || focus_open.source.try_get()? {
+                                return Ok(());
+                            }
+                            focus_open.accept(&true)?;
+                            changed.emit(owner, true);
+                            Ok(())
+                        })();
+                        if let Err(error) = result
+                            && let Some(scope) = weak.upgrade()
+                        {
+                            scope.report_error(error);
+                        }
+                    }
                 }
             });
         }
@@ -582,7 +629,13 @@ impl Widget for ColorInput {
         let close_on_swatch = self.close_on_swatch;
         let swatches_per_row = self.swatches_per_row;
         let swatch_open = open.clone();
+        let swatch_changed = opened.clone();
+        let swatch_returning = returning_focus.clone();
+        let preview_open = open.clone();
+        let preview_changed = opened.clone();
         let open_scope = scope.downgrade();
+        let focus_scope = scope.downgrade();
+        let return_enabled = enabled.clone();
         let palette_scope = scope.downgrade();
         let popup = crate::popover(format!("{}-p", self.key))
             .label("Choose color")
@@ -592,12 +645,28 @@ impl Widget for ColorInput {
             .size(size)
             .style(
                 Style::new()
-                    .width(glory::style::Length::Px(224.))
+                    .width(glory::style::Length::Px(226.))
                     .padding(glory::style::Edges::all(12.))
                     .gap(8.),
             )
             .enabled(ready)
             .external_trigger(input_id)
+            .on_dismiss(move |reason| {
+                if reason == glory::render::DismissReason::Escape
+                    && return_enabled.try_get().is_ok_and(|value| value)
+                    && let Some(scope) = focus_scope.upgrade()
+                    && scope
+                        .capabilities()
+                        .is_ok_and(|capabilities| capabilities.focus)
+                    && let Ok(Some(input)) = input_reference.try_get()
+                {
+                    returning_focus.set(true);
+                    if let Err(error) = scope.action(glory::render::Action::Focus(input)) {
+                        returning_focus.set(false);
+                        scope.report_error(error);
+                    }
+                }
+            })
             .open(open.source.clone())
             .on_open_change(move |value| {
                 if let Err(error) = open.accept(&value)
@@ -652,31 +721,57 @@ impl Widget for ColorInput {
                     let changed = on_change.clone();
                     let committed = on_commit.clone();
                     let open = swatch_open.clone();
+                    let changed_open = swatch_changed.clone();
+                    let returning = swatch_returning.clone();
+                    let available = palette_ready;
                     let weak = palette_scope.clone();
                     swatch_widgets.push(Box::new(
                         crate::color_swatch(color)
                             .theme(theme.clone())
+                            .style(crate::color_swatch::palette_cell_style())
                             .side(
                                 (240. - 6. * (swatches_per_row.saturating_sub(1)) as f64)
                                     / swatches_per_row as f64,
                             )
                             .name(label)
                             .interactive(true)
+                            .pressed(palette.map(move |value| {
+                                value.to_rgba().is_ok_and(|value| value == color)
+                            }))
                             .on_press(move || {
-                                let text = format_color(color, format);
-                                match editing.accept(&text) {
-                                    Ok(()) => {
-                                        changed.emit(owner, text.clone());
-                                        committed.emit(owner, text);
-                                        if close_on_swatch {
-                                            let _ = open.accept(&false);
+                                let result = (|| -> Result {
+                                    if !owner.is_alive() || !available.try_get()? {
+                                        return Ok(());
+                                    }
+                                    let text = format_color(color, format);
+                                    editing.accept(&text)?;
+                                    changed.emit(owner, text.clone());
+                                    committed.emit(owner, text);
+                                    if close_on_swatch && owner.is_alive() {
+                                        open.accept(&false)?;
+                                        changed_open.emit(owner, false);
+                                        if owner.is_alive()
+                                            && !open.source.try_get()?
+                                            && available.try_get()?
+                                            && let Some(scope) = weak.upgrade()
+                                            && scope.capabilities()?.focus
+                                            && let Some(input) = input_reference.try_get()?
+                                        {
+                                            returning.set(true);
+                                            if let Err(error) =
+                                                scope.action(glory::render::Action::Focus(input))
+                                            {
+                                                returning.set(false);
+                                                return Err(error);
+                                            }
                                         }
                                     }
-                                    Err(error) => {
-                                        if let Some(scope) = weak.upgrade() {
-                                            scope.report_error(error)
-                                        }
-                                    }
+                                    Ok(())
+                                })();
+                                if let Err(error) = result
+                                    && let Some(scope) = weak.upgrade()
+                                {
+                                    scope.report_error(error);
                                 }
                             }),
                     ));
@@ -685,6 +780,7 @@ impl Widget for ColorInput {
                     content.push(Box::new(
                         crate::group()
                             .theme(theme.clone())
+                            .style(crate::color_swatch::palette_style(swatches_per_row))
                             .gap(6.)
                             .wrap(glory::style::FlexWrap::Wrap)
                             .fill(swatch_widgets),
@@ -716,23 +812,71 @@ impl Widget for ColorInput {
                     .fill(children),
             );
         } else if self.preview {
-            editor = editor.fill(
-                crate::color_swatch(scope.bond(move || {
-                    parse_color(&preview_color.get(), format)
-                        .unwrap_or(glory::style::Color(255, 255, 255, 255))
-                }))
-                .theme(editor_theme)
-                .side(20.)
-                .round(true)
-                .class("sapid-color-input-preview")
-                .style(
-                    Style::new()
-                        .position(glory::style::Position::Absolute)
-                        .left(glory::style::Length::Px(9.))
-                        .top(glory::style::Length::Px(8.))
-                        .pointer_events(glory::style::PointerEvents::None),
-                ),
+            let mut preview = crate::color_swatch(scope.bond(move || {
+                parse_color(&preview_color.get(), format)
+                    .unwrap_or(glory::style::Color(255, 255, 255, 255))
+            }))
+            .theme(editor_theme)
+            .side(20.)
+            .round(true)
+            .class("sapid-color-input-preview")
+            .style(
+                Style::new()
+                    .position(glory::style::Position::Absolute)
+                    .left(glory::style::Length::Px(9.))
+                    .top(glory::style::Length::Px(8.))
+                    .pointer_events(if self.picker || !self.swatches.is_empty() {
+                        glory::style::PointerEvents::Auto
+                    } else {
+                        glory::style::PointerEvents::None
+                    }),
             );
+            if self.picker || !self.swatches.is_empty() {
+                let weak = scope.downgrade();
+                let available = if self.loading_position == ColorInputSectionPosition::Left {
+                    let loading = self.loading.clone();
+                    scope.bond(move || picker_enabled.get() && !loading.get())
+                } else {
+                    picker_enabled
+                };
+                preview = preview
+                    .interactive(true)
+                    .name("Open color picker")
+                    .enabled(available)
+                    .on_press(move || {
+                        let result = (|| -> Result {
+                            if !owner.is_alive()
+                                || !available.try_get()?
+                                || preview_open.source.try_get()?
+                            {
+                                return Ok(());
+                            }
+                            preview_open.accept(&true)?;
+                            preview_changed.emit(owner, true);
+                            Ok(())
+                        })();
+                        if let Err(error) = result
+                            && let Some(scope) = weak.upgrade()
+                        {
+                            scope.report_error(error);
+                        }
+                    });
+            }
+            if self.loading_position == ColorInputSectionPosition::Left {
+                let loading = self.loading.clone();
+                editor = editor.fill(
+                    glory::ui::view()
+                        .semantics(scope.bond(move || {
+                            composite::metadata(Semantics {
+                                hidden: loading.get(),
+                                ..Default::default()
+                            })
+                        }))
+                        .fill(preview),
+                );
+            } else {
+                editor = editor.fill(preview);
+            }
         }
         if let Some(children) = self.right.take() {
             editor = editor.fill(

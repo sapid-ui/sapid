@@ -29,7 +29,7 @@ async (hostPage) => {
    assert(await input.evaluate(e=>e===window.maskIdentity),`${label}: input identity changed`);assert(await draft.evaluate(e=>e===window.maskDraft&&e.selectionStart===2&&e.selectionEnd===8),`${label}: unrelated caret changed`);
    assert((await status(page)).ordered==='true'&&(await status(page)).legacy==='0',`${label}: typed path must precede generic without legacy duplicate`);
    const ax=await input.ariaSnapshot();assert(ax.includes('textbox')&&ax.includes('Public reference'),`${label}: real browser textbox name`);
-   await page.screenshot({path:`D:/BuildCache/sapid/${label}.png`,fullPage:true});reports.push({suite:label,status:'passed',checks:'one real editor, raw/display map, literal deletion, actual selection, controlled refusal, Field/form, readonly/disabled, identity and geometry'});
+   await page.screenshot({path:`target/verification/sapid/${label}.png`,fullPage:true});reports.push({suite:label,status:'passed',checks:'one real editor, raw/display map, literal deletion, actual selection, controlled refusal, Field/form, readonly/disabled, identity and geometry'});
   }
   await page.goto(`${base}/mask-input.html`);await page.waitForFunction(()=>window.ready===true);const primary=page.locator('input.primary-mask');
   await page.evaluate(()=>window.demo.mask_input_text('12'));await primary.focus();await primary.evaluate(e=>{

@@ -3,6 +3,10 @@
 Agents pause writes only during this copy, then can resume while Cargo builds the
 immutable snapshot. Each output is new and includes hashes for reproducibility.
 """
+from pathlib import Path as _BuildPath
+import sys as _build_sys
+_build_sys.path.insert(0, str(_BuildPath(__file__).resolve().parents[1] / "scripts"))
+from local_build_paths import local_build_path
 import argparse
 import hashlib
 import json
@@ -14,9 +18,9 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("output", type=Path)
 args = parser.parse_args()
 output = args.output.resolve()
-build_root = Path("D:/BuildCache/sapid").resolve()
+build_root = Path(local_build_path('sapid')).resolve()
 if not output.is_relative_to(build_root) or output == build_root:
-    parser.error("snapshot output must be a new directory below D:/BuildCache/sapid")
+    parser.error("snapshot output must be a new directory below project build directory/sapid")
 if output.exists():
     parser.error("snapshot output already exists; use a fresh name")
 sapid = Path(__file__).resolve().parents[1]

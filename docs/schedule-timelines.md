@@ -94,3 +94,5 @@ all-day data, 44px/60px slot geometry, readonly and header/all-day suppression.
 Browser
 protocol and native driver evidence does not establish OS IME or screen-reader
 announcements.
+
+For complete runnable page examples and current ownership/editing rules, see [Schedule pages](schedule-pages.md).

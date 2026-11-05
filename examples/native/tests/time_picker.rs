@@ -1,6 +1,8 @@
 use glory::apace::{Raster, shell::WindowApp};
 use glory::prelude::*;
-use glory::render::{Action, DismissReason, InputProps, NodeId, Props, Query, QueryValue, Rect};
+use glory::render::{
+    Action, Direction, DismissReason, InputProps, NodeId, Props, Query, QueryValue, Rect,
+};
 use sapid::prelude::*;
 use std::{cell::RefCell, rc::Rc};
 fn t(v: &str) -> LocalTime {
@@ -19,6 +21,78 @@ fn bounds(app: &App, id: NodeId) -> Rect {
         panic!()
     };
     rect
+}
+
+#[test]
+fn time_grid_fits_narrow_containers_and_keeps_dense_columns_in_a_local_viewport() {
+    for (cycle, columns, direction) in [
+        (HourCycle::H24, 4, Direction::Ltr),
+        (HourCycle::H12, 4, Direction::Ltr),
+        (HourCycle::H12, 12, Direction::Ltr),
+        (HourCycle::H24, 4, Direction::Rtl),
+    ] {
+        let host = WindowApp::new();
+        host.renderer().set_viewport(300, 400, 1.).unwrap();
+        let app = host.app();
+        let root = app.scope().cage(None);
+        host.mount(
+            time_grid("narrow")
+                .node_ref(root)
+                .direction(direction)
+                .spec(TimeGridSpec::new(t("09:00"), t("15:30"), 1800, columns).unwrap())
+                .format(TimeFormat::new(
+                    cycle,
+                    TimePrecision::Minute,
+                    DateLocale::En,
+                )),
+        )
+        .unwrap();
+        app.settle(16).unwrap();
+        let root = root.get().unwrap();
+        let rect = bounds(app, root);
+        assert!(rect.width <= 300.1, "viewport widened: {rect:?}");
+        let cells = nodes(app, "sapid-time-cell");
+        assert!(!cells.is_empty());
+        for cell in cells {
+            assert!(bounds(app, cell).width >= 51.9);
+        }
+        let row = app.tree().node(root).unwrap().children[0];
+        let cells = app.tree().node(row).unwrap().children.clone();
+        let first = bounds(app, cells[0]);
+        let last = bounds(app, *cells.last().unwrap());
+        assert!(
+            (first.y - last.y).abs() < 0.2,
+            "columns must share their physical row"
+        );
+        assert_eq!(first.x > last.x, direction == Direction::Rtl);
+        let QueryValue::ScrollMetrics(metrics) = query(app, Query::ScrollMetrics(root)) else {
+            panic!("metrics")
+        };
+        if columns == 12 {
+            assert!(metrics.content_width > metrics.viewport_width + 300.);
+            let from = button(app, "09:00 AM");
+            app.scope().action(Action::Focus(from)).unwrap();
+            app.settle(16).unwrap();
+            app.dispatch(
+                root,
+                Event::GridNavigate {
+                    from,
+                    command: GridCommand::LastInRow,
+                },
+            )
+            .unwrap();
+            app.settle(16).unwrap();
+            let QueryValue::ScrollMetrics(revealed) = query(app, Query::ScrollMetrics(root)) else {
+                panic!("metrics")
+            };
+            assert!(
+                revealed.x > 300.,
+                "keyboard target must be revealed: {revealed:?}"
+            );
+        } else {
+            assert!(metrics.content_width <= metrics.viewport_width + 1.);
+        }
+    }
 }
 fn props(app: &App, id: NodeId) -> InputProps {
     let tree = app.tree();
@@ -44,6 +118,7 @@ fn button(app: &App, name: &str) -> NodeId {
             let tree = app.tree();
             let view = tree.node(*id).unwrap().descriptor.view();
             matches!(view.props,Props::Button(p)if p.label==name)
+                || view.name.as_deref() == Some(name)
         })
         .unwrap()
 }

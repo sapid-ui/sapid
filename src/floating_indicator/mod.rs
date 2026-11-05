@@ -599,6 +599,7 @@ impl Widget for FloatingIndicator {
                 GraphicProps {
                     width: geometry.map_or(1., |geometry| geometry.width),
                     height: geometry.map_or(1., |geometry| geometry.height),
+                    fit: glory::render::GraphicFit::Contain,
                     commands: model::rectangle(rect),
                     fill: None,
                     stroke: painted.then(|| GraphicStroke {

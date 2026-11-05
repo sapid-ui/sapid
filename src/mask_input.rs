@@ -47,11 +47,6 @@ struct Snapshot {
     enabled: bool,
     metadata: Semantics,
 }
-impl Snapshot {
-    fn writable(&self) -> bool {
-        self.enabled && !self.metadata.readonly
-    }
-}
 struct Pending {
     physical: String,
     proposal: String,
@@ -73,6 +68,7 @@ struct Controller {
     composing: Cell<bool>,
     ended: Cell<bool>,
     echo: RefCell<Option<(u64, String)>>,
+    available: Rc<dyn Fn() -> Result<bool>>,
 }
 impl Controller {
     fn ensure(&self) -> Result {
@@ -96,7 +92,7 @@ impl Controller {
     }
     fn edit(&self, edit: &InputEdit) -> Result {
         self.ensure()?;
-        if !self.accepted.try_with(Snapshot::writable)? {
+        if !(self.available)()? {
             return Ok(());
         }
         let InputEdit::Value {
@@ -182,7 +178,7 @@ impl Controller {
     }
     fn commit(&self, value: &str) -> Result {
         self.ensure()?;
-        if self.composing.get() || !self.accepted.try_with(Snapshot::writable)? {
+        if self.composing.get() || !(self.available)()? {
             return Ok(());
         }
         let pending = self
@@ -243,6 +239,7 @@ pub struct MaskInput {
     pattern: MaskPattern,
     value: Value<String>,
     field: Option<FieldControl>,
+    placeholder: Option<Vary<String>>,
     required: Vary<bool>,
     readonly: Vary<bool>,
     invalid: Vary<bool>,
@@ -258,6 +255,7 @@ pub fn mask_input(pattern: MaskPattern) -> MaskInput {
         pattern,
         value: Value::default(),
         field: None,
+        placeholder: None,
         required: false.into(),
         readonly: false.into(),
         invalid: false.into(),
@@ -269,6 +267,10 @@ pub fn mask_input(pattern: MaskPattern) -> MaskInput {
 }
 impl MaskInput {
     common_methods!();
+    pub fn placeholder(mut self, value: impl Into<Vary<String>>) -> Self {
+        self.placeholder = Some(value.into());
+        self
+    }
     pub fn value(mut self, value: impl Into<Vary<String>>) -> Self {
         self.value.source = Some(value.into());
         self
@@ -315,6 +317,7 @@ impl MaskInput {
 }
 impl Widget for MaskInput {
     fn build(&mut self, scope: &Scope) -> Result {
+        let placeholder = crate::text_input::placeholder(scope, self.placeholder.take(), false)?;
         let pattern = self.pattern.clone();
         if let Some(value) = &self.value.source {
             value
@@ -335,7 +338,7 @@ impl Widget for MaskInput {
             .as_ref()
             .map(|f| f.enabled(scope, self.common.enabled.clone()))
             .unwrap_or_else(|| self.common.enabled.clone());
-        let metadata = control_metadata(
+        let mut metadata = control_metadata(
             scope,
             self.field.as_ref(),
             self.common.name.is_some(),
@@ -343,6 +346,20 @@ impl Widget for MaskInput {
             self.readonly.clone(),
             self.invalid.clone(),
         );
+        if let Some(placeholder) = placeholder {
+            metadata = scope
+                .bond(move || {
+                    let mut state = metadata.get().unwrap_or_default();
+                    state.placeholder = Some(placeholder.get());
+                    Some(state)
+                })
+                .into();
+        }
+        let available = {
+            let active = enabled.clone();
+            let states = metadata.clone();
+            Rc::new(move || crate::field::check_available(&active, &states))
+        };
         let form_name = composite::form_name(scope, &self.form_name)?;
         let source = scope.bond(move || {
             let mut metadata = metadata.get().map(|s| *s).unwrap_or_default();
@@ -388,6 +405,7 @@ impl Widget for MaskInput {
             composing: Cell::new(false),
             ended: Cell::new(false),
             echo: RefCell::new(None),
+            available,
         });
         let cleanup = Rc::downgrade(&state);
         scope.on_cleanup(move || {
@@ -433,6 +451,19 @@ impl Widget for MaskInput {
             scope.on_cleanup(move || cleanup.clear())?;
             input = input.on(kind, move |event| {
                 if s.ensure().is_ok() {
+                    if matches!(event, Event::InputEdit(_) | Event::Commit { .. }) {
+                        match (s.available)() {
+                            Ok(true) => {}
+                            Ok(false) => {
+                                s.report(s.dirty.touch());
+                                return;
+                            }
+                            Err(error) => {
+                                s.report(Err(error));
+                                return;
+                            }
+                        }
+                    }
                     s.report(s.event(&event));
                     observers.emit(s.owner, event);
                 }

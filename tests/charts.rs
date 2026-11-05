@@ -326,3 +326,60 @@ fn reference_area_line_dot_and_labels_are_real_finite_chart_layers() {
         .is_err()
     );
 }
+
+#[test]
+fn compact_navigation_can_be_omitted_without_losing_direct_selection_table_or_legend_state() {
+    let app = App::memory();
+    let selected = Rc::new(RefCell::new(None));
+    let output = selected.clone();
+    app.mount(
+        line_chart("summary")
+            .data(data())
+            .navigation(false)
+            .on_selection_change(move |v| *output.borrow_mut() = v),
+    )
+    .unwrap();
+    assert_eq!(count(&app, "sapid-chart-point-controls"), 0);
+    assert_eq!(count(&app, "sapid-chart-point-detail"), 0);
+    assert!(text(&app).contains("January"));
+    let point = all(&app)
+        .into_iter()
+        .find(|id| {
+            app.tree()
+                .node(*id)
+                .unwrap()
+                .descriptor
+                .view()
+                .classes
+                .iter()
+                .any(|c| c == "sapid-chart-point")
+        })
+        .unwrap();
+    app.dispatch(point, Event::Activate).unwrap();
+    assert!(selected.borrow().is_some());
+    let legend = named(&app, "Hide Revenue");
+    assert!(
+        app.tree()
+            .node(legend)
+            .unwrap()
+            .descriptor
+            .view()
+            .semantics
+            .as_ref()
+            .is_some_and(|s| s.pressed == Some(true))
+    );
+    app.dispatch(legend, Event::Activate).unwrap();
+    assert_eq!(named(&app, "Show Revenue"), legend);
+    assert!(
+        app.tree()
+            .node(legend)
+            .unwrap()
+            .descriptor
+            .view()
+            .semantics
+            .as_ref()
+            .is_some_and(|s| s.pressed == Some(false))
+    );
+    app.clear().unwrap();
+    assert_eq!(app.stats().nodes, 0);
+}

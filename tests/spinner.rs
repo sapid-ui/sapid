@@ -2,6 +2,52 @@ use glory::render::{GraphicAnimation, Props, Role};
 use glory::style::{Color, Length, Style};
 use glory::ui::App;
 use sapid::{Size, Theme, loader, spinner};
+#[test]
+fn bars_and_dots_use_three_passive_phased_graphics_and_retain_them_when_animation_changes() {
+    for kind in [sapid::LoaderType::Bars, sapid::LoaderType::Dots] {
+        let app = App::memory();
+        let animated = app.scope().cage(true);
+        app.mount(
+            loader()
+                .kind(kind)
+                .color(Color(90, 40, 170, 255))
+                .animated(animated)
+                .period_millis(900),
+        )
+        .unwrap();
+        let root = app.tree().roots()[0];
+        let children = app.tree().node(root).unwrap().children.clone();
+        assert_eq!(children.len(), 3);
+        for (index, id) in children.iter().enumerate() {
+            let tree = app.tree();
+            let Props::Graphic(p) = tree.node(*id).unwrap().descriptor.view().props else {
+                panic!("graphic")
+            };
+            p.validate().unwrap();
+            assert!(p.alternative.is_none());
+            assert_eq!(
+                p.animation,
+                Some(GraphicAnimation::Pulse {
+                    period_millis: 900,
+                    phase_millis: index as u32 * 300
+                })
+            );
+            assert_eq!(p.stroke.unwrap().color, Color(90, 40, 170, 255));
+        }
+        animated.revise(|v| *v = false);
+        app.flush().unwrap();
+        assert_eq!(app.tree().node(root).unwrap().children, children);
+        for id in &children {
+            assert!(
+                matches!(app.tree().node(*id).unwrap().descriptor.view().props,Props::Graphic(p) if p.animation.is_none())
+            );
+        }
+        assert_eq!(app.stats().handlers, 0);
+        assert_eq!(app.runtime_stats().tasks, 0);
+        app.clear().unwrap();
+        assert_eq!(app.stats().nodes, 0);
+    }
+}
 
 #[test]
 fn named_status_has_a_real_decorative_finite_graphic_and_no_input_handlers() {

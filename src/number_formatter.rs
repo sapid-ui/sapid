@@ -36,6 +36,8 @@ pub struct NumberFormatter {
     min_fraction: Option<u8>,
     max_fraction: Option<u8>,
     grouping: bool,
+    prefix: Vary<String>,
+    suffix: Vary<String>,
 }
 pub fn number_formatter() -> NumberFormatter {
     NumberFormatter {
@@ -46,6 +48,8 @@ pub fn number_formatter() -> NumberFormatter {
         min_fraction: None,
         max_fraction: None,
         grouping: true,
+        prefix: String::new().into(),
+        suffix: String::new().into(),
     }
 }
 impl NumberFormatter {
@@ -95,6 +99,16 @@ impl NumberFormatter {
         self.max_fraction = Some(digits);
         self
     }
+    /// Literal text outside the fully formatted number, up to 256 UTF-8 bytes.
+    pub fn prefix(mut self, value: impl Into<Vary<String>>) -> Self {
+        self.prefix = value.into();
+        self
+    }
+    /// Literal text outside the fully formatted number, up to 256 UTF-8 bytes.
+    pub fn suffix(mut self, value: impl Into<Vary<String>>) -> Self {
+        self.suffix = value.into();
+        self
+    }
     pub fn grouping(mut self, grouping: bool) -> Self {
         self.grouping = grouping;
         self
@@ -141,6 +155,27 @@ pub(crate) fn config(
         grouping,
     })
 }
+fn affixed(
+    value: f64,
+    config: Config,
+    prefix: &str,
+    suffix: &str,
+) -> std::result::Result<String, glory::render::Error> {
+    if [prefix, suffix]
+        .iter()
+        .any(|s| s.len() > 256 || s.contains(['\0', '\r', '\n', '\u{2028}', '\u{2029}']))
+    {
+        return Err(glory::render::Error::InvalidProps(
+            "number affixes require single-line text within 256 UTF-8 bytes",
+        ));
+    }
+    let numeric = format_number(value, config)?;
+    let mut text = String::with_capacity(prefix.len() + numeric.len() + suffix.len());
+    text.push_str(prefix);
+    text.push_str(&numeric);
+    text.push_str(suffix);
+    Ok(text)
+}
 impl Widget for NumberFormatter {
     fn build(&mut self, scope: &Scope) -> Result {
         let config = config(
@@ -150,7 +185,12 @@ impl Widget for NumberFormatter {
             self.max_fraction,
             self.grouping,
         )?;
-        let initial = format_number(self.value.try_get()?, config)?;
+        let initial = affixed(
+            self.value.try_get()?,
+            config,
+            &self.prefix.try_get()?,
+            &self.suffix.try_get()?,
+        )?;
         let reference = self.common.node_ref.unwrap_or_else(|| scope.cage(None));
         configure!(
             self.common,
@@ -162,15 +202,22 @@ impl Widget for NumberFormatter {
         .node_ref(reference)
         .content(initial.clone())
         .show_in(scope)?;
-        if self.value.is_reactive() {
+        if self.value.is_reactive() || self.prefix.is_reactive() || self.suffix.is_reactive() {
             let node = reference.try_get()?.ok_or(glory::ui::Error::Gone)?;
             let value = self.value.clone();
+            let prefix = self.prefix.clone();
+            let suffix = self.suffix.clone();
             let weak = scope.downgrade();
             let mut previous = initial;
             scope.binding(move || {
                 let Some(scope) = weak.upgrade() else { return };
                 let result = (|| -> Result {
-                    let formatted = format_number(value.try_get()?, config)?;
+                    let formatted = affixed(
+                        value.try_get()?,
+                        config,
+                        &prefix.try_get()?,
+                        &suffix.try_get()?,
+                    )?;
                     if previous != formatted {
                         scope.patch(node, Patch::Text(Change::Set(formatted.clone())))?;
                         previous = formatted;

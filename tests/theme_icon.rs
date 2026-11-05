@@ -26,6 +26,11 @@ fn themed_icons_use_real_finite_paths_and_optional_image_alternatives() {
             Icon::ArrowRight,
             Icon::ChevronDown,
             Icon::ChevronRight,
+            Icon::ChevronLeft,
+            Icon::ChevronUp,
+            Icon::More,
+            Icon::Circle,
+            Icon::Calendar,
         ] {
             for variant in [
                 ThemeIconVariant::Soft,

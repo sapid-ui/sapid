@@ -29,3 +29,11 @@ AX snapshots and AccessKit tree checks do not establish screen-reader speech.
 The actual 2026-10-24 Chromium 148.0.7778.96 run passed all eight cases with
 errors=[]: `D:/BuildCache/sapid/hidden-browser.json`. Four hydrated screenshots
 are saved alongside it as `hidden-{hue}-{scheme}-hydrate.png`.
+
+## Public names, descriptions and skip links
+
+The primary action takes its accessible name from hidden text beside a glyph.
+A separate source binds a hidden semantic identity to a real button described_by
+relation, preserving its visible name. The focus example uses an ordinary Anchor
+that reveals itself on focus; it does not add focusable children to VisuallyHidden.
+See [complete examples](misc-pages.md#focus-portal-and-hidden-text).

@@ -1,5 +1,37 @@
 # Combobox
 
+## 2026-11-05 shared-page remediation
+
+Combobox, Autocomplete and MultiSelect accept `option_content(key,
+SelectOptionContent)`. Leading, description and trailing text remain passive;
+matching and the option's accessible name use the original label. Each field is
+a nonempty single line of at most 256 UTF-8 bytes. At most 256 of the existing
+1024 declarations may have custom content. Unknown keys and excess content are
+rejected before mounting. This is a finite composition API, not arbitrary
+interactive content or an unbounded filter callback.
+
+MultiSelect now places accepted tokens and its actual editor in one wrapping
+frame. The frame owns the border and geometry once; source changes retain the
+same editor and selection. Long labels clip within their token. Clear is a
+24-pixel inset action and loading is a 16-pixel passive indicator, centered on
+the final editor row in all five sizes. Token removal and clearing request
+focus through the live controller so retiring the action cannot cancel that
+request. `dropdown_label` names the inset disclosure. It reuses the existing
+listbox controller and coalesces the focus-generated opening proposal.
+
+The hidden multiple Select projects accepted keys in declaration order as
+required by the native form contract. Visible tokens and accepted business
+values keep the application's order. The projection borrows the accepted
+source and does not clone the option declarations or their labels. Editable
+popups match their actual editor/frame width by default and retain the shared
+bounded placement and scrolling behavior.
+
+The three public guides include complete compiled examples for controlled
+refusal, groups, passive content, filters, limits, loading, unavailable states
+and retained editing. MultiSelect additionally demonstrates wrapping and source
+replacement. Browser and native evidence is recorded in the remediation ledger;
+CPU/protocol tests do not establish OS IME or assistive technology acceptance.
+
 P4-06 `combobox(key)` 保留真实单行 Input 的编辑、revision、UTF-16 选区和 composition 协议，使用 `ComboboxKind::Editable` 与真正的 Listbox/Option。Collection、RovingFocus、Preserve Layer、Option 所有权和 RevealOption 沿用 Select 的共享基础，不用修改普通 View 的交互角色。
 
 ```rust

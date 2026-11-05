@@ -43,6 +43,126 @@ fn find_all(app: &App, class: &str) -> Vec<NodeId> {
     found
 }
 #[test]
+fn indeterminate_motion_preserves_graphics_and_stops_on_known_values_or_pause() {
+    for kind in 0..3 {
+        let app = App::memory();
+        let unknown = app.scope().cage(true);
+        let animated = app.scope().cage(true);
+        let widget = match kind {
+            0 => progress(40.),
+            1 => ring_progress(40.),
+            _ => semi_circle_progress(40.),
+        };
+        app.mount(widget.indeterminate(unknown).animated(animated))
+            .unwrap();
+        let root = app.tree().roots()[0];
+        let graphic = find(
+            &app,
+            if kind == 0 {
+                "sapid-progress-activity"
+            } else {
+                "sapid-progress-arc"
+            },
+        );
+        for (motion, indeterminate, expected) in [
+            (true, true, true),
+            (false, true, false),
+            (true, false, false),
+            (true, true, true),
+        ] {
+            animated.revise(|v| *v = motion);
+            unknown.revise(|v| *v = indeterminate);
+            app.flush().unwrap();
+            assert_eq!(
+                find(
+                    &app,
+                    if kind == 0 {
+                        "sapid-progress-activity"
+                    } else {
+                        "sapid-progress-arc"
+                    }
+                ),
+                graphic
+            );
+            assert!(
+                matches!(app.tree().node(graphic).unwrap().descriptor.view().props,Props::Graphic(p) if p.animation.is_some()==expected)
+            );
+            assert_eq!(
+                app.tree()
+                    .node(root)
+                    .unwrap()
+                    .descriptor
+                    .view()
+                    .semantics
+                    .as_ref()
+                    .unwrap()
+                    .progress
+                    .as_ref()
+                    .unwrap()
+                    .current
+                    .is_none(),
+                indeterminate
+            );
+        }
+        assert_eq!(app.runtime_stats().tasks, 0);
+    }
+}
+#[test]
+fn section_labels_reject_unknown_duplicate_and_unbounded_text_before_mounting() {
+    let sections = [
+        ProgressSection::new(20., Color(255, 255, 0, 255)),
+        ProgressSection::new(30., Color(0, 0, 20, 255)),
+    ];
+    for widget in [
+        progress(50.).sections(sections).section_label(2, "Unknown"),
+        progress(50.)
+            .sections(sections)
+            .section_label(0, "One")
+            .section_label(0, "Two"),
+        progress(50.)
+            .sections(sections)
+            .section_label(0, "x".repeat(257)),
+        progress(50.)
+            .sections(sections)
+            .section_label(0, "Line\nbreak"),
+        progress(50.).sections(sections).section_label(0, " "),
+        progress(50.)
+            .vertical(true)
+            .sections(sections)
+            .section_label(0, "Vertical"),
+        ring_progress(50.)
+            .sections(sections)
+            .section_label(0, "Ring"),
+    ] {
+        let app = App::memory();
+        assert!(app.mount(widget).is_err());
+        assert_eq!(app.stats().nodes, 0);
+    }
+    let app = App::memory();
+    app.mount(
+        progress(50.)
+            .thickness(24.)
+            .sections(sections)
+            .section_label(0, "Documents")
+            .section_label(1, "Photos"),
+    )
+    .unwrap();
+    let labels = find_all(&app, "sapid-progress-section-label");
+    assert_eq!(labels.len(), 2);
+    assert!(labels.iter().all(|id| matches!(
+        app.tree().node(*id).unwrap().descriptor.view().props,
+        Props::Text(_)
+    )));
+    let consumed = std::rc::Rc::new(std::cell::Cell::new(0));
+    let count = consumed.clone();
+    let widget = progress(50.)
+        .sections(std::iter::repeat(sections[0]).inspect(move |_| count.set(count.get() + 1)));
+    assert_eq!(consumed.get(), 17);
+    let app = App::memory();
+    assert!(app.mount(widget).is_err());
+    assert_eq!(app.stats().nodes, 0);
+}
+#[test]
 fn linear_progress_has_finite_semantics_actual_fraction_and_no_range_actions() {
     let app = App::memory();
     app.mount(
@@ -480,16 +600,9 @@ fn unstyled_keeps_progress_content_and_explicit_overrides() {
             .background
             .is_none()
     );
-    let fill = find(&app, "sapid-progress-fill");
-    assert_eq!(
-        app.tree()
-            .node(fill)
-            .unwrap()
-            .descriptor
-            .view()
-            .style
-            .background,
-        Some(Theme::green_dark().foreground)
+    let fill = find(&app, "sapid-progress-activity");
+    assert!(
+        matches!(app.tree().node(fill).unwrap().descriptor.view().props,Props::Graphic(p) if p.fill==Some(Theme::green_dark().foreground))
     );
     let app = App::memory();
     app.mount(ring_progress(50.).unstyled()).unwrap();

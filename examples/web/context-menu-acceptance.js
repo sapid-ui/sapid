@@ -1,4 +1,4 @@
-async(hostPage,baseURL='http://127.0.0.1:8794')=>{
+async(hostPage,baseURL='http://127.0.0.1:8794',outputDirectory=process.env.SAPID_BROWSER_OUTPUT)=>{
   const browser=hostPage.context().browser(),context=await browser.newContext({viewport:{width:1100,height:1000}}),reports=[],errors=[];
   const assert=(ok,message)=>{if(!ok)throw new Error(message)};
   try{const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
@@ -21,7 +21,7 @@ async(hostPage,baseURL='http://127.0.0.1:8794')=>{
       await state('reject',true);await button.click({button:'right'});await tick();assert(!await menu.isVisible(),`${suite}: controlled opening refusal`);await state('reject',false);await state('disabled',true);const disabledBox=await button.boundingBox();await page.mouse.click(disabledBox.x+10,disabledBox.y+10,{button:'right'});await tick();assert(!await menu.isVisible(),`${suite}: disabled context does not open`);await state('disabled',false);
       await button.click({button:'right'});await tick();await state('reject',true);await page.keyboard.press('Escape');await tick();assert(await menu.isVisible(),`${suite}: controlled close refusal`);await state('reject',false);await page.keyboard.press('Escape');await tick();
       await page.setViewportSize({width:390,height:700});await tick();await area.click({button:'right',position:{x:Math.min(350,(await area.boundingBox()).width-5),y:24}});await tick();placed=await menu.boundingBox();assert(placed.x>=7&&placed.x+placed.width<=383&&placed.y>=7&&placed.y+placed.height<=693,`${suite}: narrow viewport clamp`);await page.keyboard.press('Escape');await page.setViewportSize({width:1100,height:1000});await tick();
-      await page.screenshot({path:`D:/BuildCache/sapid/${suite}.png`,fullPage:true});await page.evaluate(()=>demo.unmount_context_menu());await tick();assert(await page.locator('#app [data-gly-node]').count()===0&&await page.locator(':popover-open').count()===0,`${suite}: Owner removes targets and layers`);reports.push({suite,status:'passed'});
+      if(outputDirectory) await page.screenshot({path:`${outputDirectory}/${suite}.png`,fullPage:true});await page.evaluate(()=>demo.unmount_context_menu());await tick();assert(await page.locator('#app [data-gly-node]').count()===0&&await page.locator(':popover-open').count()===0,`${suite}: Owner removes targets and layers`);reports.push({suite,status:'passed'});
     }
     await page.goto(`${baseURL}/context-menu.html`);await page.waitForFunction(()=>window.ready===true);
     let area=page.getByRole('group',{name:'Document area',exact:true}),menu=page.getByRole('menu',{name:'Document actions',exact:true});

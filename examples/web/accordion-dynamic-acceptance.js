@@ -70,7 +70,7 @@ async (hostPage) => {
       await local.getByRole('button', { name: 'Local gamma', exact: true }).click(); await turn();
       assert(await page.evaluate(() => !window.savedLocalDynamicInput.isConnected), `${mode}: Unmount content owner not retired`);
       await page.setViewportSize({ width: 390, height: 844 }); assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `${mode}: mobile overflow`); await page.setViewportSize({ width: 1440, height: 1100 });
-      if (hydrate) await page.screenshot({ path: `D:/BuildCache/sapid/${mode}.png`, fullPage: true });
+      if (hydrate) await page.screenshot({ path: `target/verification/sapid/${mode}.png`, fullPage: true });
       await page.evaluate(() => window.demo.unmount_display());
       assert(await page.locator('#app').evaluate(element => element.childNodes.length === 0), `${mode}: Owner cleanup`);
       reports.push({ suite: mode, status: 'passed', checks: 'keyed insert/remove/reorder/empty with stable surviving editor/panel/trigger, once-per-admission factories and new identity on reinsertion, rich localized trigger and Chrome AX Button/Region, current ordered keyboard/disabled traversal, controlled refusal/absence and local repair, focused removal handoff, silent program sources, enabled AND, KeepMounted/Unmount owners, themes/mobile/hydration/cleanup', ax: { role: axButton.role.value, name: axButton.name.value, properties: axButton.properties } });

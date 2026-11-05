@@ -400,7 +400,9 @@ fn field_relations_and_default_calendar_popup_share_one_real_editable_input() {
         if matches!(node.descriptor.view().props, Props::Input(_)) {
             count += 1;
         }
-        if matches!(node.descriptor.view().props,Props::Button(p) if p.label=="Choose date") {
+        if matches!(node.descriptor.view().props, Props::Button(_))
+            && node.descriptor.view().name.as_deref() == Some("Choose date")
+        {
             trigger = Some(n);
         }
     }
@@ -479,7 +481,9 @@ fn calendar_selection_clears_the_published_draft_diagnostic_before_the_civil_val
         let t = app.tree();
         let node = t.node(n).unwrap();
         pending.extend(node.children.iter().copied());
-        if matches!(node.descriptor.view().props,Props::Button(p) if p.label=="Choose date") {
+        if matches!(node.descriptor.view().props, Props::Button(_))
+            && node.descriptor.view().name.as_deref() == Some("Choose date")
+        {
             trigger = Some(n);
         }
         if node.descriptor.view().name.as_deref() == Some("Thursday, February 29, 2024") {

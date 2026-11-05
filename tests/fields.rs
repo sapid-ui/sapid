@@ -1,5 +1,5 @@
 use glory::prelude::*;
-use glory::render::NodeId;
+use glory::render::{EventKind, NodeId};
 use sapid::{FieldSlot, InputSectionPosition, Theme, checkbox, field, fieldset, text, text_field};
 
 fn find(app: &App, class: &str) -> NodeId {
@@ -23,6 +23,140 @@ fn metadata(app: &App, id: NodeId) -> Semantics {
         .semantics
         .clone()
         .unwrap()
+}
+#[test]
+fn text_controls_recheck_current_field_availability_within_one_host_packet() {
+    for multiline in [false, true] {
+        for disabling in [false, true] {
+            for is_commit in [false, true] {
+                let app = App::memory();
+                let blocked = app.scope().cage(false);
+                let calls = app.scope().cage(0);
+                let observed = app.scope().cage(0);
+                let reference = app.scope().cage(None);
+                let kind = if is_commit {
+                    EventKind::Commit
+                } else {
+                    EventKind::ValueChanged
+                };
+                app.mount(
+                    field("live-editor-state")
+                        .readonly(blocked.map(move |v| *v && !disabling))
+                        .enabled(blocked.map(move |v| !*v || !disabling))
+                        .control(move |field| -> Box<dyn Widget> {
+                            if multiline {
+                                Box::new(
+                                    sapid::textarea()
+                                        .field(field)
+                                        .node_ref(reference)
+                                        .default_value("Retained")
+                                        .on_value_change(move |_| calls.revise(|n| *n += 1))
+                                        .on_commit(move |_| calls.revise(|n| *n += 1))
+                                        .on(kind, move |_| observed.revise(|n| *n += 1)),
+                                )
+                            } else {
+                                Box::new(
+                                    text_field()
+                                        .field(field)
+                                        .node_ref(reference)
+                                        .default_value("Retained")
+                                        .on_value_change(move |_| calls.revise(|n| *n += 1))
+                                        .on_commit(move |_| calls.revise(|n| *n += 1))
+                                        .on(kind, move |_| observed.revise(|n| *n += 1)),
+                                )
+                            }
+                        }),
+                )
+                .unwrap();
+                let id = reference.get().unwrap();
+                let revision = match app.tree().node(id).unwrap().descriptor.view().props {
+                    glory::render::Props::Input(p) => p.revision,
+                    _ => panic!("expected editor"),
+                };
+                app.scope()
+                    .batch(|| {
+                        blocked.revise(|v| *v = true);
+                        let event = if is_commit {
+                            Event::Commit {
+                                value: "Rejected".into(),
+                                revision,
+                            }
+                        } else {
+                            Event::ValueChanged {
+                                value: "Rejected".into(),
+                                revision,
+                                composing: false,
+                            }
+                        };
+                        app.dispatch(id, event).unwrap();
+                    })
+                    .unwrap();
+                assert_eq!(
+                    calls.get(),
+                    0,
+                    "multiline {multiline}, disabling {disabling}, commit {is_commit}"
+                );
+                assert_eq!(observed.get(), 0);
+                assert!(
+                    matches!(app.tree().node(id).unwrap().descriptor.view().props,
+                    glory::render::Props::Input(p) if p.value=="Retained")
+                );
+            }
+        }
+    }
+}
+#[test]
+fn check_controls_recheck_current_field_availability_within_one_host_packet() {
+    for kind in 0..4 {
+        for disabling in [false, true] {
+            let app = App::memory();
+            let blocked = app.scope().cage(false);
+            let calls = app.scope().cage(0);
+            let reference = app.scope().cage(None);
+            app.mount(
+                field("live-check-state")
+                    .readonly(blocked.map(move |v| *v && !disabling))
+                    .enabled(blocked.map(move |v| !*v || !disabling))
+                    .control(move |field| -> Box<dyn Widget> {
+                        match kind {
+                            0 => Box::new(
+                                sapid::checkbox()
+                                    .field(field)
+                                    .node_ref(reference)
+                                    .on_checked_change(move |_| calls.revise(|n| *n += 1)),
+                            ),
+                            1 => Box::new(
+                                sapid::mixed_checkbox()
+                                    .field(field)
+                                    .node_ref(reference)
+                                    .on_state_change(move |_| calls.revise(|n| *n += 1)),
+                            ),
+                            2 => Box::new(
+                                sapid::switch()
+                                    .field(field)
+                                    .node_ref(reference)
+                                    .on_checked_change(move |_| calls.revise(|n| *n += 1)),
+                            ),
+                            _ => Box::new(
+                                sapid::chip()
+                                    .field(field)
+                                    .node_ref(reference)
+                                    .on_checked_change(move |_| calls.revise(|n| *n += 1)),
+                            ),
+                        }
+                    }),
+            )
+            .unwrap();
+            app.scope()
+                .batch(|| {
+                    blocked.revise(|v| *v = true);
+                    app.dispatch(reference.get().unwrap(), Event::CheckedChanged(true))
+                        .unwrap();
+                })
+                .unwrap();
+            assert_eq!(calls.get(), 0, "kind {kind}, disabling {disabling}");
+        }
+    }
 }
 #[test]
 fn field_relations_states_and_dynamic_errors_preserve_control_and_value_revision() {

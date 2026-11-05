@@ -159,6 +159,7 @@ fn native_mini_rtl_boundary_and_readonly_calendar_keep_real_buttons_and_finite_l
             "rtl",
             DatesProvider::new(d("2024-02-29")).week_start(Weekday::Sunday),
         )
+        .default_date(d("2024-02-25"))
         .direction(glory::render::Direction::Rtl)
         .readonly(readonly)
         .value(value)
@@ -170,7 +171,7 @@ fn native_mini_rtl_boundary_and_readonly_calendar_keep_real_buttons_and_finite_l
     let monday = day(app, d("2024-02-26"));
     let a = bounds(app, sunday);
     let b = bounds(app, monday);
-    assert!((a.width - 24.).abs() < 0.2);
+    assert!(a.width >= 28.);
     assert!(a.x > b.x);
     app.dispatch(monday, Event::Activate).unwrap();
     assert!(value.get().is_none());
@@ -199,7 +200,7 @@ fn native_mini_rtl_boundary_and_readonly_calendar_keep_real_buttons_and_finite_l
     )
     .unwrap();
     let rect = bounds(app, root.get().unwrap());
-    assert!(rect.width >= 179. && rect.height > 150.);
+    assert!(rect.width >= 179. && rect.height >= 56. && rect.height < 100.);
     let count = all(app)
         .into_iter()
         .filter(|id| {
@@ -210,10 +211,10 @@ fn native_mini_rtl_boundary_and_readonly_calendar_keep_real_buttons_and_finite_l
                 .view()
                 .classes
                 .iter()
-                .any(|c| c == "sapid-calendar-day")
+                .any(|c| c == "sapid-mini-calendar-day")
         })
         .count();
-    assert!(count < 42);
+    assert_eq!(count, 7);
     app.clear().unwrap();
     assert_eq!(app.stats().queries, 0);
 }

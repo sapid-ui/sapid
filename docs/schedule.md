@@ -1,5 +1,9 @@
 # Schedule / AgendaView
 
+The thirteen current public pages and 62 complete source sections are described
+in [schedule-pages.md](schedule-pages.md), including multiple-instance keys,
+accepted view state, MobileMonth activation and application-owned editing.
+
 Enable optional dependency-free `dates`. `schedule(key, data)` is the unified
 finite schedule when `available_views(...)` is supplied. Its stable header uses
 real buttons and switches the keyed child among Agenda, Day, Week, Month, Year

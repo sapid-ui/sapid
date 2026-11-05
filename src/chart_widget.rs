@@ -93,8 +93,10 @@ pub struct Chart {
     selection: Option<Vary<Option<ChartSelection>>>,
     changed: Option<Box<dyn FnMut(CartesianOptions)>>,
     selected: Option<Box<dyn FnMut(Option<ChartSelection>)>>,
+    rejected: Option<Box<dyn FnMut(glory::ui::Error)>>,
     show_table: bool,
     show_legend: bool,
+    show_navigation: bool,
     pointer_selection: bool,
 }
 pub fn chart(key: impl Into<String>) -> Chart {
@@ -113,8 +115,10 @@ pub fn chart(key: impl Into<String>) -> Chart {
         selection: None,
         changed: None,
         selected: None,
+        rejected: None,
         show_table: true,
         show_legend: true,
+        show_navigation: true,
         pointer_selection: false,
     }
 }
@@ -173,6 +177,13 @@ impl Chart {
     }
     /// Keep the finite full-value table visible by default. When hiding it,
     /// applications must supply their own equivalent data representation.
+    /// Observe a rejected reactive update while retaining the last admitted chart.
+    /// Without a handler, the rejection is reported to the owning Glory scope.
+    /// Invalid initial declarations still fail construction.
+    pub fn on_error(mut self, callback: impl FnMut(glory::ui::Error) + 'static) -> Self {
+        self.rejected = Some(Box::new(callback));
+        self
+    }
     pub fn data_table(mut self, value: bool) -> Self {
         self.show_table = value;
         self
@@ -183,6 +194,13 @@ impl Chart {
     }
     /// Opt into host pointer boundary observations. Click and keyboard point
     /// controls work independently; native hosts currently reject this interest.
+    /// Show sequential point controls and their current-value readout (default true).
+    /// A compact summary may disable this when equivalent values are supplied nearby.
+    /// This does not disable plot activation, selection callbacks or the data table.
+    pub fn navigation(mut self, value: bool) -> Self {
+        self.show_navigation = value;
+        self
+    }
     pub fn pointer_selection(mut self, value: bool) -> Self {
         self.pointer_selection = value;
         self
@@ -323,6 +341,10 @@ impl Widget for Chart {
             }
         };
         let model = scope.cage(glory::core::untracked(&read)?);
+        let observes_rejection = self.rejected.is_some();
+        let rejection = Callback::new(self.rejected.take());
+        let cleanup = rejection.clone();
+        scope.on_cleanup(move || cleanup.clear())?;
         let weak = scope.downgrade();
         scope.structural(move || {
             let Some(scope) = weak.upgrade() else {
@@ -338,7 +360,11 @@ impl Widget for Chart {
                         Some(previous.table_revision)
                     };
                     let Some(revision) = revision else {
-                        scope.report_error(invalid(ChartError::Budget));
+                        if observes_rejection {
+                            rejection.emit(scope.id(), invalid(ChartError::Budget));
+                        } else {
+                            scope.report_error(invalid(ChartError::Budget));
+                        }
                         return;
                     };
                     Rc::make_mut(&mut next).table_revision = revision;
@@ -346,7 +372,13 @@ impl Widget for Chart {
                         model.revise(|old| *old = next);
                     }
                 }
-                Err(error) => scope.report_error(error),
+                Err(error) => {
+                    if observes_rejection {
+                        rejection.emit(scope.id(), error);
+                    } else {
+                        scope.report_error(error);
+                    }
+                }
             }
         });
         let selection = scope.cage(None);
@@ -392,7 +424,10 @@ impl Widget for Chart {
             glory::ui::view(),
             scope,
             "sapid-chart",
-            composite::column(8.)
+            Style {
+                color: Some(self.common.theme.foreground),
+                ..composite::column(8.)
+            }
         )
         .node_ref(root);
         for (kind, mut handlers) in std::mem::take(&mut self.common.handlers) {
@@ -410,48 +445,65 @@ impl Widget for Chart {
                 self.common.unstyled,
             )?;
         }
-        let controls = area.cage(None);
-        glory::ui::view()
-            .class("sapid-chart-point-controls")
-            .style(Style::new().display(Display::Flex).gap(8.))
-            .node_ref(controls)
-            .show_in(&area)?;
-        let control_scope = area.child_in(controls.get().ok_or(glory::ui::Error::Gone)?)?;
-        let previous = state.clone();
-        let next = state.clone();
-        let clear = state.clone();
-        let enabled = self.common.enabled.clone();
-        let has_points =
-            area.bond(move || enabled.get() && model.with(|m| !m.scene.locations.is_empty()));
-        crate::button()
-            .label("Previous data point")
-            .theme(self.common.theme.clone())
-            .enabled(has_points)
-            .on_press(move || previous.step(false))
-            .show_in(&control_scope)?;
-        crate::button()
-            .label("Next data point")
-            .theme(self.common.theme.clone())
-            .enabled(has_points)
-            .on_press(move || next.step(true))
-            .show_in(&control_scope)?;
-        crate::button()
-            .label("Clear data point")
-            .theme(self.common.theme.clone())
-            .enabled(self.common.enabled.clone())
-            .on_press(move || clear.choose(None))
-            .show_in(&control_scope)?;
-        area.retain(control_scope)?;
-        let details = area
-            .bond(move || model.with(|m| selection.with(|s| s.as_ref().and_then(|s| m.point(s)))));
-        glory::ui::text()
-            .class("sapid-chart-point-detail")
-            .content(area.bond(move || {
-                details
-                    .get()
-                    .map_or_else(|| "No data point selected".into(), |p| p.text())
-            }))
-            .show_in(&area)?;
+        if self.show_navigation {
+            let controls = area.cage(None);
+            glory::ui::view()
+                .class("sapid-chart-point-controls")
+                .style(
+                    Style::new()
+                        .display(Display::Flex)
+                        .flex_wrap(glory::style::FlexWrap::Wrap)
+                        .gap(4.),
+                )
+                .node_ref(controls)
+                .show_in(&area)?;
+            let control_scope = area.child_in(controls.get().ok_or(glory::ui::Error::Gone)?)?;
+            let previous = state.clone();
+            let next = state.clone();
+            let clear = state.clone();
+            let enabled = self.common.enabled.clone();
+            let has_points =
+                area.bond(move || enabled.get() && model.with(|m| !m.scene.locations.is_empty()));
+            crate::button()
+                .label("Previous data point")
+                .theme(self.common.theme.clone())
+                .variant(crate::ButtonVariant::Subtle)
+                .size(crate::Size::ExtraSmall)
+                .compact(true)
+                .enabled(has_points)
+                .on_press(move || previous.step(false))
+                .show_in(&control_scope)?;
+            crate::button()
+                .label("Next data point")
+                .theme(self.common.theme.clone())
+                .variant(crate::ButtonVariant::Subtle)
+                .size(crate::Size::ExtraSmall)
+                .compact(true)
+                .enabled(has_points)
+                .on_press(move || next.step(true))
+                .show_in(&control_scope)?;
+            crate::button()
+                .label("Clear data point")
+                .theme(self.common.theme.clone())
+                .variant(crate::ButtonVariant::Subtle)
+                .size(crate::Size::ExtraSmall)
+                .compact(true)
+                .enabled(self.common.enabled.clone())
+                .on_press(move || clear.choose(None))
+                .show_in(&control_scope)?;
+            area.retain(control_scope)?;
+            let details = area.bond(move || {
+                model.with(|m| selection.with(|s| s.as_ref().and_then(|s| m.point(s))))
+            });
+            glory::ui::text()
+                .class("sapid-chart-point-detail")
+                .content(area.bond(move || {
+                    details
+                        .get()
+                        .map_or_else(|| "No data point selected".into(), |p| p.text())
+                }))
+                .show_in(&area)?;
+        }
         glory::ui::text()
             .class("sapid-chart-empty")
             .content(area.bond(move || {
@@ -762,21 +814,33 @@ fn build_legend(scope: &Scope, state: &State, theme: crate::Theme, unstyled: boo
                 .collect::<Vec<_>>()
         })
     });
-    glory::ui::each(keys)
-        .key(|key| key.clone())
-        .children(move |entry| {
-            let key = entry.value;
-            let key = key.get_untracked();
-            let state = state.clone();
-            let theme = theme.clone();
-            glory::ui::widget(move |scope| {
-                let label_key = key.clone();
-                let toggle = key.clone();
-                let color_key = key.clone();
-                let state = state.clone();
-                let label = scope.bond(move || {
-                    model.with(|m| {
-                        m.data
+    glory::ui::view()
+        .class("sapid-chart-legend")
+        .style(
+            Style::new()
+                .display(Display::Flex)
+                .flex_wrap(glory::style::FlexWrap::Wrap)
+                .gap(4.),
+        )
+        .fill(
+            glory::ui::each(keys)
+                .key(|key| key.clone())
+                .children(move |entry| {
+                    let key = entry.value;
+                    let key = key.get_untracked();
+                    let state = state.clone();
+                    let theme = theme.clone();
+                    glory::ui::widget(move |scope| {
+                        let label_key = key.clone();
+                        let toggle = key.clone();
+                        let pressed_key = key.clone();
+                        let pressed = scope
+                            .bond(move || model.with(|m| !m.options.hidden.contains(&pressed_key)));
+                        let color_key = key.clone();
+                        let state = state.clone();
+                        let label = scope.bond(move || {
+                            model.with(|m| {
+                                m.data
                             .series
                             .iter()
                             .find(|s| s.key == label_key)
@@ -797,37 +861,44 @@ fn build_legend(scope: &Scope, state: &State, theme: crate::Theme, unstyled: boo
                                     )
                                 },
                             )
+                            })
+                        });
+                        let mut button = crate::button()
+                            .label(label)
+                            .left_section(
+                                glory::ui::graphic()
+                                    .class("sapid-chart-legend-swatch")
+                                    .drawing(scope.bond(move || {
+                                        model.with(|m| {
+                                            crate::chart_aux::swatch(
+                                                m.palette.series[m
+                                                    .data
+                                                    .series
+                                                    .iter()
+                                                    .position(|s| s.key == color_key)
+                                                    .expect("live legend series")],
+                                            )
+                                        })
+                                    }))
+                                    .style(
+                                        Style::new().width(Length::Px(12.)).height(Length::Px(12.)),
+                                    ),
+                            )
+                            .class("sapid-chart-legend-item")
+                            .pressed(pressed)
+                            .theme(theme.clone())
+                            .variant(crate::ButtonVariant::Subtle)
+                            .size(crate::Size::ExtraSmall)
+                            .compact(true)
+                            .enabled(state.enabled.clone())
+                            .on_press(move || state.toggle(&toggle));
+                        if unstyled {
+                            button = button.unstyled();
+                        }
+                        button.show_in(scope)
                     })
-                });
-                let mut button = crate::button()
-                    .label(label)
-                    .left_section(
-                        glory::ui::graphic()
-                            .class("sapid-chart-legend-swatch")
-                            .drawing(scope.bond(move || {
-                                model.with(|m| {
-                                    crate::chart_aux::swatch(
-                                        m.palette.series[m
-                                            .data
-                                            .series
-                                            .iter()
-                                            .position(|s| s.key == color_key)
-                                            .expect("live legend series")],
-                                    )
-                                })
-                            }))
-                            .style(Style::new().width(Length::Px(12.)).height(Length::Px(12.))),
-                    )
-                    .class("sapid-chart-legend-item")
-                    .theme(theme.clone())
-                    .enabled(state.enabled.clone())
-                    .on_press(move || state.toggle(&toggle));
-                if unstyled {
-                    button = button.unstyled();
-                }
-                button.show_in(scope)
-            })
-        })
+                }),
+        )
         .show_in(scope)
 }
 fn build_table(

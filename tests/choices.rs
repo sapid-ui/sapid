@@ -65,7 +65,7 @@ fn local_mixed_activates_to_binary_selection_and_switch_has_independent_semantic
     )))
     .unwrap();
     let mixed = find(&app, "sapid-mixed-checkbox")[0];
-    let toggle = find(&app, "sapid-switch")[0];
+    let toggle = find(&app, "sapid-switch-control")[0];
     app.dispatch(mixed, Event::CheckedChanged(true)).unwrap();
     assert_eq!(props(&app, mixed).mode, CheckMode::Checkbox);
     assert!(props(&app, mixed).checked);
@@ -96,7 +96,7 @@ fn switch_field_readonly_disabled_and_controlled_rejection_follow_shared_check_r
             }),
     )
     .unwrap();
-    let id = find(&app, "sapid-switch")[0];
+    let id = find(&app, "sapid-switch-control")[0];
     let descriptor = app.tree().node(id).unwrap().descriptor.view().to_owned();
     let semantics = descriptor.semantics.unwrap();
     assert!(semantics.required && semantics.invalid);

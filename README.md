@@ -186,8 +186,8 @@ From a Windows checkout with the sibling sources available:
 ```
 
 See [development checks](docs/development-checks.md) for formatting, optional
-Web/native gates and versioned build tools. Generated artifacts, Cargo caches and
-compiler temporaries use `D:/BuildCache/sapid`. Library and example lockfiles are
+Web/native gates and versioned build tools. Verification artifacts use the owning workspace target directory. Cargo home and
+compiler temporaries inherit the caller environment. Library and example lockfiles are
 prepared locally, ignored by Git and retained for `--locked` checks.
 
 The [inventory](docs/widget-inventory.json) and generated catalog are validated by

@@ -18,7 +18,7 @@ async (hostPage) => {
     assert(await page.locator('.site-header-tools > .site-palettes + .site-theme-toggle').count() === 1, `${name}: palettes directly precede scheme toggle`);
 
   };
-  const shot = (page, name) => page.screenshot({path:`D:/BuildCache/sapid/showcase-${name}.png`,fullPage:true});
+  const shot = (page, name) => page.screenshot({path:`target/verification/sapid/showcase-${name}.png`,fullPage:true});
   try {
     await context.grantPermissions(['clipboard-read','clipboard-write'],{origin:base});
     const p = await context.newPage(); activePage = p; setup(p);

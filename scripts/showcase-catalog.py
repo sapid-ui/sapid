@@ -297,11 +297,13 @@ DESCRIPTIONS = {
 if set(DESCRIPTIONS) != set(records):
     raise SystemExit("reader introductions must describe every canonical work item")
 DISPLAY_DESCRIPTIONS = {
+    "MiniCalendar": "Choose a date from a compact strip with controlled ranges, bounds and localized labels.",
+    "Heatmap": "Show dated contributions in week columns, with value domains, localized labels and current-date feedback.",
     "Center": "Center content horizontally and vertically, with an optional inline layout.",
     "Container": "Constrain content width and center it within the available space.",
     "Space": "Add explicit horizontal or vertical space between layout elements.",
     "Box": "Compose arbitrary content in a themed layout box with typed styles.",
-    "Transition": "Review Sapid's explicit motion environment and conditional mounting; a general Transition builder is not yet available.",
+    "Transition": "Animate controlled presence with fade, scale and slide effects, delayed lifecycle callbacks and explicit content ownership.",
 }
 
 def group(task):
@@ -385,7 +387,9 @@ def timer_browser():
 
 
 def bundle(page):
-    if page in {"shell", "menubar"}:
+    if page == "menubar":
+        return formatted((WEB / "src/dedicated_demos/menubar.rs").read_text(encoding="utf-8"))
+    if page == "shell":
         return formatted((WEB / f"src/showcase_demos/{page}.rs").read_text(encoding="utf-8"))
     module, function, arguments, scoped = target(page)
     body = fixture_source(module)
@@ -566,17 +570,41 @@ API_INFRASTRUCTURE = {
     "build", "build_and_mount", "as_str", "is_finite", "resolve", "validate_input_placeholder",
 }
 API_TYPES = {
+    "InlineDateTimePicker": ["InlineDateTimePicker", "InlineDateTimeRangePicker", "DateTimeBounds", "DateTimeRangeValue", "DateTimePolicy"],
+    "DateInput": ["DateInput", "DateInputFormat", "DateParse", "DateDraftStatus"],
+    "DatePicker": ["DatePicker", "DatePickerMode", "DatePickerLevel", "DateSelection", "DatePickerPreset"],
+    "Calendar": ["Calendar", "DatesProvider", "DateLocale", "Weekday"],
+    "TimeInput": ["TimeInput", "TimeFormat", "TimeBounds", "TimeDraftStatus"],
+    "TimePicker": ["TimePicker", "DurationPicker", "TimePickerPresetGroup", "TimePickerPresets", "TimePickerStatus", "TimeFormat", "TimeDuration"],
+    "TimeValue": ["TimeValue", "TimeFormat", "TimePrecision", "HourCycle"],
+
+    "Portal": ["Portal", "PortalContext", "PortalTarget"],
+    "ScrollArea": ["ScrollArea", "ScrollHandle", "ScrollContext", "Scrollbars", "ScrollbarOffset", "OverscrollBehavior"],
+    "Toolbar": ["Toolbar", "ToolbarGroup"],
+    "Avatar": ["Avatar", "AvatarGroup", "AvatarShape"], "Badge": ["Badge", "BadgeVariant", "BadgeSection"],
+    "DataList": ["DataList", "DataListItem", "DataListOrientation"], "Indicator": ["Indicator", "IndicatorPosition"],
+    "Kbd": ["Kbd", "KbdKey", "KbdPlatform"], "OverflowList": ["OverflowList", "OverflowItem", "OverflowHandle"],
+    "NumberFormatter": ["NumberFormatter", "NumberLocale", "NumberFormat", "Currency"], "ThemeIcon": ["ThemeIcon", "Icon", "ThemeIconVariant"],
+    "Grid": ["Grid", "GridItem"],
+    "SimpleGrid": ["SimpleGrid", "GridItem"],
+    "AppShell": ["AppShell", "Sidebar", "ShellSection"],
+    "Menu": ["Menu", "DropdownMenu", "MenuItem", "MenuLabel", "MenuSearch", "MenuSubmenu", "MenuRadioGroup", "MenuRadioItem"],
+    "Menubar": ["Menubar", "MenubarMenu", "MenuItem", "MenuLabel", "MenuSearch", "MenuSubmenu", "MenuRadioGroup", "MenuRadioItem"],
     "TextInput": ["TextField"], "Input": ["Field"],
     "Collapse": ["Collapsible"], "Modal": ["Dialog"], "FocusTrap": ["FocusScope"],
-    "List": ["TextList"], "Divider": ["Separator"], "Spotlight": ["Command"],
-    "Loader": ["Spinner"], "Dialog": ["FloatingDialog"], "Modals manager": ["ModalsManager"],
+    "List": ["TextList", "TextListItem"], "Divider": ["Separator", "SeparatorVariant", "SeparatorLabelPosition"], "Spotlight": ["Command"],
+    "Typography": ["Typography", "TypographyContext"],
+    "Table": ["Table", "TableSection", "TableRow", "TableCell", "TableCaptionSide", "TableStripe"],
+    "Loader": ["Spinner", "LoaderType"], "Dialog": ["FloatingDialog"], "Modals manager": ["ModalsManager"],
     "Dropzone": ["FileInput"], "Rich text editor": ["RichTextEditor"],
-    "MiniCalendar": ["Calendar"],
-    "MonthPicker": ["PeriodPicker"], "YearPicker": ["PeriodPicker"],
+    "MiniCalendar": ["MiniCalendar"],
+    "Heatmap": ["Heatmap", "HeatmapData", "HeatmapRange", "HeatmapDomain"],
+    "Transition": ["Transition"],
+    "MonthPicker": ["PeriodPicker", "PeriodSelection", "DatePickerMode", "YearMonth"], "YearPicker": ["PeriodPicker", "PeriodSelection", "DatePickerMode", "CivilYear"],
     "MonthPickerInput": ["PeriodPickerInput"], "YearPickerInput": ["PeriodPickerInput"],
     "RingProgress": ["Progress"], "SemiCircleProgress": ["Progress"],
     "Chart / ChartTheme / Legend / Tooltip": ["Chart"],
-    "ComboboxPopover": ["Popover"],
+    "ComboboxPopover": ["Select", "SelectTriggerContext"],
     "UnstyledButton": ["Button"],
     "Notifications system": ["Toaster"],
     "DateTimePicker": ["DateTimePicker", "DateTimeRangePicker"],
@@ -587,14 +615,37 @@ API_TYPES = {
     "ResourcesDayView": ["ResourceSchedule"], "ResourcesWeekView": ["ResourceSchedule"],
     "ResourcesMonthView": ["ResourceSchedule"], "ResourcesSchedule": ["ResourceSchedule"],
     "Recurring events": ["ScheduleRecurrence"], "Events data": ["ScheduleEvent"],
-    **{name: ["Chart"] for name in ["AreaChart", "BarChart", "LineChart", "CompositeChart"]},
-    **{name: ["Plot"] for name in [
+    **{name: ["Chart", "ChartData", "ChartSeries", "ChartFrame", "CartesianOptions", "ChartDomain", "ChartBrush", "ChartReferenceLine", "ChartReferenceArea", "ChartReferenceDot", "ChartSelection"] for name in ["AreaChart", "BarChart", "LineChart", "CompositeChart"]},
+    **{name: ["Plot", "PlotData", "PlotOptions", "PlotAngles", "WaffleGrid", "BubbleRadius", "ChartError", "ChartFrame", "ValueDatum", "PointDatum", "CandleDatum", "TargetDatum", "HierarchyDatum", "FlowData", "MatrixData"] for name in [
         "DonutChart", "PieChart", "RadialBarChart", "CandlestickChart", "ScatterChart", "BubbleChart",
-        "FunnelChart", "RadarChart", "Sparkline", "Heatmap", "WaffleChart", "MatrixChart", "BarsList",
+        "FunnelChart", "RadarChart", "Sparkline", "WaffleChart", "MatrixChart", "BarsList",
         "BulletChart", "GaugeChart", "Treemap", "SunburstChart", "SankeyChart",
     ]},
+    **{'Schedule': ['Schedule', 'ScheduleView', 'ScheduleData', 'ScheduleWindow', 'ScheduleInterval', 'ScheduleEvent', 'ScheduleSelection', 'ScheduleRequest', 'ScheduleRecurrence', 'RecurrenceFrequency', 'RecurrenceEnd', 'MissingScheduleDay', 'ScheduleContext', 'ScheduleZone', 'ScheduleError'], 'DayView': ['Schedule', 'ScheduleView', 'ScheduleData', 'ScheduleWindow', 'ScheduleInterval', 'ScheduleEvent', 'ScheduleSelection', 'ScheduleRequest', 'ScheduleRecurrence', 'RecurrenceFrequency', 'RecurrenceEnd', 'MissingScheduleDay', 'ScheduleContext', 'ScheduleZone', 'ScheduleError'], 'WeekView': ['Schedule', 'ScheduleView', 'ScheduleData', 'ScheduleWindow', 'ScheduleInterval', 'ScheduleEvent', 'ScheduleSelection', 'ScheduleRequest', 'ScheduleRecurrence', 'RecurrenceFrequency', 'RecurrenceEnd', 'MissingScheduleDay', 'ScheduleContext', 'ScheduleZone', 'ScheduleError'], 'MonthView': ['Schedule', 'ScheduleView', 'ScheduleData', 'ScheduleWindow', 'ScheduleInterval', 'ScheduleEvent', 'ScheduleSelection', 'ScheduleRequest', 'ScheduleRecurrence', 'RecurrenceFrequency', 'RecurrenceEnd', 'MissingScheduleDay', 'ScheduleContext', 'ScheduleZone', 'ScheduleError'], 'YearView': ['Schedule', 'ScheduleView', 'ScheduleData', 'ScheduleWindow', 'ScheduleInterval', 'ScheduleEvent', 'ScheduleSelection', 'ScheduleRequest', 'ScheduleRecurrence', 'RecurrenceFrequency', 'RecurrenceEnd', 'MissingScheduleDay', 'ScheduleContext', 'ScheduleZone', 'ScheduleError'], 'MobileMonthView': ['Schedule', 'ScheduleView', 'ScheduleData', 'ScheduleWindow', 'ScheduleInterval', 'ScheduleEvent', 'ScheduleSelection', 'ScheduleRequest', 'ScheduleRecurrence', 'RecurrenceFrequency', 'RecurrenceEnd', 'MissingScheduleDay', 'ScheduleContext', 'ScheduleZone', 'ScheduleError'], 'AgendaView': ['Schedule', 'ScheduleView', 'ScheduleData', 'ScheduleWindow', 'ScheduleInterval', 'ScheduleEvent', 'ScheduleSelection', 'ScheduleRequest', 'ScheduleRecurrence', 'RecurrenceFrequency', 'RecurrenceEnd', 'MissingScheduleDay', 'ScheduleContext', 'ScheduleZone', 'ScheduleError'], 'ResourcesDayView': ['ResourceSchedule', 'ResourceScheduleView', 'ResourceScheduleRequest', 'ResourceScheduleData', 'ScheduleResources', 'ScheduleResource', 'ScheduleResourceWindow', 'ResourceAxis', 'ScheduleSelection', 'ScheduleEdit', 'SchedulePermissions'], 'ResourcesWeekView': ['ResourceSchedule', 'ResourceScheduleView', 'ResourceScheduleRequest', 'ResourceScheduleData', 'ScheduleResources', 'ScheduleResource', 'ScheduleResourceWindow', 'ResourceAxis', 'ScheduleSelection', 'ScheduleEdit', 'SchedulePermissions'], 'ResourcesMonthView': ['ResourceSchedule', 'ResourceScheduleView', 'ResourceScheduleRequest', 'ResourceScheduleData', 'ScheduleResources', 'ScheduleResource', 'ScheduleResourceWindow', 'ResourceAxis', 'ScheduleSelection', 'ScheduleEdit', 'SchedulePermissions'], 'ResourcesSchedule': ['ResourceSchedule', 'ResourceScheduleView', 'ResourceScheduleRequest', 'ResourceScheduleData', 'ScheduleResources', 'ScheduleResource', 'ScheduleResourceWindow', 'ResourceAxis', 'ScheduleSelection', 'ScheduleEdit', 'SchedulePermissions'], 'Recurring events': ['Schedule', 'ScheduleView', 'ScheduleData', 'ScheduleWindow', 'ScheduleInterval', 'ScheduleEvent', 'ScheduleSelection', 'ScheduleRequest', 'ScheduleRecurrence', 'RecurrenceFrequency', 'RecurrenceEnd', 'MissingScheduleDay', 'ScheduleContext', 'ScheduleZone', 'ScheduleError'], 'Events data': ['Schedule', 'ScheduleView', 'ScheduleData', 'ScheduleWindow', 'ScheduleInterval', 'ScheduleEvent', 'ScheduleSelection', 'ScheduleRequest', 'ScheduleRecurrence', 'RecurrenceFrequency', 'RecurrenceEnd', 'MissingScheduleDay', 'ScheduleContext', 'ScheduleZone', 'ScheduleError']},
 }
 API_PATHS = {
+    **{name: ['src/schedule/mod.rs', 'src/schedule/resources/mod.rs', 'src/schedule_model.rs', 'src/schedule_recurrence.rs'] for name in ['Schedule', 'DayView', 'WeekView', 'MonthView', 'YearView', 'MobileMonthView', 'AgendaView', 'ResourcesDayView', 'ResourcesWeekView', 'ResourcesMonthView', 'ResourcesSchedule', 'Recurring events', 'Events data']},
+    **{name: ['src/chart_widget.rs', 'src/chart_scene.rs', 'src/chart_model.rs'] for name in ['AreaChart', 'BarChart', 'LineChart', 'CompositeChart']},
+    **{name: ['src/plot_widget.rs', 'src/plot_scene.rs', 'src/plot_model.rs', 'src/chart_scene.rs', 'src/chart_model.rs'] for name in ['DonutChart', 'PieChart', 'RadialBarChart', 'CandlestickChart', 'ScatterChart', 'BubbleChart', 'FunnelChart', 'RadarChart', 'Sparkline', 'WaffleChart', 'MatrixChart', 'BarsList', 'BulletChart', 'GaugeChart', 'Treemap', 'SunburstChart', 'SankeyChart']},
+    "InlineDateTimePicker": ["src/date_time_picker.rs", "src/date_time_range_picker.rs", "src/date_time_model.rs"],
+    "DateInput": ["src/date_input.rs", "src/date_draft.rs"],
+    "DatePicker": ["src/date_picker.rs", "src/date_selection.rs", "src/dates.rs"],
+    "Calendar": ["src/calendar.rs", "src/dates.rs"],
+    "MonthPicker": ["src/period_picker.rs", "src/period_model.rs", "src/dates.rs"],
+    "YearPicker": ["src/period_picker.rs", "src/period_model.rs", "src/dates.rs"],
+    "TimeInput": ["src/time_input.rs", "src/time_model.rs"],
+    "TimePicker": ["src/time_picker.rs", "src/time_parts.rs", "src/time_model.rs", "src/duration_picker.rs"],
+    "TimeValue": ["src/time_value.rs", "src/time_model.rs"],
+
+    "ComboboxPopover": ["src/select.rs"],
+    "Switch": ["src/switch/mod.rs", "src/switch/visual.rs"],
+    "AppShell": ["src/app_shell.rs"],
+    "PasswordInput": ["src/password_input.rs", "src/text_input.rs"],
+    "Transition": ["src/transition.rs"],
+    "Heatmap": ["src/heatmap.rs", "src/heatmap_model.rs"],
+    "MiniCalendar": ["src/mini_calendar.rs"],
+    "Menu": ["src/menu/mod.rs", "src/menu/content.rs", "src/menu/search.rs"],
+    "Menubar": ["src/menu/bar/mod.rs", "src/menu/mod.rs", "src/menu/content.rs", "src/menu/search.rs"],
     "ColorInput": ["src/color_input.rs"],
     "ColorPicker": ["src/color_picker/mod.rs"],
     "Pill": ["src/display.rs"], "Badge": ["src/display.rs"],
@@ -619,12 +670,15 @@ API_PATHS = {
     **{name: ["src/chart_widget.rs"] for name in ["AreaChart", "BarChart", "LineChart", "CompositeChart"]},
     **{name: ["src/plot_widget.rs"] for name in [
         "DonutChart", "PieChart", "RadialBarChart", "CandlestickChart", "ScatterChart", "BubbleChart",
-        "FunnelChart", "RadarChart", "Sparkline", "Heatmap", "WaffleChart", "MatrixChart", "BarsList",
+        "FunnelChart", "RadarChart", "Sparkline", "WaffleChart", "MatrixChart", "BarsList",
         "BulletChart", "GaugeChart", "Treemap", "SunburstChart", "SankeyChart",
     ]},
 }
 LAYOUT_NAMES = {"Box", "Flex", "Group", "Stack", "Center", "Container", "Space"}
 
+
+API_TYPES.update({'CodeHighlight': ['CodeHighlight', 'CodeBlock', 'CodeLanguage', 'CopyButton', 'CopyState'], 'JsonViewer': ['JsonViewer', 'JsonViewLimits', 'JsonViewError', 'CopyButton', 'CopyState'], 'Notifications system': ['Toaster', 'NotificationsHandle', 'NotificationRequest', 'NotificationToken', 'NotificationClock', 'Notification', 'NotificationCloseReason'], 'Spotlight': ['Command', 'CommandHandle', 'CommandAction', 'CommandGroup', 'CommandResponse', 'CommandResults'], 'Lightbox': ['Lightbox', 'LightboxView', 'LightboxImage', 'LightboxZoom'], 'NavigationProgress': ['NavigationProgress', 'NavigationProgressHandle', 'NavigationProgressToken'], 'Modals manager': ['ModalsManager', 'ModalsHandle', 'ModalRequest', 'ModalToken', 'ModalOutcome']})
+API_PATHS.update({'CodeHighlight': ['src/code_block.rs', 'src/code_model.rs', 'src/copy_button.rs'], 'JsonViewer': ['src/json_viewer/mod.rs', 'src/json_tree_model.rs', 'src/copy_button.rs'], 'Notifications system': ['src/notifications.rs'], 'Spotlight': ['src/command/mod.rs'], 'Lightbox': ['src/lightbox.rs'], 'NavigationProgress': ['src/navigation_progress.rs'], 'Modals manager': ['src/modals.rs']})
 
 def rust_signatures(text):
     signatures = set()
@@ -673,6 +727,27 @@ def implementation_surface(text, widget_type):
 def expand_macros(body, text):
     support = {"common_methods": ROOT / "src/appearance.rs", "text_input_methods": ROOT / "src/text_input.rs"}
     result = [body]
+    # Forwarded builder methods are compiled public API, not missing props.
+    for match in re.finditer(r"\bforward!\s*\(\s*([a-z_0-9]+)\s*,\s*([^;]+?)\)\s*;", body):
+        result.append(f"pub fn {match[1]}(mut self, value: {match[2].strip()}) -> Self {{}}")
+    for match in re.finditer(r"\bforward!\s*\(", body):
+        start = match.end()
+        depth = 1
+        end = start
+        while end < len(body) and depth:
+            if body[end] == "(": depth += 1
+            elif body[end] == ")": depth -= 1
+            end += 1
+        block = body[start:end - 1]
+        for method in re.finditer(r"([a-z_0-9]+)\s*\(\s*([a-z_0-9]+)\s*:\s*([^()]+)\)", block):
+            result.append(f"pub fn {method[1]}(mut self, {method[2]}: {method[3].strip()}) -> Self {{}}")
+    # Delegating menu methods are real public methods on the configured wrapper.
+    for match in re.finditer(r"\bdropdown_methods!\s*\{", body):
+        block = braced_block(body, match.start())
+        for declaration in block[1:-1].split(";"):
+            method = re.fullmatch(r"\s*([a-z_0-9]+)\s*\((.*)\)\s*", declaration, re.S)
+            if method:
+                result.append(f"pub fn {method[1]}(mut self, {method[2]}) -> Self {{}}")
     for name in set(re.findall(r"\b([a-z_0-9]+)!\s*\(\s*\)", body)):
         definition = macro_definition(text, name)
         if not definition and name in support:
@@ -702,8 +777,7 @@ def api_surface(task, item):
         if name in LAYOUT_NAMES:
             body = macro_definition(text, "methods")
             if name in {"Flex", "Group", "Stack"}: body += macro_definition(text, "flex_methods")
-            if name == "Container": body += implementation_surface(text, "Container")
-            if name == "Center": body += implementation_surface(text, "Center")
+            body += implementation_surface(text, name)
         else:
             body = "\n".join(implementation_surface(text, widget_type) for widget_type in types)
             body = expand_macros(body, text)
@@ -790,7 +864,12 @@ for task in tasks:
     if not page: raise SystemExit(f"missing explicit demo for {identity}")
     shared_code = None
     if identity not in NAMED_DEMO_TASKS or identity in PRESERVE_PRIMARY:
-        if identity in CORE:
+        if identity in {"P0-01", "P0-02", "P0-03", "P0-04", "P0-07", "P0-08", "P0-09", "P2-08", "P3-10", "P4-08", "P4-09"}:
+            # A replaced core demo is no longer emitted. Read its maintained
+            # source so the next generation does not depend on a deleted output.
+            maintained = {"P0-01": "button", "P0-02": "text_input", "P0-03": "checkbox", "P0-04": "collapse", "P0-07": "modal", "P0-08": "drawer", "P0-09": "popover", "P2-08": "action_icon", "P3-10": "pill", "P4-08": "multi_select", "P4-09": "pills_input"}[identity]
+            shared_code = (maintained + "_usage", formatted((WEB / f"src/dedicated_demos/{maintained}.rs").read_text(encoding="utf-8")))
+        elif identity in CORE:
             key = 'core_' + CORE[identity]
             code = (WEB / f"src/showcase_demos/{key}.rs").read_text(encoding="utf-8")
             code = code.split('\n#[allow(dead_code, unused_imports)]\nmod controls {', 1)[0].rstrip()
@@ -806,8 +885,40 @@ for task in tasks:
             shared_code = (key, bundle(page))
     description = DESCRIPTIONS[identity]
     for display_id, display_name, display_group in display_items(task):
-        if display_name in {"Anchor", "Burger", "NavLink"}:
-            key = {"Anchor": "anchor", "Burger": "burger", "NavLink": "nav_link"}[display_name]
+        input_examples = {"Select": "select", "DatePickerInput": "date_picker_input", "DateTimePicker": "date_time_picker", "MonthPickerInput": "month_picker_input", "YearPickerInput": "year_picker_input", "FloatingWindow": "floating_window", "Carousel": "carousel", "Dropzone": "dropzone", "Menu": "menu", "Menubar": "menubar", "MiniCalendar": "mini_calendar", "Heatmap": "heatmap", "Transition": "transition", "PasswordInput": "password_input"}
+        input_examples.update({name: key for name, key in [
+            ("AlphaSlider", "alpha_slider"), ("HueSlider", "hue_slider"), ("AngleSlider", "angle_slider"),
+            ("ColorInput", "color_input"), ("ColorPicker", "color_picker"),
+            ("Checkbox", "checkbox"), ("Radio", "radio"), ("Chip", "chip"), ("Fieldset", "fieldset"),
+            ("Slider", "slider"), ("RangeSlider", "range_slider"), ("Rating", "rating"), ("SegmentedControl", "segmented_control"), ("Switch", "switch"),
+            ("Input", "input"), ("TextInput", "text_input"), ("Textarea", "textarea"),
+            ("JsonInput", "json_input"), ("NumberInput", "number_input"),
+            ("MaskInput", "mask_input"), ("NativeSelect", "native_select"), ("FileInput", "file_input"),
+            ("Autocomplete", "autocomplete"), ("Combobox", "combobox"), ("ComboboxPopover", "combobox_popover"), ("MultiSelect", "multi_select"), ("Pill", "pill"), ("PillsInput", "pills_input"), ("TagsInput", "tags_input"), ("TreeSelect", "tree_select"), ("Cascader", "cascader"),
+            ("Avatar", "avatar"), ("Badge", "badge"), ("Card", "card"), ("ColorSwatch", "color_swatch"), ("DataList", "data_list"), ("Image", "image"), ("Indicator", "indicator"), ("Kbd", "kbd"), ("NumberFormatter", "number_formatter"), ("OverflowList", "overflow_list"), ("RollingNumber", "rolling_number"), ("Spoiler", "spoiler"), ("ThemeIcon", "theme_icon"),
+            ("AreaChart", "area_chart"), ("BarChart", "bar_chart"), ("LineChart", "line_chart"), ("CompositeChart", "composite_chart"), ("CandlestickChart", "candlestick_chart"), ("DonutChart", "donut_chart"), ("PieChart", "pie_chart"), ("FunnelChart", "funnel_chart"), ("RadarChart", "radar_chart"), ("ScatterChart", "scatter_chart"), ("BubbleChart", "bubble_chart"), ("RadialBarChart", "radial_bar_chart"), ("Sparkline", "sparkline"), ("BarsList", "bars_list"), ("BulletChart", "bullet_chart"), ("GaugeChart", "gauge_chart"), ("WaffleChart", "waffle_chart"), ("Treemap", "treemap"), ("SunburstChart", "sunburst_chart"), ("SankeyChart", "sankey_chart"), ("MatrixChart", "matrix_chart"),
+            ("Schedule", "schedule"), ("DayView", "day_view"), ("WeekView", "week_view"), ("MonthView", "month_view"), ("YearView", "year_view"), ("MobileMonthView", "mobile_month_view"), ("AgendaView", "agenda_view"), ("ResourcesDayView", "resources_day_view"), ("ResourcesWeekView", "resources_week_view"), ("ResourcesMonthView", "resources_month_view"), ("ResourcesSchedule", "resources_schedule"), ("Recurring events", "recurring_events"), ("Events data", "events_data"),
+            ("CodeHighlight","code_highlight"), ("JsonViewer","json_viewer"), ("Notifications system","notifications_system"), ("Spotlight","spotlight"), ("Lightbox","lightbox"), ("NavigationProgress","navigation_progress"), ("Modals manager","modals_manager"),
+            ("DatePicker", "date_picker"), ("InlineDateTimePicker", "inline_date_time_picker"), ("DateInput", "date_input"), ("MonthPicker", "month_picker"), ("YearPicker", "year_picker"), ("TimeInput", "time_input"), ("TimePicker", "time_picker"), ("TimeValue", "time_value"), ("Calendar", "calendar"),
+            ("Box", "box"), ("Collapse", "collapse"), ("Divider", "divider"), ("FocusTrap", "focus_trap"), ("Marquee", "marquee"), ("Paper", "paper"), ("Portal", "portal"), ("ScrollArea", "scroll_area"), ("Toolbar", "toolbar"), ("VisuallyHidden", "visually_hidden"),
+            ("Blockquote", "blockquote"), ("Code", "code"), ("Highlight", "highlight"), ("List", "list"), ("Mark", "mark"), ("Table", "table"), ("Text", "text"), ("Title", "title"), ("Typography", "typography"),
+            ("Stepper", "stepper"), ("TableOfContents", "table_of_contents"), ("Tree", "tree"),
+            ("ActionBar", "action_bar"), ("Dialog", "floating_dialog"), ("Modal", "modal"), ("Drawer", "drawer"),
+            ("FloatingIndicator", "floating_indicator"), ("HoverCard", "hover_card"), ("LoadingOverlay", "loading_overlay"),
+            ("Overlay", "overlay"), ("Popover", "popover"), ("Tooltip", "tooltip"), ("Tour", "tour"),
+            ("Alert", "alert"), ("EmptyState", "empty_state"), ("Loader", "loader"), ("Notification", "notification"), ("Skeleton", "skeleton"), ("Progress", "progress"), ("RingProgress", "ring_progress"), ("SemiCircleProgress", "semi_circle_progress"),
+            ("ActionIcon", "action_icon"), ("Button", "button"), ("CloseButton", "close_button"),
+            ("CopyButton", "copy_button"), ("FileButton", "file_button"), ("Toggle", "toggle"), ("UnstyledButton", "unstyled_button"),
+            ("AspectRatio", "aspect_ratio"), ("Center", "center"), ("Container", "container"),
+            ("Flex", "flex"), ("Grid", "grid"), ("Group", "group"), ("SimpleGrid", "simple_grid"),
+            ("Space", "space"), ("Stack", "stack"), ("Splitter", "splitter"),
+        ]})
+        if display_name in input_examples:
+            source_key = input_examples[display_name]
+            key = source_key + "_usage"
+            code = formatted((WEB / f"src/dedicated_demos/{source_key}.rs").read_text(encoding="utf-8"))
+        elif display_name in {"Anchor", "Burger", "NavLink", "PinInput", "Scroller", "Rich text editor", "Affix", "BackgroundImage", "TimeGrid"}:
+            key = {"Anchor": "anchor", "Burger": "burger", "NavLink": "nav_link", "PinInput": "pin_input", "Scroller": "scroller", "Rich text editor": "rich_text_editor", "Affix":"affix", "BackgroundImage":"background_image", "TimeGrid":"time_grid"}[display_name]
             code = formatted((WEB / f"src/dedicated_demos/{key}.rs").read_text(encoding="utf-8"))
         elif display_id in FOCUSED_DISPLAY:
             key, family = FOCUSED_DISPLAY[display_id]
@@ -826,7 +937,7 @@ for task in tasks:
                   ("description", DISPLAY_DESCRIPTIONS.get(display_name, description)), ("example", page),
                   ("web", records[identity]["web"]["state"]),
                   ("native", records[identity]["native"]["state"]),
-                  ("native_note", records[identity]["native"]["notes"])]
+                  ("native_note", {"Transition": "Apace supports clock-driven fade/none and custom opacity; animated transforms and Wry presence are explicitly rejected. Engine pixels are separate from OS input/readers.", "MiniCalendar": "Independent 1–31 day strip; native four-theme geometry, keyboard, bounds, RTL and stable day buttons tested.", "Heatmap": "Native dated-grid geometry, pixels, focus and retained identities tested; with_tooltip(true) is explicitly rejected."}.get(display_name, records[identity]["native"]["notes"]))]
         entries.append((display_group, display_name, display_id, "    Entry { " + ", ".join(f"{key}: {literal(value)}" for key, value in values)
                        + f', code: include_str!("showcase_demos/{key}.rs"), build: crate::showcase_demos::{key}_widget' + " },"))
 

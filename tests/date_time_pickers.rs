@@ -74,6 +74,55 @@ fn class_count(app: &App, class: &str) -> usize {
 }
 
 #[test]
+fn uncontrolled_inline_raw_input_edits_keep_both_segments_and_commit_the_latest_complete_value() {
+    let app = App::memory();
+    let hour = app.scope().cage(None);
+    let minute = app.scope().cage(None);
+    let commits = Rc::new(RefCell::new(Vec::new()));
+    let output = commits.clone();
+    app.mount(
+        inline_date_time_picker("raw-local", provider(), DateTimePolicy::Civil)
+            .default_value(Some(dt("2024-02-29T09:30")))
+            .hour_ref(hour)
+            .minute_ref(minute)
+            .on_commit(move |value| output.borrow_mut().push(value.map(|v| v.local))),
+    )
+    .unwrap();
+    let hour = hour.get().unwrap();
+    let minute = minute.get().unwrap();
+    for (node, value) in [(hour, "10"), (minute, "45")] {
+        app.dispatch(
+            node,
+            Event::InputEdit(glory::render::InputEdit::Value {
+                value: value.into(),
+                revision: props(&app, node).revision,
+                selection: glory::render::TextSelection {
+                    start: 2,
+                    end: 2,
+                    ..Default::default()
+                },
+                before: Some(glory::render::TextSelection {
+                    start: 0,
+                    end: 2,
+                    ..Default::default()
+                }),
+                intent: glory::render::InputEditIntent::Replace,
+                composing: false,
+            }),
+        )
+        .unwrap();
+        app.flush().unwrap();
+    }
+    assert_eq!(
+        (props(&app, hour).value, props(&app, minute).value),
+        ("10".into(), "45".into())
+    );
+    app.dispatch(button(&app, "Done"), Event::Activate).unwrap();
+    app.flush().unwrap();
+    assert_eq!(&*commits.borrow(), &[Some(dt("2024-02-29T10:45"))]);
+}
+
+#[test]
 fn inline_and_dialog_forward_real_date_levels_and_multiple_columns() {
     let app = App::memory();
     app.mount(
@@ -404,9 +453,25 @@ fn popup_iso_field_done_and_escape_keep_realtime_values_and_stable_input() {
         .as_ref()
         .unwrap();
     assert!(metadata.readonly && metadata.required);
-    assert_eq!(metadata.form_control.as_ref().unwrap().name, "appointment");
+    assert!(metadata.form_control.is_none());
     assert!(metadata.labelled_by.is_some());
     drop(tree);
+    let successful = all(&app)
+        .into_iter()
+        .filter(|id| {
+            app.tree()
+                .node(*id)
+                .unwrap()
+                .descriptor
+                .view()
+                .semantics
+                .as_ref()
+                .and_then(|value| value.form_control.as_ref())
+                .is_some_and(|control| control.name == "appointment")
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(successful.len(), 1);
+    assert_eq!(props(&app, successful[0]).value, "2024-02-29T10:20:00");
     app.dispatch(trigger.get().unwrap(), Event::Activate)
         .unwrap();
     app.flush().unwrap();

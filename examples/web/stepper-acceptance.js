@@ -38,7 +38,7 @@ async (hostPage) => {
    assert((await status.textContent()).includes('ordered=true'),`${mode}: generic observer preceded typed request`);
    assert(await workflow.locator('[role=tab],[role=tablist],[aria-selected]').count()===0,`${mode}: progress misrepresented as tab selection`);
    const cdp=await context.newCDPSession(page);const ax=await cdp.send('Accessibility.getFullAXTree');await cdp.detach();assert(ax.nodes.some(n=>n.role?.value==='list'&&n.name?.value==='Steps'),`${mode}: AX steps list missing`);
-   await page.screenshot({path:`D:/BuildCache/sapid/${mode}.png`,fullPage:true});reports.push({suite:mode,status:'passed',checks:'Current::Step/list/description, optional/error/completion, explicit skip, mouse/Enter/Space, controlled rejection, native disabled headers, sync/async FormState barriers, cancellation of late results, actual panel focus, KeepMounted input identity/draft, AX list'});
+   await page.screenshot({path:`target/verification/sapid/${mode}.png`,fullPage:true});reports.push({suite:mode,status:'passed',checks:'Current::Step/list/description, optional/error/completion, explicit skip, mouse/Enter/Space, controlled rejection, native disabled headers, sync/async FormState barriers, cancellation of late results, actual panel focus, KeepMounted input identity/draft, AX list'});
   }
   await page.goto('http://127.0.0.1:8794/stepper-hydrate-green-dark.html?manual');await page.waitForFunction(()=>window.moduleReady===true);
   await page.locator('.stepper-email').fill('before@hydrate.test');await page.locator('.stepper-email').evaluate(e=>{window.preStepInput=e;e.focus();e.setSelectionRange(2,8,'backward')});

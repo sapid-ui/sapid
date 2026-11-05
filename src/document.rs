@@ -401,19 +401,46 @@ impl Widget for Blockquote {
     }
 }
 
+/// Presentation only; the semantic structure remains a description list.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum DataListOrientation {
+    #[default]
+    Horizontal,
+    Vertical,
+}
 /// Description data as term/definition pairs. No selection model is implied.
 pub struct DataList {
     common: Common,
     items: Vec<DataListItem>,
+    orientation: DataListOrientation,
+    label_width: f64,
+    gap: f64,
 }
 pub fn data_list() -> DataList {
     DataList {
         common: Common::default(),
         items: Vec::new(),
+        orientation: DataListOrientation::Horizontal,
+        label_width: 120.,
+        gap: 12.,
     }
 }
 impl DataList {
     document_methods!();
+    pub fn orientation(mut self, orientation: DataListOrientation) -> Self {
+        self.orientation = orientation;
+        self
+    }
+    /// Fixed horizontal term column, 1..=512 CSS pixels.
+    pub fn label_width(mut self, width: f64) -> Self {
+        self.label_width = width;
+        self
+    }
+    /// Gap between cells/rows, finite 0..=128 CSS pixels.
+    pub fn gap(mut self, gap: f64) -> Self {
+        self.gap = gap;
+        self
+    }
     pub fn name(mut self, name: impl Into<Vary<String>>) -> Self {
         self.common.name = Some(name.into());
         self
@@ -434,8 +461,41 @@ impl Widget for DataList {
                 glory::render::Error::InvalidProps("data list accepts at most 256 items").into(),
             );
         }
-        let mut base = Style::new();
-        base.margin = Some(Edges::all(0.0));
+        if !self.label_width.is_finite()
+            || !(1. ..=512.).contains(&self.label_width)
+            || !self.gap.is_finite()
+            || !(0. ..=128.).contains(&self.gap)
+        {
+            return Err(glory::render::Error::InvalidProps(
+                "data list label width requires 1..=512 and gap requires 0..=128 finite pixels",
+            )
+            .into());
+        }
+        let structural = if self.orientation == DataListOrientation::Horizontal {
+            Style::new()
+                .display(Display::Grid)
+                .grid_columns(glory::style::GridTracks::Tracks(vec![
+                    glory::style::GridTrack::Px(self.label_width),
+                    glory::style::GridTrack::Fr(1.),
+                ]))
+        } else {
+            Style::new()
+                .display(Display::Flex)
+                .flex_direction(FlexDirection::Column)
+        };
+        let structural = structural
+            .gap(self.gap)
+            .margin(Edges::all(0.))
+            .min_width(glory::style::Length::Px(0.));
+        let custom = self.common.style.clone();
+        self.common.style = if custom.is_reactive() {
+            scope
+                .bond(move || crate::appearance::merge(structural.clone(), custom.get()))
+                .into()
+        } else {
+            crate::appearance::merge(structural, custom.get()).into()
+        };
+        let base = Style::new();
         for item in &mut self.items {
             item.common.theme = item
                 .theme_override
@@ -483,6 +543,19 @@ impl DataListItem {
         self
     }
 }
+fn description_cell_style(scope: &Scope, style: Vary<Style>, definition: bool) -> Vary<Style> {
+    let mut structural = Style::new().min_width(glory::style::Length::Px(0.));
+    if definition {
+        structural.margin = Some(Edges::all(0.));
+    }
+    if style.is_reactive() {
+        scope
+            .bond(move || crate::appearance::merge(structural.clone(), style.get()))
+            .into()
+    } else {
+        crate::appearance::merge(structural, style.get()).into()
+    }
+}
 impl Widget for DataListItem {
     fn build(&mut self, scope: &Scope) -> Result {
         // The pair is boxless so the nearest boxed parent remains DescriptionList.
@@ -491,28 +564,27 @@ impl Widget for DataListItem {
         let (classes, style) = self.common.appearance(
             scope,
             "sapid-data-list-term",
-            self.common.theme.label(self.common.size),
+            self.common
+                .theme
+                .label(self.common.size)
+                .min_width(glory::style::Length::Px(0.)),
         );
         glory::ui::view()
             .class(classes)
-            .style(style)
+            .style(description_cell_style(scope, style, false))
             .document_part(DocumentPart::Term)
             .fill(glory::ui::text().content(self.term.clone()))
             .show_in(&content)?;
         let mut base = self.common.theme.label(self.common.size);
         base.font_weight = Some(400.0);
-        base.margin = Some(Edges {
-            top: 0.0,
-            bottom: 8.0,
-            left: 16.0,
-            right: 0.0,
-        });
+        base.margin = Some(Edges::all(0.));
+        base.min_width = Some(glory::style::Length::Px(0.));
         let (classes, style) = self
             .common
             .appearance(scope, "sapid-data-list-definition", base);
         glory::ui::view()
             .class(classes)
-            .style(style)
+            .style(description_cell_style(scope, style, true))
             .document_part(DocumentPart::Definition)
             .fill(take(&mut self.children))
             .show_in(&content)?;

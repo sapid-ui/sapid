@@ -7,7 +7,9 @@ use glory::render::{
     LayerPlacement, NodeId, Query, QueryToken, QueryValue, Role, Semantics, TextKind,
     ViewportPlacement,
 };
-use glory::style::{Edges, Length, Limit, Overflow, Style};
+use glory::style::{
+    Align, BorderStyle, Color, Display, Edges, FlexWrap, Justify, Length, Limit, Overflow, Style,
+};
 use glory::ui::{Result, WeakScope, Widget};
 use glory::{Cage, Scope, Vary};
 use std::{
@@ -52,6 +54,29 @@ fn decoration(style: &Style) -> Result {
     Ok(())
 }
 
+fn chrome_style(theme: &crate::Theme, size: crate::Size, unstyled: bool) -> Style {
+    let side = theme.tokens.control(size).min_height.clamp(24., 32.);
+    let mut style = Style {
+        align: Some(Align::Center),
+        justify: Some(Justify::Center),
+        font_size: (!unstyled).then_some(12.),
+        line_height: (!unstyled).then_some(16.),
+        ..Style::new()
+            .display(Display::InlineFlex)
+            .width(Length::Px(side))
+            .height(Length::Px(side))
+            .min_width(Length::Px(0.))
+            .min_height(Length::Px(0.))
+            .padding(Edges::all(0.))
+    };
+    if !unstyled {
+        style.color = Some(theme.foreground);
+        style.background = Some(Color(0, 0, 0, 0));
+        style.border_width = Some(Edges::all(0.));
+        style.radius = Some(theme.radius);
+    }
+    style
+}
 struct State {
     owner: glory::core::InstanceId,
     weak: WeakScope,
@@ -366,6 +391,7 @@ pub struct FloatingWindow {
     ready: Option<Box<dyn FnMut(FloatingWindowHandle)>>,
     content: Option<Factory>,
     policy: ContentPolicy,
+    actions_open: bool,
 }
 pub fn floating_window(key: impl Into<String>) -> FloatingWindow {
     FloatingWindow {
@@ -387,10 +413,16 @@ pub fn floating_window(key: impl Into<String>) -> FloatingWindow {
         ready: None,
         content: None,
         policy: ContentPolicy::KeepMounted,
+        actions_open: false,
     }
 }
 impl FloatingWindow {
     common_methods!();
+    /// Initially expand the compact keyboard movement/resize toolbar.
+    pub fn default_actions_open(mut self, value: bool) -> Self {
+        self.actions_open = value;
+        self
+    }
     pub fn title(mut self, value: impl Into<Vary<String>>) -> Self {
         self.title = value.into();
         self
@@ -469,6 +501,8 @@ impl Widget for FloatingWindow {
         .validate()?;
         let id = composite::id("window", &self.key, "panel", "root")?;
         let title_id = composite::id("window", &self.key, "title", "root")?;
+        let close_id = composite::id("window", &self.key, "close", "root")?;
+        let actions_id = composite::id("window", &self.key, "actions", "root")?;
         let title = composite::validated(scope, &self.title, |value| text(value))?;
         if let Some(name) = &self.common.name {
             self.common.name = Some(composite::validated(scope, name, |value| text(value))?.into())
@@ -504,6 +538,7 @@ impl Widget for FloatingWindow {
         let padding = self.padding;
         let constrain = self.constrain;
         let labelled = self.common.name.is_none().then(|| title_id.clone());
+        let initial_focus = close_id.clone();
         let mut panel = glory::ui::view()
             .role(Role::Dialog)
             .focus(if self.common.focus == FocusMode::Auto {
@@ -521,6 +556,7 @@ impl Widget for FloatingWindow {
                     layer: Some(Layer {
                         modal: false,
                         outside: false,
+                        initial_focus: Some(initial_focus.clone()),
                         placement: LayerPlacement::Viewport(ViewportPlacement {
                             x: bounds.x,
                             y: bounds.y,
@@ -538,10 +574,15 @@ impl Widget for FloatingWindow {
             .overflow_y(Overflow::Auto);
         base.background = Some(self.common.theme.surface);
         base.color = Some(self.common.theme.foreground);
+        base.border_width = Some(Edges::all(1.));
+        base.border_style = Some(BorderStyle::Solid);
+        base.border_color = Some(self.common.theme.border);
         let (classes, decorations) =
             self.common
                 .appearance(scope, "sapid-floating-window sapid-layer", base);
         let source = state.bounds.source.clone();
+        let paint_enabled = state.enabled.clone();
+        let styled = !self.common.unstyled;
         panel = panel.class(classes).style(scope.bond(move || {
             let bounds = source.get();
             let mut style = decorations.get();
@@ -551,6 +592,9 @@ impl Widget for FloatingWindow {
             style.min_height = Some(Length::Px(limits.min_height));
             style.max_width = Some(Limit::Px(limits.max_width));
             style.max_height = Some(Limit::Px(limits.max_height));
+            if styled && !paint_enabled.get() && style.opacity.is_none() {
+                style.opacity = Some(0.6);
+            }
             style
         }));
         if let Some(name) = self.common.name.clone() {
@@ -580,6 +624,7 @@ impl Widget for FloatingWindow {
         let content_open = state.open.source.clone();
         let body_state = state.clone();
         let enabled = state.enabled.clone();
+        let initially_expanded = self.actions_open;
         panel = panel.fill(
             glory::ui::view()
                 .field_part(glory::render::FieldPart::Fieldset)
@@ -599,10 +644,35 @@ impl Widget for FloatingWindow {
                     })
                 }))
                 .fill(glory::ui::widget(move |scope| {
+                    let expanded = scope.cage(initially_expanded);
                     let pad = moving.clone();
                     let s = body_state.clone();
+                    let button_style = chrome_style(&theme, size, unstyled);
+                    let side = theme.tokens.control(size).min_height.clamp(24., 32.);
+                    let header = scope.cage(None);
+                    glory::ui::view()
+                        .class("sapid-window-header")
+                        .node_ref(header)
+                        .style(Style {
+                            align: Some(Align::Center),
+                            ..Style::new()
+                                .display(Display::Flex)
+                                .gap(4.)
+                                .min_width(Length::Px(0.))
+                        })
+                        .show_in(scope)?;
+                    let header_scope =
+                        scope.child_in(header.get().ok_or(glory::ui::Error::Gone)?)?;
                     glory::ui::view()
                         .class("sapid-window-caption")
+                        .style(Style {
+                            grow: Some(1.),
+                            align: Some(Align::Center),
+                            ..Style::new()
+                                .display(Display::Flex)
+                                .min_width(Length::Px(0.))
+                                .min_height(Length::Px(side))
+                        })
                         .semantics(composite::metadata(Semantics {
                             drag_capture: Some(DragCapture::Press),
                             ..Default::default()
@@ -613,48 +683,103 @@ impl Widget for FloatingWindow {
                         .fill(
                             glory::ui::text()
                                 .kind(TextKind::Heading(2))
+                                .class("sapid-window-title")
                                 .content(title)
+                                .style(Style {
+                                    font_size: (!unstyled).then_some(16.),
+                                    line_height: (!unstyled).then_some(side),
+                                    font_weight: (!unstyled).then_some(600.),
+                                    ..Style::new()
+                                        .margin(Edges::all(0.))
+                                        .min_width(Length::Px(0.))
+                                        .white_space(glory::style::WhiteSpace::NoWrap)
+                                        .overflow_x(Overflow::Hidden)
+                                })
                                 .semantics(composite::metadata(Semantics {
                                     id: Some(title_id.clone()),
                                     ..Default::default()
                                 })),
                         )
-                        .show_in(scope)?;
+                        .show_in(&header_scope)?;
+                    let controls_id = actions_id.clone();
+                    glory::ui::button()
+                        .class("sapid-window-actions-toggle")
+                        .name("Window actions")
+                        .label("")
+                        .style(button_style.clone())
+                        .enabled(body_state.enabled.clone())
+                        .fill(crate::input_actions::glyph(crate::Icon::More, theme.muted))
+                        .semantics(scope.bond(move || {
+                            composite::metadata(Semantics {
+                                expanded: Some(expanded.get()),
+                                controls: Some(controls_id.clone()),
+                                ..Default::default()
+                            })
+                        }))
+                        .on(EventKind::Activate, move |_| {
+                            expanded.revise(|old| *old = !*old)
+                        })
+                        .show_in(&header_scope)?;
                     let s = body_state.clone();
-                    let mut close = glory::ui::button()
-                        .label("Close window")
+                    glory::ui::button()
                         .class("sapid-window-close")
+                        .name("Close window")
+                        .label("")
+                        .style(button_style.clone())
                         .enabled(s.enabled.clone())
-                        .on(EventKind::Activate, move |_| s.report(s.close(None)));
-                    if !unstyled {
-                        close = close.style(theme.control(size));
-                    }
-                    close.show_in(scope)?;
+                        .fill(crate::input_actions::glyph(crate::Icon::Close, theme.muted))
+                        .semantics(composite::metadata(Semantics {
+                            id: Some(close_id.clone()),
+                            ..Default::default()
+                        }))
+                        .on(EventKind::Activate, move |_| s.report(s.close(None)))
+                        .show_in(&header_scope)?;
+                    scope.retain(header_scope)?;
                     let controls = body_state.clone();
-                    let theme = theme.clone();
+                    let actions_name = actions_id.clone();
                     glory::ui::view()
                         .role(Role::Group)
+                        .class("sapid-window-actions")
                         .name("Window movement and size")
+                        .style(
+                            Style::new()
+                                .display(Display::Flex)
+                                .flex_wrap(FlexWrap::Wrap)
+                                .gap(4.)
+                                .padding(Edges {
+                                    top: 8.,
+                                    bottom: 8.,
+                                    left: 0.,
+                                    right: 0.,
+                                }),
+                        )
+                        .semantics(scope.bond(move || {
+                            composite::metadata(Semantics {
+                                id: Some(actions_name.clone()),
+                                hidden: !expanded.get(),
+                                ..Default::default()
+                            })
+                        }))
                         .fill(glory::ui::widget(move |scope| {
-                            for (command, label) in [
-                                (WindowCommand::MoveLeft, "Move window left"),
-                                (WindowCommand::MoveRight, "Move window right"),
-                                (WindowCommand::MoveUp, "Move window up"),
-                                (WindowCommand::MoveDown, "Move window down"),
-                                (WindowCommand::Narrower, "Make window narrower"),
-                                (WindowCommand::Wider, "Make window wider"),
-                                (WindowCommand::Shorter, "Make window shorter"),
-                                (WindowCommand::Taller, "Make window taller"),
+                            for (command, label, glyph) in [
+                                (WindowCommand::MoveLeft, "Move window left", "←"),
+                                (WindowCommand::MoveRight, "Move window right", "→"),
+                                (WindowCommand::MoveUp, "Move window up", "↑"),
+                                (WindowCommand::MoveDown, "Move window down", "↓"),
+                                (WindowCommand::Narrower, "Make window narrower", "−↔"),
+                                (WindowCommand::Wider, "Make window wider", "+↔"),
+                                (WindowCommand::Shorter, "Make window shorter", "−↕"),
+                                (WindowCommand::Taller, "Make window taller", "+↕"),
                             ] {
                                 let s = controls.clone();
-                                let mut button = glory::ui::button()
-                                    .label(label)
+                                glory::ui::button()
+                                    .class("sapid-window-command")
+                                    .name(label)
+                                    .label(glyph)
+                                    .style(button_style.clone())
                                     .enabled(s.enabled.clone())
-                                    .on(EventKind::Activate, move |_| s.report(s.command(command)));
-                                if !unstyled {
-                                    button = button.style(theme.control(size));
-                                }
-                                button.show_in(scope)?;
+                                    .on(EventKind::Activate, move |_| s.report(s.command(command)))
+                                    .show_in(scope)?;
                             }
                             Ok(())
                         }))

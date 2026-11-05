@@ -56,7 +56,7 @@ async (hostPage) => {
       // appears halfway through a full-page image after the interaction checks.
       await page.reload(); await page.waitForFunction(()=>window.ready===true);
       await page.evaluate(()=>scrollTo(0,0)); await tick();
-      await page.screenshot({path:`D:/BuildCache/sapid/fields-${hue}-${scheme}.png`,fullPage:true});
+      await page.screenshot({path:`target/verification/sapid/fields-${hue}-${scheme}.png`,fullPage:true});
       reports.push({suite:mode,status:'passed',checks:'native labels, checkbox label toggle, required/readonly/invalid, help+error AX, caret identity, disabled fieldset, four-theme rendering'});
     }
     await page.goto('http://127.0.0.1:8794/fields-hydrate-green-dark.html?manual');
@@ -84,7 +84,7 @@ async (hostPage) => {
       await control.waitFor({state:'visible'});
       assert(await control.evaluate(e=>getComputedStyle(e).backgroundColor)===(scheme==='dark'?'rgb(37, 38, 43)':'rgb(255, 255, 255)'),`${family}/${hue}/${scheme}/${hydration}: gallery control theme mismatch`);
       if(family==='composites')assert(await page.locator('.auto-tabs [role=tab][aria-selected=true]').evaluate(e=>getComputedStyle(e).backgroundColor)===(hue==='green'?'rgb(35, 112, 50)':'rgb(25, 113, 194)'),'selected tab accent differs from theme');
-      if(hue==='green'&&scheme==='dark'&&hydration){await page.evaluate(()=>scrollTo(0,0));await page.screenshot({path:`D:/BuildCache/sapid/gallery-${family}-green-dark.png`,fullPage:family!=='overlays'});}
+      if(hue==='green'&&scheme==='dark'&&hydration){await page.evaluate(()=>scrollTo(0,0));await page.screenshot({path:`target/verification/sapid/gallery-${family}-green-dark.png`,fullPage:family!=='overlays'});}
     }
     await page.goto('http://127.0.0.1:8794/composites.html');await page.waitForFunction(()=>window.ready===true);
     await page.getByRole('button',{name:'Green theme',exact:true}).click();await page.waitForFunction(()=>window.ready===true&&document.documentElement.dataset.hue==='green');

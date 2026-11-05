@@ -116,6 +116,7 @@ pub(super) struct Panel {
     pub reference: Option<Cage<Option<NodeId>>>,
     pub factory: Option<Factory>,
     pub unstyled: bool,
+    pub on_end: Option<Box<dyn FnMut(bool)>>,
 }
 impl Widget for Panel {
     fn build(&mut self, scope: &Scope) -> Result {
@@ -124,6 +125,8 @@ impl Widget for Panel {
         let label = self.label.clone();
         let focused = scope.cage(false);
         let weak = scope.downgrade();
+        let mut last_completion = state.config.try_get()?.revision;
+        let mut on_end = self.on_end.take();
         let mut panel = glory::ui::view()
             .class("sapid-collapsible-panel")
             .style(
@@ -143,11 +146,22 @@ impl Widget for Panel {
                 })
             }))
             .on(EventKind::CollapseComplete, move |event| {
-                if let Event::CollapseComplete { revision } = event
-                    && let Err(error) = state.complete(revision)
-                    && let Some(scope) = weak.upgrade()
-                {
-                    scope.report_error(error);
+                if let Event::CollapseComplete { revision } = event {
+                    let Some(scope) = weak.upgrade() else { return };
+                    let result = (|| -> Result {
+                        state.complete(revision)?;
+                        let current = state.config.try_get()?;
+                        if current.revision == revision && last_completion != revision {
+                            last_completion = revision;
+                            if let Some(callback) = &mut on_end {
+                                callback(current.open);
+                            }
+                        }
+                        Ok(())
+                    })();
+                    if let Err(error) = result {
+                        scope.report_error(error);
+                    }
                 }
             })
             .on(EventKind::FocusWithin, move |event| {

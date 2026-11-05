@@ -229,3 +229,28 @@ fn bounded_metadata_keys_alternatives_and_current_selection_fail_before_mount() 
         .is_err()
     );
 }
+
+#[test]
+fn external_gallery_openers_need_no_duplicate_builtin_trigger() {
+    let app = App::memory();
+    let open = app.scope().cage(false);
+    app.mount(
+        lightbox("external-gallery")
+            .images(images())
+            .show_trigger(false)
+            .open(open)
+            .on_open_change(move |next| open.revise(|old| *old = next)),
+    )
+    .unwrap();
+    assert!(class(&app, "sapid-dialog-trigger").is_empty());
+    assert!(class(&app, "sapid-lightbox-image").is_empty());
+    open.revise(|old| *old = true);
+    app.flush().unwrap();
+    assert_eq!(class(&app, "sapid-lightbox-image").len(), 1);
+    app.dispatch(named(&app, "Next image"), Event::Activate)
+        .unwrap();
+    app.flush().unwrap();
+    assert!(text(&app).contains("Second caption"));
+    app.clear().unwrap();
+    assert_eq!(app.stats().handlers, 0);
+}

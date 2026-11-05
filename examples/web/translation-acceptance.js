@@ -29,7 +29,7 @@ async function runTranslationAcceptance(page) {
     const focusState=await editor.evaluate(element=>({same:element===document.querySelector('input[aria-label="Motion focus probe"]'),focused:element===document.activeElement,start:element.selectionStart,end:element.selectionEnd,value:element.value}));
     assert(focusState.same&&focusState.focused&&focusState.start===2&&focusState.end===9&&await identity.evaluate(element=>element===document.querySelector('.translation-cube')),`${mode}: motion replaced identity or changed actual editor focus ${JSON.stringify(focusState)}`);
     const session=await page.context().newCDPSession(page);const ax=await session.send('Accessibility.getFullAXTree');await session.detach();assert(ax.nodes.filter(node=>!node.ignored&&node.role?.value==='StaticText'&&node.name?.value==='Balance 123').length===1,`${mode}: duplicated accessible visual text`);
-    if(hydrate)await page.screenshot({path:`D:/BuildCache/sapid/${mode}.png`,fullPage:true});
+    if(hydrate)await page.screenshot({path:`target/verification/sapid/${mode}.png`,fullPage:true});
     await page.evaluate(()=>demo.unmount_display());await turn();assert(await identity.evaluate(element=>!element.isConnected&&element.getAnimations().length===0),`${mode}: retired animation survived Owner`);
     reports.push({mode,physicalBounds:true,intermediateTransform:true,pause:true,sourceInterrupt:true,clear:true,liveReduce:true,focusAndIdentity:true,oneAccessibleText:true});
   }

@@ -33,7 +33,7 @@ async (hostPage,baseURL='http://127.0.0.1:8794')=>{
       await state('readonly','false');await state('enabled','false');await tick();assert(await editor.isDisabled()&&await format.isDisabled(),`${mode}: Field disabled`);await state('enabled','true');
       const cdp=await context.newCDPSession(page);const ax=await cdp.send('Accessibility.getFullAXTree');await cdp.detach();assert(ax.nodes.some(n=>n.role?.value==='textbox'&&n.name?.value==='Payload'&&n.properties?.some(p=>p.name==='multiline'&&p.value.value===true)),`${mode}: actual multiline accessibility tree`);
       await page.setViewportSize({width:390,height:844});await tick();assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`${mode}: mobile width`);await page.setViewportSize({width:1100,height:1000});
-      if(hue==='green'&&scheme==='dark'&&hydrate)await page.screenshot({path:'D:/BuildCache/sapid/json-input-green-dark-hydrate.png',fullPage:true});
+      if(hue==='green'&&scheme==='dark'&&hydrate)await page.screenshot({path:'target/verification/sapid/json-input-green-dark-hydrate.png',fullPage:true});
       await page.evaluate(()=>demo.unmount_json_input());assert(await page.locator('#app').evaluate(e=>e.childElementCount===0),`${mode}: Owner cleanup`);
       reports.push({suite:mode,status:'passed',checks:'true multiline editor/AX, Field metadata and caret, exact JSON tokens, controlled proposal/refusal, parse/output limits, IME protocol, readonly/disabled, mobile, retirement'});
     }

@@ -60,3 +60,13 @@ independent modal restoration, retained top-layer inert, mobile layout, actual
 stream End and WASM hydration without replacing the layer. The four hydration
 screenshots are `loading-overlay-{blue,green}-{light,dark}-hydrate.png` under the
 same build root; the green/dark screenshot was visually inspected.
+
+## Loader presentation and documentation (2026-11-05)
+
+`loader_type(LoaderType::{Oval,Bars,Dots})`, `loader_size(Size)`,
+`loader_color(Color)` and `animated(Vary<bool>)` configure the retained indicator.
+They do not change shade alpha, content inert or the read-only loading source.
+The page now starts with one local settings editor, followed by independently
+compiled presentation, retained focus/input and explicit geometry examples.
+Decorative Overlay has separate alpha, pointer-through and optional fixed-viewport
+examples. Typed backdrop blur/filters are not supported. See [Overlay pages](overlay-pages.md).

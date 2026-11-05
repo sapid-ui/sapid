@@ -79,3 +79,7 @@ maximum-results scrolling, dirty adoption and classic stream handoff.
 49 个报告通过（含四主题 CSR/水合）。Home 验证默认事件未被拦截，光标行首使用
 平台快捷键，避免把某一浏览器宿主的 Home 位置当作所有系统的保证。当前报告为
 `/Volumes/Data/Caches/glory/native-menus/browser-results.json`，保留此前失败诊断。
+
+## Runnable documentation examples
+
+See [Extension pages](extension-pages.md) for the independent complete-source examples, application ownership rules and current acceptance boundaries.

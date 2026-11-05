@@ -1,4 +1,8 @@
 """Real file-tampering regressions; no network, credentials or deployments."""
+from pathlib import Path as _BuildPath
+import sys as _build_sys
+_build_sys.path.insert(0, str(_BuildPath(__file__).resolve().parents[1] / "scripts"))
+from local_build_paths import local_build_path
 import hashlib
 import io
 import json
@@ -21,7 +25,7 @@ def sha(path):
 @unittest.skipUnless(PWSH, 'PowerShell 7 is required for Windows tool integrity checks')
 class ToolIntegrityTests(unittest.TestCase):
     def setUp(self):
-        parent = Path(os.environ.get('SAPID_TOOL_TEST_ROOT', os.environ.get('BUILD_ROOT', 'D:/BuildCache/sapid/fixes/infra'))).resolve() / 'tool-tests'
+        parent = Path(os.environ.get('SAPID_TOOL_TEST_ROOT', os.environ.get('BUILD_ROOT', local_build_path('sapid/fixes/infra')))).resolve() / 'tool-tests'
         parent.mkdir(parents=True, exist_ok=True)
         self.directory = tempfile.TemporaryDirectory(prefix='integrity-', dir=parent)
         self.root = Path(self.directory.name).resolve()

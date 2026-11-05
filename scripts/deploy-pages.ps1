@@ -1,7 +1,7 @@
 param(
     [Parameter(Mandatory)][string]$Directory,
     [string]$ProjectName = 'sapid-showcase',
-    [string]$BuildRoot = 'D:/BuildCache/sapid/pages-ci',
+    [string]$BuildRoot = "$PSScriptRoot/../target/verification/sapid/pages-ci",
     [string]$ToolsReceiptSha256 = $env:SAPID_TOOLS_RECEIPT_SHA256
 )
 $ErrorActionPreference = 'Stop'

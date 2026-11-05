@@ -22,6 +22,7 @@ pub struct Button {
     variant: ButtonVariant,
     compact: Vary<bool>,
     loading: Vary<bool>,
+    pressed: Option<Vary<bool>>,
     toolbar: Option<Box<dyn ToolbarHooks>>,
     label: Vary<String>,
     body: Option<Children>,
@@ -56,6 +57,7 @@ pub fn button() -> Button {
         variant: ButtonVariant::default(),
         compact: false.into(),
         loading: false.into(),
+        pressed: None,
         toolbar: None,
         label: "".into(),
         body: None,
@@ -67,6 +69,11 @@ pub fn button() -> Button {
 
 impl Button {
     common_methods!();
+    /// Controlled toggle presentation; activation does not mutate this source.
+    pub fn pressed(mut self, value: impl Into<Vary<bool>>) -> Self {
+        self.pressed = Some(value.into());
+        self
+    }
 
     pub(crate) fn in_toolbar(
         mut self,
@@ -150,8 +157,8 @@ impl Button {
         self
     }
 
-    /// Loading disables native activation. The application supplies any loading
-    /// label/status content; no timer, spinner, or live announcement is implied.
+    /// Loading shows a decorative indicator and disables native activation.
+    /// The label and accessible name stay available; no timer is implied.
     pub fn loading(mut self, value: impl Into<Vary<bool>>) -> Self {
         self.loading = value.into();
         self
@@ -167,6 +174,17 @@ impl Widget for Button {
     fn build(&mut self, scope: &Scope) -> Result {
         let mut inner = self.inner.take().ok_or(glory::ui::Error::Gone)?;
         let has_sections = self.left.is_some() || self.right.is_some();
+        let has_loading = self.loading.is_reactive() || self.loading.try_get()?;
+        let loader = if has_loading {
+            crate::actions::loading_indicator(
+                scope,
+                self.loading.clone(),
+                self.common.theme.disabled_text,
+            )
+            .into_children()
+        } else {
+            ().into_children()
+        };
         if has_sections {
             if let Some(name) = self.common.name.take() {
                 self.common.name = Some(
@@ -178,7 +196,7 @@ impl Widget for Button {
                 self.label = accepted.into();
                 self.common.name = Some(accepted.into());
             }
-            inner = inner.label("").fill((
+            inner = inner.label("").fill(loader).fill((
                 glory::ui::group().fill(self.left.take().unwrap_or_else(|| ().into_children())),
                 glory::ui::text()
                     .class("sapid-button-label")
@@ -203,7 +221,25 @@ impl Widget for Button {
         } else {
             inner = inner
                 .label(self.label.clone())
+                .fill(loader)
                 .fill(self.body.take().unwrap_or_else(|| ().into_children()));
+            if has_loading {
+                let own = self.common.style.clone();
+                let structural = glory::style::Style {
+                    display: Some(glory::style::Display::InlineFlex),
+                    align: Some(glory::style::Align::Center),
+                    justify: Some(glory::style::Justify::Center),
+                    gap: Some(8.),
+                    ..Default::default()
+                };
+                self.common.style = if own.is_reactive() {
+                    scope
+                        .bond(move || crate::appearance::merge(structural.clone(), own.get()))
+                        .into()
+                } else {
+                    crate::appearance::merge(structural, own.get()).into()
+                };
+            }
         }
         let control = self.common.theme.tokens.control(self.common.size);
         let mut base = self.common.theme.control(self.common.size);
@@ -257,6 +293,9 @@ impl Widget for Button {
         let unstyled = self.common.unstyled;
         let compact = self.compact.clone();
         let compact_reactive = compact.is_reactive();
+        let pressed = self.pressed.clone();
+        let pressed_reactive = pressed.as_ref().is_some_and(Vary::is_reactive);
+        let variant = self.variant;
         let state_style = move || {
             let mut base = if unstyled {
                 glory::style::Style::new()
@@ -273,6 +312,20 @@ impl Widget for Button {
                     padding
                 });
             }
+            if !unstyled && pressed.as_ref().is_some_and(|value| value.get()) {
+                base.font_weight = Some(600.);
+                if matches!(
+                    variant,
+                    ButtonVariant::Subtle
+                        | ButtonVariant::Secondary
+                        | ButtonVariant::Outline
+                        | ButtonVariant::Light
+                ) {
+                    base.background = Some(theme.accent_soft);
+                    base.color = Some(theme.accent_text);
+                    base.border_color = Some(theme.accent);
+                }
+            }
             if !unstyled && !style_enabled.get() {
                 base.background = Some(theme.disabled);
                 base.color = Some(theme.disabled_text);
@@ -280,24 +333,29 @@ impl Widget for Button {
             }
             crate::appearance::merge(base, own_style.get())
         };
-        self.common.style =
-            if enabled.is_reactive() || compact_reactive || self.common.style.is_reactive() {
-                scope.bond(state_style).into()
-            } else {
-                state_style().into()
-            };
+        self.common.style = if enabled.is_reactive()
+            || compact_reactive
+            || pressed_reactive
+            || self.common.style.is_reactive()
+        {
+            scope.bond(state_style).into()
+        } else {
+            state_style().into()
+        };
         let mut inner = configure!(self.common, inner, scope, class, glory::style::Style::new());
         inner = inner.enabled(enabled.clone());
         let loading = self.loading.clone();
         let navigation_item = self.toolbar.is_some();
+        let pressed = self.pressed.clone();
         let metadata = move || {
             Some(Box::new(glory::render::Semantics {
                 busy: Some(loading.get()),
+                pressed: pressed.as_ref().map(|value| value.get()),
                 navigation_item,
                 ..Default::default()
             }))
         };
-        inner = if self.loading.is_reactive() {
+        inner = if self.loading.is_reactive() || pressed_reactive {
             inner.semantics(scope.bond(metadata))
         } else {
             inner.semantics(metadata())
@@ -314,7 +372,22 @@ impl Widget for Button {
             .unwrap_or_default();
         let owner = scope.id();
         if !presses.is_empty() || !observers.is_empty() {
+            let active = enabled.clone();
+            let weak = scope.downgrade();
             inner = inner.on(EventKind::Activate, move |event| {
+                if !owner.is_alive() {
+                    return;
+                }
+                match active.try_get() {
+                    Ok(true) => {}
+                    Ok(false) => return,
+                    Err(error) => {
+                        if let Some(scope) = weak.upgrade() {
+                            scope.report_error(error);
+                        }
+                        return;
+                    }
+                }
                 for press in &mut presses {
                     if !owner.is_alive() {
                         return;

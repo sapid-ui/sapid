@@ -24,6 +24,100 @@ fn position(app: &App) -> String {
     text.content.clone()
 }
 #[test]
+fn bounded_indicators_propose_controlled_pages_preserve_selected_identity_and_retire_old_rows() {
+    let app = App::memory();
+    let current = app.scope().cage(500_000usize);
+    let accept = app.scope().cage(false);
+    app.mount(
+        carousel()
+            .count(1_000_000usize)
+            .current(current)
+            .with_indicators(true)
+            .on_current_change(move |next| {
+                if accept.get() {
+                    current.revise(|old| *old = next);
+                }
+            })
+            .render_slide(|index| glory::ui::text().content(format!("Slide {index}"))),
+    )
+    .unwrap();
+    let dots = nodes(&app, "sapid-carousel-indicator");
+    assert_eq!(dots.len(), sapid::MAX_CAROUSEL_INDICATORS);
+    let target = dots
+        .into_iter()
+        .find(|id| {
+            app.tree()
+                .node(*id)
+                .unwrap()
+                .descriptor
+                .view()
+                .name
+                .as_deref()
+                == Some("Go to slide 500005")
+        })
+        .unwrap();
+    app.dispatch(target, Event::Activate).unwrap();
+    assert_eq!(current.get(), 500_000);
+    accept.revise(|old| *old = true);
+    app.dispatch(target, Event::Activate).unwrap();
+    assert_eq!(current.get(), 500_004);
+    assert_eq!(
+        app.tree()
+            .node(target)
+            .unwrap()
+            .descriptor
+            .view()
+            .semantics
+            .as_ref()
+            .unwrap()
+            .pressed,
+        Some(true)
+    );
+    let bounded_nodes = app.stats().nodes;
+    for index in (100..10_000).step_by(100) {
+        current.revise(|old| *old = index);
+        app.flush().unwrap();
+        assert_eq!(nodes(&app, "sapid-carousel-indicator").len(), 9);
+    }
+    assert_eq!(app.stats().nodes, bounded_nodes);
+    assert!(app.tree().node(target).is_err());
+    app.clear().unwrap();
+    assert_eq!(app.stats().nodes, 0);
+}
+#[test]
+fn controls_can_be_omitted_and_invalid_sizes_reject_before_slide_factories() {
+    let app = App::memory();
+    app.mount(
+        carousel()
+            .count(2usize)
+            .with_controls(false)
+            .with_indicators(true)
+            .render_slide(|index| glory::ui::text().content(index.to_string())),
+    )
+    .unwrap();
+    assert!(nodes(&app, "sapid-carousel-next").is_empty());
+    assert_eq!(nodes(&app, "sapid-carousel-indicator").len(), 2);
+    for size in [f64::NAN, 0., 19., 65.] {
+        let calls = Rc::new(Cell::new(0));
+        let made = calls.clone();
+        let app = App::memory();
+        assert!(
+            app.mount(
+                carousel()
+                    .count(1usize)
+                    .control_size(size)
+                    .render_slide(move |_| {
+                        made.set(made.get() + 1);
+                        glory::ui::text().content("invalid")
+                    })
+            )
+            .is_err()
+        );
+        assert_eq!(calls.get(), 0);
+        assert_eq!(app.stats().nodes, 0);
+    }
+}
+#[test]
 fn million_source_calls_only_window_factories_and_retains_current_editor_owner() {
     let app = App::memory();
     let current = app.scope().cage(500_000usize);
@@ -204,6 +298,7 @@ fn autoplay_is_one_revocable_owner_delay_with_hover_focus_and_explicit_pause() {
     let executor = Rc::new(glory::core::executor::Executor::new(8));
     let app = App::with_host(executor.clone(), glory::render::memory::Memory::new);
     let owner = app.scope().child().unwrap();
+    let source_paused = owner.cage(false);
     let ready = Rc::new(Cell::new(false));
     let wake = Rc::new(RefCell::new(None::<Waker>));
     let timer_ready = ready.clone();
@@ -211,6 +306,7 @@ fn autoplay_is_one_revocable_owner_delay_with_hover_focus_and_explicit_pause() {
     carousel()
         .count(4usize)
         .looping(true)
+        .paused(source_paused)
         .autoplay(move || {
             Box::pin(Clock {
                 ready: timer_ready.clone(),
@@ -274,6 +370,17 @@ fn autoplay_is_one_revocable_owner_delay_with_hover_focus_and_explicit_pause() {
     app.dispatch(pause, Event::Activate).unwrap();
     assert!(executor.is_empty());
     app.dispatch(pause, Event::Activate).unwrap();
+    assert_eq!(executor.len(), 1);
+    source_paused.revise(|old| *old = true);
+    app.flush().unwrap();
+    assert!(executor.is_empty());
+    assert!(!app.tree().enabled(pause));
+    assert!(
+        matches!(app.tree().node(pause).unwrap().descriptor.view().props, Props::Button(button) if button.label == "Autoplay paused")
+    );
+    assert!(!app.dispatch(pause, Event::Activate).unwrap());
+    source_paused.revise(|old| *old = false);
+    app.flush().unwrap();
     assert_eq!(executor.len(), 1);
     owner.dispose();
     assert!(executor.is_empty());

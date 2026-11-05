@@ -41,7 +41,7 @@ async (hostPage) => {
    assert((await page.locator('.navigation-status').textContent()).includes('created=2; retired=1'),`${mode}: child lifetime evidence missing`);
    const cdp=await context.newCDPSession(page);const ax=await cdp.send('Accessibility.getFullAXTree');await cdp.detach();
    assert(ax.nodes.filter(n=>n.role?.value==='navigation').length===3,`${mode}: navigation landmarks missing`);
-   await page.screenshot({path:`D:/BuildCache/sapid/${mode}.png`,fullPage:true});reports.push({suite:mode,status:'passed',checks:'bounded trillion-page window, unknown total, current metadata, mouse/Enter/Space, controlled rejection, native disabled, folded focus restoration, actual link no implicit route, disclosure Owner reset, AX navigation'});
+   await page.screenshot({path:`target/verification/sapid/${mode}.png`,fullPage:true});reports.push({suite:mode,status:'passed',checks:'bounded trillion-page window, unknown total, current metadata, mouse/Enter/Space, controlled rejection, native disabled, folded focus restoration, actual link no implicit route, disclosure Owner reset, AX navigation'});
   }
   await page.goto('http://127.0.0.1:8794/navigation-hydrate-blue-light.html?manual');await page.waitForFunction(()=>window.moduleReady===true);
   await page.locator('.main-pages').getByRole('button',{name:'Next page',exact:true}).evaluate(e=>{window.preNext=e;e.focus()});

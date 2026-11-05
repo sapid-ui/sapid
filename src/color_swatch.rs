@@ -30,6 +30,22 @@ pub fn color_swatch(color: impl Into<Vary<Color>>) -> ColorSwatch {
         presses: Vec::new(),
     }
 }
+pub(crate) fn palette_style(columns: usize) -> Style {
+    Style::new()
+        .display(Display::Grid)
+        .width(Length::Percent(100.))
+        .grid_columns(glory::style::GridTracks::Tracks(
+            vec![glory::style::GridTrack::Fr(1.); columns],
+        ))
+        .gap(6.)
+}
+pub(crate) fn palette_cell_style() -> Style {
+    Style::new()
+        .width(Length::Percent(100.))
+        .min_width(Length::Px(0.))
+        .height(Length::Auto)
+        .aspect_ratio(glory::style::AspectRatio::Ratio(1.))
+}
 impl ColorSwatch {
     pub fn theme(mut self, value: crate::Theme) -> Self {
         self.common.theme = value;

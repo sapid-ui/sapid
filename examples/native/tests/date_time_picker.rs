@@ -329,5 +329,28 @@ fn native_date_time_presets_display_format_and_outer_clear_are_physical_controls
     app.dispatch(clear, Event::Activate).unwrap();
     app.settle(16).unwrap();
     assert_eq!(value.get(), None);
-    assert!(all(app).into_iter().all(|id| id != clear));
+    assert_eq!(
+        app.tree()
+            .node(clear)
+            .unwrap()
+            .descriptor
+            .view()
+            .style
+            .display,
+        Some(glory::style::Display::None)
+    );
+    let hidden_hit = host.renderer().inspect(|document| {
+        document
+            .hit(
+                (clear_rect.x + clear_rect.width / 2.) as f32,
+                (clear_rect.y + clear_rect.height / 2.) as f32,
+            )
+            .map(|hit| hit.node_id)
+    });
+    assert_ne!(
+        hidden_hit,
+        host.renderer()
+            .engine_id(clear, glory::html::Part::Main)
+            .ok()
+    );
 }

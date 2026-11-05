@@ -535,6 +535,21 @@ impl Widget for Table {
                 })
             })
             .transpose()?;
+        if self.caption.is_some() {
+            let side = match self.caption_side {
+                TableCaptionSide::Top => glory::style::CaptionSide::Top,
+                TableCaptionSide::Bottom => glory::style::CaptionSide::Bottom,
+            };
+            let explicit = self.common.style.clone();
+            let reactive = explicit.is_reactive();
+            let style =
+                move || crate::appearance::merge(Style::new().caption_side(side), explicit.get());
+            self.common.style = if reactive {
+                scope.bond(style).into()
+            } else {
+                style().into()
+            };
+        }
         let mut base = Style::new().width(Length::Percent(100.));
         if !self.common.unstyled {
             base.color = Some(self.common.theme.foreground);

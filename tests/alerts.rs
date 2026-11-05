@@ -264,7 +264,58 @@ fn variants_keep_message_relations_and_compact_close_action() {
             Some("Dismiss message")
         );
         assert!(
-            matches!(tree.node(close).unwrap().descriptor.view().props, Props::Button(p) if p.label == "×")
+            matches!(tree.node(close).unwrap().descriptor.view().props, Props::Button(p) if p.label.is_empty())
         );
+        assert!(tree.node(close).unwrap().children.iter().any(|id|matches!(tree.node(*id).unwrap().descriptor.view().props,Props::Graphic(p) if p.alternative.is_none()&&!p.commands.is_empty())));
+    }
+}
+#[test]
+fn filled_messages_choose_readable_text_for_bright_and_dark_custom_colors() {
+    use glory::style::Color;
+    for theme in [
+        sapid::Theme::blue_light(),
+        sapid::Theme::blue_dark(),
+        sapid::Theme::green_light(),
+        sapid::Theme::green_dark(),
+    ] {
+        for (background, foreground) in [
+            (Color(255, 255, 0, 255), Color(0, 0, 0, 255)),
+            (Color(0, 0, 20, 255), Color(255, 255, 255, 255)),
+        ] {
+            let app = App::memory();
+            app.mount(
+                alert("contrast")
+                    .theme(theme.clone())
+                    .variant(sapid::AlertVariant::Filled)
+                    .color(background)
+                    .title("Workspace status")
+                    .content("Your project is ready")
+                    .closable(true),
+            )
+            .unwrap();
+            for name in ["sapid-alert-title", "sapid-alert-content"] {
+                assert_eq!(
+                    app.tree()
+                        .node(find(&app, name))
+                        .unwrap()
+                        .descriptor
+                        .view()
+                        .style
+                        .color,
+                    Some(foreground)
+                );
+            }
+            let close = find(&app, "sapid-alert-close");
+            assert_eq!(
+                app.tree()
+                    .node(close)
+                    .unwrap()
+                    .descriptor
+                    .view()
+                    .style
+                    .width,
+                Some(Length::Px(24.))
+            );
+        }
     }
 }

@@ -170,7 +170,7 @@ pub struct PinInput {
     common: Common,
     value: Value<String>,
     domain: PinDomain,
-    masked: bool,
+    masked: Vary<bool>,
     gap: f64,
     cell_padding: Option<f64>,
     autofill: Option<InputAutofill>,
@@ -194,7 +194,7 @@ pub fn pin_input() -> PinInput {
         common: Common::default(),
         value: Value::default(),
         domain: PinDomain::default(),
-        masked: false,
+        masked: false.into(),
         gap: 8.,
         cell_padding: None,
         autofill: None,
@@ -233,8 +233,8 @@ impl PinInput {
         self.domain.alphabet = alphabet;
         self
     }
-    pub fn masked(mut self, masked: bool) -> Self {
-        self.masked = masked;
+    pub fn masked(mut self, masked: impl Into<Vary<bool>>) -> Self {
+        self.masked = masked.into();
         self
     }
     pub fn autofill(mut self, hint: InputAutofill) -> Self {
@@ -443,11 +443,6 @@ impl Widget for PinInput {
             .class(classes)
             .style(appearance)
             .node_ref(outer)
-            .on(EventKind::FocusWithin, move |event| {
-                if let Event::FocusWithin { focused: value, .. } = event {
-                    focused.revise(|old| *old = value);
-                }
-            })
             .show_in(scope)?;
         let parent = scope.child_in(outer.try_get()?.ok_or(glory::ui::Error::Gone)?)?;
         let frame = scope.cage(None);
@@ -514,13 +509,16 @@ impl Widget for PinInput {
         }
         let initial = accepted.try_with(|s| s.value.clone())?;
         let reference = self.common.node_ref.unwrap_or_else(|| scope.cage(None));
+        let masked = self.masked.clone();
         let mut input = glory::ui::input()
             .class("sapid-pin-editor")
-            .purpose(if self.masked {
-                Purpose::Password
-            } else {
-                Purpose::Text
-            })
+            .purpose(scope.bond(move || {
+                if masked.get() {
+                    Purpose::Password
+                } else {
+                    Purpose::Text
+                }
+            }))
             .value(initial.clone())
             .focus(self.common.focus)
             .enabled(scope.bond(move || accepted.with(|s| s.enabled)))
@@ -533,6 +531,7 @@ impl Widget for PinInput {
                     background: Some(Color(0, 0, 0, 0)),
                     ..Style::new()
                 }
+                .display(Display::Block)
                 .position(Position::Relative)
                 .width(editor_width)
                 .height(Length::Percent(100.))
@@ -550,6 +549,18 @@ impl Widget for PinInput {
         if let Some(name) = self.common.name.take() {
             input = input.name(name);
         }
+        let mut focus_observers = self
+            .common
+            .handlers
+            .remove(&EventKind::FocusChanged)
+            .unwrap_or_default();
+        let owner = scope.id();
+        input = input.on(EventKind::FocusChanged, move |event| {
+            if let Event::FocusChanged(value) = event {
+                focused.revise(|old| *old = value);
+            }
+            crate::appearance::observe(&mut focus_observers, owner, event);
+        });
         for kind in [
             EventKind::ValueChanged,
             EventKind::Commit,

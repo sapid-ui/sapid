@@ -57,6 +57,22 @@ Nested viewports use ordinary host scrolling and wheel chaining. There is no aut
 
 `scroller(key)` reuses the same viewport and adds actual named Previous/Next scroll-page buttons. It defaults to horizontal; `.axis(Orientation::Vertical)` changes both button requests and viewport axis. `.area(|area| ...)` configures dimensions, appearance, refs, observation callbacks, and other ScrollArea properties; the Scroller owns its axis. Buttons derive native disabled boundaries from actual metrics and page by one measured client viewport. No route or carousel selection state is implied.
 
+Controls are compact arrows overlaid inside a relative frame, with full accessible
+action names. `control_size(20..=64)` configures their square size in CSS pixels.
+An unavailable boundary control is disabled, transparent and ignores pointer
+hits, keeping the first/last card readable.
+`scroll_step(1..=100000)` selects a fixed distance instead of a measured page.
+Non-finite or out-of-range values fail before construction. `previous_icon` and
+`next_icon` replace passive content without changing action names or the scroll
+controller. `controls(false)` leaves the genuine viewport and handle available.
+`on_ready` runs after the viewport and all requested controls have mounted.
+
+The public preview uses 140px cards with an explicit minimum width. Independent
+documentation examples demonstrate distance/size/icons, vertical scrolling and
+programmatic scrolling with a retained draft editor. Scroller does not infer item
+width or virtualize content. Mouse drag-to-scroll is not implemented; ordinary
+text selection, trackpad, touch, scrollbar dragging and keyboard remain native.
+
 SSR records finite markup and event interests, returns asynchronous Unsupported for physical metrics queries, and invents no measurements. Browser hydration adopts the same viewport/content nodes; subsequent real observations supply metrics.
 
 ## Evidence
@@ -67,3 +83,11 @@ SSR records finite markup and event interests, returns asynchronous Unsupported 
 - Shared Apace: actual client/content/offset query test and actual queued viewport-only keyboard/nested-editor test pass.
 - Sapid: 8 integration tests and one ordered-clamping unit test pass, including fractional destinations, live presentation/axes, timer retirement, invalid-setting recovery, and configuration updates without reentrant physical queries; native 2 tests cover four themes with actual geometry, ordered assignments, descendant editor identity, real Scroller buttons, and disabled end boundaries.
 - `examples/web/scroll-area-acceptance.js`: 9 passing suites on Chromium 148.0.7778.96 against unified Web6, including the final four-theme fixture. Real CSR/hydration checks cover actual metrics and page boundaries, Arrow/Page/Home/End, FIFO edge behavior, nested wheel/keyboard targeting, native descendant editing, actual Scroller buttons, input identity/drafts, callback order, dirty hydration scroll/selection retention, and Owner teardown. Results are saved at `D:/BuildCache/sapid/scroll-area-browser.json`, `scroll-area-browser.log`, and `scroll-area-*.png`; dark and light screenshots were visually inspected.
+
+## Complete policy and position examples
+
+The public page supplies standalone both-axis, five-policy, nested-offset and
+ScrollHandle command examples. Hover/Scroll use an explicit cancellable 300 ms
+browser timer; the nonbrowser timer example settles immediately and does not
+install an OS clock. Never retains keyboard scrolling. See [miscellaneous page
+contracts](misc-pages.md#scrolling-toolbar-and-motion-boundaries).

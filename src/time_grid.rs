@@ -7,7 +7,10 @@ use glory::render::{
     Direction, Event, EventKind, FocusMode, GridCommand, NodeId, Role, SemanticId, Semantics,
     TableMetadata,
 };
-use glory::style::{BorderStyle, Display, Edges, FlexDirection, Length, Position, Style};
+use glory::style::{
+    BorderStyle, Display, Edges, FlexDirection, GridPlacement, GridTrack, GridTracks, Length,
+    Limit, Overflow, Style, WhiteSpace,
+};
 use glory::ui::{Result, WeakScope, Widget};
 use glory::{Cage, Scope, Vary};
 use std::{cell::Cell, rc::Rc};
@@ -328,18 +331,31 @@ impl Widget for TimeGrid {
         };
         let gap = 2.;
         let total = cols as f64 * (width + gap) - gap;
+        let minimum = cols as f64
+            * (if format.cycle == crate::HourCycle::H12 {
+                72.
+            } else {
+                52.
+            } + gap)
+            - gap;
         let base = Style::new()
             .display(Display::Flex)
             .flex_direction(FlexDirection::Column)
             .gap(gap)
-            .width(Length::Px(total));
+            .width(Length::Percent(100.))
+            .max_width(Limit::Px(total))
+            .min_width(Length::Px(0.))
+            .overflow_x(Overflow::Auto);
         let (classes, appearance) = self.common.appearance(scope, "sapid-time-grid", base);
         let style = scope.bond(move || {
             let mut s = appearance.get();
             s.display.get_or_insert(Display::Flex);
             s.flex_direction.get_or_insert(FlexDirection::Column);
             s.gap.get_or_insert(gap);
-            s.width.get_or_insert(Length::Px(total));
+            s.width.get_or_insert(Length::Percent(100.));
+            s.max_width.get_or_insert(Limit::Px(total));
+            s.min_width.get_or_insert(Length::Px(0.));
+            s.overflow_x.get_or_insert(Overflow::Auto);
             s
         });
         let root = self.common.node_ref.unwrap_or_else(|| scope.cage(None));
@@ -409,8 +425,11 @@ impl Widget for TimeGrid {
                 .role(Role::Row)
                 .style(
                     Style::new()
-                        .position(Position::Relative)
-                        .width(Length::Px(total))
+                        .display(Display::Grid)
+                        .grid_columns(GridTracks::Tracks(vec![GridTrack::Fr(1.); cols]))
+                        .gap(gap)
+                        .width(Length::Percent(100.))
+                        .min_width(Length::Px(minimum))
                         .height(Length::Px(height)),
                 )
                 .node_ref(rr)
@@ -430,10 +449,12 @@ impl Widget for TimeGrid {
                     .class("sapid-time-cell")
                     .style(
                         Style::new()
-                            .position(Position::Absolute)
-                            .left(Length::Px(physical as f64 * (width + gap)))
-                            .top(Length::Px(0.))
-                            .width(Length::Px(width))
+                            .grid_column(GridPlacement::At {
+                                start: physical as u16 + 1,
+                                span: 1,
+                            })
+                            .grid_row(GridPlacement::At { start: 1, span: 1 })
+                            .min_width(Length::Px(0.))
                             .height(Length::Px(height)),
                     )
                     .semantics(scope.bond(move || {
@@ -478,7 +499,9 @@ impl Widget for TimeGrid {
                         .style(scope.bond(move || {
                             let snap = accepted.get();
                             let mut style = Style::new()
-                                .width(Length::Px(width))
+                                .width(Length::Percent(100.))
+                                .min_width(Length::Px(0.))
+                                .white_space(WhiteSpace::NoWrap)
                                 .height(Length::Px(height))
                                 .padding(Edges::all(0.));
                             if themed {
@@ -561,7 +584,18 @@ impl Widget for TimeGrid {
                 if let Some(at) = s.intent.take()
                     && let Some(scope) = s.weak.upgrade()
                 {
-                    composite::focus_node(&scope, s.references[at].get())?;
+                    let target = s.references[at].get();
+                    composite::focus_node(&scope, target)?;
+                    if let Some(target) = target
+                        && scope.capabilities()?.scroll
+                    {
+                        match scope.action(glory::render::Action::ScrollIntoView(target)) {
+                            Ok(())
+                            | Err(glory::ui::Error::Render(glory::render::Error::Unsupported(_))) =>
+                                {}
+                            Err(error) => return Err(error),
+                        }
+                    }
                 }
                 Ok(())
             })();

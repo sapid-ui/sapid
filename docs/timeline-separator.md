@@ -75,3 +75,13 @@ passed with zero console/page errors. Four hydrated full-page screenshots are
 under `D:/BuildCache/sapid/timeline-{blue|green}-{light|dark}-hydrate.png`. Native
 line dimensions, identity and teardown passed across all four themes; the
 AccessKit separator orientation/no-action regression passed as well.
+
+## Labelled and patterned separators
+
+`SeparatorVariant::{Solid,Dashed,Dotted}` selects actual finite line paint.
+`.label(text)` and `.label_position(SeparatorLabelPosition::{Start,Center,End})`
+compose horizontal text with decorative lines in a generic wrapper. The labelled
+composition does not assign the passive separator role to a node with children.
+Vertical labels are rejected. Labels are nonempty, at most 256 UTF-8 bytes and
+exclude NUL and line separators; rejected updates retain the accepted text and
+recover in place. See [the complete examples and acceptance boundaries](misc-pages.md).

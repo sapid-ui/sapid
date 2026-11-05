@@ -65,7 +65,7 @@ pub mod translation_form;
 pub mod typography_form;
 pub mod visually_hidden_form;
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(all(target_arch = "wasm32", not(feature = "public-showcase")))]
 mod browser {
     use crate::form::State;
     use glory::web::WebApp;
@@ -378,14 +378,46 @@ pub mod schedule_form;
 pub mod schedule_timeline_form;
 pub mod showcase;
 pub mod showcase_api;
+mod showcase_button_docs;
+mod showcase_carousel_docs;
 pub mod showcase_catalog;
+mod showcase_choice_docs;
+mod showcase_color_docs;
+mod showcase_color_input_docs;
+mod showcase_combobox_docs;
 mod showcase_composite_docs;
+mod showcase_data_display_docs;
+mod showcase_data_input_docs;
+mod showcase_date_picker_docs;
+mod showcase_date_time_picker_docs;
+mod showcase_dropzone_docs;
+mod showcase_editor_docs;
 pub mod showcase_examples;
+mod showcase_feedback_docs;
+mod showcase_geometry_docs;
+mod showcase_heatmap_docs;
 pub mod showcase_home;
 pub mod showcase_host;
+mod showcase_layout_docs;
+mod showcase_menu_docs;
 mod showcase_menubar;
+mod showcase_mini_calendar_docs;
 mod showcase_navigation_docs;
+mod showcase_navigation_extra_docs;
+mod showcase_overlay_docs;
+mod showcase_password_docs;
+mod showcase_period_input_docs;
+mod showcase_pin_docs;
+mod showcase_range_slider_docs;
+mod showcase_scroller_docs;
+mod showcase_select_docs;
 mod showcase_shell;
+mod showcase_slider_docs;
+mod showcase_text_docs;
+mod showcase_typography_docs;
+pub use showcase_shell::viewport::demo as shell_window;
+mod showcase_transition_docs;
+mod showcase_window_docs;
 pub mod time_picker_form;
 
 pub mod focus_scope_form;
@@ -402,3 +434,10 @@ pub mod themes;
 pub mod theme_studio;
 
 pub mod showcase_navigation;
+
+mod showcase_misc_docs;
+
+mod showcase_chart_docs;
+mod showcase_dates_docs;
+mod showcase_extension_docs;
+mod showcase_schedule_docs;

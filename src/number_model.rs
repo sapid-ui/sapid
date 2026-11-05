@@ -15,6 +15,7 @@ pub enum NumberError {
     TooManyFractionDigits,
     OutsideDecimalDomain,
     InvalidRange,
+    OutsideRange,
     InvalidStep,
     Incomplete,
 }
@@ -27,6 +28,7 @@ impl fmt::Display for NumberError {
             Self::TooManyFractionDigits => "decimal scale exceeds 18 digits",
             Self::OutsideDecimalDomain => "number exceeds the exact decimal domain",
             Self::InvalidRange => "number minimum exceeds maximum",
+            Self::OutsideRange => "number is outside the configured range",
             Self::InvalidStep => "number steps must be positive",
             Self::Incomplete => "number input is incomplete",
         })

@@ -1,27 +1,23 @@
 param()
+. "$PSScriptRoot/local-build-paths.ps1"
+
 $ErrorActionPreference='Stop'
 $projectRoot=Split-Path -Parent $PSScriptRoot
-$exportRoot=if($env:SAPID_EXPORT_ROOT){$env:SAPID_EXPORT_ROOT}else{'D:/BuildCache/sapid/export-check'}
-$exportTarget=if($env:SAPID_EXPORT_TARGET){$env:SAPID_EXPORT_TARGET}else{'D:/BuildCache/sapid/export-target'}
-$sourcePath=if($env:SAPID_STUDIO_EXPORT){$env:SAPID_STUDIO_EXPORT}else{'D:/BuildCache/sapid/studio-export.rs'}
-foreach($location in @($exportRoot,$exportTarget,$sourcePath)) {
-    if([IO.Path]::GetFullPath($location) -notmatch '^D:\\BuildCache\\sapid(?:\\|$)') {
-        throw 'Theme export artifacts must stay under D:/BuildCache/sapid'
-    }
-}
+$exportRoot=if($env:SAPID_EXPORT_ROOT){$env:SAPID_EXPORT_ROOT}else{"$PSScriptRoot/../target/verification/sapid/export-check"}
+$exportTarget=if($env:SAPID_EXPORT_TARGET){$env:SAPID_EXPORT_TARGET}else{"$PSScriptRoot/../target/verification/sapid/export-target"}
+$sourcePath=if($env:SAPID_STUDIO_EXPORT){$env:SAPID_STUDIO_EXPORT}else{"$PSScriptRoot/../target/verification/sapid/studio-export.rs"}
 if (-not (Test-Path -LiteralPath $sourcePath)) { throw 'Run theme-studio-browser.cjs to copy a real export first.' }
 $saved=@{}
 $names=@('CARGO_HOME','CARGO_TARGET_DIR','CARGO_PROFILE_DEV_DEBUG','CARGO_INCREMENTAL','TEMP','TMP','CARGO_BUILD_JOBS')
 foreach($name in $names){$saved[$name]=[Environment]::GetEnvironmentVariable($name,'Process')}
 try {
-    if(-not $env:CARGO_HOME){$env:CARGO_HOME='D:/BuildCache/glory-semantic-ui/cargo'}
-    if([IO.Path]::GetFullPath($env:CARGO_HOME) -notmatch '^D:\\BuildCache\\[^\\]+') {throw 'CARGO_HOME must be under D:/BuildCache'}
-    $env:CARGO_TARGET_DIR=$exportTarget
+
+    $env:CARGO_TARGET_DIR = Get-NormalCargoTarget
     $env:CARGO_PROFILE_DEV_DEBUG='0'
     $env:CARGO_INCREMENTAL='0'
     if(-not $env:CARGO_BUILD_JOBS){$env:CARGO_BUILD_JOBS='1'}
     $env:TEMP=Join-Path $exportRoot 'tmp'
-    $env:TMP=$env:TEMP
+
     New-Item -ItemType Directory -Force -Path "$exportRoot/src",$env:TEMP | Out-Null
     $sapidPath=$projectRoot.Replace('\','/')
     $gloryPath=(Join-Path (Split-Path -Parent $projectRoot) 'glory/crates/glory').Replace('\','/')

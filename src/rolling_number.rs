@@ -171,7 +171,30 @@ impl Widget for RollingNumber {
         root.show_in(scope)?;
         let area = scope.child_in(reference.try_get()?.ok_or(glory::ui::Error::Gone)?)?;
         crate::visually_hidden().content(formatted).show_in(&area)?;
-        let line = 24.;
+        let typography = if self.common.unstyled {
+            Style::new()
+        } else {
+            self.common.theme.label(self.common.size)
+        };
+        let font_ratio = match (typography.font_size, typography.line_height) {
+            (Some(size), Some(line)) if size > 0. => line / size,
+            _ => 1.55,
+        };
+        let explicit = self.common.style.clone();
+        let line = scope.bond(move || {
+            explicit.with(|style| {
+                style
+                    .line_height
+                    .unwrap_or_else(|| {
+                        style
+                            .font_size
+                            .map_or(24_f64.max(typography.line_height.unwrap_or(24.)), |size| {
+                                size * font_ratio
+                            })
+                    })
+                    .clamp(0., 65_536.)
+            })
+        });
         let keys = scope
             .bond(move || formatted.with(|value| (0..value.chars().count()).collect::<Vec<_>>()));
         glory::ui::view()
@@ -215,7 +238,7 @@ impl Widget for RollingNumber {
                                                 kind: TranslationKind::To {
                                                     target: TranslationOffset::new(
                                                         0.,
-                                                        -line
+                                                        -line.get()
                                                             * f64::from(
                                                                 character
                                                                     .get()
@@ -236,13 +259,13 @@ impl Widget for RollingNumber {
                                     });
                                     glory::ui::view()
                                         .class("sapid-rolling-number-digit")
-                                        .style(
+                                        .style(scope.bond(move || {
                                             Style::new()
                                                 .width(Length::Ch(1.))
-                                                .height(Length::Px(line))
+                                                .height(Length::Px(line.get()))
                                                 .overflow_x(Overflow::Hidden)
-                                                .overflow_y(Overflow::Hidden),
-                                        )
+                                                .overflow_y(Overflow::Hidden)
+                                        }))
                                         .fill(
                                             glory::ui::view()
                                                 .class("sapid-rolling-number-reel")
@@ -253,13 +276,21 @@ impl Widget for RollingNumber {
                                                         .map(move |number| {
                                                             glory::ui::text()
                                                                 .content(number.to_string())
-                                                                .style(Style {
-                                                                    display: Some(Display::Block),
-                                                                    line_height: Some(line),
-                                                                    ..Style::new()
-                                                                        .width(Length::Ch(1.))
-                                                                        .height(Length::Px(line))
-                                                                })
+                                                                .style(scope.bond(move || {
+                                                                    Style {
+                                                                        display: Some(
+                                                                            Display::Block,
+                                                                        ),
+                                                                        line_height: Some(
+                                                                            line.get(),
+                                                                        ),
+                                                                        ..Style::new()
+                                                                            .width(Length::Ch(1.))
+                                                                            .height(Length::Px(
+                                                                                line.get(),
+                                                                            ))
+                                                                    }
+                                                                }))
                                                         })
                                                         .collect::<Vec<_>>(),
                                                 ),
@@ -272,10 +303,10 @@ impl Widget for RollingNumber {
                                     glory::ui::text()
                                         .class("sapid-rolling-number-literal")
                                         .content(scope.bond(move || character.get().to_string()))
-                                        .style(Style {
-                                            line_height: Some(line),
-                                            ..Style::new().height(Length::Px(line))
-                                        })
+                                        .style(scope.bond(move || Style {
+                                            line_height: Some(line.get()),
+                                            ..Style::new().height(Length::Px(line.get()))
+                                        }))
                                         .show_in(scope)
                                 })
                             })

@@ -165,3 +165,136 @@ fn native_mobile_layer_rejection_keeps_desktop_navigation_parent_and_accepted_st
     app.clear().unwrap();
     assert!(app.tree().is_empty());
 }
+
+fn bounds(app: &App, node: NodeId) -> glory::render::Rect {
+    let QueryValue::Bounds(rect) = query(app, Query::Bounds(node)) else {
+        panic!("bounds")
+    };
+    rect
+}
+fn scroll(app: &App, node: NodeId) -> glory::render::ScrollMetrics {
+    let QueryValue::ScrollMetrics(value) = query(app, Query::ScrollMetrics(node)) else {
+        panic!("scroll")
+    };
+    value
+}
+#[test]
+fn viewport_regions_and_middle_navigation_section_scroll_independently_in_four_themes() {
+    for theme in [
+        sapid::Theme::blue_light(),
+        sapid::Theme::blue_dark(),
+        sapid::Theme::green_light(),
+        sapid::Theme::green_dark(),
+    ] {
+        let host = WindowApp::new();
+        host.renderer().set_viewport(900, 500, 1.).unwrap();
+        let app = host.app();
+        let section = app.scope().cage(None);
+        let editor = app.scope().cage(None);
+        let visible = app.scope().cage(true);
+        let compact = app.scope().cage(false);
+        host.mount(
+            app_shell("native-viewport")
+                .theme(theme)
+                .viewport()
+                .breakpoint(400.)
+                .header_style(
+                    compact.map(|v| Style::new().height(Length::Px(if *v { 44. } else { 68. }))),
+                )
+                .header(|_| glory::ui::text().content("Fixed header"))
+                .sidebar(sidebar("section-nav").width(180.).content(move |_| {
+                    glory::ui::group().fill((
+                        sapid::shell_section().fill(glory::ui::text().content("Collections")),
+                        sapid::shell_section()
+                            .name("Scrollable collections")
+                            .scrollable(true)
+                            .node_ref(section)
+                            .fill(
+                                glory::ui::view().style(
+                                    Style::new()
+                                        .height(Length::Px(1000.))
+                                        .min_height(Length::Px(1000.)),
+                                ),
+                            ),
+                        sapid::shell_section()
+                            .class("native-nav-bottom")
+                            .fill(glory::ui::button().label("New folder")),
+                    ))
+                }))
+                .main(move |_| {
+                    glory::ui::view()
+                        .style(
+                            Style::new()
+                                .height(Length::Px(1400.))
+                                .min_height(Length::Px(1400.)),
+                        )
+                        .fill(
+                            glory::ui::input()
+                                .name("Kept note")
+                                .value("Original note")
+                                .node_ref(editor),
+                        )
+                })
+                .aside_width(160.)
+                .aside_visible(visible)
+                .aside(|_| glory::ui::text().content("Details"))
+                .footer_visible(visible)
+                .footer(|_| glory::ui::text().content("Saved")),
+        )
+        .unwrap();
+        app.settle(16).unwrap();
+        let root = class(app, "sapid-app-shell");
+        let header = class(app, "sapid-shell-header");
+        let footer = class(app, "sapid-shell-footer");
+        let main = class(app, "sapid-shell-main");
+        let bottom = class(app, "native-nav-bottom");
+        let section = section.get().unwrap();
+        let editor = editor.get().unwrap();
+        let identity = host
+            .renderer()
+            .engine_id(editor, glory::html::Part::Main)
+            .unwrap();
+        let before_header = bounds(app, header);
+        let before_footer = bounds(app, footer);
+        let before_bottom = bounds(app, bottom);
+        let before_main = bounds(app, main);
+        assert!((bounds(app, root).height - 500.).abs() < 1.);
+        assert!((before_header.height - 68.).abs() < 1., "{before_header:?}");
+        assert!(scroll(app, main).content_height > scroll(app, main).viewport_height + 800.);
+        assert!(scroll(app, section).content_height > scroll(app, section).viewport_height + 400.);
+        for node in [main, section] {
+            app.dispatch(
+                node,
+                Event::ScrollKeyboard {
+                    from: node,
+                    command: glory::render::ScrollCommand {
+                        axis: Orientation::Vertical,
+                        movement: glory::render::ScrollMovement::PagePositive,
+                    },
+                },
+            )
+            .unwrap();
+        }
+        app.settle(16).unwrap();
+        assert!(scroll(app, main).y > 0.);
+        assert!(scroll(app, section).y > 0.);
+        assert_eq!(bounds(app, header), before_header);
+        assert_eq!(bounds(app, footer), before_footer);
+        assert_eq!(bounds(app, bottom), before_bottom);
+        visible.revise(|v| *v = false);
+        compact.revise(|v| *v = true);
+        app.settle(16).unwrap();
+        let after = bounds(app, main);
+        assert!(after.width > before_main.width + 150.);
+        assert!(after.height > before_main.height + 20.);
+        assert!((bounds(app, header).height - 44.).abs() < 1.);
+        assert_eq!(
+            host.renderer()
+                .engine_id(editor, glory::html::Part::Main)
+                .unwrap(),
+            identity
+        );
+        app.clear().unwrap();
+        assert!(app.tree().is_empty());
+    }
+}

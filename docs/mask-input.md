@@ -40,6 +40,14 @@ lengths, without printing the value. Empty raw values display an empty editor;
 partial nonempty values include literals up to the next unfilled slot. For
 `(###) ###`, raw `123` displays `(123) `.
 
+`placeholder` accepts static or reactive bounded single-line hint text. It stays
+independent from raw/display values and the accessible label. Updating only a
+hint preserves the editor, raw value, input revision, selection and composition.
+Current enabled/Field readonly state is also checked before edit/commit callbacks
+and generic observers within the same host packet. The public page separates
+telephone/date-shaped/code patterns, raw/display values, replacement/deletion/
+paste, and controlled/unavailable states into four independently compiled sources.
+
 Whole unseparated raw paste takes precedence when it is itself valid. Otherwise
 the parser consumes the pattern's explicit formatting literals. This matters for
 digit or alphanumeric literals: `+1 (###) ###` accepts raw `123456` or formatted

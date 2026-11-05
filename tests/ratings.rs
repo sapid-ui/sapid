@@ -28,6 +28,99 @@ fn checked(app: &App, members: &[NodeId]) -> Vec<bool> {
         })
         .collect()
 }
+fn triangle(fill: Color) -> glory::render::GraphicProps {
+    use glory::render::{GraphicPoint as Point, PathCommand as Path};
+    glory::render::GraphicProps {
+        width: 10.,
+        height: 10.,
+        fill: Some(fill),
+        commands: vec![
+            Path::Move(Point::new(0., 10.)),
+            Path::Line(Point::new(5., 0.)),
+            Path::Line(Point::new(10., 10.)),
+            Path::Close,
+        ],
+        ..Default::default()
+    }
+}
+fn drawings(app: &App) -> Vec<(NodeId, glory::render::GraphicProps)> {
+    let tree = app.tree();
+    let mut result = Vec::new();
+    let mut pending: Vec<_> = tree.roots().iter().rev().copied().collect();
+    while let Some(id) = pending.pop() {
+        let node = tree.node(id).unwrap();
+        if let Props::Graphic(drawing) = node.descriptor.view().props {
+            result.push((id, drawing.clone()));
+        }
+        pending.extend(node.children.iter().rev().copied());
+    }
+    result
+}
+#[test]
+fn custom_drawings_follow_accepted_half_values_in_interactive_and_display_ratings() {
+    let filled = Color(220, 30, 50, 255);
+    let empty = Color(70, 80, 90, 255);
+    for display in [false, true] {
+        let app = App::memory();
+        let widget = rating("custom-symbols")
+            .precision(RatingPrecision::Half)
+            .default_value(2.5)
+            .empty_symbol(triangle(empty))
+            .filled_symbol(triangle(filled));
+        app.mount(if display {
+            widget.display_only()
+        } else {
+            widget
+        })
+        .unwrap();
+        let before = drawings(&app);
+        assert_eq!(before.len(), 10);
+        for (index, (_, drawing)) in before.iter().enumerate() {
+            assert_eq!(drawing.commands.len(), 4);
+            assert_eq!(drawing.fill, Some(if index < 5 { filled } else { empty }));
+            assert!(drawing.alternative.is_none());
+        }
+        if display {
+            assert!(radios(&app).is_empty());
+        } else {
+            app.dispatch(radios(&app)[5], Event::CheckedChanged(true))
+                .unwrap();
+            let after = drawings(&app);
+            assert_eq!(
+                before.iter().map(|(id, _)| *id).collect::<Vec<_>>(),
+                after.iter().map(|(id, _)| *id).collect::<Vec<_>>()
+            );
+            assert_eq!(after[5].1.fill, Some(filled));
+        }
+    }
+}
+#[test]
+fn malformed_animated_or_named_symbols_fail_before_mounting_any_rating_controls() {
+    use glory::render::{GraphicAnimation, GraphicTransition, PathCommand};
+    let valid = triangle(Color(1, 2, 3, 255));
+    let mut nan = valid.clone();
+    nan.width = f64::NAN;
+    let mut excessive = valid.clone();
+    excessive.commands = vec![PathCommand::Close; 257];
+    let mut animated = valid.clone();
+    animated.animation = Some(GraphicAnimation::Rotate {
+        period_millis: 1000,
+    });
+    let mut transition = valid.clone();
+    transition.transition = Some(GraphicTransition {
+        duration_millis: 100,
+    });
+    let mut named = valid;
+    named.alternative = Some("Duplicate name".into());
+    for drawing in [nan, excessive, animated, transition, named] {
+        let app = App::memory();
+        assert!(
+            app.mount(rating("bad-symbol").filled_symbol(drawing))
+                .is_err()
+        );
+        assert!(app.tree().is_empty());
+    }
+}
 #[test]
 fn half_values_are_real_radios_with_one_selection_and_zero_gap_between_halves() {
     let app = App::memory();

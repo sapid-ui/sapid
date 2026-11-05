@@ -8,6 +8,13 @@ Unicode or locale rules. Names are nonempty and at most 256 UTF-8 bytes, fallbac
 text nonempty and at most 64 bytes. Reactive invalid values report an error and
 retain the previous accepted presentation. Business sources remain read-only.
 
+`fallback_icon(Icon)` selects a passive vector placeholder instead of text. A
+later `fallback(text)` selects text again. It uses the same current-request
+visibility rules as the text fallback and retains its drawing through load,
+failure and source changes. The named wrapper supplies the person description;
+the fallback drawing and optional photo do not repeat that alternative.
+See `data-display-pages.md` for public photo, failure/recovery and group examples.
+
 `avatar_group(namespace).avatar(key, avatar(...))` preserves source order,
 requires stable explicit keys, and accepts at most 64 configured members. The
 default displays four members; `max_visible(1..=64)` changes that limit. Additional
@@ -108,3 +115,11 @@ original declaration before cascade overrides. Native raster tests verify real
 decoded image pixels, centered letterboxing, cover cropping, natural-size and
 scale-down behavior, resizing, clearing and stable engine identity. This does
 not by itself provide application image completion events.
+
+BackgroundImage defaults to responsive 100% width with zero minimum width and a
+100% maximum width. Explicit width/height still configure its box; an explicit
+max-width declaration can change the cap. The public preview uses a bundled
+original mountain illustration with a dark translucent foreground layer and
+white text. Independent compiled examples cover Cover/Contain, reactive sources,
+decode-failure fallback and a retained foreground action. Image content remains
+centered; object-position customization is outside the shared finite contract.

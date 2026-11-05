@@ -50,6 +50,105 @@ fn explicit_text_avatar_has_name_content_and_no_forged_image_role() {
     assert!(html.contains("&lt;&amp;&gt;"));
     assert!(!html.contains("<img"));
 }
+
+#[test]
+fn vector_fallback_tracks_current_photo_completion_without_replacing_the_drawing() {
+    use glory::render::{Event, ImageStatus};
+    for theme in [
+        Theme::blue_light(),
+        Theme::blue_dark(),
+        Theme::green_light(),
+        Theme::green_dark(),
+    ] {
+        let app = App::memory();
+        let source = app.scope().cage("first.png".to_owned());
+        app.mount(
+            avatar("Ava Patel")
+                .theme(theme.clone())
+                .fallback_icon(sapid::Icon::Info)
+                .source(source),
+        )
+        .unwrap();
+        let root = find(&app, "sapid-avatar");
+        let image = find(&app, "sapid-avatar-image");
+        let icon = find(&app, "sapid-avatar-fallback");
+        assert!(
+            matches!(app.tree().node(icon).unwrap().descriptor.view().props, Props::Graphic(p) if p.alternative.is_none() && p.stroke.as_ref().unwrap().color == theme.accent_text)
+        );
+        app.dispatch(
+            image,
+            Event::ImageStatus {
+                revision: 1,
+                status: ImageStatus::Loaded,
+            },
+        )
+        .unwrap();
+        app.flush().unwrap();
+        assert_eq!(
+            app.tree()
+                .node(icon)
+                .unwrap()
+                .descriptor
+                .view()
+                .style
+                .display,
+            Some(Display::None)
+        );
+        source.revise(|v| *v = "second.png".to_owned());
+        app.flush().unwrap();
+        app.dispatch(
+            image,
+            Event::ImageStatus {
+                revision: 1,
+                status: ImageStatus::Loaded,
+            },
+        )
+        .unwrap();
+        app.flush().unwrap();
+        assert_eq!(
+            app.tree()
+                .node(icon)
+                .unwrap()
+                .descriptor
+                .view()
+                .style
+                .display,
+            Some(Display::Block)
+        );
+        app.dispatch(
+            image,
+            Event::ImageStatus {
+                revision: 2,
+                status: ImageStatus::Failed,
+            },
+        )
+        .unwrap();
+        app.flush().unwrap();
+        assert_eq!(find(&app, "sapid-avatar-fallback"), icon);
+        assert_eq!(find(&app, "sapid-avatar"), root);
+        assert_eq!(
+            app.tree()
+                .node(root)
+                .unwrap()
+                .descriptor
+                .view()
+                .name
+                .as_deref(),
+            Some("Ava Patel")
+        );
+        app.clear().unwrap();
+        assert_eq!(app.stats().nodes, 0);
+        assert_eq!(app.stats().handlers, 0);
+    }
+    let app = App::memory();
+    app.mount(
+        avatar("Ava")
+            .fallback_icon(sapid::Icon::Info)
+            .fallback("AP"),
+    )
+    .unwrap();
+    assert_eq!(fallback(&app, app.tree().roots()[0]), "AP");
+}
 #[test]
 fn reactive_sources_reject_invalid_values_preserve_identity_and_recover_without_writes() {
     let app = App::memory();

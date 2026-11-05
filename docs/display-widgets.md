@@ -8,7 +8,13 @@ Style declarations. They do not inject HTML, script or adapter options.
 
 `badge().content(source).variant(BadgeVariant::Soft)` is passive text. Soft,
 Solid and Outline use the selected theme's accent/background/foreground/border
-tokens. A badge does not silently become a live status announcement.
+tokens. Dot adds a finite colored marker. `color(Color)` selects a custom color
+with readable foreground, and `left_section`/`right_section` accept finite Icons
+or nonempty single-line text of at most 32 UTF-8 bytes. Plain badges retain their
+Text shape. Rich badges use a boxed passive layout and belong beside intrinsic
+buttons rather than inside their finite phrasing content. A badge does not
+silently become a live status announcement. See `data-display-pages.md` for
+compact sizes, truncation, reactive sections and explicit actions.
 
 `pill().content("Rust").removable("Remove Rust")` has a passive label and a
 separate native button displaying `×` with the supplied accessible action name.

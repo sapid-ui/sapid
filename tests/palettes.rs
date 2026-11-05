@@ -21,7 +21,10 @@ fn shipped_css_resolves_both_definitions_from_the_same_base_and_overrides_as_wid
         }
     }
     rules.push_str("/* END SAPID PALETTES */");
-    assert!(css.contains(&rules), "run cargo run --example palette_css");
+    assert!(
+        css.replace("\r\n", "\n").contains(&rules),
+        "run cargo run --example palette_css"
+    );
 }
 
 #[test]

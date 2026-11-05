@@ -288,6 +288,15 @@ fn caption_can_follow_the_table_and_invalid_spacing_is_rejected() {
     )
     .unwrap();
     assert!(html.find("<caption").unwrap() > html.find("<tbody").unwrap());
+    assert!(html.contains("caption-side:bottom;"));
+    let unstyled = glory::ssr::render(
+        table("unstyled-bottom")
+            .unstyled()
+            .caption("Bottom caption")
+            .caption_side(sapid::TableCaptionSide::Bottom),
+    )
+    .unwrap();
+    assert!(unstyled.contains("caption-side:bottom;"));
     for spacing in [-1.0, f64::NAN] {
         let app = App::memory();
         assert!(

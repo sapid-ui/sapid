@@ -33,3 +33,7 @@ real geometry, stale publication, busy resets, mobile and retained editors.
 The Web9 Chromium 148 run passed all eight four-theme CSR/hydration cases with
 no errors (`D:/BuildCache/sapid/navigation-progress-browser.json`). The combined
 Rust/native/Web gate is `D:/BuildCache/sapid/gate-snapshot9.log`.
+
+## Runnable documentation examples
+
+See [Extension pages](extension-pages.md) for the independent complete-source examples, application ownership rules and current acceptance boundaries.

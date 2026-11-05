@@ -3,13 +3,14 @@ use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
 
 use glory::render::{
     ChoiceCommand, ComboboxKind, Event, EventKind, FocusMode, FormControl, Layer, LayerFocus,
-    LayerPlacement, Navigation, OptionSemantics, Orientation, PopupKind, Props, Role, SelectEntry,
+    LayerPlacement, Navigation, OptionSemantics, Orientation, PopupKind, Role, SelectEntry,
     SelectGroup, SelectProps, SemanticId, Semantics,
 };
 use glory::style::{
-    BorderStyle, Color, Display, Edges, FlexDirection, Length, Limit, Overflow, Style,
+    Align, BorderStyle, Color, Display, Edges, FlexDirection, Justify, Length, Limit, Overflow,
+    PointerEvents, Position, Style, WhiteSpace,
 };
-use glory::ui::{Result, Widget};
+use glory::ui::{Children, IntoChildren, Result, Widget};
 use glory::{Cage, Scope, Vary};
 
 use crate::appearance::{Common, common_methods, configure};
@@ -51,6 +52,13 @@ pub enum SelectCheckPosition {
     Left,
     Right,
 }
+/// Read-only accepted values for passive content inside the real trigger Button.
+#[derive(Clone)]
+pub struct SelectTriggerContext {
+    pub value: Vary<Option<String>>,
+    pub label: Vary<String>,
+    pub open: Vary<bool>,
+}
 pub struct Select {
     common: Common,
     key: String,
@@ -72,6 +80,8 @@ pub struct Select {
     check_position: SelectCheckPosition,
     max_dropdown_height: f64,
     popup_placement: glory::render::AnchorPlacement,
+    trigger_content: Option<Box<dyn FnMut(SelectTriggerContext) -> Children>>,
+    empty_message: String,
 }
 pub fn select(key: impl Into<String>) -> Select {
     Select {
@@ -94,14 +104,32 @@ pub fn select(key: impl Into<String>) -> Select {
         option_content: BTreeMap::new(),
         check_position: SelectCheckPosition::Left,
         max_dropdown_height: 288.0,
-        popup_placement: glory::render::AnchorPlacement::new(
-            glory::render::AnchorSide::Bottom,
-            glory::render::AnchorAlign::Start,
-        ),
+        trigger_content: None,
+        empty_message: "No options available".into(),
+        popup_placement: glory::render::AnchorPlacement {
+            match_width: true,
+            ..glory::render::AnchorPlacement::new(
+                glory::render::AnchorSide::Bottom,
+                glory::render::AnchorAlign::Start,
+            )
+        },
     }
 }
 impl Select {
     common_methods!();
+    /// Customize passive trigger content without replacing its intrinsic Button,
+    /// listbox relationships, focus handling or accepted state.
+    pub fn trigger_content<W: Widget>(
+        mut self,
+        mut factory: impl FnMut(SelectTriggerContext) -> W + 'static,
+    ) -> Self {
+        self.trigger_content = Some(Box::new(move |context| factory(context).into_children()));
+        self
+    }
+    pub fn empty_message(mut self, value: impl Into<String>) -> Self {
+        self.empty_message = value.into();
+        self
+    }
     pub fn label(mut self, label: impl Into<Vary<String>>) -> Self {
         self.common.name = Some(label.into());
         self
@@ -396,11 +424,19 @@ fn validate(config: &SelectProps, value: &Option<String>) -> Result {
 
 impl Widget for Select {
     fn build(&mut self, scope: &Scope) -> Result {
+        if self.trigger_content.is_some() && self.common.name.is_none() && self.field.is_none() {
+            return Err(glory::render::Error::InvalidProps(
+                "custom select trigger requires an explicit name or Field association",
+            )
+            .into());
+        }
         if self.count > 1024
             || self.entries.len() > 1056
             || self.option_content.len() > 1024
             || self.placeholder.len() > 256
             || self.placeholder.contains(['\0', '\r'])
+            || self.empty_message.len() > 1024
+            || self.empty_message.contains(['\0', '\r'])
             || !self.max_dropdown_height.is_finite()
             || !(80.0..=4096.0).contains(&self.max_dropdown_height)
         {
@@ -553,18 +589,67 @@ impl Widget for Select {
             };
             Some(value)
         });
-        let base = self.common.theme.control(self.common.size);
+        let own_label_style = self.common.style.clone();
+        let label_enabled = enabled.clone();
+        let muted = self.common.theme.muted;
+        let themed = !self.common.unstyled;
+        let label_style = scope.bond(move || {
+            let mut style = Style {
+                shrink: Some(1.),
+                ..Style::new()
+                    .min_width(Length::Px(0.))
+                    .white_space(WhiteSpace::NoWrap)
+                    .overflow_x(Overflow::Hidden)
+            };
+            if themed && label_enabled.get() && selected.with(Option::is_none) {
+                style.color = Some(own_label_style.with(|own| own.color).unwrap_or(muted));
+            }
+            style
+        });
+        let content = crate::input_actions::frame(scope, &self.common, "sapid-select-shell")?;
+        let style = crate::input_actions::display_style(
+            scope,
+            &self.common,
+            enabled.clone(),
+            trigger_metadata.into(),
+            if self.clearable { 2 } else { 1 },
+        );
+        self.common.style = scope
+            .bond(move || {
+                let mut style = style.get();
+                style.align.get_or_insert(Align::Center);
+                style.justify.get_or_insert(Justify::Start);
+                style.display.get_or_insert(Display::Flex);
+                style.position.get_or_insert(Position::Relative);
+                style
+            })
+            .into();
         let mut trigger = configure!(
             self.common,
             glory::ui::button(),
             scope,
             "sapid-select",
-            base
+            Style::new()
         )
-        .label(label)
+        .label("")
         .enabled(enabled.clone())
         .semantics(trigger_metadata)
         .node_ref(trigger_ref);
+        trigger = if let Some(mut factory) = self.trigger_content.take() {
+            trigger.fill(factory(SelectTriggerContext {
+                value: selected.into(),
+                label: label.into(),
+                open: visible.clone(),
+            }))
+        } else {
+            trigger.fill(
+                glory::ui::text()
+                    .class("sapid-select-value")
+                    .content(label)
+                    .selectable(false)
+                    .style(label_style),
+            )
+        };
         let loading_state = self.loading.clone();
         let loading_text = scope.bond(move || {
             if loading_state.get() {
@@ -573,10 +658,41 @@ impl Widget for Select {
                 String::new()
             }
         });
+        let side = crate::input_actions::side(&self.common);
+        let arrow_style = Style {
+            shrink: Some(0.),
+            ..Style::new()
+                .display(Display::Block)
+                .pointer_events(PointerEvents::None)
+                .position(Position::Absolute)
+                .width(Length::Px(16.))
+                .height(Length::Px(16.))
+                .right(Length::Px((side - 16.) / 2.))
+                .top(Length::Percent(50.))
+                .margin(Edges {
+                    top: -8.,
+                    bottom: 0.,
+                    left: 0.,
+                    right: 0.,
+                })
+        };
+        let arrow_loading = self.loading.clone();
+        trigger = trigger.fill(
+            crate::input_actions::glyph(crate::Icon::ChevronDown, self.common.theme.muted)
+                .class("sapid-select-chevron")
+                .style(scope.bond(move || {
+                    let mut style = arrow_style.clone();
+                    if arrow_loading.get() {
+                        style.display = Some(Display::None);
+                    }
+                    style
+                })),
+        );
         trigger = trigger.fill(
             glory::ui::text()
                 .class("sapid-select-loading")
-                .content(loading_text),
+                .content(loading_text)
+                .style(crate::input_actions::action_style(&self.common, 0)),
         );
         let controller = state.clone();
         let weak = scope.downgrade();
@@ -655,8 +771,6 @@ impl Widget for Select {
             let owner = scope.id();
             trigger = trigger.on(kind, move |event| handlers.emit(owner, event));
         }
-        let root = scope.create(glory::render::Descriptor::new(Props::Group))?;
-        let content = scope.child_in(root)?;
         trigger.show_in(&content)?;
         let panel_label = trigger_id.clone();
         let panel_metadata = metadata.clone();
@@ -691,7 +805,11 @@ impl Widget for Select {
         let mut panel_style = Style::new()
             .display(Display::Flex)
             .flex_direction(FlexDirection::Column)
-            .min_width(Length::Px(180.0))
+            .min_width(Length::Px(if self.popup_placement.match_width {
+                0.
+            } else {
+                180.
+            }))
             .max_height(Limit::Px(self.max_dropdown_height))
             .overflow_y(Overflow::Auto);
         if !self.common.unstyled {
@@ -722,6 +840,16 @@ impl Widget for Select {
             .show_in(&content)?;
         let panel_node = panel_ref.get().ok_or(glory::ui::Error::Gone)?;
         let items_scope = scope.child_in(panel_node)?;
+        if config.options().next().is_none() {
+            glory::ui::text()
+                .class("sapid-select-empty")
+                .content(self.empty_message.clone())
+                .style(Style {
+                    color: Some(self.common.theme.muted),
+                    ..Style::new().padding(Edges::all(8.))
+                })
+                .show_in(&items_scope)?;
+        }
         for entry in config.entries.iter() {
             match entry {
                 SelectEntry::Option(option) => mount_option(
@@ -814,18 +942,33 @@ impl Widget for Select {
             let controller = state.clone();
             let weak = scope.downgrade();
             let editable = state.editable.clone();
-            let can_clear = scope.bond(move || editable.get() && selected.get().is_some());
+            let can_clear = scope.bond(move || editable.get() && selected.with(Option::is_some));
+            let style = crate::input_actions::action_style(&self.common, 1);
             glory::ui::button()
-                .label("Clear selection")
-                .style(if self.common.unstyled {
-                    Style::new()
-                } else {
-                    self.common.theme.control(self.common.size)
-                })
+                .label("")
+                .name("Clear selection")
+                .class("sapid-select-clear")
+                .fill(crate::input_actions::glyph(
+                    crate::Icon::Close,
+                    self.common.theme.muted,
+                ))
+                .style(scope.bond(move || {
+                    let mut style = style.clone();
+                    if selected.with(Option::is_none) {
+                        style.display = Some(Display::None);
+                    }
+                    style
+                }))
                 .enabled(can_clear)
                 .on(EventKind::Activate, move |event| {
                     let Some(scope) = weak.upgrade() else { return };
                     if let Err(error) = controller.choose(None) {
+                        scope.report_error(error);
+                        return;
+                    }
+                    if controller.owner.is_alive()
+                        && let Err(error) = composite::focus_node(&scope, trigger_ref.get())
+                    {
                         scope.report_error(error);
                         return;
                     }
@@ -1054,6 +1197,7 @@ fn mount_option(
 mod tests {
     use super::*;
     use glory::render::NodeId;
+    use glory::render::Props;
     use glory::ui::App;
     fn nodes(app: &App) -> Vec<NodeId> {
         let tree = app.tree();
@@ -1091,6 +1235,105 @@ mod tests {
                         || d.name.as_deref() == Some(key))
             })
             .unwrap()
+    }
+    #[test]
+    fn custom_trigger_content_reads_accepted_state_once_and_retains_real_choice_semantics() {
+        use std::cell::Cell;
+        let app = App::memory();
+        let selected = app.scope().cage(None::<String>);
+        let accept = app.scope().cage(false);
+        let caption = app.scope().cage(None);
+        let calls = Rc::new(Cell::new(0));
+        let mounted = calls.clone();
+        app.mount(
+            select("custom-target")
+                .name("Framework")
+                .placeholder("Choose framework")
+                .value(selected)
+                .on_value_change(move |value| {
+                    if accept.get() {
+                        selected.revise(|old| *old = value)
+                    }
+                })
+                .options([
+                    crate::select_option("glory", "Glory"),
+                    crate::select_option("rust", "Rust"),
+                ])
+                .trigger_content(move |context| {
+                    mounted.set(mounted.get() + 1);
+                    glory::ui::group()
+                        .fill(glory::ui::text().node_ref(caption).content(context.label))
+                }),
+        )
+        .unwrap();
+        let button = trigger(&app);
+        let text = caption.get().unwrap();
+        for accepted in [false, true] {
+            accept.revise(|v| *v = accepted);
+            app.flush().unwrap();
+            for command in [ChoiceCommand::OpenLast, ChoiceCommand::Commit] {
+                app.dispatch(
+                    button,
+                    Event::Choice {
+                        from: button,
+                        command,
+                    },
+                )
+                .unwrap();
+            }
+            let expected = if accepted { "Rust" } else { "Choose framework" };
+            assert!(
+                matches!(app.tree().node(text).unwrap().descriptor.view().props,Props::Text(p)if p.content==expected)
+            );
+        }
+        selected.revise(|v| *v = Some("glory".into()));
+        app.flush().unwrap();
+        assert!(
+            matches!(app.tree().node(text).unwrap().descriptor.view().props,Props::Text(p)if p.content=="Glory")
+        );
+        assert_eq!(calls.get(), 1);
+        assert_eq!(trigger(&app), button);
+        assert_eq!(
+            app.tree()
+                .node(button)
+                .unwrap()
+                .descriptor
+                .view()
+                .semantics
+                .as_ref()
+                .unwrap()
+                .combobox,
+            Some(ComboboxKind::Select)
+        );
+        app.clear().unwrap();
+        assert_eq!(app.stats().nodes, 0);
+        assert_eq!(app.runtime_stats().tasks, 0);
+    }
+    #[test]
+    fn empty_listbox_has_a_bounded_passive_message_and_custom_trigger_rejects_nested_controls() {
+        let app = App::memory();
+        app.mount(
+            select("empty-target")
+                .default_open(true)
+                .empty_message("No frameworks available"),
+        )
+        .unwrap();
+        assert!(nodes(&app).into_iter().any(|id|matches!(app.tree().node(id).unwrap().descriptor.view().props,Props::Text(p)if p.content=="No frameworks available")));
+        app.clear().unwrap();
+        assert!(
+            app.mount(
+                select("nested-target")
+                    .name("Nested target")
+                    .trigger_content(|_| crate::button().label("Invalid nested action"))
+            )
+            .is_err()
+        );
+        assert_eq!(app.stats().nodes, 0);
+        assert!(
+            app.mount(select("large-empty").empty_message("x".repeat(1025)))
+                .is_err()
+        );
+        assert_eq!(app.stats().nodes, 0);
     }
     #[test]
     fn listbox_keeps_trigger_focus_contract_and_selection_distinct_from_activity() {
@@ -1339,7 +1582,12 @@ mod tests {
         for id in nodes(&app) {
             let descriptor = tree.node(id).unwrap().descriptor.view();
             if descriptor.role == Some(Role::Listbox)
-                || matches!(descriptor.props, Props::Button(button) if button.label == "Clear selection" || button.label == "A")
+                || descriptor.name.as_deref() == Some("Clear selection")
+                || descriptor
+                    .classes
+                    .iter()
+                    .any(|class| class == "sapid-select")
+                || matches!(descriptor.props, Props::Button(button) if button.label == "A")
             {
                 assert_eq!(descriptor.style.background, None);
                 assert_eq!(descriptor.style.border_width, None);

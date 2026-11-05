@@ -21,10 +21,11 @@ The token is provided only to the deployment step. No DNS permission is needed
 for routine uploads. Configure `sapid.taidge.org` in the Pages project's Custom
 domains screen; keep its CNAME pointing to the project's actual pages.dev host.
 
-Rust 1.98.0, wasm-bindgen 0.2.129, Playwright 1.64.1, and Wrangler 4.152.0 are
+Rust 1.98.0, wasm-bindgen 0.2.130, Playwright 1.64.1, and Wrangler 4.152.0 are
 pinned. Node 22 or newer is required; CI selects Node 24 before installing tools.
-All tools, targets, npm/browser caches, temporary files and output stay under
-`D:/BuildCache/sapid` on the Windows runner (build root `pages-ci`). Cargo's actual output
+Verification output and pinned tools use `target/verification/sapid` on the
+Windows runner (build root `pages-ci`); Cargo home and compiler temporary files
+inherit the caller environment. Cargo's actual output
 directory is checked before compilation. Individual assets must fit Pages'
 25 MiB limit. HTML revalidates; content-addressed asset directories are immutable.
 
@@ -56,7 +57,7 @@ theme export compilation; its reports are retained beside the deployment assets.
 For an isolated local release build:
 
 ```powershell
-$buildRoot = 'D:/BuildCache/sapid/pages-local'
+$buildRoot = 'target/verification/sapid/pages-local'
 $tools = ./scripts/install-build-tools.ps1 -BuildRoot $buildRoot
 $env:SAPID_TOOLS_RECEIPT_SHA256 = $tools.ReceiptSha256
 $env:SAPID_PLAYWRIGHT = $tools.Playwright

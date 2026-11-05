@@ -10,11 +10,60 @@ use std::{
     collections::BTreeSet,
     f64::consts::{FRAC_PI_2, PI, TAU},
 };
+/// Clockwise arc presentation in degrees. Start is bounded to one revolution;
+/// sweep is greater than zero and at most 360 degrees.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct PlotAngles {
+    pub start: f64,
+    pub sweep: f64,
+}
+impl Default for PlotAngles {
+    fn default() -> Self {
+        Self {
+            start: -90.,
+            sweep: 360.,
+        }
+    }
+}
+/// A finite grid of at most 20 by 20 cells. Gap is in the declared frame's units.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct WaffleGrid {
+    pub rows: u8,
+    pub columns: u8,
+    pub gap: f64,
+}
+impl Default for WaffleGrid {
+    fn default() -> Self {
+        Self {
+            rows: 10,
+            columns: 10,
+            gap: 2.,
+        }
+    }
+}
+/// Radius limits in frame units. Square-root scaling continues to encode area.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct BubbleRadius {
+    pub min: f64,
+    pub max: f64,
+}
+impl Default for BubbleRadius {
+    fn default() -> Self {
+        Self { min: 0., max: 24. }
+    }
+}
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct PlotOptions {
     pub hidden: BTreeSet<String>,
     pub domain: Option<ChartDomain>,
     pub x_domain: Option<ChartDomain>,
+    pub angles: Option<PlotAngles>,
+    /// Donut inner radius as a fraction of the outer radius, inclusive 0..=0.95.
+    pub donut_inner_ratio: Option<f64>,
+    /// Donut-only ordinary text, at most 64 UTF-8 bytes on one line.
+    pub center_label: Option<String>,
+    pub waffle_grid: Option<WaffleGrid>,
+    pub bubble_radius: Option<BubbleRadius>,
 }
 pub(crate) fn path_key(key: &str, part: &str) -> String {
     format!("record-{}_{key}-{}_{part}", key.len(), part.len())
@@ -263,7 +312,15 @@ mod tests {
         let data = sample(PlotKind::Bubble);
         let scene = build(&data, PlotKind::Bubble);
         let radius = |i: usize| {
-            let Cmd::Move(p) = scene.paths[i].drawing.commands[0] else {
+            let Cmd::Move(p) = scene
+                .paths
+                .iter()
+                .filter(|p| p.key != "axes")
+                .nth(i)
+                .unwrap()
+                .drawing
+                .commands[0]
+            else {
                 panic!()
             };
             p.x - scene.marks[i].x
@@ -634,6 +691,54 @@ impl PlotScene {
         if options.hidden.len() > MAX_MATRIX_CELLS {
             return Err(ChartError::Budget);
         }
+        if let Some(angles) = options.angles
+            && (!matches!(kind, PlotKind::Pie | PlotKind::Donut | PlotKind::RadialBar)
+                || !angles.start.is_finite()
+                || !(-360.0..=360.0).contains(&angles.start)
+                || !angles.sweep.is_finite()
+                || !(0.0..=360.0).contains(&angles.sweep)
+                || angles.sweep == 0.)
+        {
+            return Err(ChartError::Presentation);
+        }
+        if let Some(ratio) = options.donut_inner_ratio
+            && (kind != PlotKind::Donut || !ratio.is_finite() || !(0.0..=0.95).contains(&ratio))
+        {
+            return Err(ChartError::Presentation);
+        }
+        if let Some(label) = &options.center_label
+            && (kind != PlotKind::Donut
+                || label.len() > 64
+                || label.contains(['\0', '\r', '\n', '\u{2028}', '\u{2029}']))
+        {
+            return Err(ChartError::CenterLabel);
+        }
+        if let Some(grid) = options.waffle_grid {
+            if kind != PlotKind::Waffle
+                || !(1..=20).contains(&grid.rows)
+                || !(1..=20).contains(&grid.columns)
+                || !grid.gap.is_finite()
+                || !(0.0..=16.0).contains(&grid.gap)
+            {
+                return Err(ChartError::Presentation);
+            }
+            let cell = ((frame.width - 32.) / f64::from(grid.columns))
+                .min((frame.height - 32.) / f64::from(grid.rows));
+            if grid.gap >= cell {
+                return Err(ChartError::Presentation);
+            }
+        }
+        if let Some(radius) = options.bubble_radius
+            && (kind != PlotKind::Bubble
+                || !radius.min.is_finite()
+                || !radius.max.is_finite()
+                || radius.min < 0.
+                || radius.max <= 0.
+                || radius.max > 64.
+                || radius.min > radius.max)
+        {
+            return Err(ChartError::Presentation);
+        }
         let keys = data.keys().into_iter().collect::<BTreeSet<_>>();
         if options
             .hidden
@@ -719,18 +824,27 @@ impl PlotScene {
         match kind {
             PlotKind::Pie | PlotKind::Donut => {
                 let total = current.iter().filter_map(|(_, r)| r.value).sum::<f64>();
-                let mut start = -FRAC_PI_2;
+                let angles = options.angles.unwrap_or_default();
+                let mut start = angles.start.to_radians();
+                let total_sweep = angles.sweep.to_radians();
+                if let Some(label) = &options.center_label {
+                    self.labels.push(PlotLabel {
+                        text: label.clone(),
+                        x: cx,
+                        y: cy,
+                    });
+                }
                 if total > 0. {
                     for (i, r) in &current {
                         let Some(value) = r.value else {
                             continue;
                         };
-                        let sweep = value / total * TAU;
+                        let sweep = value / total * total_sweep;
                         if sweep <= 0. {
                             continue;
                         }
                         let inner = if kind == PlotKind::Donut {
-                            radius * 0.62
+                            radius * options.donut_inner_ratio.unwrap_or(0.62)
                         } else {
                             0.
                         };
@@ -765,6 +879,9 @@ impl PlotScene {
                 if domain.min() != 0. {
                     return Err(ChartError::Domain);
                 }
+                let angles = options.angles.unwrap_or_default();
+                let start = angles.start.to_radians();
+                let sweep = angles.sweep.to_radians();
                 let thickness = radius / current.len().max(1) as f64;
                 for (row, (i, r)) in current.iter().enumerate() {
                     let Some(value) = r.value else {
@@ -778,17 +895,17 @@ impl PlotScene {
                     }
                     self.layer(
                         path_key(&r.key, "track"),
-                        ring(cx, cy, inner, outer, -FRAC_PI_2, TAU),
+                        ring(cx, cy, inner, outer, start, sweep),
                         Some(theme.grid),
                         None,
                     )?;
                     self.layer(
                         path_key(&r.key, "shape"),
-                        ring(cx, cy, inner, outer, -FRAC_PI_2, TAU * fraction),
+                        ring(cx, cy, inner, outer, start, sweep * fraction),
                         Some(theme.series[i % 8]),
                         None,
                     )?;
-                    let angle = -FRAC_PI_2 + TAU * fraction;
+                    let angle = start + sweep * fraction;
                     self.mark(
                         &r.key,
                         &r.label,
@@ -955,6 +1072,10 @@ impl PlotScene {
                 }
             }
             PlotKind::Waffle => {
+                let grid = options.waffle_grid.unwrap_or_default();
+                let rows = usize::from(grid.rows);
+                let columns = usize::from(grid.columns);
+                let units = rows * columns;
                 let total = current.iter().filter_map(|(_, r)| r.value).sum::<f64>();
                 if total <= 0. {
                     return Ok(());
@@ -962,7 +1083,7 @@ impl PlotScene {
                 let mut allocations = current
                     .iter()
                     .map(|(i, r)| {
-                        let units = r.value.unwrap_or(0.) / total * 100.;
+                        let units = r.value.unwrap_or(0.) / total * units as f64;
                         (*i, units.floor() as usize, units - units.floor())
                     })
                     .collect::<Vec<_>>();
@@ -974,20 +1095,20 @@ impl PlotScene {
                         .total_cmp(&allocations[*a].2)
                         .then(a.cmp(b))
                 });
-                for i in order.into_iter().take(100usize.saturating_sub(assigned)) {
+                for i in order.into_iter().take(units.saturating_sub(assigned)) {
                     allocations[i].1 += 1;
                 }
-                let cell = (w.min(h) - 32.) / 10.;
-                let left = cx - cell * 5.;
-                let top = cy - cell * 5.;
+                let cell = ((w - 32.) / columns as f64).min((h - 32.) / rows as f64);
+                let left = cx - cell * columns as f64 / 2.;
+                let top = cy - cell * rows as f64 / 2.;
                 let mut next = 0;
                 for (i, count, _) in allocations {
                     let r = &values[i];
                     let mut commands = Vec::new();
                     let first = next;
                     for _ in 0..count {
-                        let col = next % 10;
-                        let row = next / 10;
+                        let col = next % columns;
+                        let row = next / columns;
                         if commands.len() + 5 > 256 {
                             self.layer(
                                 path_key(&r.key, &format!("cells-{next}")),
@@ -999,8 +1120,8 @@ impl PlotScene {
                         commands.extend(rect(
                             left + col as f64 * cell,
                             top + row as f64 * cell,
-                            cell - 2.,
-                            cell - 2.,
+                            cell - grid.gap,
+                            cell - grid.gap,
                         ));
                         next += 1;
                     }
@@ -1014,9 +1135,9 @@ impl PlotScene {
                         self.mark(
                             &r.key,
                             &r.label,
-                            format!("{}; {count} of 100 cells", r.value.unwrap_or(0.)),
-                            left + (first % 10) as f64 * cell + cell / 2.,
-                            top + (first / 10) as f64 * cell + cell / 2.,
+                            format!("{}; {count} of {units} cells", r.value.unwrap_or(0.)),
+                            left + (first % columns) as f64 * cell + cell / 2.,
+                            top + (first / columns) as f64 * cell + cell / 2.,
                             theme.series[i % 8],
                         )?;
                     }
@@ -1097,11 +1218,45 @@ impl PlotScene {
             .fold(0f64, f64::max)
             .max(f64::MIN_POSITIVE);
         let (w, h) = (self.frame.width, self.frame.height);
+        let mut grid = Vec::new();
+        for index in 0..5 {
+            let fraction = f64::from(index) / 4.;
+            let x = 32. + fraction * (w - 64.);
+            let y = h - 28. - fraction * (h - 56.);
+            grid.extend([
+                Cmd::Move(Point::new(x, 28.)),
+                Cmd::Line(Point::new(x, h - 28.)),
+                Cmd::Move(Point::new(32., y)),
+                Cmd::Line(Point::new(w - 32., y)),
+            ]);
+            let compact = |value: f64| {
+                if value.abs() >= 10000. || (value != 0. && value.abs() < 0.01) {
+                    format!("{value:.0e}")
+                } else {
+                    let label = format!("{value:.2}");
+                    label.trim_end_matches('0').trim_end_matches('.').to_owned()
+                }
+            };
+            self.labels.push(PlotLabel {
+                text: compact(xd.min() + (xd.max() - xd.min()) * fraction),
+                x: x - 12.,
+                y: h - 43.,
+            });
+            self.labels.push(PlotLabel {
+                text: compact(yd.min() + (yd.max() - yd.min()) * fraction),
+                x: 2.,
+                y: y - 8.,
+            });
+        }
+        self.layer("axes", grid, None, Some(stroke(theme.grid, 1.)))?;
         for (i, r) in current {
             let x = 32. + xd.fraction(r.x)?.clamp(0., 1.) * (w - 64.);
             let y = h - 28. - yd.fraction(r.y)?.clamp(0., 1.) * (h - 56.);
             let radius = if kind == PlotKind::Bubble {
-                (r.size / maximum).sqrt() * 24.
+                {
+                    let radius = options.bubble_radius.unwrap_or_default();
+                    radius.min + (r.size / maximum).sqrt() * (radius.max - radius.min)
+                }
             } else {
                 4.
             };
@@ -1216,8 +1371,22 @@ impl PlotScene {
                 color: color_mix(theme.series[0], theme.series[1], fraction),
             });
         }
-        let width = (self.frame.width - 48.) / data.columns.len().max(1) as f64;
-        let height = (self.frame.height - 48.) / data.rows.len().max(1) as f64;
+        let width = (self.frame.width - 144.) / data.columns.len().max(1) as f64;
+        let height = (self.frame.height - 72.) / data.rows.len().max(1) as f64;
+        for (row, category) in data.rows.iter().enumerate() {
+            self.labels.push(PlotLabel {
+                text: category.label.clone(),
+                x: 2.,
+                y: 56. + (row as f64 + 0.5) * height,
+            });
+        }
+        for (column, category) in data.columns.iter().enumerate() {
+            self.labels.push(PlotLabel {
+                text: category.label.clone(),
+                x: 128. + column as f64 * width,
+                y: 8.,
+            });
+        }
         let maximum = current
             .iter()
             .map(|r| r.value.abs())
@@ -1234,8 +1403,8 @@ impl PlotScene {
                 .iter()
                 .position(|r| r.key == c.column)
                 .expect("admitted column");
-            let x = 24. + (col as f64 + 0.5) * width;
-            let y = 24. + (row as f64 + 0.5) * height;
+            let x = 128. + (col as f64 + 0.5) * width;
+            let y = 56. + (row as f64 + 0.5) * height;
             let fraction = domain.fraction(c.value)?.clamp(0., 1.);
             let color = color_mix(theme.series[0], theme.series[1], fraction);
             let scale = if kind == PlotKind::Matrix {
@@ -1266,8 +1435,8 @@ impl PlotScene {
             )?;
             self.labels.push(PlotLabel {
                 text: c.value.to_string(),
-                x: x - width / 3.,
-                y: y - 6.,
+                x: 134. + col as f64 * width,
+                y,
             });
             if c.value < domain.min() || c.value > domain.max() {
                 self.clipped_values += 1;

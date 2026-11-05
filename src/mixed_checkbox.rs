@@ -1,5 +1,5 @@
 //! A three-state check control; native activation proposes a binary selection.
-//! The pinned Apace engine explicitly rejects the mixed state.
+//! The pinned Apace engine paints and exports the independent mixed state.
 
 /// Complete semantic selection state, including an indeterminate group result.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -136,8 +136,8 @@ impl Widget for MixedCheckbox {
         .label(self.label.clone())
         .mode(initial.mode())
         .checked(initial.checked())
-        .enabled(enabled)
-        .semantics(metadata)
+        .enabled(enabled.clone())
+        .semantics(metadata.clone())
         .node_ref(reference);
 
         let mut on_change = self.on_change.take();
@@ -153,6 +153,19 @@ impl Widget for MixedCheckbox {
         inner = inner.on(EventKind::CheckedChanged, move |event| {
             let Some(scope) = weak.upgrade() else { return };
             if let Event::CheckedChanged(value) = &event {
+                match crate::field::check_available(&enabled, &metadata) {
+                    Ok(true) => {}
+                    Ok(false) => {
+                        if let Err(error) = pulse.touch() {
+                            scope.report_error(error);
+                        }
+                        return;
+                    }
+                    Err(error) => {
+                        scope.report_error(error);
+                        return;
+                    }
+                }
                 if let Err(error) = accept
                     .accept(&CheckState::from(*value))
                     .and_then(|()| pulse.touch())

@@ -372,6 +372,9 @@ impl Widget for BackgroundImage {
         let base = Style {
             background: Some(self.common.theme.surface),
             color: Some(self.common.theme.foreground),
+            width: Some(Length::Percent(100.)),
+            min_width: Some(Length::Px(0.)),
+            max_width: Some(Limit::Percent(100.)),
             ..Style::new()
         };
         let structural = Style {

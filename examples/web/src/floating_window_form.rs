@@ -111,6 +111,7 @@ pub fn floating_window_form(theme: Theme) -> impl Widget {
                         floating_window("working")
                             .theme(theme.clone())
                             .title("Working window")
+                            .default_actions_open(true)
                             .bounds(bounds)
                             .open(open)
                             .enabled(enabled)

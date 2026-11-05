@@ -3,8 +3,13 @@
 `pin_input()` builds one actual single-line Input with a bounded String value.
 `input_otp()` configures that same editor with an explicit one-time-code autofill
 hint. Native text, selection, caret, paste, deletion and password projection stay
-on that editor. At most 16 passive cells draw the adjacent segment boundaries;
+on that editor. At most 16 passive cells draw the font-aligned segment boundaries;
 they contain no copies of the code, interactive roles, focus stops or handlers.
+
+The cells follow actual editor focus and display the theme's focus border. The
+opt-in Sapid stylesheet removes the editor's extra outer focus outline in styled
+mode; it leaves the real native caret and selection intact. Unstyled mode keeps
+the host's ordinary outline.
 
 ```rust
 use sapid::prelude::*;
@@ -61,20 +66,23 @@ protocol; it does not establish real OS IME acceptance.
 
 ## Physical layout and fields
 
-The first supported display is compact adjacent glyph cells, without a gap
-between cells. A real monospace font and typed `Length::Ch` resolve each cell to
-the actual zero-glyph advance. There is no pixel estimate, hidden editor, mirrored
-text or simulated caret. Wider spaced cells require a future separately typed
-spacing/arithmetic contract; a CSS approximation is not advertised as support.
+The default presentation uses spaced cells, with an 8px `gap` and horizontal
+`cell_padding` taken from the selected control-size tokens. Both configuration
+values accept 0–32 finite CSS pixels. `gap(0.)` joins adjacent segments. Each
+cell is exactly one real monospace zero-glyph advance plus twice its padding;
+the editor uses the same glyph advance with `letter-spacing = 2 * padding + gap`.
+A bounded trailing editing area keeps the real caret visible after a complete
+code. There is no measured-pixel estimate, hidden editor, mirrored text, separate
+cell value or simulated caret. Input focus changes the actual cell borders.
 
 Common `class`/`style` apply to the outer presentation. Its inner frame retains
-the configured number of real glyph columns, including when the outer width is
-customized. Font size and line height can be customized; the font family must
-remain `Family::Mono`. An invalid reactive family preserves the accepted style.
-Custom outer width does not stretch native glyph advances or simulate wider
-cells. `unstyled` removes theme paint while retaining the single editor, mono
-geometry, finite cells and usable dimensions. Explicit Auto outer sizing remains
-explicit; the inner frame has its structural control height.
+the configured glyph/pixel geometry when the outer width changes. A constrained
+outer width provides a local horizontal viewport for wide codes. Font size and
+line height can be customized, including reactively; the font family must remain
+`Family::Mono`. An invalid family or a conflicting explicit `letter_spacing`
+reports a configuration error and retains accepted style. Configure tracking
+through `gap` and `cell_padding` so cells and the editor remain aligned.
+`unstyled` retains the one editor and usable geometry while removing theme paint.
 
 `name`, `node_ref`, `focus` and event observers target the actual Input.
 `field(...).control(|field| input_otp().field(field))` connects label, description,
@@ -82,7 +90,9 @@ required, error, readonly and disabled state to it. `Field.form_name` or the
 explicit `form_name` supplies the successful control name; the full String is one
 successful value. Files and form transport remain outside this control.
 
-`masked(true)` uses real `Purpose::Password`. Secret text never enters decorative
+`masked(source)` accepts a static boolean or Cage/Bond/Vary and uses real
+`Purpose::Password` while true. Purpose changes patch the same editor without
+changing its value revision or composition state. Secret text never enters decorative
 Text nodes or accessible cell names. It retains native password caret/selection
 and the existing native grapheme-to-bullet projection. Masking does not encrypt
 the business String or imply secure server handling. Production applications
@@ -90,22 +100,22 @@ must avoid logging values in their own callbacks.
 
 ## Shared host contract
 
-`Length::Ch(f64)` is the final value bit (63) of the existing u64 style support
-mask. HTML/Record style profile 10 and Apace profile 11 accept it for preferred
-dimensions, minimum dimensions and signed insets. Dimensions are nonnegative;
-all values are finite. `Limit` remains None/Px/Percent, and pixel-only padding,
-gap and grid-track domains are unchanged. Optional CSS parses `ch` only in the
-typed Length positions and validates original declarations before overrides.
-The default dependency graph still has no CSS parser or serde requirement.
+`Length::Ch` retains the final value bit (63) of the u64 support mask.
+`Length::ChPx { ch, px }` adds a finite two-term sum and independently requires
+both existing Ch and Px capabilities; it does not add a 65th value bit.
+Dimensions require nonnegative finite coefficients, while insets may be signed.
+`Style::letter_spacing(px)` independently checks a finite signed pixel value;
+explicit zero resets inherited spacing. HTML/Record profile 13 and Apace profile
+14 include this contract. Maximum sizes still use `Limit::{None,Px,Percent}`.
+The optional CSS parser accepts only the finite `calc(ch + px)`/`calc(ch - px)`
+form, and checks overridden original declarations before installation. Padding
+and gaps retain their existing pixel-only domains. Default graphs gain no parser.
 
-`Semantics.input_assist: Option<InputAssist>` is restricted to an actual
-single-line Input, including Password. Optional `InputAutofill::{Off,OneTimeCode}`
-lowers to `autocomplete`; optional `InputMode::{Text,Numeric}` overrides only the
-purpose's inputmode hint. Clearing it restores the intrinsic purpose hint without
-rewriting values/revisions or replacing the editor. It is not an accessible
-combobox autocomplete policy. SSR emits the same attributes. Native retains
-these hints; no native or browser SMS reading, credential retrieval, actual
-numeric OS keyboard or OS one-time-code integration is claimed.
+Browser and native editor layout use the same declarations. The actual native
+font-layout regression checks glyph advances, mixed dimensions, password display
+projection and identity across spacing changes and resets at multiple font sizes.
+This is engine-level evidence; OS IME and assistive technology acceptance remain
+separate from these layout/protocol checks.
 
 ## Evidence
 

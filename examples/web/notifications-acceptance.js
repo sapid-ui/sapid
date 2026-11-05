@@ -19,7 +19,7 @@ async(hostPage)=>{
   await click('Show persistent notification');await page.getByRole('button',{name:'Dismiss notification',exact:true}).click();await pending(0);assert(await page.locator('.notifications-result').textContent()==='Dismissed',`${mode}: independent dismiss`);
   await click('Show persistent notification');await click('Clear notifications');await pending(0);assert(await outside.evaluate(e=>e===window.notificationOutside)&&await outside.inputValue()==='Accepted outside draft',`${mode}: outside editor retained`);
   await page.setViewportSize({width:390,height:844});await click('Show persistent notification');assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`${mode}: mobile overflow`);await page.setViewportSize({width:1440,height:1000});await click('Clear notifications');
-  if(hue==='green'&&scheme==='dark'&&hydrate){await click('Show persistent notification');await page.screenshot({path:'D:/BuildCache/sapid/notifications-green-dark-hydrate.png',fullPage:true});await click('Clear notifications')}
+  if(hue==='green'&&scheme==='dark'&&hydrate){await click('Show persistent notification');await page.screenshot({path:'target/verification/sapid/notifications-green-dark-hydrate.png',fullPage:true});await click('Clear notifications')}
   await page.evaluate(()=>window.demo.unmount_display());assert(await page.locator('#app').evaluate(e=>e.childNodes.length===0),`${mode}: Owner retirement`);reports.push({suite:mode,status:'passed'});
  }
  await page.goto('http://127.0.0.1:8794/notifications.html');await page.waitForFunction(()=>window.ready===true);

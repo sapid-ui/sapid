@@ -46,7 +46,7 @@ async(hostPage)=>{
       const cdp=await context.newCDPSession(page),ax=await cdp.send('Accessibility.getFullAXTree');await cdp.detach();
       assert(!ax.nodes.some(node=>!node.ignored&&node.role?.value==='image')&&await page.locator('.demo-floating-indicator [aria-selected]').count()===0,`${mode}: decoration invented selection or image semantics`);
       await page.setViewportSize({width:390,height:900});await turn();await settled();assert(await aligned('one')&&await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`${mode}: mobile geometry/overflow`);
-      if(hydrate)await page.screenshot({path:`D:/BuildCache/sapid/${mode}.png`,fullPage:true});
+      if(hydrate)await page.screenshot({path:`target/verification/sapid/${mode}.png`,fullPage:true});
       await page.evaluate(()=>window.demo.unmount_display());await turn();assert(await page.locator('#app').textContent()==='',`${mode}: owner retirement left visible content`);
       reports.push({mode,measuredTarget:true,intermediateMotion:true,interruption:true,midflightReduce:true,focusUnchanged:true,currentRegistrations:true,physicalDirections:true});
     }

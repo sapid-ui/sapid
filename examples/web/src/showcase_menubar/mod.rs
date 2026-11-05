@@ -1,15 +1,19 @@
 use super::showcase_examples::DetailSection;
 mod choices;
 mod composition;
+mod content;
 mod controlled;
 mod keyboard;
 mod position;
+mod search;
 mod submenus;
 mod trigger;
 
 pub fn navigation() -> Vec<(&'static str, &'static str)> {
     vec![
         ("Composition", "#menubar-composition"),
+        ("Content slots", "#menubar-content"),
+        ("Search", "#menubar-search"),
         ("Trigger and loop", "#menubar-trigger"),
         ("Submenus", "#menubar-submenus"),
         ("Checkbox and radio", "#menubar-choices"),
@@ -27,6 +31,20 @@ pub fn sections(theme: sapid::Theme) -> Vec<DetailSection> {
             note: "Menu has one trigger. Menubar coordinates a row of menus with one tab stop and one open menu. Compose each root with menubar_menu, then add items, separators, radio groups and submenus.",
             example: Box::new(composition::demo(theme.clone())),
             source: include_str!("composition.rs"),
+        },
+        DetailSection {
+            id: "menubar-content",
+            title: "Group captions, icons and shortcut annotations",
+            note: "Menubar menus accept the same independent menu_label captions and passive action/submenu sections as Menu. A displayed shortcut is an annotation; the application registers global commands separately. Intrinsic check/radio labels retain their native controls. A custom right_section replaces the submenu chevron.",
+            example: Box::new(content::demo(theme.clone())),
+            source: include_str!("content.rs"),
+        },
+        DetailSection {
+            id: "menubar-search",
+            title: "Search inside an application menu",
+            note: "MenuSearch keeps focus in the actual editor while Up/Down change the active item and Enter invokes it. Derive item.visible from the controlled query; filtered rows and the editor retain their identities. Switching to another menu closes the old one and, by default, proposes an empty query. Use clear_on_close(false) to preserve it. Home/End and horizontal arrows remain caret commands inside the search editor.",
+            example: Box::new(search::demo(theme.clone())),
+            source: include_str!("search.rs"),
         },
         DetailSection {
             id: "menubar-trigger",

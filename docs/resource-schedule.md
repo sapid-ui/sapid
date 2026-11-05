@@ -195,3 +195,5 @@ an applied data mutation.
   artifact changed. The corrected original 12-group suite passed on that same
   artifact (`final-resource-corrected-recheck.{log,json}`), followed by 40/40
   successful controlled-edit probes (`final-resource-corrected-precondition-probe`).
+
+For complete runnable page examples and current ownership/editing rules, see [Schedule pages](schedule-pages.md).

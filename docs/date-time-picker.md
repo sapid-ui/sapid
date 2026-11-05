@@ -1,5 +1,18 @@
 # DateTimePicker / InlineDateTimePicker
 
+The popup input uses inset calendar and clear icons. `.trigger_label(...)`,
+`.title(...)`, `.close_label(...)` and `.clear_label(...)` retain full names and
+allow localized text. The real readonly display input keeps its Field identity;
+clear proposes None, honors controlled refusal/readonly/disabled, and returns
+focus to that same input. Popup focus, Escape and return remain host-owned.
+
+`.display_format(...)` changes presentation only. A named successful control is
+a separate hidden real input containing `format_local_date_time` of the accepted
+value, while the visible input has no duplicate form name. Neither formatting
+nor localization changes the civil value or implies an instant/timezone. The
+public forms example demonstrates this separation, local submit handling and
+explicit reset policy; its compiled source is the displayed source.
+
 Enable the dependency-free optional `dates` feature. Both builders require an
 explicit `DateTimePolicy`. `LocalDateTime` is a civil date plus wall-clock time;
 it has no implicit UTC interpretation, timezone lookup or operating-system clock.
@@ -47,7 +60,7 @@ same bounds, resolver and controlled-value protocol as calendar/time edits.
 The input picker supports a bounded placeholder, `clearable(true)` with a custom
 clear label, and finite `DateTimeDisplayFormat::{Iso,DayMonthYear,MonthDayYear}`.
 The formatter changes presentation only; the business value remains a typed
-`LocalDateTime`. The external clear action proposes `None` and is unavailable in
+`LocalDateTime`. The inset clear action proposes `None` and is unavailable in
 readonly or disabled state. Inline and popup variants can forward the real
 TimePicker controls dropdown, presets, segment steps, reverse order and bounded
 dropdown height with the `time_*` builders.
@@ -169,3 +182,10 @@ The current showcase adds seven dedicated DateTimePicker sections: input popup,
 seconds/12-hour display formatting, finite presets/default time, forwarded
 TimePicker controls, controlled clearable state, inline mode, and readonly/
 disabled state. These examples use Sapid terminology only.
+
+## Complete public page examples
+
+The remaining date/time pages now have dedicated primary examples, independently
+compiled full-source sections and matching contents links. See [date page
+contracts](date-pages.md) for selection domains, editor/draft behavior, inline versus
+popup use, responsive actions and current browser/native acceptance boundaries.

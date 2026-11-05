@@ -3,13 +3,54 @@ use crate::appearance::{Common, common_methods};
 use crate::composite::{self, Callback, ContentPolicy};
 use crate::state::Value;
 use crate::{
-    CivilYear, DatePeriod, DatePickerMode, DateSelectionError, DatesProvider, FieldControl,
-    PeriodBounds, PeriodSelection, YearMonth,
+    CivilYear, DateLocale, DatePeriod, DatePickerMode, DateSelectionError, DatesProvider,
+    FieldControl, PeriodBounds, PeriodRangeSelection, PeriodSelection, YearMonth,
 };
 use glory::render::{Direction, FormControl, NodeId};
-use glory::style::{Align, Display, FlexDirection, Style};
+use glory::style::Display;
 use glory::ui::{Result, Widget};
 use glory::{Cage, Scope, Vary};
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum PeriodInputFormat {
+    #[default]
+    Iso,
+    Localized,
+}
+impl PeriodInputFormat {
+    fn format<T: DatePeriod>(self, value: PeriodSelection<T>, locale: DateLocale) -> String {
+        if self == Self::Iso {
+            return value.format_iso();
+        }
+        let period = |value: T| {
+            if T::MONTH {
+                locale.month_label(
+                    <YearMonth as DatePeriod>::from_ordinal(value.ordinal())
+                        .expect("sealed month domain"),
+                )
+            } else {
+                let year = value.ordinal() + 1;
+                match locale {
+                    DateLocale::En => format!("{year:04}"),
+                    DateLocale::ZhCn => format!("{year}年"),
+                }
+            }
+        };
+        match value {
+            PeriodSelection::Single(value) => value.map(period).unwrap_or_default(),
+            PeriodSelection::Multiple(values) => {
+                values.iter().map(period).collect::<Vec<_>>().join(", ")
+            }
+            PeriodSelection::Range(PeriodRangeSelection::Empty) => String::new(),
+            PeriodSelection::Range(PeriodRangeSelection::Start(value)) => {
+                format!("{} –", period(value))
+            }
+            PeriodSelection::Range(PeriodRangeSelection::Complete(range)) => {
+                format!("{} – {}", period(range.start()), period(range.end()))
+            }
+        }
+    }
+}
 #[derive(Clone, Copy, PartialEq)]
 struct Snapshot<T: DatePeriod> {
     value: PeriodSelection<T>,
@@ -35,6 +76,10 @@ pub struct PeriodPickerInput<T: DatePeriod> {
     deselect: bool,
     year: Option<Vary<CivilYear>>,
     default_year: Option<CivilYear>,
+    display_format: PeriodInputFormat,
+    placeholder: Vary<String>,
+    clearable: bool,
+    clear_label: String,
     trigger_label: Vary<String>,
     title: Vary<String>,
     close_label: Vary<String>,
@@ -82,6 +127,20 @@ fn period_input<T: DatePeriod>(
         deselect: false,
         year: None,
         default_year: None,
+        display_format: PeriodInputFormat::Iso,
+        placeholder: if T::MONTH {
+            "Choose months"
+        } else {
+            "Choose years"
+        }
+        .into(),
+        clearable: false,
+        clear_label: if T::MONTH {
+            "Clear months"
+        } else {
+            "Clear years"
+        }
+        .into(),
         trigger_label: if T::MONTH {
             "Choose months"
         } else {
@@ -106,6 +165,22 @@ fn period_input<T: DatePeriod>(
 }
 impl<T: DatePeriod> PeriodPickerInput<T> {
     common_methods!();
+    pub fn display_format(mut self, value: PeriodInputFormat) -> Self {
+        self.display_format = value;
+        self
+    }
+    pub fn placeholder(mut self, value: impl Into<Vary<String>>) -> Self {
+        self.placeholder = value.into();
+        self
+    }
+    pub fn clearable(mut self, value: bool) -> Self {
+        self.clearable = value;
+        self
+    }
+    pub fn clear_label(mut self, value: impl Into<String>) -> Self {
+        self.clear_label = value.into();
+        self
+    }
     pub fn mode(mut self, v: DatePickerMode) -> Self {
         self.mode = v;
         self
@@ -231,6 +306,9 @@ impl<T: DatePeriod> Widget for PeriodPickerInput<T> {
                 .bytes()
                 .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
             || self.excluded.len() > crate::MAX_EXCLUDED_PERIODS
+            || self.clear_label.trim().is_empty()
+            || self.clear_label.len() > 120
+            || self.clear_label.contains(['\0', '\r', '\n'])
         {
             return Err(glory::render::Error::InvalidProps(
                 "invalid date picker input key or exclusions",
@@ -293,8 +371,16 @@ impl<T: DatePeriod> Widget for PeriodPickerInput<T> {
             self.invalid.clone(),
         );
         let form_name = composite::form_name(scope, &self.form_name)?;
+        let placeholder = composite::validated(scope, &self.placeholder, |value| {
+            if value.len() <= 240 && !value.contains(['\0', '\r', '\n']) {
+                Ok(())
+            } else {
+                Err(glory::render::Error::InvalidProps("invalid picker placeholder").into())
+            }
+        })?;
         let metadata = scope.bond(move || {
             let mut s = metadata.get().unwrap_or_default();
+            s.placeholder = Some(placeholder.get());
             if let Some(name) = form_name {
                 s.form_control = Some(FormControl {
                     name: name.get(),
@@ -303,42 +389,40 @@ impl<T: DatePeriod> Widget for PeriodPickerInput<T> {
             }
             Some(s)
         });
-        let wrapper = scope.cage(None);
-        glory::ui::view()
-            .class(if T::MONTH {
+        let content = crate::input_actions::frame(
+            scope,
+            &self.common,
+            if T::MONTH {
                 "sapid-month-picker-input"
             } else {
                 "sapid-year-picker-input"
-            })
-            .style(
-                Style {
-                    align: Some(Align::Center),
-                    ..Style::new()
-                }
-                .display(Display::Flex)
-                .flex_direction(FlexDirection::Row)
-                .gap(8.),
-            )
-            .node_ref(wrapper)
-            .show_in(scope)?;
-        let content = scope.child_in(wrapper.get().ok_or(glory::ui::Error::Gone)?)?;
-        let (classes, style) = self.common.appearance(
+            },
+        )?;
+        let classes = self.common.classes(scope, "sapid-period-picker-display");
+        let style = crate::input_actions::display_style(
             scope,
-            "sapid-period-picker-display",
-            self.common.theme.control(self.common.size),
+            &self.common,
+            enabled.clone(),
+            metadata.into(),
+            if self.clearable { 2 } else { 1 },
         );
+        let display_ref = self.common.node_ref.unwrap_or_else(|| scope.cage(None));
+        let display_format = self.display_format;
         let mut input = glory::ui::input()
             .class(classes)
             .style(style)
             .enabled(enabled.clone())
             .focus(self.common.focus)
-            .value(scope.bond(move || accepted.with(|s| s.value.format_iso())))
-            .semantics(metadata);
+            .node_ref(display_ref)
+            .value(scope.bond(move || {
+                accepted.with(|s| display_format.format(s.value, s.provider.locale_value()))
+            }))
+            .semantics(crate::input_actions::display_metadata(
+                scope,
+                metadata.into(),
+            ));
         if let Some(name) = self.common.name.take() {
             input = input.name(name);
-        }
-        if let Some(reference) = self.common.node_ref {
-            input = input.node_ref(reference);
         }
         for (kind, mut callbacks) in std::mem::take(&mut self.common.handlers) {
             input = input.on(kind, move |e| {
@@ -346,6 +430,59 @@ impl<T: DatePeriod> Widget for PeriodPickerInput<T> {
             });
         }
         input.show_in(&content)?;
+        crate::input_actions::submission(
+            &content,
+            metadata.into(),
+            accepted.map(|s| s.value.format_iso()).into(),
+            enabled.clone(),
+        )?;
+        if self.clearable {
+            let clear_enabled = enabled.clone();
+            let clear_readonly = readonly.clone();
+            let available = scope.bond(move || {
+                clear_enabled.get()
+                    && !clear_readonly.get()
+                    && accepted.with(|s| s.value.anchor().is_some())
+            });
+            let style = crate::input_actions::action_style(&self.common, 1);
+            let control = value.clone();
+            let callback = changed.clone();
+            let weak = scope.downgrade();
+            glory::ui::button()
+                .name(self.clear_label.clone())
+                .class("sapid-period-picker-clear")
+                .fill(crate::input_actions::glyph(
+                    crate::Icon::Close,
+                    self.common.theme.muted,
+                ))
+                .style(scope.bond(move || {
+                    let mut style = style.clone();
+                    if accepted.with(|value| value.value.anchor().is_none()) {
+                        style.display = Some(Display::None);
+                    }
+                    style
+                }))
+                .enabled(available)
+                .on(glory::render::EventKind::Activate, move |_| {
+                    if !available.get() {
+                        return;
+                    }
+                    let Some(scope) = weak.upgrade() else { return };
+                    let result = (|| -> Result {
+                        let empty = PeriodSelection::empty(mode);
+                        control.accept(&empty)?;
+                        callback.emit(owner, empty);
+                        if owner.is_alive() {
+                            composite::focus_node(&scope, display_ref.get())?;
+                        }
+                        Ok(())
+                    })();
+                    if let Err(error) = result {
+                        scope.report_error(error);
+                    }
+                })
+                .show_in(&content)?;
+        }
         let key = format!("{}-grid", self.key);
         let theme = self.common.theme.clone();
         let size = self.common.size;
@@ -366,6 +503,11 @@ impl<T: DatePeriod> Widget for PeriodPickerInput<T> {
         let mut dialog = crate::dialog(format!("{}-dialog", self.key))
             .initial_focus(initial_focus)
             .label(self.trigger_label.clone())
+            .trigger_style(crate::input_actions::action_style(&self.common, 0))
+            .trigger_content({
+                let color = self.common.theme.muted;
+                move || crate::input_actions::glyph(crate::Icon::Calendar, color)
+            })
             .title(self.title.clone())
             .close_label(self.close_label.clone())
             .theme(theme.clone())

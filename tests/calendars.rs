@@ -358,6 +358,10 @@ fn custom_selection_day_renderer_full_width_and_static_mode_are_component_featur
     )
     .unwrap();
     assert_eq!(class(&app, "custom-calendar-day").len(), 42);
+    assert!(
+        matches!(app.tree().node(day(&app, d("2024-02-29"))).unwrap().descriptor.view().props, Props::Button(p) if p.label.is_empty()),
+        "custom day content must replace the default visible number, while the full date name stays on the button"
+    );
     let outer = class(&app, "sapid-calendar")[0];
     assert_eq!(
         app.tree()

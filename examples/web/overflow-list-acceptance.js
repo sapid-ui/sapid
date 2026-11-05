@@ -64,7 +64,7 @@ async (hostPage) => {
       await change('Toggle list enabled');assert(await page.locator('.demo-overflow-list').getAttribute('inert')!==null,`${mode}: disabled component did not block its whole subtree`);
       await change('Toggle list enabled');await page.setViewportSize({width:390,height:900});await settle();
       assert(await fits()&&await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`${mode}: mobile overflow`);
-      if(hydrate)await page.screenshot({path:`D:/BuildCache/sapid/${mode}.png`,fullPage:true});
+      if(hydrate)await page.screenshot({path:`target/verification/sapid/${mode}.png`,fullPage:true});
       await page.evaluate(()=>window.demo.unmount_display());await page.waitForTimeout(80);
       assert(await page.locator('#app').textContent()==='',`${mode}: Owner cleanup left physical nodes`);
       reports.push({mode,initial:initial.visible,narrow:narrow.visible,wide:wide.visible,currentOwners:true,focusHandoff:true,dirtyEditor:true,closedAX:true,controlledRefusal:true});

@@ -730,6 +730,7 @@ fn show_swatches(
     for (label, color) in swatches {
         let next = Hsva::from_rgba(color);
         let select = state.clone();
+        let selected = state.clone();
         let weak = scope.downgrade();
         let ready = {
             let enabled = enabled.clone();
@@ -739,11 +740,18 @@ fn show_swatches(
         children.push(Box::new(
             crate::color_swatch(color)
                 .theme(theme.clone())
+                .style(crate::color_swatch::palette_cell_style())
                 .class("sapid-color-picker-swatch")
                 .side(side)
                 .name(label)
                 .enabled(ready)
                 .interactive(true)
+                .pressed(scope.bond(move || {
+                    selected
+                        .current()
+                        .to_rgba()
+                        .is_ok_and(|value| value == color)
+                }))
                 .on_press(move || {
                     if let Err(error) = select.propose(next, true)
                         && let Some(scope) = weak.upgrade()
@@ -755,6 +763,7 @@ fn show_swatches(
     }
     crate::group()
         .theme(theme)
+        .style(crate::color_swatch::palette_style(per_row))
         .class("sapid-color-picker-swatches")
         .gap(6.)
         .wrap(glory::style::FlexWrap::Wrap)

@@ -1,4 +1,8 @@
 """Publication retry tests; no network, credentials or registry mutations."""
+from pathlib import Path as _BuildPath
+import sys as _build_sys
+_build_sys.path.insert(0, str(_BuildPath(__file__).resolve().parents[1] / "scripts"))
+from local_build_paths import local_build_path
 import contextlib
 import importlib.util
 import hashlib
@@ -51,7 +55,7 @@ class PublicationRetryTests(unittest.TestCase):
 
 class ReleasePlanTests(unittest.TestCase):
     def validate(self, mutate=lambda plan, packages: None, tag=None):
-        parent=Path(os.environ.get('CARGO_TARGET_DIR','D:/BuildCache/release-tests/target')).parent
+        parent=Path(os.environ.get('CARGO_TARGET_DIR',local_build_path('release-tests/target'))).parent
         parent.mkdir(parents=True,exist_ok=True)
         with tempfile.TemporaryDirectory(prefix='publisher-test-',dir=parent) as directory:
             root=Path(directory)
@@ -110,7 +114,7 @@ class ReleasePlanTests(unittest.TestCase):
 
 class ArchiveTests(unittest.TestCase):
     def inspect(self, license_content, sha='a'*40, dirty=False):
-        parent=Path(os.environ.get('CARGO_TARGET_DIR','D:/BuildCache/release-tests/target')).parent
+        parent=Path(os.environ.get('CARGO_TARGET_DIR',local_build_path('release-tests/target'))).parent
         parent.mkdir(parents=True,exist_ok=True)
         with tempfile.TemporaryDirectory(prefix='archive-test-',dir=parent) as directory:
             archive=Path(directory)/'test.crate'
@@ -136,7 +140,7 @@ class ArchiveTests(unittest.TestCase):
 
 class AcceptanceAssetTests(unittest.TestCase):
     def test_old_release_and_previous_attempt_attachments_remain_unchanged(self):
-        parent = Path(os.environ.get('CARGO_TARGET_DIR', 'D:/BuildCache/sapid/fixes/release/target')).parent
+        parent = Path(os.environ.get('CARGO_TARGET_DIR', local_build_path('sapid/fixes/release/target'))).parent
         parent.mkdir(parents=True, exist_ok=True)
         with tempfile.TemporaryDirectory(prefix='acceptance-assets-', dir=parent) as directory:
             root = Path(directory)
@@ -173,7 +177,7 @@ class ReleaseProvenanceTests(unittest.TestCase):
     """Exercise real local Git/tag transitions; registry access is forbidden."""
 
     def setUp(self):
-        parent = Path(os.environ.get('CARGO_TARGET_DIR', 'D:/BuildCache/sapid/fixes/release/target')).parent.resolve()
+        parent = Path(os.environ.get('CARGO_TARGET_DIR', local_build_path('sapid/fixes/release/target'))).parent.resolve()
         parent.mkdir(parents=True, exist_ok=True)
         self.directory = tempfile.TemporaryDirectory(prefix='provenance-', dir=parent)
         self.base = Path(self.directory.name).resolve()
@@ -546,7 +550,7 @@ class ReleaseProvenanceTests(unittest.TestCase):
 class SparseReleaseToolsTests(unittest.TestCase):
     def test_both_workflow_sparse_checkouts_can_execute_release_cli(self):
         source = Path(__file__).resolve().parents[1]
-        parent = Path(os.environ.get('CARGO_TARGET_DIR', 'D:/BuildCache/sapid/fixes/pr12-review/target')).parent.resolve()
+        parent = Path(os.environ.get('CARGO_TARGET_DIR', local_build_path('sapid/fixes/pr12-review/target'))).parent.resolve()
         parent.mkdir(parents=True, exist_ok=True)
         with tempfile.TemporaryDirectory(prefix='sparse-release-', dir=parent) as directory:
             base = Path(directory).resolve()

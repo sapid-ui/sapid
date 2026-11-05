@@ -108,3 +108,119 @@ fn ssr_separator_keeps_orientation_and_escaped_optional_name_without_tabstop() {
     assert!(html.contains("Boundary &lt;&amp;&gt;"));
     assert!(!html.contains("tabindex"));
 }
+
+#[test]
+fn labelled_dividers_have_real_line_parts_and_retain_accepted_text_on_recovery() {
+    use glory::render::{NodeId, Props};
+    use sapid::SeparatorLabelPosition::{Center, End, Start};
+    for theme in [
+        Theme::blue_light(),
+        Theme::blue_dark(),
+        Theme::green_light(),
+        Theme::green_dark(),
+    ] {
+        for position in [Start, Center, End] {
+            let app = App::memory();
+            let label = app.scope().cage("Continue with email".to_owned());
+            app.mount(
+                separator()
+                    .theme(theme.clone())
+                    .label(label)
+                    .label_position(position),
+            )
+            .unwrap();
+            let root = app.tree().roots()[0];
+            let children = app.tree().node(root).unwrap().children.clone();
+            let text: NodeId = *children
+                .iter()
+                .find(|id| {
+                    matches!(
+                        app.tree().node(**id).unwrap().descriptor.view().props,
+                        Props::Text(_)
+                    )
+                })
+                .unwrap();
+            assert_eq!(children.len(), if position == Center { 3 } else { 2 });
+            assert_eq!(app.tree().node(root).unwrap().descriptor.view().role, None);
+            if position == Start {
+                assert_eq!(children[0], text);
+            }
+            if position == End {
+                assert_eq!(*children.last().unwrap(), text);
+            }
+            label.revise(|s| s.clear());
+            assert!(app.flush().is_err());
+            assert_eq!(label.get(), "");
+            assert!(
+                matches!(app.tree().node(text).unwrap().descriptor.view().props,Props::Text(p) if p.content=="Continue with email")
+            );
+            label.revise(|s| *s = "Other sign-in options".to_owned());
+            app.flush().unwrap();
+            assert_eq!(app.tree().node(root).unwrap().children, children);
+            assert!(
+                matches!(app.tree().node(text).unwrap().descriptor.view().props,Props::Text(p) if p.content=="Other sign-in options")
+            );
+            app.clear().unwrap();
+            assert_eq!(app.stats().nodes, 0);
+        }
+    }
+}
+
+#[test]
+fn divider_patterns_labels_and_unstyled_layout_have_finite_distinct_contracts() {
+    use glory::style::{BorderStyle, Display};
+    use sapid::{SeparatorLabelPosition, SeparatorVariant};
+    for (variant, style) in [
+        (SeparatorVariant::Dashed, BorderStyle::Dashed),
+        (SeparatorVariant::Dotted, BorderStyle::Dotted),
+    ] {
+        let app = App::memory();
+        app.mount(separator().variant(variant).thickness(3.))
+            .unwrap();
+        let root = app.tree().roots()[0];
+        assert_eq!(
+            app.tree()
+                .node(root)
+                .unwrap()
+                .descriptor
+                .view()
+                .style
+                .border_style,
+            Some(style)
+        );
+    }
+    let app = App::memory();
+    app.mount(
+        separator()
+            .unstyled()
+            .label("Other options")
+            .label_position(SeparatorLabelPosition::Center),
+    )
+    .unwrap();
+    let root = app.tree().roots()[0];
+    let tree = app.tree();
+    let style = &tree.node(root).unwrap().descriptor.view().style;
+    assert_eq!(style.display, Some(Display::Flex));
+    assert!(style.font_family.is_none() && style.background.is_none());
+    drop(tree);
+    for invalid in [
+        "".to_owned(),
+        "x".repeat(257),
+        "a\nb".to_owned(),
+        "a\u{2028}b".to_owned(),
+    ] {
+        let app = App::memory();
+        assert!(app.mount(separator().label(invalid)).is_err());
+        assert!(app.tree().is_empty());
+    }
+    let app = App::memory();
+    assert!(
+        app.mount(
+            separator()
+                .orientation(Orientation::Vertical)
+                .label("Vertical label")
+        )
+        .is_err()
+    );
+    assert!(app.tree().is_empty());
+}

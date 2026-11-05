@@ -130,6 +130,7 @@ pub fn form(scope: &Scope, theme: Theme) -> (impl Widget + use<>, State) {
             )
             .theme(theme.clone())
             .class("rtl-mini-calendar")
+            .default_date(d("2024-02-25"))
             .name("Compact RTL calendar")
             .direction(glory::render::Direction::Rtl),
             mini_calendar(

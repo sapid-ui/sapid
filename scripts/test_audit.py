@@ -1,4 +1,8 @@
 """Run the real RustSec auditor on isolated, dependency-free Cargo workspaces."""
+from pathlib import Path as _BuildPath
+import sys as _build_sys
+_build_sys.path.insert(0, str(_BuildPath(__file__).resolve().parents[1] / "scripts"))
+from local_build_paths import local_build_path
 import json
 import hashlib
 import os
@@ -37,7 +41,7 @@ class AdvisoryGateTests(unittest.TestCase):
             raise RuntimeError("Install cargo-audit 0.22.2 and set SAPID_CARGO_AUDIT for these regressions")
 
     def test_real_vulnerable_lock_fails_all_three_scans_and_clean_lock_passes(self):
-        parent = Path("D:/BuildCache/sapid/tmp")
+        parent = Path(local_build_path('sapid/tmp'))
         parent.mkdir(parents=True, exist_ok=True)
         with tempfile.TemporaryDirectory(prefix="advisory-gate-", dir=parent) as temporary:
             directory = Path(temporary)

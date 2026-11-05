@@ -6,6 +6,149 @@ use std::{cell::RefCell, rc::Rc};
 fn d(v: &str) -> Decimal {
     Decimal::parse(v).unwrap()
 }
+#[test]
+fn clamp_policies_and_live_domain_apply_to_real_drafts() {
+    for (policy, expected) in [
+        (sapid::NumberClampBehavior::Blur, "10"),
+        (sapid::NumberClampBehavior::None, "27"),
+        (sapid::NumberClampBehavior::Strict, "2"),
+    ] {
+        let app = App::memory();
+        let r = app.scope().cage(None);
+        app.mount(
+            number_input()
+                .node_ref(r)
+                .default_value(d("2"))
+                .min(Some(d("0")))
+                .max(Some(d("10")))
+                .clamp_behavior(policy),
+        )
+        .unwrap();
+        let id = r.get().unwrap();
+        edit(&app, id, "27", false);
+        app.dispatch(id, Event::FocusChanged(false)).unwrap();
+        assert_eq!(text(&app, id), expected);
+    }
+    let app = App::memory();
+    let r = app.scope().cage(None);
+    let step = app.scope().cage(d("1"));
+    let max = app.scope().cage(Some(d("10")));
+    app.mount(
+        number_input()
+            .node_ref(r)
+            .default_value(d("0"))
+            .step(step)
+            .max(max),
+    )
+    .unwrap();
+    let id = r.get().unwrap();
+    app.scope()
+        .batch(|| {
+            step.revise(|v| *v = d("2"));
+            key(&app, id, RangeCommand::Increase);
+            key(&app, id, RangeCommand::Increase);
+        })
+        .unwrap();
+    assert_eq!(text(&app, id), "4");
+    app.scope()
+        .batch(|| {
+            max.revise(|v| *v = Some(d("5")));
+            edit(&app, id, "27", false);
+            app.dispatch(id, Event::FocusChanged(false)).unwrap();
+        })
+        .unwrap();
+    assert_eq!(text(&app, id), "5");
+}
+#[test]
+fn blur_clamping_proposes_to_controlled_sources_and_preserves_composition() {
+    for allow in [false, true] {
+        let app = App::memory();
+        let source = app.scope().cage(NumberValue::Text("27".into()));
+        let r = app.scope().cage(None);
+        let calls = app.scope().cage(0);
+        app.mount(
+            number_input()
+                .node_ref(r)
+                .value(source)
+                .max(Some(d("10")))
+                .on_commit(move |next| {
+                    calls.revise(|n| *n += 1);
+                    assert_eq!(next, NumberValue::Decimal(d("10")));
+                    if allow {
+                        source.revise(|v| *v = next)
+                    }
+                }),
+        )
+        .unwrap();
+        let id = r.get().unwrap();
+        app.dispatch(id, Event::Composition { active: true })
+            .unwrap();
+        app.dispatch(id, Event::FocusChanged(false)).unwrap();
+        assert_eq!(calls.get(), 0);
+        assert_eq!(text(&app, id), "27");
+        app.dispatch(id, Event::Composition { active: false })
+            .unwrap();
+        app.dispatch(id, Event::FocusChanged(false)).unwrap();
+        assert_eq!(calls.get(), 1);
+        assert_eq!(text(&app, id), if allow { "10" } else { "27" });
+    }
+}
+#[test]
+fn numeric_commands_recheck_current_field_availability_in_one_packet() {
+    for disabling in [false, true] {
+        for command in 0..3 {
+            let app = App::memory();
+            let blocked = app.scope().cage(false);
+            let calls = app.scope().cage(0);
+            let reference = app.scope().cage(None);
+            app.mount(
+                sapid::field("live-number")
+                    .readonly(blocked.map(move |v| *v && !disabling))
+                    .enabled(blocked.map(move |v| !*v || !disabling))
+                    .control(move |field| {
+                        number_input()
+                            .field(field)
+                            .node_ref(reference)
+                            .default_value(NumberValue::Decimal(d("2")))
+                            .on_value_change(move |_| calls.revise(|n| *n += 1))
+                            .on_commit(move |_| calls.revise(|n| *n += 1))
+                    }),
+            )
+            .unwrap();
+            let id = reference.get().unwrap();
+            app.scope()
+                .batch(|| {
+                    blocked.revise(|v| *v = true);
+                    match command {
+                        0 => edit(&app, id, "3", false),
+                        1 => edit(&app, id, "3", true),
+                        _ => key(&app, id, RangeCommand::Increase),
+                    }
+                })
+                .unwrap();
+            assert_eq!(calls.get(), 0, "disable {disabling}, command {command}");
+            assert_eq!(text(&app, id), "2");
+        }
+    }
+}
+#[test]
+fn actual_focus_loss_clamps_the_current_numeric_draft() {
+    let app = App::memory();
+    let reference = app.scope().cage(None);
+    app.mount(
+        number_input()
+            .node_ref(reference)
+            .min(Some(d("0")))
+            .max(Some(d("10"))),
+    )
+    .unwrap();
+    let id = reference.get().unwrap();
+    app.dispatch(id, Event::FocusChanged(true)).unwrap();
+    edit(&app, id, "27", false);
+    assert_eq!(text(&app, id), "27");
+    app.dispatch(id, Event::FocusChanged(false)).unwrap();
+    assert_eq!(text(&app, id), "10");
+}
 fn text(app: &App, node: NodeId) -> String {
     let tree = app.tree();
     let Props::Input(p) = tree.node(node).unwrap().descriptor.view().props else {

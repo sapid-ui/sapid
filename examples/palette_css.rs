@@ -21,7 +21,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     rules.push_str("/* END SAPID PALETTES */");
     let new = format!("{}{}{}", &old[..start], rules, &old[end..]);
     if std::env::args().any(|arg| arg == "--check") {
-        if old != new {
+        if old.replace("\r\n", "\n") != new.replace("\r\n", "\n") {
             return Err("stale palette CSS; run cargo run --example palette_css".into());
         }
     } else {

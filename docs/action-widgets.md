@@ -7,12 +7,12 @@ static mount configuration so a reactive name cannot later become empty. Icon
 children use existing semantic text/image/widgets; nested controls fail Glory's
 shared content checks. This API does not promise a new vector icon renderer.
 
-`close_button()` uses the same ActionIcon/native Button path, displays `×` and
+`close_button()` uses the same ActionIcon/native Button path, displays a centered vector cross and
 defaults to the name `Close`. `name("Dismiss notification")` localizes or makes
 the action specific. Activation, disabled suppression and focus use Glory's
 native shared control behavior; there is no duplicated keyboard/pointer driver.
 
-Both expose theme, size, unstyled, class, style, enabled, focus, node_ref, on and
+Both expose loading, theme, size, unstyled, class, style, enabled, focus, node_ref, on and
 on_press. ExtraSmall/Small/Medium/Large/ExtraLarge squares use 24/30/36/42/50 px. Class overrides append;
 style overrides preserve unspecified theme declarations; unstyled removes theme
 declarations while preserving explicit styles. Multiple observers run in order
@@ -106,3 +106,11 @@ identity in all four themes. The browser action suite now checks true Toolbar
 role/orientation, one Tab entry, RTL arrows, Home/End, disabled skipping, Tab exit,
 vertical non-looping edges and Space activation. See also [Button](button.md)
 for section slots, state colors and the five shared sizes.
+
+
+`loading(Vary<bool>)` displays a decorative rotating Graphic, exposes busy and
+suppresses activation. The caller icon is suspended and resumed with the same
+identity. CloseButton defaults to vector glyphs 12/14/16/18/20 px inside the five
+square targets. Both dimensions of the minimum target are explicit. Current raw
+enabled/loading sources are checked before activation callbacks and observers.
+See [buttons](buttons.md) for the independent public examples and current proof.

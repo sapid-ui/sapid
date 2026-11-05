@@ -29,6 +29,10 @@ pub struct TextField {
     placeholder: Option<Vary<String>>,
     multiline: bool,
     semantic_id: Option<glory::render::SemanticId>,
+    menu_search: Option<(
+        glory::render::SemanticId,
+        Vary<Option<glory::render::SemanticId>>,
+    )>,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -61,10 +65,21 @@ pub fn text_field() -> TextField {
         placeholder: None,
         multiline: false,
         semantic_id: None,
+        menu_search: None,
     }
 }
 
 impl TextField {
+    pub(crate) fn in_menu(
+        mut self,
+        id: glory::render::SemanticId,
+        owner: glory::render::SemanticId,
+        active: Vary<Option<glory::render::SemanticId>>,
+    ) -> Self {
+        self.semantic_id = Some(id);
+        self.menu_search = Some((owner, active));
+        self
+    }
     pub(crate) fn has_right_section(&self) -> bool {
         self.right_section.is_some()
     }
@@ -251,6 +266,19 @@ impl Widget for TextField {
         } else {
             metadata
         };
+        let metadata = if let Some((owner, active)) = self.menu_search.take() {
+            scope
+                .bond(move || {
+                    let mut state = metadata.get().unwrap_or_default();
+                    state.menu_search = Some(owner.clone());
+                    state.controls = Some(owner.clone());
+                    state.active_descendant = active.get();
+                    Some(state)
+                })
+                .into()
+        } else {
+            metadata
+        };
         let metadata = if let Some((id, message)) = self.extra_error.take() {
             scope
                 .bond(move || {
@@ -324,8 +352,8 @@ impl Widget for TextField {
             base
         )
         .value(initial.clone())
-        .enabled(enabled)
-        .semantics(metadata)
+        .enabled(enabled.clone())
+        .semantics(metadata.clone())
         .node_ref(reference);
 
         for (kind, mut callback) in [
@@ -337,9 +365,24 @@ impl Widget for TextField {
             let pulse = dirty.clone();
             let weak = scope.downgrade();
             let owner = scope.id();
+            let available = enabled.clone();
+            let states = metadata.clone();
             inner = inner.on(kind, move |event| {
                 let Some(scope) = weak.upgrade() else { return };
                 if let Event::ValueChanged { value, .. } | Event::Commit { value, .. } = &event {
+                    match crate::field::check_available(&available, &states) {
+                        Ok(true) => {}
+                        Ok(false) => {
+                            if let Err(error) = pulse.touch() {
+                                scope.report_error(error);
+                            }
+                            return;
+                        }
+                        Err(error) => {
+                            scope.report_error(error);
+                            return;
+                        }
+                    }
                     if let Err(error) = accept.accept(value).and_then(|()| pulse.touch()) {
                         scope.report_error(error);
                         return;

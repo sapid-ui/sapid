@@ -7,6 +7,11 @@ one original paragraph/text node during expansion; it is not rewritten into a
 truncated business value. Interactive descendants are excluded by the plain-text
 API, so hidden clipped controls cannot remain in the Tab sequence.
 
+Presentation settles immediately with no expansion animation, including reduced
+motion. Short content hides the action; changed content remeasures the current
+viewport. `data-display-pages.md` describes the article, threshold, custom-label,
+controlled refusal and content-change public examples.
+
 `expanded` is controlled; `default_expanded` supplies local state only without a
 source. `on_expanded_change` proposes changes before generic activation observers.
 External source changes remain silent. `labels(more,less)` requires nonempty

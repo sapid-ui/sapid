@@ -12,6 +12,8 @@ use std::{
     task::{Context, Waker},
     time::{Duration, Instant},
 };
+#[path = "../../web/src/dedicated_demos/file_input.rs"]
+mod file_primary;
 struct Reader(Arc<Vec<u8>>);
 impl FileReader for Reader {
     fn read(&self, offset: u64, length: u32) -> Reply<Vec<u8>> {
@@ -68,6 +70,126 @@ fn pick(host: &WindowApp) {
     let node = find(host, "sapid-file-button")[0];
     host.app().dispatch(node, Event::Activate).unwrap();
     settle(host);
+}
+#[test]
+fn native_input_summary_long_names_cancel_and_inset_clear_keep_the_same_picker() {
+    for theme in themes() {
+        let picker = Arc::new(Picker::default());
+        let files = Files::new(picker.clone());
+        let host = WindowApp::with_config(Config {
+            files: Some(files.clone()),
+            ..Default::default()
+        });
+        host.renderer().set_viewport(640, 480, 1.).unwrap();
+        host.mount(
+            glory::ui::view()
+                .style(glory::style::Style::new().width(glory::style::Length::Px(320.)))
+                .fill(file_primary::demo(theme.clone())),
+        )
+        .unwrap();
+        settle(&host);
+        let id = find(&host, "sapid-file-button")[0];
+        let engine = host
+            .renderer()
+            .engine_id(id, glory::html::Part::Main)
+            .unwrap();
+        let name = format!("{}-project-notes.txt", "descriptive-".repeat(30));
+        *picker.0.lock().unwrap() = Some(Ok(Some(vec![
+            SelectedFile {
+                name: name.clone(),
+                media_type: "text/plain".into(),
+                size: 1,
+                reader: Arc::new(Reader(Arc::new(vec![1]))),
+            },
+            SelectedFile {
+                name: "second.txt".into(),
+                media_type: "text/plain".into(),
+                size: 1,
+                reader: Arc::new(Reader(Arc::new(vec![2]))),
+            },
+        ])));
+        pick(&host);
+        assert_eq!(files.stats().references, 2);
+        assert!(
+            matches!(host.app().tree().node(id).unwrap().descriptor.view().props,Props::File(p)if p.label==format!("{name}, +1 more"))
+        );
+        assert_eq!(
+            host.app()
+                .tree()
+                .node(id)
+                .unwrap()
+                .descriptor
+                .view()
+                .name
+                .as_deref(),
+            Some("Attachments")
+        );
+        *picker.0.lock().unwrap() = Some(Ok(None));
+        pick(&host);
+        assert_eq!(files.stats().references, 2);
+        let clear = find(&host, "sapid-file-input-clear")[0];
+        let rect = |node| {
+            let saved = std::rc::Rc::new(std::cell::RefCell::new(None));
+            let out = saved.clone();
+            host.app()
+                .request(Query::Bounds(node), move |v| {
+                    *out.borrow_mut() = Some(v.unwrap())
+                })
+                .unwrap();
+            host.app().pump().unwrap();
+            let QueryValue::Bounds(rect) = saved.borrow_mut().take().unwrap() else {
+                panic!("bounds")
+            };
+            rect
+        };
+        let trigger = rect(id);
+        let button = rect(clear);
+        assert!(trigger.width <= 320. && button.width <= 25. && button.height <= 25.);
+        assert!(button.x >= trigger.x && button.x + button.width <= trigger.x + trigger.width + 1.);
+        assert!(
+            button.y >= trigger.y && button.y + button.height <= trigger.y + trigger.height + 1.
+        );
+        let mut raster = Raster::new();
+        raster.draw(host.renderer()).unwrap();
+        for y in (button.y + 4.) as usize..(button.y + 20.) as usize {
+            for x in (button.x - 4.) as usize..(button.x - 1.) as usize {
+                let offset = (y * 640 + x) * 4;
+                assert_eq!(
+                    &raster.pixels()[offset..offset + 4],
+                    &[theme.input.0, theme.input.1, theme.input.2, theme.input.3],
+                    "filename must not paint under the clear action"
+                );
+            }
+        }
+        host.app().scope().action(Action::Focus(clear)).unwrap();
+        host.app().settle(16).unwrap();
+        host.app().dispatch(clear, Event::Activate).unwrap();
+        settle(&host);
+        let focused = std::rc::Rc::new(std::cell::RefCell::new(None));
+        let out = focused.clone();
+        host.app()
+            .request(Query::Focus(id), move |v| {
+                *out.borrow_mut() = Some(v.unwrap())
+            })
+            .unwrap();
+        host.app().pump().unwrap();
+        assert_eq!(
+            focused.borrow_mut().take(),
+            Some(QueryValue::Focus(true)),
+            "clearing returns focus to the same picker"
+        );
+        assert_eq!(files.stats().references, 0);
+        assert!(
+            matches!(host.app().tree().node(id).unwrap().descriptor.view().props,Props::File(p)if p.label=="Choose files")
+        );
+        assert_eq!(
+            host.renderer()
+                .engine_id(id, glory::html::Part::Main)
+                .unwrap(),
+            engine
+        );
+        host.app().clear().unwrap();
+    }
 }
 #[test]
 fn actual_file_input_reads_previews_removes_and_clears_across_four_themes() {

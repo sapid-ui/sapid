@@ -328,6 +328,63 @@ fn password_loading_replaces_only_the_right_visibility_icon() {
         );
     }
 }
+#[test]
+fn password_eye_rechecks_current_availability_in_one_host_packet() {
+    for mode in 0..4 {
+        let app = App::memory();
+        let disabled = app.scope().cage(false);
+        let loading = app.scope().cage(false);
+        let calls = Rc::new(Cell::new(0));
+        let out = calls.clone();
+        let mut input = password_input()
+            .default_value("Sample 😀 draft")
+            .loading(loading)
+            .on_visibility_change(move |_| out.set(out.get() + 1));
+        if mode == 0 {
+            input = input.enabled(disabled.map(|v| !*v));
+        }
+        if mode == 3 {
+            input = input.loading_position(sapid::InputSectionPosition::Left);
+        }
+        if mode == 1 {
+            let mut input = Some(input);
+            app.mount(
+                field("disabled-eye")
+                    .enabled(disabled.map(|v| !*v))
+                    .control(move |context| input.take().unwrap().field(context)),
+            )
+            .unwrap();
+        } else {
+            app.mount(input).unwrap();
+        }
+        let toggle = find(&app, "sapid-password-toggle");
+        let editor = find(&app, "sapid-password-input");
+        let before = props(&app, editor);
+        app.scope()
+            .batch(|| {
+                if mode < 2 {
+                    disabled.revise(|v| *v = true);
+                } else {
+                    loading.revise(|v| *v = true);
+                }
+                app.dispatch(toggle, Event::Activate).unwrap();
+            })
+            .unwrap();
+        app.flush().unwrap();
+        assert_eq!(calls.get(), usize::from(mode == 3), "mode {mode}");
+        let after = props(&app, editor);
+        assert_eq!(after.value, before.value);
+        assert_eq!(after.revision, before.revision);
+        assert_eq!(
+            after.purpose,
+            if mode == 3 {
+                Purpose::Text
+            } else {
+                Purpose::Password
+            }
+        );
+    }
+}
 
 #[test]
 fn visibility_controlled_rejection_external_updates_and_owner_cleanup() {

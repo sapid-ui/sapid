@@ -11,6 +11,41 @@ use glory::style::{BorderStyle, Edges, Length, Overflow, PointerEvents, Position
 use glory::ui::{Result, Widget};
 use glory::{Scope, Vary};
 pub use model::{MAX_RATING_COUNT, RatingPrecision};
+use std::rc::Rc;
+
+#[derive(Clone, Default)]
+struct Symbols {
+    empty: Option<Rc<GraphicProps>>,
+    filled: Option<Rc<GraphicProps>>,
+}
+impl Symbols {
+    fn validate(&self) -> Result {
+        for drawing in [self.empty.as_ref(), self.filled.as_ref()]
+            .into_iter()
+            .flatten()
+        {
+            drawing.validate()?;
+            if drawing.animation.is_some()
+                || drawing.transition.is_some()
+                || drawing.alternative.is_some()
+            {
+                return Err(invalid("rating symbols require static decorative drawings"));
+            }
+        }
+        Ok(())
+    }
+    fn drawing(
+        &self,
+        filled: bool,
+        fill: glory::style::Color,
+        stroke: glory::style::Color,
+    ) -> GraphicProps {
+        match if filled { &self.filled } else { &self.empty } {
+            Some(drawing) => (**drawing).clone(),
+            None => star(fill, stroke),
+        }
+    }
+}
 
 pub struct Rating {
     key: String,
@@ -29,6 +64,7 @@ pub struct Rating {
     display_only: bool,
     hover_preview: Vary<bool>,
     highlight_selected_only: Vary<bool>,
+    symbols: Symbols,
 }
 pub fn rating(key: impl Into<String>) -> Rating {
     Rating {
@@ -48,10 +84,21 @@ pub fn rating(key: impl Into<String>) -> Rating {
         display_only: false,
         hover_preview: true.into(),
         highlight_selected_only: false.into(),
+        symbols: Symbols::default(),
     }
 }
 impl Rating {
     common_methods!();
+    /// A bounded static passive drawing, scaled in the same symbol box as the default star.
+    pub fn empty_symbol(mut self, drawing: GraphicProps) -> Self {
+        self.symbols.empty = Some(Rc::new(drawing));
+        self
+    }
+    /// Selected and hover-preview portions use this drawing without changing radio semantics.
+    pub fn filled_symbol(mut self, drawing: GraphicProps) -> Self {
+        self.symbols.filled = Some(Rc::new(drawing));
+        self
+    }
     /// Render a named passive group and graphics without radio or form controls.
     pub fn display_only(mut self) -> Self {
         self.display_only = true;
@@ -151,6 +198,7 @@ fn star(fill: glory::style::Color, stroke: glory::style::Color) -> GraphicProps 
 }
 impl Widget for Rating {
     fn build(&mut self, scope: &Scope) -> Result {
+        self.symbols.validate()?;
         let domain = model::Domain {
             count: self.count,
             precision: self.precision,
@@ -329,6 +377,7 @@ impl Widget for Rating {
                 0.
             };
             let theme = theme.clone();
+            let symbols = self.symbols.clone();
             let enabled = root_enabled.clone();
             let foreground = theme.foreground;
             let ring = theme.focus_ring;
@@ -351,6 +400,7 @@ impl Widget for Rating {
                     let selected_only = selected_only.clone();
                     let mut control = Some(control);
                     Box::new(glory::ui::widget(move |scope| {
+                        let symbols = symbols.clone();
                         let selected_only = selected_only.clone();
                         let focused = scope.cage(false);
                         let enabled = enabled.clone();
@@ -413,7 +463,8 @@ impl Widget for Rating {
                                         } else {
                                             displayed >= value
                                         };
-                                        star(
+                                        symbols.drawing(
+                                            filled,
                                             if filled {
                                                 if unstyled {
                                                     theme.foreground
@@ -524,6 +575,7 @@ impl Rating {
                 0.
             };
             let theme = self.common.theme.clone();
+            let symbols = self.symbols.clone();
             let unstyled = self.common.unstyled;
             let selected_only = highlight_selected_only.clone();
             let threshold = domain
@@ -545,7 +597,8 @@ impl Rating {
                     } else {
                         accepted.get() >= threshold
                     };
-                    star(
+                    symbols.drawing(
+                        filled,
                         if filled {
                             if unstyled {
                                 theme.foreground

@@ -5,6 +5,20 @@ declarations across Record, HTML, Web/SSR and Apace. They add no table, row, cel
 selection or interactive grid accessibility roles. Slot controls retain their
 native roles, focus order and node identities.
 
+The public pages separate spans/offsets, responsive spans, equal columns/gaps,
+responsive equal columns, image fit and flex constraints into six compiled source
+sections. Primary ratio images use the local mountains/cabin illustration so
+cover cropping and contain letterboxing are recognizable.
+
+Responsive examples use the existing typed style contract. Grid keeps twelve
+tracks and changes `GridPlacement::Span(6)` to `Span(12)`. SimpleGrid changes
+`GridTracks` between one/two/three equal tracks. Items explicitly set automatic
+row placement (and automatic column placement for SimpleGrid); otherwise their
+initial builder positions would remain fixed. These custom styles take
+responsibility for placement and receive ordinary target validation. They
+do not extend the finite first-fit builder or add implicit breakpoint props.
+The same editors remain mounted through real container measurements.
+
 ```rust
 use sapid::{aspect_ratio, grid, grid_item, simple_grid};
 use glory::style::Length;

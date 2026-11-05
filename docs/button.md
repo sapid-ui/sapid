@@ -24,12 +24,12 @@ section text. Invalid reactive labels preserve the previous accepted label/name
 and report an error; a later valid update recovers without recreating text or
 button nodes. An explicit name permits an intentionally empty visual label.
 
-`loading(source)` sets busy metadata and disables activation independently of
+`loading(source)` shows a decorative rotating Graphic, sets busy metadata and disables activation independently of
 `enabled(source)`. Disabled theme colors are portable typed declarations, so
 the same state is visible without the optional stylesheet and in the native
 engine. Explicit style declarations take precedence. External updates do not
 invoke press callbacks. The optional stylesheet adds hover/focus-visible and
-reduced-motion behavior; applications supply localized loading text or icons.
+reduced-motion behavior. The label remains available while loading; no implicit timer or operation is started. Current enabled/loading sources are checked before typed and generic activation handlers, including same-packet changes.
 
 Every `on_press` callback runs before generic Activate observers regardless of
 setter order. Each callback rechecks Owner liveness; retirement skips remaining
@@ -49,3 +49,5 @@ Space activation, stable identities and mobile overflow checks. Reports and
 screenshots are under `D:/BuildCache/sapid/buttons-browser.json` and
 `buttons-*-hydrate.png`. These checks do not establish spoken screen-reader
 announcements or OS input-method acceptance.
+
+The current multi-section public guide and focused remediation evidence are documented in [buttons](buttons.md).

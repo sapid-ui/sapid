@@ -6,8 +6,8 @@ use crate::{
     Decimal, FieldControl, HourCycle, LocalTime, MAX_DISABLED_TIMES, NumberValue, TimeBounds,
     TimeFormat, TimeGridSpec, TimeParts, TimePickerDraft, TimePickerStatus, TimePrecision,
 };
-use glory::render::{Event, EventKind, InputEdit, NodeId, PopupKind, Role, Semantics};
-use glory::style::{Align, Display, FlexDirection, Length, Limit, Overflow, Style};
+use glory::render::{Event, EventKind, NodeId, PopupKind, Role, Semantics};
+use glory::style::{Display, FlexDirection, Length, Limit, Overflow, Style};
 use glory::ui::{Result, WeakScope, Widget};
 use glory::{Cage, Scope, Vary};
 use std::{cell::Cell, rc::Rc};
@@ -1057,16 +1057,29 @@ impl Widget for TimePicker {
         }
         widget.show_in(scope)?;
         let content = scope.child_in(root.get().ok_or(glory::ui::Error::Gone)?)?;
-        let row = scope.cage(None);
-        glory::ui::view()
-            .class("sapid-time-segments")
-            .style(Style {
-                align: Some(Align::Center),
-                ..Style::new().display(Display::Flex).gap(4.)
-            })
-            .node_ref(row)
-            .show_in(&content)?;
-        let editors = scope.child_in(row.get().ok_or(glory::ui::Error::Gone)?)?;
+        let visible_parts = state.parts;
+        let visible_count = if format.precision == TimePrecision::Second {
+            3
+        } else {
+            2
+        };
+        let clear_visible = scope.bond(move || {
+            visible_parts[..visible_count]
+                .iter()
+                .any(|part| match part.get() {
+                    NumberValue::Empty => false,
+                    NumberValue::Text(value) => !value.is_empty(),
+                    _ => true,
+                })
+        });
+        let show_chooser = preset_groups.is_some() || self.with_dropdown;
+        let clearable = self.clearable;
+        let actions_visible = scope.bond(move || show_chooser || clearable && clear_visible.get());
+        let (editors, actions) = crate::input_actions::segmented_row(
+            &content,
+            "sapid-time-segments",
+            actions_visible.into(),
+        )?;
         let status = state.status;
         for index in 0..if format.precision == TimePrecision::Second {
             3
@@ -1149,22 +1162,18 @@ impl Widget for TimePicker {
             if let Some(parser) = self.paste_split.clone() {
                 let pasted = state.clone();
                 let requires_separator = self.paste_requires_separator;
-                input = input.capture_input_edits(MAX_TIME_PICKER_PASTE_BYTES).on(
-                    EventKind::InputEdit,
-                    move |event| {
-                        if let Event::InputEdit(InputEdit::Value {
-                            value,
-                            composing: false,
-                            ..
-                        }) = event
-                            && (!requires_separator || value.contains(':'))
-                            && let Some(value) = parser(&value)
-                        {
-                            pasted.report(pasted.choose(Some(value)));
-                        }
-                    },
-                );
+                input = input.capture_input_edits(MAX_TIME_PICKER_PASTE_BYTES, move |raw| {
+                    if (!requires_separator || raw.contains(':'))
+                        && let Some(value) = parser(raw)
+                    {
+                        pasted.report(pasted.choose(Some(value)));
+                        true
+                    } else {
+                        false
+                    }
+                });
             }
+
             if preset_groups.is_some() || self.with_dropdown {
                 let focus = popup.clone();
                 input = input.on(EventKind::FocusChanged, move |event| {
@@ -1198,17 +1207,10 @@ impl Widget for TimePicker {
             let clear = state.clone();
             let clear_label = self.clear_label.clone();
             let clear_enabled = accepted.map(|s| s.enabled && !s.readonly);
-            let clear_parts = state.parts;
-            let clear_visible = scope.bond(move || {
-                clear_parts.iter().any(|part| match part.get() {
-                    NumberValue::Empty => false,
-                    NumberValue::Text(value) => !value.is_empty(),
-                    _ => true,
-                })
-            });
             let theme = self.common.theme.clone();
             let size = self.common.size;
             let unstyled = self.common.unstyled;
+            let action_style = crate::input_actions::flow_action_style(&self.common);
             glory::ui::when(clear_visible, move || {
                 let clear = clear.clone();
                 let mut button = crate::button()
@@ -1218,7 +1220,8 @@ impl Widget for TimePicker {
                     .compact(true)
                     .class("sapid-time-picker-clear")
                     .name(clear_label.clone())
-                    .label(clear_label.clone())
+                    .style(action_style.clone())
+                    .fill(crate::input_actions::glyph(crate::Icon::Close, theme.muted))
                     .enabled(clear_enabled)
                     .on_press(move || clear.report(clear.choose(None)));
                 if unstyled {
@@ -1226,7 +1229,7 @@ impl Widget for TimePicker {
                 }
                 button
             })
-            .show_in(&editors)?;
+            .show_in(&actions)?;
         }
         if preset_groups.is_some() || self.with_dropdown {
             let trigger = popup.clone();
@@ -1234,8 +1237,11 @@ impl Widget for TimePicker {
             let trigger_id = anchor_id.clone();
             let trigger_panel = panel_id.clone();
             let mut button = glory::ui::button()
-                .label("Choose time")
                 .name("Choose time")
+                .fill(crate::input_actions::glyph(
+                    crate::Icon::ChevronDown,
+                    self.common.theme.muted,
+                ))
                 .class("sapid-time-picker-preset-trigger")
                 .enabled(accepted.map(|snapshot| snapshot.enabled && !snapshot.readonly))
                 .semantics(scope.bond(move || {
@@ -1250,10 +1256,8 @@ impl Widget for TimePicker {
                 .on(EventKind::Activate, move |_| {
                     trigger.report(trigger.propose(!trigger.control.source.get()));
                 });
-            if !self.common.unstyled {
-                button = button.style(self.common.theme.control(self.common.size));
-            }
-            button.show_in(&editors)?;
+            button = button.style(crate::input_actions::flow_action_style(&self.common));
+            button.show_in(&actions)?;
         }
         if let Some(spec) = self.grid {
             let s = state.clone();
@@ -1370,6 +1374,7 @@ impl Widget for TimePicker {
             })();
             s.report(result)
         });
+        scope.retain(actions)?;
         scope.retain(editors)?;
         scope.retain(content)?;
         scope.retain((state, popup, focused, blurred))

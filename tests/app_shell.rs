@@ -68,6 +68,121 @@ fn local_layout_is_finite_explicit_readonly_and_driven_by_observations() {
     assert_eq!(layout.width().get(), 500.0);
 }
 #[test]
+fn reactive_regions_keep_content_and_release_space_without_writing_sources() {
+    let app = App::memory();
+    let borders = app.scope().cage(true);
+    let visible = app.scope().cage(true);
+    let height = app.scope().cage(64.);
+    let editor = app.scope().cage(None);
+    let builds = Rc::new(Cell::new(0));
+    let built = builds.clone();
+    app.mount(
+        app_shell("regions")
+            .with_border(borders)
+            .main_scrollable(true)
+            .header_style(height.map(|v| Style::new().height(Length::Px(*v))))
+            .header(|_| glory::ui::text().content("Header"))
+            .sidebar(sidebar("regions-nav").content(|_| {
+                sapid::shell_section()
+                    .scrollable(true)
+                    .name("Projects")
+                    .fill(glory::ui::text().content("Navigation"))
+            }))
+            .aside_visible(visible)
+            .footer_visible(visible)
+            .header_visible(visible)
+            .aside(move |_| {
+                built.set(built.get() + 1);
+                glory::ui::input().node_ref(editor).value("Kept details")
+            })
+            .footer(|_| glory::ui::text().content("Footer")),
+    )
+    .unwrap();
+    let editor_id = editor.get().unwrap();
+    let initial_nodes = nodes(&app).len();
+    for state in [false, true, false, true] {
+        visible.revise(|v| *v = state);
+        borders.revise(|v| *v = state);
+        height.revise(|v| *v += 8.);
+        app.flush().unwrap();
+        let tree = app.tree();
+        for name in [
+            "sapid-shell-header",
+            "sapid-shell-footer",
+            "sapid-shell-aside",
+        ] {
+            assert_eq!(
+                tree.node(class(&app, name))
+                    .unwrap()
+                    .descriptor
+                    .view()
+                    .semantics
+                    .as_ref()
+                    .unwrap()
+                    .hidden,
+                !state
+            );
+        }
+        assert_eq!(editor.get(), Some(editor_id));
+        assert_eq!(nodes(&app).len(), initial_nodes);
+        assert_eq!(builds.get(), 1);
+        let header = tree
+            .node(class(&app, "sapid-shell-header"))
+            .unwrap()
+            .descriptor
+            .view();
+        assert_eq!(header.style.height, Some(Length::Px(height.get())));
+        assert_eq!(header.style.min_height, None);
+        assert_eq!(
+            header.style.border_width.unwrap().bottom,
+            if state { 1. } else { 0. }
+        );
+    }
+    let main = class(&app, "sapid-shell-main");
+    assert_eq!(
+        app.tree()
+            .node(main)
+            .unwrap()
+            .descriptor
+            .view()
+            .semantics
+            .as_ref()
+            .unwrap()
+            .scroll_keyboard,
+        Some(glory::render::ScrollAxes::Vertical)
+    );
+    app.clear().unwrap();
+    assert!(editor.try_get().is_err() || editor.get().is_none());
+}
+
+#[test]
+fn viewport_and_unstyled_sections_keep_structural_scroll_contract_and_ssr() {
+    let snapshot = glory::ssr::snapshot(
+        app_shell("viewport")
+            .unstyled()
+            .viewport()
+            .header(|_| glory::ui::text().content("Fixed header"))
+            .main(|_| {
+                sapid::shell_section()
+                    .unstyled()
+                    .scrollable(true)
+                    .name("Long content")
+                    .fill(glory::ui::text().content("Scrollable body"))
+            }),
+    )
+    .unwrap();
+    assert!(snapshot.html.contains("position:fixed"));
+    assert!(snapshot.html.contains("overflow-y:auto"));
+    assert!(snapshot.html.contains("Long content"));
+    assert!(snapshot.html.contains("display:flex"));
+    let app = App::memory();
+    assert!(
+        app.mount(app_shell("invalid-aside").aside_width(f64::NAN))
+            .is_err()
+    );
+    assert!(app.tree().is_empty());
+}
+#[test]
 fn shell_has_real_landmarks_and_a_captured_skip_link_to_programmatic_main() {
     let app = App::memory();
     app.mount(

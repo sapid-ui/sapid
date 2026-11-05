@@ -1,5 +1,8 @@
 //! An editable combobox retaining the host Input editing protocol.
-use std::rc::{Rc, Weak};
+use std::{
+    collections::BTreeMap,
+    rc::{Rc, Weak},
+};
 
 use glory::render::{
     ChoiceCommand, ComboboxKind, Event, EventKind, FocusMode, FormControl, Layer, LayerFocus,
@@ -7,8 +10,7 @@ use glory::render::{
     SelectGroup, SelectProps, SemanticId, Semantics,
 };
 use glory::style::{
-    Align, BorderStyle, Color, Display, Edges, FlexDirection, FlexWrap, Length, Limit, Overflow,
-    Style,
+    Align, BorderStyle, Color, Display, Edges, FlexDirection, Length, Limit, Overflow, Style,
 };
 use glory::ui::{Result, Widget};
 use glory::{Cage, Scope, Vary};
@@ -21,6 +23,7 @@ use crate::state::{Control, Dirty, Value};
 
 pub const MAX_COMBOBOX_SEARCH_BYTES: usize = 4096;
 pub const MAX_MULTI_SELECT_VALUES: usize = 256;
+const MAX_CUSTOM_OPTION_ROWS: usize = 256;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum ComboboxFilter {
@@ -71,15 +74,18 @@ pub struct Combobox {
     hide_picked_options: bool,
     clearable: bool,
     clear_label: String,
+    disclosure_label: String,
     placeholder: Option<Vary<String>>,
     visible_limit: usize,
     select_first_on_change: bool,
     auto_select_on_blur: bool,
     loading: Vary<bool>,
     loading_left: bool,
+    option_content: BTreeMap<String, crate::SelectOptionContent>,
 }
 pub fn combobox(key: impl Into<String>) -> Combobox {
     Combobox {
+        option_content: BTreeMap::new(),
         kind: ComboboxKind::Editable,
         common: Common::default(),
         key: key.into(),
@@ -107,6 +113,7 @@ pub fn combobox(key: impl Into<String>) -> Combobox {
         hide_picked_options: false,
         clearable: false,
         clear_label: "Clear selection".into(),
+        disclosure_label: "Show options".into(),
         placeholder: None,
         visible_limit: 1024,
         select_first_on_change: false,
@@ -116,6 +123,25 @@ pub fn combobox(key: impl Into<String>) -> Combobox {
     }
 }
 impl Combobox {
+    pub(crate) fn disclosure_label(mut self, value: String) -> Self {
+        self.disclosure_label = value;
+        self
+    }
+
+    /// Bounded passive option adornments; filtering and the accessible name use
+    /// the original option label, independently from descriptive content. At most
+    /// 256 embellished rows fit alongside all 1024 finite option declarations.
+    pub fn option_content(
+        mut self,
+        key: impl Into<String>,
+        content: crate::SelectOptionContent,
+    ) -> Self {
+        if self.option_content.len() <= MAX_CUSTOM_OPTION_ROWS {
+            self.option_content.insert(key.into(), content);
+        }
+        self
+    }
+
     pub fn placeholder(mut self, value: impl Into<Vary<String>>) -> Self {
         self.placeholder = Some(value.into());
         self
@@ -362,6 +388,8 @@ fn query_for(
 }
 
 struct State {
+    scope: glory::ui::WeakScope,
+    disclosure_focus: std::cell::Cell<bool>,
     kind: ComboboxKind,
     owner: glory::core::InstanceId,
     value: Control<Option<String>>,
@@ -418,6 +446,17 @@ impl MultiSelectHandle {
     }
 }
 impl State {
+    fn focus_editor(&self, node: Option<glory::render::NodeId>) -> Result {
+        if !self.owner.is_alive() || !self.editable.try_get()? || self.composing.try_get()? {
+            return Ok(());
+        }
+
+        if let Some(scope) = self.scope.upgrade() {
+            composite::focus_node(&scope, node)?;
+        }
+        Ok(())
+    }
+
     fn option_matches(&self, key: &str, label: &str) -> bool {
         self.query.with(|query| self.filter.matches(label, query))
             && !self.multiple.as_ref().is_some_and(|multiple| {
@@ -561,6 +600,9 @@ impl State {
         Ok(())
     }
     fn opened(&self, value: bool) -> Result {
+        if !value {
+            self.disclosure_focus.set(false);
+        }
         if self.owner.is_alive() && self.open.source.try_get()? != value {
             self.open.accept(&value)?;
             self.opened.emit(self.owner, value);
@@ -806,7 +848,16 @@ impl State {
 impl Widget for Combobox {
     fn build(&mut self, scope: &Scope) -> Result {
         let placeholder = crate::text_input::placeholder(scope, self.placeholder.take(), false)?;
+        if self.disclosure_label.trim().is_empty()
+            || self.disclosure_label.len() > 256
+            || self.disclosure_label.contains(['\0', '\r', '\n'])
+        {
+            return Err(invalid(
+                "multiple disclosure requires a bounded accessible label",
+            ));
+        }
         if self.count > 1024
+            || self.option_content.len() > MAX_CUSTOM_OPTION_ROWS
             || self.visible_limit > 1024
             || self.max_values > MAX_MULTI_SELECT_VALUES
             || (self.clearable
@@ -847,6 +898,26 @@ impl Widget for Combobox {
             ..Default::default()
         });
         config.validate()?;
+        for (key, content) in &self.option_content {
+            let known = config
+                .options()
+                .any(|(option, _)| option.key.as_str() == key);
+            let valid = |text: &Option<String>| {
+                text.as_ref().is_none_or(|text| {
+                    !text.is_empty() && text.len() <= 256 && !text.contains(['\0', '\r', '\n'])
+                })
+            };
+            if !known
+                || !valid(&content.leading)
+                || !valid(&content.description)
+                || !valid(&content.trailing)
+            {
+                return Err(invalid(
+                    "combobox content requires a known option key and bounded single-line text",
+                ));
+            }
+        }
+
         let form_name = composite::form_name(scope, &self.form_name)?;
         if self.kind == ComboboxKind::Autocomplete {
             for (option, _) in config.options() {
@@ -936,6 +1007,8 @@ impl Widget for Combobox {
             self.kind,
         ));
         let state = Rc::new(State {
+            scope: scope.downgrade(),
+            disclosure_focus: std::cell::Cell::new(false),
             kind: self.kind,
             owner: scope.id(),
             value,
@@ -1025,6 +1098,7 @@ impl Widget for Combobox {
             );
         let shows_loading = loading.is_reactive() || loading.get();
         let mut base = self.common.theme.control(self.common.size);
+        base.width = Some(Length::Percent(100.));
         if clearable_editor || shows_loading {
             base.width = Some(Length::Percent(100.));
             let mut padding = base.padding.unwrap_or_else(|| Edges::all(0.));
@@ -1040,6 +1114,24 @@ impl Widget for Combobox {
             }
             base.padding = Some(padding);
         }
+
+        let frame = (self.kind == ComboboxKind::Multiple).then(|| {
+            crate::tag::editor_frame(
+                scope,
+                &self.common,
+                enabled.clone(),
+                panel_metadata.clone(),
+                crate::tag::EditorActions {
+                    wrapped: true,
+                    leading: shows_loading && self.loading_left,
+                    trailing: 1 + (clearable_editor && shows_loading && !self.loading_left) as u8,
+                },
+            )
+        });
+        if let Some(frame) = &frame {
+            self.common.style = frame.input.clone();
+        }
+        let focused = frame.as_ref().map(|frame| frame.focused);
         let mut input = configure!(
             self.common,
             glory::ui::input(),
@@ -1125,12 +1217,22 @@ impl Widget for Combobox {
         );
         input = input.on(EventKind::FocusChanged, move |event| {
             let Some(scope) = weak.upgrade() else { return };
+            if let (Some(focused), Event::FocusChanged(value)) = (focused, &event) {
+                focused.revise(|old| *old = *value);
+            }
             let result = match event {
-                Event::FocusChanged(false) => controller.blur(),
+                Event::FocusChanged(false) => {
+                    controller.disclosure_focus.set(false);
+                    controller.blur()
+                }
                 Event::FocusChanged(true) if controller.editable.try_get().unwrap_or(false) => {
-                    controller
-                        .opened(true)
-                        .and_then(|()| controller.initial_cursor())
+                    if controller.disclosure_focus.replace(false) {
+                        Ok(())
+                    } else {
+                        controller
+                            .opened(true)
+                            .and_then(|()| controller.initial_cursor())
+                    }
                 }
                 _ => Ok(()),
             };
@@ -1146,31 +1248,26 @@ impl Widget for Combobox {
             input = input.on(kind, move |event| observers.emit(owner, event));
         }
         let root = scope.create(glory::render::Descriptor::new(Props::Group))?;
-        let content = scope.child_in(root)?;
+        let outer = scope.child_in(root)?;
+        let frame_id = composite::id("combobox", &self.key, "frame", "root")?;
+        let content = if let Some(frame) = &frame {
+            let content = frame.mount(
+                &outer,
+                frame_id.clone(),
+                "sapid-multi-select-shell sapid-multi-select-values",
+            )?;
+            scope.retain(outer)?;
+            content
+        } else {
+            outer
+        };
         if let Some(multiple) = &state.multiple {
             let controller = state.clone();
             let theme = self.common.theme.clone();
             let plain = self.common.unstyled;
             let size = self.common.size;
-            let values_ref = scope.cage(None);
-            glory::ui::view()
-                .class(if plain {
-                    "sapid-multi-select-values sapid-unstyled"
-                } else {
-                    "sapid-multi-select-values"
-                })
-                .style(Style {
-                    align: Some(Align::Center),
-                    ..Style::new()
-                        .display(Display::Flex)
-                        .flex_direction(FlexDirection::Row)
-                        .flex_wrap(FlexWrap::Wrap)
-                        .gap(4.0)
-                        .min_width(Length::Px(0.0))
-                })
-                .node_ref(values_ref)
-                .show_in(&content)?;
-            let values_scope = scope.child_in(values_ref.get().ok_or(glory::ui::Error::Gone)?)?;
+            let values_root = content.create(glory::render::Descriptor::new(Props::Group))?;
+            let values_scope = content.child_in(values_root)?;
             glory::ui::each(multiple.selected)
                 .key(|key| key.clone())
                 .children(move |entry| {
@@ -1207,11 +1304,7 @@ impl Widget for Combobox {
                             .on(EventKind::Activate, move |_| {
                                 if let Some(scope) = weak.upgrade() {
                                     let result = command.remove(&key).and_then(|()| {
-                                        if scope.capabilities()?.focus
-                                            && let Some(node) = reference.try_get()?
-                                        {
-                                            scope.action(glory::render::Action::Focus(node))?;
-                                        }
+                                        command.focus_editor(reference.try_get()?)?;
                                         Ok(())
                                     });
                                     if let Err(error) = result {
@@ -1230,7 +1323,12 @@ impl Widget for Combobox {
                                 if plain { " sapid-unstyled" } else { "" }
                             ))
                             .style(style)
-                            .fill(glory::ui::text().class("sapid-tag-label").content(label))
+                            .fill(
+                                glory::ui::text()
+                                    .class("sapid-tag-label")
+                                    .style(crate::tag::label_style())
+                                    .content(label),
+                            )
                             .fill(remove)
                             .show_in(scope)
                     })
@@ -1238,16 +1336,26 @@ impl Widget for Combobox {
                 .show_in(&values_scope)?;
             content.retain(values_scope)?;
         }
-        if clearable_editor || shows_loading {
+        if clearable_editor || shows_loading || self.kind == ComboboxKind::Multiple {
             let row_ref = scope.cage(None);
             glory::ui::view()
                 .class("sapid-combobox-editor")
-                .style(Style {
-                    ..Style::new()
+                .style(if frame.is_some() {
+                    Style {
+                        grow: Some(1.),
+                        shrink: Some(1.),
+                        ..Style::new()
+                            .position(glory::style::Position::Relative)
+                            .display(Display::Flex)
+                            .width(Length::Px(72.))
+                            .min_width(Length::Px(72.))
+                    }
+                } else {
+                    Style::new()
                         .position(glory::style::Position::Relative)
-                        .display(Display::Block)
+                        .display(Display::Flex)
                         .width(Length::Percent(100.))
-                        .min_width(Length::Px(0.0))
+                        .min_width(Length::Px(0.))
                 })
                 .node_ref(row_ref)
                 .show_in(&content)?;
@@ -1256,6 +1364,7 @@ impl Widget for Combobox {
                 crate::loader()
                     .theme(self.common.theme.clone())
                     .size(self.common.size)
+                    .diameter(16.)
                     .decorative()
                     .visible(loading.clone())
                     .class("sapid-combobox-loading sapid-autocomplete-loading is-left")
@@ -1263,7 +1372,11 @@ impl Widget for Combobox {
                         Style::new()
                             .position(glory::style::Position::Absolute)
                             .left(Length::Px(9.))
-                            .top(Length::Px(8.)),
+                            .top(Length::Percent(50.))
+                            .margin(Edges {
+                                top: -8.,
+                                ..Edges::all(0.)
+                            }),
                     )
                     .show_in(&row)?;
             }
@@ -1305,7 +1418,11 @@ impl Widget for Combobox {
                             Style::new()
                                 .position(glory::style::Position::Absolute)
                                 .right(Length::Px(7.))
-                                .top(Length::Px(6.))
+                                .top(Length::Percent(50.))
+                                .margin(Edges {
+                                    top: -12.,
+                                    ..Edges::all(0.)
+                                })
                                 .width(Length::Px(24.))
                                 .min_width(Length::Px(24.))
                                 .height(Length::Px(24.))
@@ -1327,11 +1444,8 @@ impl Widget for Combobox {
                                 } else {
                                     command.clear_autocomplete()?;
                                 }
-                                if command.owner.is_alive()
-                                    && scope.capabilities()?.focus
-                                    && let Some(node) = reference.try_get()?
-                                {
-                                    scope.action(glory::render::Action::Focus(node))?;
+                                if command.owner.is_alive() {
+                                    command.focus_editor(reference.try_get()?)?;
                                 }
                                 Ok(())
                             })();
@@ -1350,6 +1464,7 @@ impl Widget for Combobox {
                 crate::loader()
                     .theme(self.common.theme.clone())
                     .size(self.common.size)
+                    .diameter(16.)
                     .decorative()
                     .visible(loading)
                     .class("sapid-combobox-loading sapid-autocomplete-loading is-right")
@@ -1357,8 +1472,94 @@ impl Widget for Combobox {
                         Style::new()
                             .position(glory::style::Position::Absolute)
                             .right(Length::Px(if clearable_editor { 37. } else { 9. }))
-                            .top(Length::Px(8.)),
+                            .top(Length::Percent(50.))
+                            .margin(Edges {
+                                top: -8.,
+                                ..Edges::all(0.)
+                            }),
                     )
+                    .show_in(&row)?;
+            }
+            if self.kind == ComboboxKind::Multiple {
+                let controller = state.clone();
+                let metadata_state = state.clone();
+                let visibility_state = state.clone();
+                let loading = self.loading.clone();
+                let hides_for_loading = !self.loading_left;
+                let can_clear = self.clearable;
+                let owner_id = panel_id.clone();
+                let weak = scope.downgrade();
+                glory::ui::button()
+                    .label("")
+                    .name(self.disclosure_label.clone())
+                    .focus(FocusMode::Programmatic)
+                    .class("sapid-multi-select-disclosure")
+                    .enabled(state.editable.clone())
+                    .semantics(scope.bond(move || {
+                        Some(Box::new(Semantics {
+                            controls: Some(owner_id.clone()),
+                            expanded: Some(metadata_state.visible.get()),
+                            ..Default::default()
+                        }))
+                    }))
+                    .fill(crate::input_actions::glyph(
+                        crate::Icon::ChevronDown,
+                        self.common.theme.muted,
+                    ))
+                    .style(scope.bond(move || {
+                        let clear_visible = can_clear
+                            && visibility_state.editable.get()
+                            && !visibility_state.composing.get()
+                            && visibility_state
+                                .multiple
+                                .as_ref()
+                                .is_some_and(|m| !m.selected.with(Vec::is_empty));
+                        Style {
+                            background: Some(Color(0, 0, 0, 0)),
+                            align: Some(Align::Center),
+                            justify: Some(glory::style::Justify::Center),
+                            ..Style::new()
+                                .display(if clear_visible || (hides_for_loading && loading.get()) {
+                                    Display::None
+                                } else {
+                                    Display::InlineFlex
+                                })
+                                .position(glory::style::Position::Absolute)
+                                .right(Length::Px(7.))
+                                .top(Length::Percent(50.))
+                                .margin(Edges {
+                                    top: -12.,
+                                    ..Edges::all(0.)
+                                })
+                                .width(Length::Px(24.))
+                                .min_width(Length::Px(24.))
+                                .height(Length::Px(24.))
+                                .min_height(Length::Px(24.))
+                                .padding(Edges::all(0.))
+                                .border_width(Edges::all(0.))
+                        }
+                    }))
+                    .on(EventKind::Activate, move |_| {
+                        let Some(scope) = weak.upgrade() else { return };
+                        let result = (|| -> Result {
+                            if !controller.owner.is_alive()
+                                || !controller.editable.try_get()?
+                                || controller.composing.try_get()?
+                            {
+                                return Ok(());
+                            }
+                            controller.opened(true)?;
+                            if controller.owner.is_alive() {
+                                controller.initial_cursor()?;
+                                controller.disclosure_focus.set(true);
+                                controller.focus_editor(reference.try_get()?)?;
+                            }
+                            Ok(())
+                        })();
+                        if let Err(error) = result {
+                            scope.report_error(error);
+                        }
+                    })
                     .show_in(&row)?;
             }
             content.retain(row)?;
@@ -1370,6 +1571,11 @@ impl Widget for Combobox {
         let panel_name = panel_id.clone();
         let panel_visible = visible.clone();
         let panel_multiple = self.kind == ComboboxKind::Multiple;
+        let panel_anchor = if panel_multiple {
+            frame_id
+        } else {
+            trigger_id.clone()
+        };
         let panel_meta = scope.bond(move || {
             Some(Box::new(Semantics {
                 id: Some(panel_name.clone()),
@@ -1387,11 +1593,14 @@ impl Widget for Combobox {
                 layer: Some(Layer {
                     modal: false,
                     focus: LayerFocus::Preserve,
-                    placement: LayerPlacement::Anchor(glory::render::AnchorPlacement::new(
-                        glory::render::AnchorSide::Bottom,
-                        glory::render::AnchorAlign::Start,
-                    )),
-                    anchor: Some(trigger_id.clone()),
+                    placement: LayerPlacement::Anchor(glory::render::AnchorPlacement {
+                        match_width: true,
+                        ..glory::render::AnchorPlacement::new(
+                            glory::render::AnchorSide::Bottom,
+                            glory::render::AnchorAlign::Start,
+                        )
+                    }),
+                    anchor: Some(panel_anchor.clone()),
                     initial_focus: None,
                     return_focus: None,
                     ..Default::default()
@@ -1402,7 +1611,7 @@ impl Widget for Combobox {
         let mut panel_style = Style::new()
             .display(Display::Flex)
             .flex_direction(FlexDirection::Column)
-            .min_width(Length::Px(180.0))
+            .min_width(Length::Px(0.0))
             .max_height(Limit::Px(288.0))
             .overflow_y(Overflow::Auto);
         if !self.common.unstyled {
@@ -1445,9 +1654,12 @@ impl Widget for Combobox {
                     &state,
                     option,
                     false,
-                    &self.key,
-                    &panel_id,
-                    &self.common,
+                    OptionPresentation {
+                        key: &self.key,
+                        owner: &panel_id,
+                        common: &self.common,
+                        content: self.option_content.get(option.key.as_str()),
+                    },
                 )?,
                 SelectEntry::Group(group) => {
                     let reference = scope.cage(None);
@@ -1492,9 +1704,12 @@ impl Widget for Combobox {
                             &state,
                             option,
                             group.disabled,
-                            &self.key,
-                            &panel_id,
-                            &self.common,
+                            OptionPresentation {
+                                key: &self.key,
+                                owner: &panel_id,
+                                common: &self.common,
+                                content: self.option_content.get(option.key.as_str()),
+                            },
                         )?;
                     }
                     items_scope.retain(group_scope)?;
@@ -1549,13 +1764,24 @@ impl Widget for Combobox {
                 }))
             });
             let proxy_multiple = state.multiple.as_ref().map(|multiple| multiple.selected);
+            let declared = config.clone();
             let selection = scope.bond(move || {
-                let keys = proxy_multiple
-                    .map(|selected| selected.get())
-                    .unwrap_or_else(|| selected.get().into_iter().collect());
-                keys.into_iter()
-                    .map(|key| SemanticId::new(key).expect("validated option key"))
-                    .collect::<Vec<_>>()
+                if let Some(selected) = proxy_multiple {
+                    selected.with(|keys| {
+                        declared
+                            .options()
+                            .filter(|(option, _)| keys.iter().any(|key| key == option.key.as_str()))
+                            .map(|(option, _)| option.key.clone())
+                            .collect::<Vec<_>>()
+                    })
+                } else {
+                    selected.with(|key| {
+                        key.as_ref()
+                            .map(|key| SemanticId::new(key.clone()).expect("validated option key"))
+                            .into_iter()
+                            .collect()
+                    })
+                }
             });
             glory::ui::select()
                 .configuration((*config).clone())
@@ -1648,15 +1874,26 @@ impl Widget for Combobox {
     }
 }
 
+struct OptionPresentation<'a> {
+    key: &'a str,
+    owner: &'a SemanticId,
+    common: &'a Common,
+    content: Option<&'a crate::SelectOptionContent>,
+}
+
 fn mount_option(
     scope: &Scope,
     state: &Rc<State>,
     option: &glory::render::SelectOption,
     group_disabled: bool,
-    key: &str,
-    owner: &SemanticId,
-    common: &Common,
+    presentation: OptionPresentation<'_>,
 ) -> Result {
+    let OptionPresentation {
+        key,
+        owner,
+        common,
+        content,
+    } = presentation;
     let parent = scope;
     let item_scope = parent.child()?;
     let scope = &item_scope;
@@ -1706,6 +1943,11 @@ fn mount_option(
         base.border_width = Some(Edges::all(0.0));
         base.background = Some(Color(0, 0, 0, 0));
     }
+    if content.is_some() {
+        base.display = Some(Display::Flex);
+        base.align = Some(Align::Center);
+        base.gap = Some(8.);
+    }
     let styled = state.clone();
     let styled_member = member.clone();
     let accent = common.theme.accent_soft;
@@ -1725,7 +1967,7 @@ fn mount_option(
     let pointer = state.clone();
     let pointer_weak = scope.downgrade();
     let pointer_member = member.clone();
-    glory::ui::button()
+    let mut button = glory::ui::button()
         .label(option.label.clone())
         .focus(FocusMode::Programmatic)
         .class(format!(
@@ -1770,8 +2012,45 @@ fn mount_option(
                     scope.report_error(error);
                 }
             }
-        })
-        .show_in(scope)?;
+        });
+    if let Some(content) = content {
+        let mut row: Vec<Box<dyn Widget>> = Vec::with_capacity(4);
+        if let Some(value) = &content.leading {
+            row.push(Box::new(
+                glory::ui::text()
+                    .class("sapid-combobox-option-leading")
+                    .content(value.clone()),
+            ));
+        }
+        row.push(Box::new(
+            glory::ui::text()
+                .class("sapid-combobox-option-label")
+                .content(option.label.clone()),
+        ));
+        if let Some(value) = &content.description {
+            row.push(Box::new(
+                glory::ui::text()
+                    .class("sapid-combobox-option-description")
+                    .content(value.clone())
+                    .style(Style {
+                        color: Some(common.theme.muted),
+                        ..Style::new()
+                    }),
+            ));
+        }
+        if let Some(value) = &content.trailing {
+            row.push(Box::new(
+                glory::ui::text()
+                    .class("sapid-combobox-option-trailing")
+                    .content(value.clone()),
+            ));
+        }
+        button = button
+            .label("")
+            .name(option.label.clone())
+            .fill(glory::ui::group().fill(row));
+    }
+    button.show_in(scope)?;
     parent.retain(item_scope)?;
     Ok(())
 }
@@ -1884,6 +2163,302 @@ mod tests {
             crate::select_option("c", "Branch"),
             crate::select_option("d", "Blocked").disabled(true),
         ])
+    }
+    #[test]
+    fn passive_option_content_preserves_names_filtering_and_editor_identity_in_all_three_kinds() {
+        for kind in 0..3 {
+            let app = App::memory();
+            let mut widget = combobox("content-row")
+                .options([
+                    crate::select_option("glory", "Glory"),
+                    crate::select_option("rust", "Rust"),
+                ])
+                .option_content(
+                    "glory",
+                    crate::SelectOptionContent::default()
+                        .leading("G")
+                        .description("UI framework")
+                        .trailing("Stable"),
+                );
+            widget = match kind {
+                1 => widget.autocomplete(),
+                2 => widget.multiple(),
+                _ => widget,
+            };
+            app.mount(widget).unwrap();
+            let editor_id = editor(&app);
+            let option = nodes(&app)
+                .into_iter()
+                .find(|id| {
+                    app.tree()
+                        .node(*id)
+                        .unwrap()
+                        .descriptor
+                        .view()
+                        .name
+                        .as_deref()
+                        == Some("Glory")
+                })
+                .unwrap();
+            let count = app.tree().len();
+            edit(&app, "framework", false);
+            assert!(
+                app.tree()
+                    .node(option)
+                    .unwrap()
+                    .descriptor
+                    .view()
+                    .semantics
+                    .as_ref()
+                    .unwrap()
+                    .hidden,
+                "adornments must not change label-based matching"
+            );
+            edit(&app, "Glo", false);
+            assert!(
+                !app.tree()
+                    .node(option)
+                    .unwrap()
+                    .descriptor
+                    .view()
+                    .semantics
+                    .as_ref()
+                    .unwrap()
+                    .hidden
+            );
+            assert_eq!(editor(&app), editor_id);
+            assert_eq!(app.tree().len(), count);
+            app.dispatch(option, Event::Activate).unwrap();
+            assert_eq!(
+                app.tree()
+                    .node(option)
+                    .unwrap()
+                    .descriptor
+                    .view()
+                    .name
+                    .as_deref(),
+                Some("Glory")
+            );
+            app.clear().unwrap();
+            assert_eq!(app.stats().nodes, 0);
+            assert_eq!(app.runtime_stats().tasks, 0);
+        }
+    }
+
+    #[test]
+    fn multi_proxy_uses_document_order_without_reordering_accepted_tokens_or_business_values() {
+        let app = App::memory();
+        let values = app.scope().cage(vec!["b".to_owned(), "a".to_owned()]);
+        let reference = app.scope().cage(None);
+        app.mount(
+            crate::field("ordered-proxy")
+                .label("Picked letters")
+                .control(move |field| {
+                    crate::multi_select("ordered-proxy-choice")
+                        .field(field)
+                        .node_ref(reference)
+                        .value(values)
+                        .options([
+                            crate::select_option("a", "Alpha"),
+                            crate::select_option("b", "Beta"),
+                        ])
+                }),
+        )
+        .unwrap();
+        let editor = reference.get().unwrap();
+        let selected = nodes(&app)
+            .into_iter()
+            .find(|id| {
+                matches!(
+                    app.tree().node(*id).unwrap().descriptor.view().props,
+                    Props::Select(_)
+                )
+            })
+            .unwrap();
+        for next in [
+            vec!["b".to_owned(), "a".to_owned()],
+            vec!["a".to_owned(), "b".to_owned()],
+        ] {
+            values.revise(|old| *old = next.clone());
+            app.flush().unwrap();
+            assert_eq!(values.get(), next);
+            assert_eq!(reference.get(), Some(editor));
+            assert!(
+                matches!(app.tree().node(selected).unwrap().descriptor.view().props,Props::Select(p)if p.selection.keys.iter().map(|k|k.as_str()).collect::<Vec<_>>()==["a","b"])
+            );
+        }
+        app.clear().unwrap();
+        assert_eq!(app.stats().nodes, 0);
+    }
+    #[test]
+    fn multiple_disclosure_opens_through_the_shared_controller_and_coalesces_its_focus_proposal() {
+        let app = App::memory();
+        let open = app.scope().cage(false);
+        let requests = app.scope().cage(0);
+        app.mount(
+            combobox("disclosure-policy")
+                .multiple()
+                .open(open)
+                .on_open_change(move |_| requests.revise(|v| *v += 1))
+                .option(crate::select_option("rust", "Rust")),
+        )
+        .unwrap();
+        let editor = editor(&app);
+        let disclosure = nodes(&app)
+            .into_iter()
+            .find(|id| {
+                app.tree()
+                    .node(*id)
+                    .unwrap()
+                    .descriptor
+                    .view()
+                    .classes
+                    .iter()
+                    .any(|c| c == "sapid-multi-select-disclosure")
+            })
+            .unwrap();
+        {
+            let tree = app.tree();
+            let a = tree.node(disclosure).unwrap().descriptor.view();
+            let b = tree.node(editor).unwrap().descriptor.view();
+            assert_eq!(
+                a.semantics.as_ref().unwrap().controls,
+                b.semantics.as_ref().unwrap().controls
+            );
+            assert_eq!(a.focus, FocusMode::Programmatic);
+        }
+        app.dispatch(disclosure, Event::Activate).unwrap();
+        assert_eq!(requests.get(), 1);
+        assert!(!open.get());
+        app.dispatch(editor, Event::FocusChanged(true)).unwrap();
+        assert_eq!(
+            requests.get(),
+            1,
+            "the focus caused by this action must not repeat a refused open proposal"
+        );
+        app.dispatch(editor, Event::FocusChanged(false)).unwrap();
+        app.dispatch(editor, Event::FocusChanged(true)).unwrap();
+        assert_eq!(
+            requests.get(),
+            2,
+            "an independent later focus still proposes opening"
+        );
+        open.revise(|v| *v = true);
+        app.flush().unwrap();
+        assert_eq!(
+            app.tree()
+                .node(disclosure)
+                .unwrap()
+                .descriptor
+                .view()
+                .semantics
+                .as_ref()
+                .unwrap()
+                .expanded,
+            Some(true)
+        );
+        app.clear().unwrap();
+        assert_eq!(app.stats().nodes, 0);
+    }
+    #[test]
+    fn multiple_disclosure_rechecks_current_availability_and_composition() {
+        let app = App::memory();
+        let enabled = app.scope().cage(true);
+        let requests = app.scope().cage(0);
+        app.mount(
+            combobox("disclosure-current")
+                .multiple()
+                .enabled(enabled)
+                .on_open_change(move |_| requests.revise(|v| *v += 1))
+                .option(crate::select_option("rust", "Rust")),
+        )
+        .unwrap();
+        let editor = editor(&app);
+        let disclosure = nodes(&app)
+            .into_iter()
+            .find(|id| {
+                app.tree()
+                    .node(*id)
+                    .unwrap()
+                    .descriptor
+                    .view()
+                    .classes
+                    .iter()
+                    .any(|c| c == "sapid-multi-select-disclosure")
+            })
+            .unwrap();
+        app.scope()
+            .batch(|| {
+                enabled.revise(|v| *v = false);
+                app.dispatch(disclosure, Event::Activate).unwrap();
+            })
+            .unwrap();
+        assert_eq!(requests.get(), 0);
+        enabled.revise(|v| *v = true);
+        app.flush().unwrap();
+        app.dispatch(editor, Event::Composition { active: true })
+            .unwrap();
+        app.dispatch(disclosure, Event::Activate).unwrap();
+        assert_eq!(requests.get(), 0);
+        app.clear().unwrap();
+        assert!(
+            app.mount(
+                combobox("bad-disclosure")
+                    .multiple()
+                    .disclosure_label(" ".into())
+            )
+            .is_err()
+        );
+        assert_eq!(app.stats().nodes, 0);
+    }
+    #[test]
+    fn maximum_embellished_rows_fit_with_all_options_and_overflow_rejects_before_nodes() {
+        for count in [MAX_CUSTOM_OPTION_ROWS, MAX_CUSTOM_OPTION_ROWS + 1] {
+            let app = App::memory();
+            let mut widget = combobox("max-content").options(
+                (0..1024).map(|i| crate::select_option(format!("o{i}"), format!("Option {i}"))),
+            );
+            for i in 0..count {
+                widget = widget.option_content(
+                    format!("o{i}"),
+                    crate::SelectOptionContent::default()
+                        .leading("L")
+                        .description("Description")
+                        .trailing("R"),
+                );
+            }
+            let result = app.mount(widget);
+            if count == MAX_CUSTOM_OPTION_ROWS {
+                result.unwrap();
+                assert!(app.tree().len() < 4096);
+                app.clear().unwrap();
+            } else {
+                assert!(result.is_err());
+            }
+            assert_eq!(app.stats().nodes, 0);
+        }
+    }
+    #[test]
+    fn passive_content_rejects_unknown_keys_and_unbounded_text_before_nodes() {
+        for (key, text) in [
+            ("missing", "Description".to_owned()),
+            ("glory", "x".repeat(257)),
+            ("glory", "two\nlines".to_owned()),
+        ] {
+            let app = App::memory();
+            assert!(
+                app.mount(
+                    combobox("content-budget")
+                        .option(crate::select_option("glory", "Glory"))
+                        .option_content(
+                            key,
+                            crate::SelectOptionContent::default().description(text)
+                        )
+                )
+                .is_err()
+            );
+            assert_eq!(app.stats().nodes, 0);
+        }
     }
     #[test]
     fn editing_filters_real_options_and_keeps_input_activity_and_selection_separate() {

@@ -58,6 +58,50 @@ fn near(actual: f64, expected: f64) {
 }
 
 #[test]
+fn actual_reduce_completion_notifies_each_change_once_and_keeps_initial_presentation_silent() {
+    let host = WindowApp::with_config(Config {
+        motion: MotionPreference::Reduce,
+        ..Default::default()
+    });
+    host.renderer().set_viewport(320, 200, 1.).unwrap();
+    let app = host.app();
+    let open = app.scope().cage(false);
+    let count = Rc::new(Cell::new(0));
+    let saved = count.clone();
+    let last = Rc::new(Cell::new(None));
+    let observed = last.clone();
+    host.mount(
+        sapid::collapsible("native-completion")
+            .open(open)
+            .on_transition_end(move |open| {
+                saved.set(saved.get() + 1);
+                observed.set(Some(open));
+            })
+            .content(|| glory::ui::text().content("Ready content")),
+    )
+    .unwrap();
+    for _ in 0..4 {
+        observe(&host);
+    }
+    assert_eq!(count.get(), 0);
+    for value in [true, false, true] {
+        open.revise(|v| *v = value);
+        for _ in 0..4 {
+            observe(&host);
+        }
+        let after = count.get();
+        assert_eq!(last.get(), Some(value));
+        for _ in 0..4 {
+            observe(&host);
+        }
+        assert_eq!(count.get(), after);
+    }
+    assert_eq!(count.get(), 3);
+    app.clear().unwrap();
+    assert_eq!(Rc::strong_count(&count), 1);
+}
+
+#[test]
 fn actual_collapsible_waits_for_native_close_preserves_reopened_editor_and_obeys_content_policy_in_four_themes()
  {
     for theme in [

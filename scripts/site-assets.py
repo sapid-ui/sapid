@@ -1,4 +1,8 @@
 """Build and retain bounded, content-addressed Pages assets (Python stdlib only)."""
+from pathlib import Path as _BuildPath
+import sys as _build_sys
+_build_sys.path.insert(0, str(_BuildPath(__file__).resolve().parents[1] / "scripts"))
+from local_build_paths import local_build_path
 import argparse
 import hashlib
 import json
@@ -222,8 +226,9 @@ if __name__ == "__main__":
     parser.add_argument("output", type=Path)
     parser.add_argument("source", nargs="?")
     args = parser.parse_args()
-    if not str(args.output.resolve()).lower().startswith("d:\\buildcache\\"):
-        parser.error("Asset output must be inside D:/BuildCache")
+    configured = str(args.output.absolute()).replace("\\", "/").lower()
+    if configured == "d:/buildcache" or configured.startswith("d:/buildcache/") or "/.codex/build-targets" in configured:
+        parser.error("Asset output cannot use a prohibited legacy build directory")
     if args.command == "prepare":
         prepare(Path(args.source), args.output)
     elif args.command == "bundle":

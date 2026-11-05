@@ -536,6 +536,117 @@ impl InlineDateTimePicker {
         self
     }
 }
+// Construct child configurations in separate calls, so unoptimized builder
+// temporaries are released before mounting the nested calendar/time widgets.
+impl InlineDateTimePicker {
+    fn calendar_widget(
+        &mut self,
+        scope: &Scope,
+        accepted: Cage<Snapshot>,
+        state: &Rc<Controller>,
+    ) -> crate::DatePicker {
+        let parts = state.parts;
+        let calendar_value = scope.bond(move || {
+            let s = accepted.get();
+            let bounds = s.bounds.provider(s.provider).unwrap().date_bounds();
+            DateSelection::Single(parts.with(|p| p.date.filter(|d| bounds.contains(*d))))
+        });
+        let s = state.clone();
+        let mut calendar = crate::date_picker(
+            format!("{}-date", self.key),
+            accepted.map(|s| s.bounds.provider(s.provider).unwrap()),
+        )
+        .value(calendar_value)
+        .enabled(accepted.map(|s| s.enabled))
+        .readonly(accepted.map(|s| s.readonly))
+        .direction(self.direction)
+        .theme(self.common.theme.clone())
+        .size(self.common.size)
+        .name("Date")
+        .allow_deselect(true)
+        .default_level(self.default_level)
+        .max_level(self.max_level)
+        .number_of_columns(self.columns)
+        .hide_outside_dates(self.hide_outside_dates)
+        .hide_weekdays(self.hide_weekdays)
+        .with_week_numbers(self.week_numbers)
+        .on_value_change(move |v| s.report(s.date(v)));
+        if let Some(value) = self.columns_to_scroll {
+            calendar = calendar.columns_to_scroll(value);
+        }
+        if let Some(value) = self.month.take() {
+            calendar = calendar.month(value);
+        }
+        if let Some(value) = self.default_month {
+            calendar = calendar.default_month(value);
+        }
+        if let Some(value) = self.level.take() {
+            calendar = calendar.level(value);
+        }
+        if let Some(callback) = self.month_changed.take() {
+            calendar = calendar.on_month_change(callback);
+        }
+        if let Some(callback) = self.level_changed.take() {
+            calendar = calendar.on_level_change(callback);
+        }
+        if let Some(r) = self.calendar_ref {
+            calendar = calendar.node_ref(r);
+        }
+        if self.common.unstyled {
+            calendar = calendar.unstyled();
+        }
+        calendar
+    }
+    fn time_widget(
+        &mut self,
+        accepted: Cage<Snapshot>,
+        state: &Rc<Controller>,
+    ) -> crate::TimePicker {
+        let format = self.format;
+        let parts = state.parts;
+        let ontime = state.clone();
+        let drafted = state.clone();
+        let mut time = crate::time_picker(format!("{}-time", self.key))
+            .format(format)
+            .value(parts.map(|p| p.time))
+            .reset_epoch(state.reset)
+            .enabled(accepted.map(|s| s.enabled))
+            .readonly(accepted.map(|s| s.readonly))
+            .theme(self.common.theme.clone())
+            .size(self.common.size)
+            .on_draft_change(move |v| drafted.report(drafted.time_draft(v)))
+            .on_value_change(move |v| ontime.report(ontime.time(v)));
+        time = time
+            .with_dropdown(self.time_dropdown)
+            .reverse_time_controls_list(self.time_reverse_controls)
+            .max_dropdown_content_height(self.time_max_dropdown_height)
+            .hour_step(self.time_steps[0])
+            .minute_step(self.time_steps[1])
+            .second_step(self.time_steps[2]);
+        if let Some(value) = self.time_presets.take() {
+            time = time.presets(value);
+        }
+        if let Some(v) = self.grid {
+            time = time.grid(v);
+        }
+        if let Some(v) = &self.field {
+            time = time.field(v.clone());
+        }
+        if let Some(r) = self.refs[0] {
+            time = time.hour_ref(r);
+        }
+        if let Some(r) = self.refs[1] {
+            time = time.minute_ref(r);
+        }
+        if let Some(r) = self.refs[2] {
+            time = time.second_ref(r);
+        }
+        if self.common.unstyled {
+            time = time.unstyled();
+        }
+        time
+    }
+}
 impl Widget for InlineDateTimePicker {
     fn build(&mut self, scope: &Scope) -> Result {
         if self.key.is_empty()
@@ -682,57 +793,9 @@ impl Widget for InlineDateTimePicker {
         }
         widget.show_in(scope)?;
         let content = scope.child_in(root.get().ok_or(glory::ui::Error::Gone)?)?;
-        let parts = state.parts;
-        let calendar_value = scope.bond(move || {
-            let s = accepted.get();
-            let bounds = s.bounds.provider(s.provider).unwrap().date_bounds();
-            DateSelection::Single(parts.with(|p| p.date.filter(|d| bounds.contains(*d))))
-        });
-        let s = state.clone();
-        let mut calendar = crate::date_picker(
-            format!("{}-date", self.key),
-            accepted.map(|s| s.bounds.provider(s.provider).unwrap()),
-        )
-        .value(calendar_value)
-        .enabled(accepted.map(|s| s.enabled))
-        .readonly(accepted.map(|s| s.readonly))
-        .direction(self.direction)
-        .theme(self.common.theme.clone())
-        .size(self.common.size)
-        .name("Date")
-        .allow_deselect(true)
-        .default_level(self.default_level)
-        .max_level(self.max_level)
-        .number_of_columns(self.columns)
-        .hide_outside_dates(self.hide_outside_dates)
-        .hide_weekdays(self.hide_weekdays)
-        .with_week_numbers(self.week_numbers)
-        .on_value_change(move |v| s.report(s.date(v)));
-        if let Some(value) = self.columns_to_scroll {
-            calendar = calendar.columns_to_scroll(value);
-        }
-        if let Some(value) = self.month.take() {
-            calendar = calendar.month(value);
-        }
-        if let Some(value) = self.default_month {
-            calendar = calendar.default_month(value);
-        }
-        if let Some(value) = self.level.take() {
-            calendar = calendar.level(value);
-        }
-        if let Some(callback) = self.month_changed.take() {
-            calendar = calendar.on_month_change(callback);
-        }
-        if let Some(callback) = self.level_changed.take() {
-            calendar = calendar.on_level_change(callback);
-        }
-        if let Some(r) = self.calendar_ref {
-            calendar = calendar.node_ref(r);
-        }
-        if self.common.unstyled {
-            calendar = calendar.unstyled();
-        }
-        calendar.show_in(&content)?;
+        self.calendar_widget(scope, accepted, &state)
+            .show_in(&content)?;
+
         if !self.presets.is_empty() {
             let mut buttons: Vec<Box<dyn Widget>> = Vec::with_capacity(self.presets.len());
             for preset in std::mem::take(&mut self.presets) {
@@ -767,48 +830,8 @@ impl Widget for InlineDateTimePicker {
                 .fill(buttons)
                 .show_in(&content)?;
         }
-        let parts = state.parts;
-        let ontime = state.clone();
-        let drafted = state.clone();
-        let mut time = crate::time_picker(format!("{}-time", self.key))
-            .format(format)
-            .value(parts.map(|p| p.time))
-            .reset_epoch(state.reset)
-            .enabled(accepted.map(|s| s.enabled))
-            .readonly(accepted.map(|s| s.readonly))
-            .theme(self.common.theme.clone())
-            .size(self.common.size)
-            .on_draft_change(move |v| drafted.report(drafted.time_draft(v)))
-            .on_value_change(move |v| ontime.report(ontime.time(v)));
-        time = time
-            .with_dropdown(self.time_dropdown)
-            .reverse_time_controls_list(self.time_reverse_controls)
-            .max_dropdown_content_height(self.time_max_dropdown_height)
-            .hour_step(self.time_steps[0])
-            .minute_step(self.time_steps[1])
-            .second_step(self.time_steps[2]);
-        if let Some(value) = self.time_presets.take() {
-            time = time.presets(value);
-        }
-        if let Some(v) = self.grid {
-            time = time.grid(v);
-        }
-        if let Some(v) = &self.field {
-            time = time.field(v.clone());
-        }
-        if let Some(r) = self.refs[0] {
-            time = time.hour_ref(r);
-        }
-        if let Some(r) = self.refs[1] {
-            time = time.minute_ref(r);
-        }
-        if let Some(r) = self.refs[2] {
-            time = time.second_ref(r);
-        }
-        if self.common.unstyled {
-            time = time.unstyled();
-        }
-        time.show_in(&content)?;
+        self.time_widget(accepted, &state).show_in(&content)?;
+
         let status = state.status;
         glory::ui::text()
             .class("sapid-date-time-status")
@@ -830,10 +853,16 @@ impl Widget for InlineDateTimePicker {
                 .to_owned()
             }))
             .show_in(&content)?;
+        let actions = crate::input_actions::footer_row(&content, "sapid-date-time-actions")?;
         for (clear, label) in [(true, "Clear date and time"), (false, "Done")] {
             let s = state.clone();
             let mut button = crate::button()
                 .label(label)
+                .variant(if clear {
+                    crate::ButtonVariant::Subtle
+                } else {
+                    crate::ButtonVariant::Primary
+                })
                 .theme(self.common.theme.clone())
                 .size(self.common.size)
                 .enabled(accepted.map(|v| v.enabled && !v.readonly))
@@ -841,8 +870,9 @@ impl Widget for InlineDateTimePicker {
             if self.common.unstyled {
                 button = button.unstyled();
             }
-            button.show_in(&content)?;
+            button.show_in(&actions)?;
         }
+        scope.retain(actions)?;
         let weak = Rc::downgrade(&state);
         let mut previous = initial;
         scope.effect(move || {

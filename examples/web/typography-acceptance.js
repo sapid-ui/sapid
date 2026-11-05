@@ -37,7 +37,7 @@ async (hostPage) => {
    const cdp=await context.newCDPSession(page);const ax=await cdp.send('Accessibility.getFullAXTree');await cdp.detach();
    assert(ax.nodes.some(n=>n.role?.value==='heading'&&n.name?.value==='Readable by design'),`${mode}: AX heading missing`);
    assert(ax.nodes.some(n=>n.role?.value==='link'&&n.name?.value==='Open documentation'),`${mode}: AX link missing`);
-   await page.screenshot({path:`D:/BuildCache/sapid/${mode}.png`,fullPage:true});
+   await page.screenshot({path:`target/verification/sapid/${mode}.png`,fullPage:true});
    reports.push({suite:mode,status:'passed',checks:'true h1/h2/p semantics, rich theme context, actual typed ellipsis/full accessible text, controlled text/href/context identity, typed navigation no default/no popup, Enter, native passive fragment, target/rel reset, AX heading/link'});
   }
   await page.goto('http://127.0.0.1:8794/typography-hydrate-green-dark.html?manual');await page.waitForFunction(()=>window.moduleReady===true);

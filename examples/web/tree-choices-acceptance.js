@@ -67,7 +67,7 @@ async (hostPage) => {
         await page.keyboard.press('Escape');await turn();await page.setViewportSize({width:390,height:900});await main().click();await turn();
         assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`${mode}: page horizontal overflow`);
         assert(await root.evaluate(el=>{const r=el.getBoundingClientRect();return r.left>=0&&r.right<=innerWidth+1}),`${mode}: popup clipped outside viewport`);
-        await page.screenshot({path:`D:/BuildCache/sapid/${slug}-${hue}-${scheme}-mobile.png`,fullPage:true});
+        await page.screenshot({path:`target/verification/sapid/${slug}-${hue}-${scheme}-mobile.png`,fullPage:true});
         await page.keyboard.press('Escape');await turn();await page.getByRole('button',{name:'Toggle path Owner',exact:true}).click();await turn();
         assert(await page.getByRole('combobox',{name:'Project destination',exact:true}).count()===0,`${mode}: Owner retained trigger`);
         await page.getByRole('button',{name:'Toggle path Owner',exact:true}).click();await turn();assert(await retained.evaluate(el=>!el.isConnected),`${mode}: retired identity reused`);

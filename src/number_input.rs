@@ -19,8 +19,17 @@ use std::{
     cell::{Cell, RefCell},
     rc::Rc,
 };
+
+type RawInputHandler = Box<dyn FnMut(&str) -> bool>;
 fn invalid() -> glory::ui::Error {
     glory::render::Error::InvalidProps("invalid bounded number input state").into()
+}
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum NumberClampBehavior {
+    #[default]
+    Blur,
+    Strict,
+    None,
 }
 fn chevron(increase: bool, color: glory::style::Color) -> GraphicProps {
     let (start, middle, end) = if increase {
@@ -105,8 +114,18 @@ struct Controller {
     draft: RefCell<Option<NumberValue>>,
     composition_ended: Cell<bool>,
     composition_echo: RefCell<Option<(u64, NumberValue)>>,
+    available: Rc<dyn Fn() -> Result<bool>>,
+    domain: Rc<dyn Fn() -> Result<NumberDomain>>,
+    clamp: NumberClampBehavior,
 }
 impl Controller {
+    fn event_snapshot(&self) -> Result<Snapshot> {
+        let mut state = self.accepted.try_get()?;
+        if let Ok(domain) = (self.domain)() {
+            state.domain = domain;
+        }
+        Ok(state)
+    }
     fn ensure(&self) -> Result {
         if self.live.get() && self.owner.is_alive() {
             Ok(())
@@ -136,7 +155,7 @@ impl Controller {
     }
     fn propose(&self, value: NumberValue, commit: bool) -> Result {
         self.ensure()?;
-        if !self.accepted.try_with(Snapshot::writable)? {
+        if !(self.available)()? {
             return Ok(());
         }
         let before = self.stamp()?;
@@ -176,11 +195,23 @@ impl Controller {
             *self.draft.borrow_mut() = Some(value);
             return Ok(());
         }
-        let state = self.accepted.try_get()?;
+        let state = self.event_snapshot()?;
+        if !commit
+            && self.clamp == NumberClampBehavior::Strict
+            && matches!(value.parse(state.locale), NumberParse::Complete(v) if state.domain.outside(v))
+        {
+            self.dirty.touch()?;
+            self.rejected.emit(self.owner, NumberError::OutsideRange);
+            return Ok(());
+        }
         let proposal = if commit {
             match value.parse(state.locale) {
                 NumberParse::Complete(v) | NumberParse::Incomplete { candidate: Some(v) } => {
-                    NumberValue::Decimal(state.domain.clamp(v))
+                    NumberValue::Decimal(if self.clamp == NumberClampBehavior::None {
+                        v
+                    } else {
+                        state.domain.clamp(v)
+                    })
                 }
                 _ => value,
             }
@@ -191,8 +222,8 @@ impl Controller {
     }
     fn spin(&self, command: RangeCommand) -> Result {
         self.ensure()?;
-        let state = self.accepted.try_get()?;
-        if !state.writable() || self.composing.get() {
+        let state = self.event_snapshot()?;
+        if !(self.available)()? || self.composing.get() {
             return Ok(());
         }
         let current = self.current(&state)?;
@@ -232,13 +263,19 @@ impl Controller {
         }
         Ok(())
     }
-    fn input_event(&self, event: &Event) -> Result {
+    fn input_event(&self, event: &Event, intercept: Option<&mut RawInputHandler>) -> Result {
         match event {
             Event::ValueChanged {
                 value,
                 composing,
                 revision,
-            } => {
+            }
+            | Event::InputEdit(glory::render::InputEdit::Value {
+                value,
+                composing,
+                revision,
+                ..
+            }) => {
                 if *composing {
                     self.composing.set(true);
                 }
@@ -260,7 +297,18 @@ impl Controller {
                 if ended {
                     self.draft.borrow_mut().take();
                 }
-                self.text(value, false)?;
+                let intercepted = !composing && intercept.is_some_and(|handler| handler(value));
+                self.ensure()?;
+                if intercepted {
+                    // A full-value parser can change this controlled segment.
+                    // Read the live accepted source on a following blur in the
+                    // same tick, and reassert formatting even for equal values.
+                    let current = self.stamp()?;
+                    *self.confirmed.borrow_mut() = current;
+                    self.dirty.touch()?;
+                } else {
+                    self.text(value, false)?;
+                }
                 if ended && value.len() <= crate::MAX_NUMBER_INPUT_BYTES && self.ensure().is_ok() {
                     *self.composition_echo.borrow_mut() = Some((
                         *revision,
@@ -276,7 +324,25 @@ impl Controller {
                 }
                 Ok(())
             }
+            Event::InputEdit(glory::render::InputEdit::Rejected { .. }) => {
+                self.dirty.touch()?;
+                self.rejected.emit(self.owner, NumberError::InputTooLong);
+                self.ensure()
+            }
             Event::Commit { value, .. } => self.text(value, true),
+            Event::FocusChanged(false) => {
+                if !(self.available)()? || self.composing.get() {
+                    return Ok(());
+                }
+                let state = self.event_snapshot()?;
+                let value = self.current(&state)?;
+                self.text(
+                    &value
+                        .text(state.locale, state.grouping)
+                        .map_err(|_| invalid())?,
+                    true,
+                )
+            }
             Event::Spin { command, .. } => self.spin(*command),
             Event::Composition { active } => {
                 self.composing.set(*active);
@@ -326,6 +392,8 @@ pub struct NumberInput {
     form_name: Option<Vary<String>>,
     placeholder: Option<Vary<String>>,
     input_edit_capture: Option<usize>,
+    input_edit_handler: Option<RawInputHandler>,
+    clamp: NumberClampBehavior,
     changed: Option<Box<dyn FnMut(NumberValue)>>,
     committed: Option<Box<dyn FnMut(NumberValue)>>,
     rejected: Option<Box<dyn FnMut(NumberError)>>,
@@ -348,6 +416,8 @@ pub fn number_input() -> NumberInput {
         form_name: None,
         placeholder: None,
         input_edit_capture: None,
+        input_edit_handler: None,
+        clamp: NumberClampBehavior::Blur,
         changed: None,
         committed: None,
         rejected: None,
@@ -355,6 +425,10 @@ pub fn number_input() -> NumberInput {
 }
 impl NumberInput {
     common_methods!();
+    pub fn clamp_behavior(mut self, value: NumberClampBehavior) -> Self {
+        self.clamp = value;
+        self
+    }
     pub fn value(mut self, value: impl Into<Vary<NumberValue>>) -> Self {
         self.value.source = Some(value.into());
         self
@@ -418,8 +492,14 @@ impl NumberInput {
         self.placeholder = Some(value.into());
         self
     }
-    pub(crate) fn capture_input_edits(mut self, max_bytes: usize) -> Self {
+    #[cfg(feature = "dates")]
+    pub(crate) fn capture_input_edits(
+        mut self,
+        max_bytes: usize,
+        handler: impl FnMut(&str) -> bool + 'static,
+    ) -> Self {
         self.input_edit_capture = Some(max_bytes);
+        self.input_edit_handler = Some(Box::new(handler));
         self
     }
     pub fn on_value_change(mut self, callback: impl FnMut(NumberValue) + 'static) -> Self {
@@ -486,6 +566,25 @@ impl Widget for NumberInput {
             metadata
         };
         let form_name = composite::form_name(scope, &self.form_name)?;
+        let active = enabled.clone();
+        let states = metadata.clone();
+        let available = Rc::new(move || crate::field::check_available(&active, &states));
+        let domain = {
+            let min = self.min.clone();
+            let max = self.max.clone();
+            let step = self.step.clone();
+            let page = self.page.clone();
+            Rc::new(move || {
+                let domain = NumberDomain {
+                    min: min.try_get()?,
+                    max: max.try_get()?,
+                    step: step.try_get()?,
+                    page: page.try_get()?,
+                };
+                domain.validate().map_err(|_| invalid())?;
+                Ok(domain)
+            })
+        };
         let min = self.min.clone();
         let max = self.max.clone();
         let step = self.step.clone();
@@ -537,6 +636,9 @@ impl Widget for NumberInput {
             draft: RefCell::new(None),
             composition_ended: Cell::new(false),
             composition_echo: RefCell::new(None),
+            available,
+            domain,
+            clamp: self.clamp,
         });
         let weak = Rc::downgrade(&state);
         scope.on_cleanup(move || {
@@ -562,7 +664,12 @@ impl Widget for NumberInput {
         self.common.style = scope
             .bond(move || {
                 let mut style = overrides.get();
+                if style.width.is_none() {
+                    style.grow.get_or_insert(1.);
+                }
                 style.width.get_or_insert(Length::Px(180.));
+                style.min_width.get_or_insert(Length::Px(0.));
+                style.shrink.get_or_insert(1.);
                 style.min_height.get_or_insert(height);
                 if themed && accepted.with(|s| s.semantics().invalid) {
                     style.border_color.get_or_insert(danger);
@@ -587,6 +694,7 @@ impl Widget for NumberInput {
             EventKind::Commit,
             EventKind::Composition,
             EventKind::Spin,
+            EventKind::FocusChanged,
         ] {
             let s = state.clone();
             let observers = Observers::new(self.common.handlers.remove(&kind).unwrap_or_default());
@@ -594,8 +702,45 @@ impl Widget for NumberInput {
             scope.on_cleanup(move || cleanup.clear())?;
             input=input.on(kind,move |event|{
                 if s.ensure().is_err(){return}
-                s.report(s.input_event(&event));
+                if matches!(event,Event::ValueChanged{..}|Event::Commit{..}|Event::Spin{..}) {
+                    match (s.available)() {
+                        Ok(true)=>{},
+                        Ok(false)=>{s.report(s.dirty.touch());return},
+                        Err(error)=>{s.report(Err(error));return},
+                    }
+                }
+                s.report(s.input_event(&event, None));
                 if !matches!(&event,Event::ValueChanged{value,..}|Event::Commit{value,..} if value.len()>crate::MAX_NUMBER_INPUT_BYTES){observers.emit(s.owner,event)}
+            });
+        }
+        if edit_capture.is_some() {
+            let state = state.clone();
+            let mut intercept = self.input_edit_handler.take();
+            let observers = Observers::new(
+                self.common
+                    .handlers
+                    .remove(&EventKind::InputEdit)
+                    .unwrap_or_default(),
+            );
+            let cleanup = observers.clone();
+            scope.on_cleanup(move || cleanup.clear())?;
+            input = input.on(EventKind::InputEdit, move |event| {
+                if state.ensure().is_err() {
+                    return;
+                }
+                match (state.available)() {
+                    Ok(true) => {}
+                    Ok(false) => {
+                        state.report(state.dirty.touch());
+                        return;
+                    }
+                    Err(error) => {
+                        state.report(Err(error));
+                        return;
+                    }
+                }
+                state.report(state.input_event(&event, intercept.as_mut()));
+                observers.emit(state.owner, event);
             });
         }
         for (kind, mut handlers) in std::mem::take(&mut self.common.handlers) {
@@ -613,6 +758,8 @@ impl Widget for NumberInput {
         let input_focus = self.common.theme.input_focus;
         let row_shape = Style {
             display: Some(Display::Flex),
+            min_width: Some(Length::Px(0.)),
+            max_width: Some(glory::style::Limit::Percent(100.)),
             flex_direction: Some(FlexDirection::Row),
             gap: Some(0.),
             padding: Some(Edges::all(0.)),
@@ -677,6 +824,7 @@ impl Widget for NumberInput {
                 display: Some(Display::Flex),
                 flex_direction: Some(FlexDirection::Column),
                 width: Some(Length::Px(28.)),
+                shrink: Some(0.),
                 height: Some(height),
                 min_height: Some(height),
                 padding: Some(Edges::all(0.)),

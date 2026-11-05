@@ -362,6 +362,15 @@ fn empty_state_keeps_illustration_title_description_body_and_actions_ordered() {
         matches!(app.tree().node(find(&app, "sapid-empty-title")).unwrap().descriptor.view().props.clone(), Props::Text(ref t) if t.kind == TextKind::Heading(2))
     );
 }
+#[test]
+fn empty_state_does_not_reserve_gaps_for_unsupplied_slots() {
+    let app = App::memory();
+    app.mount(empty_state().title("No saved projects")).unwrap();
+    let root = find(&app, "sapid-empty-state");
+    let title = find(&app, "sapid-empty-title");
+    assert_eq!(app.tree().node(root).unwrap().children, vec![title]);
+    assert_eq!(app.stats().handlers, 0);
+}
 
 #[test]
 fn heading_validation_precedes_creation() {

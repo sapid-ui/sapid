@@ -42,12 +42,15 @@ without movable/resizable desktop-window behavior.
 `skeleton().width(Length::Px(220.0)).height(20.0)` creates a fixed placeholder;
 `circle(40.0)` sets a circular box. Width is explicit pixels or percent, height
 is positive finite pixels, and radius is finite/nonnegative. Reactive invalid
-dimensions retain the accepted geometry. Its empty finite Graphic is explicitly
-decorative; the parent owns busy metadata and may have a loading-region name.
-`loading(false)` hides it without replacing nodes. Unstyled retains geometry
-and explicit styles. Applications render replacement content and completion
-announcements. Skeleton starts no timer or animation; native Graphics require
-the adapter's paint capability.
+dimensions retain the accepted geometry. Its finite rectangular Graphic is explicitly decorative; the parent owns busy
+metadata and may have a loading-region name. `fill(children)` retains genuine
+content and intrinsic height unless explicitly sized; loading makes that content
+transparent/inert without replacing its editor, value or Owner. A standalone
+`loading(false)` hides the placeholder. The default host-owned 1500 ms opacity
+pulse honors `animated(false)` and reduced motion without a widget timer or
+per-frame Cage writes. Unstyled retains essential geometry and explicit styles.
+Native Graphics require paint. Current content, icon-close and empty-state
+composition examples are documented in [Feedback](feedback.md).
 
 Focused model checks pass: Alert 5, AlertDialog 5, FloatingDialog 3, Skeleton 4,
 plus existing overlay regressions 6. Render validates AlertDialog's managed
@@ -76,3 +79,21 @@ Owner cleanup. `examples/native/tests/alerts.rs` passes all four tests; combined
 with ColorInput consumers, `D:/BuildCache/sapid/native-new-layer-consumers-final.log`
 records seven passing tests. The engine provenance and remaining per-facet
 refusals are documented in `../glory/docs/native-top-layers.md`.
+
+
+The 2026-11-05 showcase remediation adds default compact vector Alert closes,
+contrast-aware filled text, busy Notification icons and retained content
+Skeletons. Current focused counts are Alert 7, Skeleton 5 and Notification docs 2;
+`examples/native/tests/feedback_docs.rs` has six additional real pixel/geometry
+checks. The final 64-case four-theme/two-width browser report is
+`examples/web/target/remediation/feedback-final.json`, resource
+`assets-56f459bdcd14dd1e6252`, errors empty. Earlier paths above remain historical
+acceptance records; current build outputs use the owning workspace's target.
+
+
+FloatingDialog now accepts `position(ViewportPlacement)` for finite host-owned
+viewport x/y/padding and constraints, keeping its Preserve focus policy. Its
+public page starts closed and has three standalone position, controlled
+background-editor and content-lifetime examples. Ordinary Dialog/Drawer/Popover/
+FloatingDialog headers use compact vector closes; AlertDialog retains safe
+visible Cancel behavior. See [Overlay pages](overlay-pages.md).

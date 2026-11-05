@@ -4,14 +4,17 @@ use crate::composite::Callback;
 use crate::state::{Control, DelayFactory, OwnerDelay, Value};
 use glory::render::{
     Direction, DragPhase, Event, EventKind, FocusMode, Navigation, NodeId, Orientation, Query,
-    QueryToken, QueryValue, Semantics, SwipeCapture,
+    QueryToken, QueryValue, Role, Semantics, SwipeCapture,
 };
-use glory::style::{BorderStyle, Display, Edges, FlexDirection, Length, Limit, Overflow, Style};
+use glory::style::{
+    Align, BorderStyle, Color, Display, Edges, FlexDirection, FlexWrap, Justify, Length, Limit,
+    Overflow, Position, Style,
+};
 use glory::ui::{Result, WeakScope, Widget};
 use glory::{Cage, Scope, Vary};
 use std::{cell::Cell, rc::Rc};
 mod model;
-pub use model::{MAX_CAROUSEL_COUNT, MAX_CAROUSEL_OVERSCAN};
+pub use model::{MAX_CAROUSEL_COUNT, MAX_CAROUSEL_INDICATORS, MAX_CAROUSEL_OVERSCAN};
 use model::{Page, Step};
 type Factory = Box<dyn FnMut(usize) -> Box<dyn Widget>>;
 fn invalid(message: &'static str) -> glory::ui::Error {
@@ -31,6 +34,9 @@ pub struct Carousel {
     delay: Option<DelayFactory>,
     paused: Vary<bool>,
     hover_pause: bool,
+    controls: bool,
+    indicators: bool,
+    control_size: f64,
 }
 pub fn carousel() -> Carousel {
     Carousel {
@@ -50,10 +56,26 @@ pub fn carousel() -> Carousel {
         delay: None,
         paused: false.into(),
         hover_pause: true,
+        controls: true,
+        indicators: false,
+        control_size: 32.,
     }
 }
 impl Carousel {
     common_methods!();
+    pub fn with_controls(mut self, value: bool) -> Self {
+        self.controls = value;
+        self
+    }
+    /// At most nine keyed indicators near the current page, even for a million slides.
+    pub fn with_indicators(mut self, value: bool) -> Self {
+        self.indicators = value;
+        self
+    }
+    pub fn control_size(mut self, value: f64) -> Self {
+        self.control_size = value;
+        self
+    }
     pub fn count(mut self, value: impl Into<Vary<usize>>) -> Self {
         self.count = value.into();
         self
@@ -112,11 +134,67 @@ impl Carousel {
         self
     }
 }
+fn control_style(axis: Orientation, direction: Direction, previous: bool, size: f64) -> Style {
+    let mut style = Style::new()
+        .position(Position::Absolute)
+        .width(Length::Px(size))
+        .height(Length::Px(size))
+        .min_width(Length::Px(0.))
+        .min_height(Length::Px(0.))
+        .padding(Edges::all(0.))
+        .radius(size / 2.);
+    if axis == Orientation::Horizontal {
+        style.top = Some(Length::Percent(50.));
+        style.margin = Some(Edges {
+            top: -size / 2.,
+            ..Edges::all(0.)
+        });
+        if previous == (direction == Direction::Ltr) {
+            style.left = Some(Length::Px(8.));
+        } else {
+            style.right = Some(Length::Px(8.));
+        }
+    } else {
+        style.left = Some(Length::Percent(50.));
+        style.margin = Some(Edges {
+            left: -size / 2.,
+            ..Edges::all(0.)
+        });
+        if previous {
+            style.top = Some(Length::Px(8.));
+        } else {
+            style.bottom = Some(Length::Px(8.));
+        }
+    }
+    style
+}
+fn indicator_style(unstyled: bool) -> Style {
+    let mut style = Style {
+        align: Some(Align::Center),
+        justify: Some(Justify::Center),
+        ..Style::new()
+            .display(Display::InlineFlex)
+            .width(Length::Px(24.))
+            .height(Length::Px(24.))
+            .min_width(Length::Px(0.))
+            .min_height(Length::Px(0.))
+            .padding(Edges::all(0.))
+            .gap(0.)
+    };
+    if !unstyled {
+        style.background = Some(Color(0, 0, 0, 0));
+        style.border_width = Some(Edges::all(0.));
+        style.radius = Some(12.);
+    }
+    style
+}
 struct Controller {
     weak: WeakScope,
     owner: glory::core::InstanceId,
     page: Cage<Page>,
     control: Control<usize>,
+    count: Vary<usize>,
+    controlled: bool,
     enabled: Vary<bool>,
     changed: Callback<usize>,
     root: Cage<Option<NodeId>>,
@@ -132,6 +210,17 @@ struct Controller {
     pulse: Cage<()>,
 }
 impl Controller {
+    fn live_page(&self) -> Result<Page> {
+        glory::core::untracked(|| {
+            let mut page = self.page.try_get()?;
+            page.count = self.count.try_get()?;
+            page.current = self.control.source.try_get()?;
+            if !self.controlled && page.current >= page.count {
+                page.current = page.count.saturating_sub(1);
+            }
+            Ok(page.validate()?)
+        })
+    }
     fn report(&self, error: glory::ui::Error) {
         if let Some(scope) = self.weak.upgrade() {
             scope.report_error(error)
@@ -141,7 +230,7 @@ impl Controller {
         if !self.owner.is_alive() || !self.enabled.try_get()? {
             return Ok(());
         }
-        let page = glory::core::untracked(|| self.page.try_get())?;
+        let page = self.live_page()?;
         if proposal >= page.count || proposal == page.current {
             return Ok(());
         }
@@ -150,7 +239,10 @@ impl Controller {
         Ok(())
     }
     fn step(&self, step: Step) -> Result {
-        let page = glory::core::untracked(|| self.page.try_get())?;
+        if !self.owner.is_alive() || !self.enabled.try_get()? {
+            return Ok(());
+        }
+        let page = self.live_page()?;
         if let Some(next) = page.propose(step) {
             self.propose(next)?;
         }
@@ -226,6 +318,9 @@ impl Controller {
 }
 impl Widget for Carousel {
     fn build(&mut self, scope: &Scope) -> Result {
+        if !self.control_size.is_finite() || !(20.0..=64.0).contains(&self.control_size) {
+            return Err(invalid("carousel control size must be 20–64 finite pixels"));
+        }
         let owner = scope.child()?;
         let controlled = self.current.source.is_some();
         let current = std::mem::take(&mut self.current).mount(&owner);
@@ -243,6 +338,8 @@ impl Widget for Carousel {
             owner: owner.id(),
             page,
             control: current.clone(),
+            count: self.count.clone(),
+            controlled,
             enabled: self.common.enabled.clone(),
             changed: Callback::new(self.changed.take()),
             root,
@@ -323,6 +420,7 @@ impl Widget for Carousel {
             )
         });
         let mut container = glory::ui::view()
+            .role(Role::Group)
             .class(classes)
             .style(style)
             .focus(self.common.focus)
@@ -491,9 +589,16 @@ impl Widget for Carousel {
             .slide
             .take()
             .ok_or_else(|| invalid("carousel requires an index slide factory"))?;
+        let viewport_ref = owner.cage(None);
         glory::ui::view()
             .class("sapid-carousel-viewport")
-            .style(Style::new().min_width(Length::Px(0.)))
+            .node_ref(viewport_ref)
+            .style(
+                Style::new()
+                    .position(Position::Relative)
+                    .min_width(Length::Px(0.))
+                    .width(Length::Percent(100.)),
+            )
             .fill(
                 glory::ui::each(indices)
                     .key(|index| *index)
@@ -523,40 +628,163 @@ impl Widget for Carousel {
                     }),
             )
             .show_in(&child)?;
+        let viewport = child.child_in(viewport_ref.get().ok_or(glory::ui::Error::Gone)?)?;
+        if self.controls {
+            for (step, label, class, previous) in [
+                (
+                    Step::Previous,
+                    "Previous slide",
+                    "sapid-carousel-previous",
+                    true,
+                ),
+                (Step::Next, "Next slide", "sapid-carousel-next", false),
+            ] {
+                let enabled = self.common.enabled.clone();
+                let available =
+                    owner.bond(move || enabled.get() && page.get().propose(step).is_some());
+                let local = state.clone();
+                let style = control_style(self.axis, self.direction, previous, self.control_size);
+                let plain = self.common.unstyled;
+                let icon = match (self.axis, self.direction, previous) {
+                    (Orientation::Vertical, _, true) => crate::Icon::ChevronUp,
+                    (Orientation::Vertical, _, false) => crate::Icon::ChevronDown,
+                    (_, Direction::Rtl, true) | (_, Direction::Ltr, false) => {
+                        crate::Icon::ChevronRight
+                    }
+                    _ => crate::Icon::ChevronLeft,
+                };
+                let mut button = crate::action_icon(label)
+                    .class(class)
+                    .theme(self.common.theme.clone())
+                    .size(self.common.size)
+                    .icon(crate::input_actions::glyph(
+                        icon,
+                        self.common.theme.foreground,
+                    ))
+                    .style(owner.bond(move || {
+                        let mut style = style.clone();
+                        if page.with(|page| page.count == 0) {
+                            style.display = Some(Display::None);
+                        }
+                        if !plain {
+                            style.opacity = Some(if available.get() { 1. } else { 0.35 });
+                        }
+                        style
+                    }))
+                    .enabled(available)
+                    .on_press(move || {
+                        if let Err(error) = local.step(step) {
+                            local.report(error);
+                        }
+                    });
+                if self.common.unstyled {
+                    button = button.unstyled();
+                }
+                button.show_in(&viewport)?;
+            }
+        }
         let control_ref = owner.cage(None);
         glory::ui::view()
             .node_ref(control_ref)
             .class("sapid-carousel-controls")
-            .style(
-                Style::new()
+            .style(Style {
+                justify: Some(Justify::Center),
+                align: Some(Align::Center),
+                ..Style::new()
                     .display(Display::Flex)
                     .flex_direction(FlexDirection::Row)
+                    .flex_wrap(FlexWrap::Wrap)
                     .gap(8.)
-                    .padding(Edges::all(8.)),
-            )
+                    .padding(Edges::all(8.))
+            })
             .show_in(&child)?;
         let controls = child.child_in(control_ref.try_get()?.ok_or(glory::ui::Error::Gone)?)?;
-        for (step, label, class) in [
-            (Step::Previous, "Previous slide", "sapid-carousel-previous"),
-            (Step::Next, "Next slide", "sapid-carousel-next"),
-        ] {
+        if self.indicators {
+            let rtl = self.direction == Direction::Rtl;
+            let indicators = owner.bond(move || {
+                let mut indices = page.get().indicators();
+                if rtl {
+                    indices.reverse();
+                }
+                indices
+            });
+            let theme = self.common.theme.clone();
+            let plain = self.common.unstyled;
             let enabled = self.common.enabled.clone();
             let local = state.clone();
-            let mut button = crate::button()
-                .label(label)
-                .class(class)
-                .theme(self.common.theme.clone())
-                .size(self.common.size)
-                .enabled(owner.bond(move || enabled.get() && page.get().propose(step).is_some()))
-                .on_press(move || {
-                    if let Err(error) = local.step(step) {
-                        local.report(error);
-                    }
-                });
-            if self.common.unstyled {
-                button = button.unstyled();
-            }
-            button.show_in(&controls)?;
+            glory::ui::view()
+                .class("sapid-carousel-indicators")
+                .role(Role::Group)
+                .name("Choose a slide")
+                .style(Style {
+                    justify: Some(Justify::Center),
+                    ..Style::new()
+                        .display(Display::Flex)
+                        .flex_wrap(FlexWrap::Wrap)
+                        .gap(2.)
+                        .min_width(Length::Px(0.))
+                        .max_width(Limit::Percent(100.))
+                })
+                .fill(
+                    glory::ui::each(indicators)
+                        .key(|index| *index)
+                        .children(move |entry| {
+                            let index = entry.value.get();
+                            let theme = theme.clone();
+                            let enabled = enabled.clone();
+                            let local = local.clone();
+                            glory::ui::widget(move |scope| {
+                                let foreground = theme.accent_text;
+                                let muted = theme.border;
+                                let unavailable = theme.disabled_text;
+                                let color_enabled = enabled.clone();
+                                let selected =
+                                    scope.bond(move || page.with(|page| page.current == index));
+                                let circle = glory::ui::graphic()
+                                    .class("sapid-carousel-indicator-dot")
+                                    .drawing(scope.bond(move || glory::render::GraphicProps {
+                                        width: 24.,
+                                        height: 24.,
+                                        fill: Some(if !color_enabled.get() {
+                                            unavailable
+                                        } else if selected.get() {
+                                            foreground
+                                        } else {
+                                            muted
+                                        }),
+                                        commands: crate::theme_icon::circle_path(),
+                                        ..Default::default()
+                                    }))
+                                    .style(
+                                        Style::new()
+                                            .width(Length::Px(10.))
+                                            .height(Length::Px(10.))
+                                            .pointer_events(glory::style::PointerEvents::None),
+                                    );
+                                let controller = local.clone();
+                                let mut button = crate::button()
+                                    .theme(theme.clone())
+                                    .variant(crate::ButtonVariant::Subtle)
+                                    .class("sapid-carousel-indicator")
+                                    .label("")
+                                    .name(format!("Go to slide {}", index + 1))
+                                    .pressed(selected)
+                                    .fill(circle)
+                                    .enabled(enabled.clone())
+                                    .style(indicator_style(plain))
+                                    .on_press(move || {
+                                        if let Err(error) = controller.propose(index) {
+                                            controller.report(error);
+                                        }
+                                    });
+                                if plain {
+                                    button = button.unstyled();
+                                }
+                                button.show_in(scope)
+                            })
+                        }),
+                )
+                .show_in(&controls)?;
         }
         glory::ui::text()
             .class("sapid-carousel-position")
@@ -570,22 +798,40 @@ impl Widget for Carousel {
             }))
             .show_in(&controls)?;
         if let Some(delay) = self.delay.clone() {
+            let source_pause = self.paused.clone();
+            let label_pause = source_pause.clone();
+            let available_pause = source_pause.clone();
+            let command_pause = source_pause.clone();
+            let available_enabled = self.common.enabled.clone();
+            let command_enabled = available_enabled.clone();
             let mut button = crate::button()
                 .class("sapid-carousel-pause")
                 .theme(self.common.theme.clone())
                 .label(owner.bond(move || {
-                    if paused.get() {
+                    if label_pause.get() {
+                        "Autoplay paused".to_owned()
+                    } else if page.with(|page| page.propose(Step::Next).is_none()) {
+                        "Autoplay stopped".to_owned()
+                    } else if paused.get() {
                         "Resume autoplay".to_owned()
                     } else {
                         "Pause autoplay".to_owned()
                     }
                 }))
-                .on_press(move || paused.revise(|value| *value = !*value));
+                .enabled(owner.bond(move || {
+                    available_enabled.get()
+                        && !available_pause.get()
+                        && page.with(|page| page.propose(Step::Next).is_some())
+                }))
+                .on_press(move || {
+                    if command_enabled.get() && !command_pause.get() {
+                        paused.revise(|value| *value = !*value);
+                    }
+                });
             if self.common.unstyled {
                 button = button.unstyled();
             }
             button.show_in(&controls)?;
-            let source_pause = self.paused.clone();
             let local = state.clone();
             let weak = owner.downgrade();
             if owner.has_task_host()? {
@@ -615,6 +861,7 @@ impl Widget for Carousel {
         if owner.capabilities()?.measure {
             state.measure()?;
         }
+        scope.retain(viewport)?;
         scope.retain(controls)?;
         scope.retain(child)?;
         scope.retain(owner)?;

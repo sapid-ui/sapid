@@ -31,6 +31,15 @@ pub fn autocomplete_option(key: impl Into<String>, text: impl Into<String>) -> N
     }
 }
 impl Autocomplete {
+    pub fn option_content(
+        mut self,
+        key: impl Into<String>,
+        content: crate::SelectOptionContent,
+    ) -> Self {
+        self.inner = self.inner.option_content(key, content);
+        self
+    }
+
     pub fn placeholder(mut self, value: impl Into<Vary<String>>) -> Self {
         self.inner = self.inner.placeholder(value);
         self

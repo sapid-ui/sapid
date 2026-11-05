@@ -44,6 +44,55 @@ fn steps() -> Vec<sapid::Step> {
     ]
 }
 #[test]
+fn pending_unavailability_and_skip_changes_reject_activation_before_callbacks() {
+    for flag in 0..4 {
+        let app = App::memory();
+        let enabled = app.scope().cage(true);
+        let selectable = app.scope().cage(true);
+        let skip = app.scope().cage(true);
+        let own = app.scope().cage(true);
+        let trace = Rc::new(RefCell::new(Vec::new()));
+        let changed = trace.clone();
+        let observed = trace.clone();
+        app.mount(
+            stepper("pending-workflow")
+                .enabled(enabled)
+                .selectable(selectable)
+                .allow_skip(skip)
+                .steps([
+                    step("identity").label("Identity"),
+                    step("address").label("Address"),
+                    step("review").label("Review").enabled(own),
+                ])
+                .on_step_change(move |index| changed.borrow_mut().push(index))
+                .on(EventKind::Activate, move |_| observed.borrow_mut().push(99)),
+        )
+        .unwrap();
+        let review = button(&app, "3. Review");
+        app.scope()
+            .batch(|| {
+                match flag {
+                    0 => enabled.revise(|v| *v = false),
+                    1 => selectable.revise(|v| *v = false),
+                    2 => skip.revise(|v| *v = false),
+                    _ => own.revise(|v| *v = false),
+                }
+                app.dispatch(review, Event::Activate).unwrap();
+            })
+            .unwrap();
+        assert!(trace.borrow().is_empty(), "flag {flag}");
+        assert_eq!(active(&app), Some(button(&app, "1. Identity")));
+        enabled.revise(|v| *v = true);
+        selectable.revise(|v| *v = true);
+        skip.revise(|v| *v = true);
+        own.revise(|v| *v = true);
+        app.flush().unwrap();
+        app.dispatch(review, Event::Activate).unwrap();
+        assert_eq!(*trace.borrow(), vec![2, 99]);
+        assert_eq!(active(&app), Some(review));
+    }
+}
+#[test]
 fn default_headers_are_nonselectable_and_current_step_is_independent_of_tabs() {
     let app = App::memory();
     app.mount(stepper("setup").steps(steps())).unwrap();

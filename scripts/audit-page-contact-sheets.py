@@ -1,11 +1,15 @@
 """Assemble review-only screenshot contact sheets; keep original captures intact."""
+from pathlib import Path as _BuildPath
+import sys as _build_sys
+_build_sys.path.insert(0, str(_BuildPath(__file__).resolve().parents[1] / "scripts"))
+from local_build_paths import local_build_path
 import json
 import math
 import os
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
-ROOT = Path(os.environ.get("SAPID_BROWSER_OUTPUT", "D:/BuildCache/sapid/shared-page-audit"))
+ROOT = Path(os.environ.get("SAPID_BROWSER_OUTPUT", local_build_path('sapid/shared-page-audit')))
 PAGES = json.loads((ROOT / "pages.json").read_text(encoding="utf-8"))
 LOCAL = {page["slug"]: page for page in json.loads((ROOT / "local-pages.json").read_text(encoding="utf-8"))["pages"]}
 UPSTREAM = {page["slug"]: page for page in json.loads((ROOT / "upstream.json").read_text(encoding="utf-8"))["entries"]}

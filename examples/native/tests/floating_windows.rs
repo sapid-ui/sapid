@@ -41,6 +41,81 @@ fn drag(app: &App, target: NodeId, phase: DragPhase, x: f64, y: f64) {
     .unwrap();
 }
 #[test]
+fn narrow_window_header_has_compact_hit_targets_and_discloses_keyboard_actions() {
+    for theme in [
+        sapid::Theme::blue_light(),
+        sapid::Theme::blue_dark(),
+        sapid::Theme::green_light(),
+        sapid::Theme::green_dark(),
+    ] {
+        let host = WindowApp::new();
+        host.renderer().set_viewport(390, 600, 1.).unwrap();
+        let app = host.app();
+        let editor = app.scope().cage(None);
+        host.mount(
+            floating_window("narrow")
+                .theme(theme)
+                .title("Floating notes")
+                .default_bounds(WindowBounds {
+                    x: 32.,
+                    y: 64.,
+                    width: 300.,
+                    height: 240.,
+                })
+                .content(move || sapid::text_field().name("Notes").node_ref(editor)),
+        )
+        .unwrap();
+        app.settle(16).unwrap();
+        let panel = find(app, "sapid-floating-window");
+        let caption = bounds(app, find(app, "sapid-window-caption"));
+        let close = find(app, "sapid-window-close");
+        let toggle = find(app, "sapid-window-actions-toggle");
+        let panel_bounds = bounds(app, panel);
+        let close_bounds = bounds(app, close);
+        let toggle_bounds = bounds(app, toggle);
+        assert!(close_bounds.width <= 32.1 && close_bounds.height <= 32.1);
+        assert!(caption.x + caption.width <= toggle_bounds.x + 0.2);
+        assert!(toggle_bounds.x + toggle_bounds.width <= close_bounds.x + 0.2);
+        assert!(close_bounds.x + close_bounds.width <= panel_bounds.x + panel_bounds.width - 8.);
+        let hit = host.renderer().inspect(|document| {
+            document
+                .hit(
+                    (close_bounds.x + close_bounds.width / 2.) as f32,
+                    (close_bounds.y + close_bounds.height / 2.) as f32,
+                )
+                .unwrap()
+                .node_id
+        });
+        assert_eq!(
+            hit,
+            host.renderer()
+                .engine_id(close, glory::html::Part::Main)
+                .unwrap()
+        );
+        let actions = find(app, "sapid-window-actions");
+        assert!(
+            app.tree()
+                .node(actions)
+                .unwrap()
+                .descriptor
+                .view()
+                .semantics
+                .as_ref()
+                .unwrap()
+                .hidden
+        );
+        app.dispatch(toggle, Event::Activate).unwrap();
+        app.settle(16).unwrap();
+        let actions_bounds = bounds(app, actions);
+        assert!(actions_bounds.height > 32. && actions_bounds.width <= panel_bounds.width);
+        assert!(
+            bounds(app, editor.get().unwrap()).y >= actions_bounds.y + actions_bounds.height - 0.2
+        );
+        app.clear().unwrap();
+        assert_eq!(app.stats().nodes, 0);
+    }
+}
+#[test]
 fn four_theme_windows_move_resize_real_boxes_keep_native_editor_identity_and_paint_the_surface() {
     for theme in [
         sapid::Theme::blue_light(),

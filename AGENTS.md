@@ -35,8 +35,8 @@
   share `src/overlay.rs` and Glory's host-owned Layer semantics. Do not implement
   modal focus, Escape or outside-click handling separately in each widget.
   Browser protocol tests do not prove OS IME or screen-reader acceptance.
-- All artifacts, compiler temporaries, tool caches and generated fixtures stay
-  under `D:/BuildCache/sapid` (the existing D-drive Glory Cargo home is reused).
+- Build and temporary paths inherit the caller environment and normal project
+  configuration. Do not use the retired shared build directory or its aliases.
   Verify every build manifest's `cargo metadata` target directory before builds.
 - Composite widget keys and item keys are explicit stable ASCII namespaces.
   Keep panel shells and their names stable across open/close and SSR adoption.

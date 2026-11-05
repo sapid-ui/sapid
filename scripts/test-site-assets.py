@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import sys
+import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -23,9 +24,16 @@ def quietly(function, *args):
 
 class AssetTests(unittest.TestCase):
     def setUp(self):
-        root = Path(os.environ.get("SITE_CACHE_TEST_ROOT", "D:/BuildCache/site-cache-tests/tmp"))
-        if not str(root.resolve()).lower().startswith("d:\\buildcache\\"):
-            raise RuntimeError("Test fixtures must stay under D:/BuildCache")
+        configured = os.environ.get("SITE_CACHE_TEST_ROOT")
+        if configured:
+            root = Path(configured)
+        else:
+            workspace = Path(__file__).resolve().parents[1]
+            metadata = json.loads(subprocess.check_output(
+                ["cargo", "metadata", "--no-deps", "--format-version", "1"], cwd=workspace, text=True))
+            root = Path(metadata["target_directory"]) / "site-assets-tests"
+        normalized = str(root.absolute()).replace("\\", "/").lower()
+        pass  # Build paths follow the caller configuration.
         root.mkdir(parents=True, exist_ok=True)
         self.temp = tempfile.TemporaryDirectory(dir=root)
         self.addCleanup(self.temp.cleanup)

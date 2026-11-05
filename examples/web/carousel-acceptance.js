@@ -45,7 +45,7 @@ async (hostPage, suppliedBase) => {
       assert(await page.locator('.carousel-plain').evaluate(e=>e.classList.contains('sapid-unstyled')&&e.style.background===''),`${mode}: unstyled removes theme`);
       await change('Toggle carousel enabled');assert(await main.getAttribute('aria-disabled')==='true'&&await main.locator('.sapid-carousel-next').isDisabled(),`${mode}: disabled native controls`);
       await change('Toggle carousel enabled');await page.setViewportSize({width:390,height:900});await settle();assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`${mode}: mobile width budget`);
-      if(hydrate)await page.screenshot({path:`D:/BuildCache/sapid/${mode}.png`,fullPage:true});
+      if(hydrate)await page.screenshot({path:`target/verification/sapid/${mode}.png`,fullPage:true});
       await page.evaluate(()=>window.demo.unmount_display());await settle();assert(await page.locator('#app').textContent()==='',`${mode}: Owner removes all physical content`);
       reports.push({mode,status:'passed',window:7,checks:'bounded million source, short Owners/editor selection, source silence, controlled refusal, actual keyboard/mouse swipe, RTL, autoplay timer/hover/focus/manual pause, four-theme/unstyled/disabled/mobile/teardown'});
     }

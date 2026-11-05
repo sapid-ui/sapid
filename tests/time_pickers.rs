@@ -26,6 +26,129 @@ fn edit(app: &App, id: NodeId, value: &str) {
     )
     .unwrap();
 }
+fn raw_edit(app: &App, id: NodeId, value: &str, composing: bool) {
+    let end = value.encode_utf16().count();
+    app.dispatch(
+        id,
+        Event::InputEdit(InputEdit::Value {
+            value: value.into(),
+            revision: props(app, id).revision,
+            selection: TextSelection {
+                start: end,
+                end,
+                ..Default::default()
+            },
+            before: Some(TextSelection::default()),
+            intent: InputEditIntent::Replace,
+            composing,
+        }),
+    )
+    .unwrap();
+}
+
+#[test]
+fn captured_numeric_edits_and_terminal_ime_echo_update_the_time_once() {
+    let app = App::memory();
+    let hour = app.scope().cage(None);
+    let value = app.scope().cage(Some(t("09:30")));
+    let calls = Rc::new(RefCell::new(Vec::new()));
+    let output = calls.clone();
+    app.mount(
+        time_picker("raw-numeric")
+            .value(value)
+            .hour_ref(hour)
+            .on_value_change(move |next| {
+                output.borrow_mut().push(next);
+                value.revise(|old| *old = next);
+            }),
+    )
+    .unwrap();
+    let hour = hour.get().unwrap();
+    raw_edit(&app, hour, "10", false);
+    app.flush().unwrap();
+    assert_eq!(value.get(), Some(t("10:30")));
+    app.scope()
+        .batch(|| {
+            app.dispatch(hour, Event::Composition { active: true })
+                .unwrap();
+            raw_edit(&app, hour, "11", true);
+            app.dispatch(hour, Event::Composition { active: false })
+                .unwrap();
+            raw_edit(&app, hour, "11", false);
+            raw_edit(&app, hour, "11", false);
+        })
+        .unwrap();
+    app.flush().unwrap();
+    assert_eq!(value.get(), Some(t("11:30")));
+    assert_eq!(&*calls.borrow(), &[Some(t("10:30")), Some(t("11:30"))]);
+    assert_eq!(props(&app, hour).value, "11");
+    app.clear().unwrap();
+}
+
+#[test]
+fn full_time_capture_is_atomic_and_reasserts_equal_pastes_without_numeric_rejection() {
+    let app = App::memory();
+    let hour = app.scope().cage(None);
+    let value = app.scope().cage(None);
+    let rejects = Rc::new(RefCell::new(Vec::new()));
+    let errors = rejects.clone();
+    app.mount(
+        time_picker("raw-whole")
+            .value(value)
+            .hour_ref(hour)
+            .paste_split(|raw| (raw == "noon").then(|| t("12:00")))
+            .on_value_change(move |next| value.revise(|old| *old = next))
+            .on_reject(move |error| errors.borrow_mut().push(error)),
+    )
+    .unwrap();
+    let hour = hour.get().unwrap();
+    for _ in 0..2 {
+        raw_edit(&app, hour, "noon", false);
+        app.flush().unwrap();
+        assert_eq!(value.get(), Some(t("12:00")));
+        assert_eq!(props(&app, hour).value, "12");
+    }
+    assert!(rejects.borrow().is_empty());
+    app.clear().unwrap();
+}
+
+#[test]
+fn capture_budget_rejection_keeps_the_value_without_calling_the_full_value_parser() {
+    let app = App::memory();
+    let hour = app.scope().cage(None);
+    let value = app.scope().cage(Some(t("09:30")));
+    let parsed = Rc::new(std::cell::Cell::new(0));
+    let parser = parsed.clone();
+    let rejects = Rc::new(RefCell::new(Vec::new()));
+    let errors = rejects.clone();
+    app.mount(
+        time_picker("raw-budget")
+            .value(value)
+            .hour_ref(hour)
+            .paste_split(move |_| {
+                parser.set(parser.get() + 1);
+                None
+            })
+            .on_value_change(move |next| value.revise(|old| *old = next))
+            .on_reject(move |error| errors.borrow_mut().push(error)),
+    )
+    .unwrap();
+    let hour = hour.get().unwrap();
+    app.dispatch(
+        hour,
+        Event::InputEdit(InputEdit::Rejected {
+            revision: props(&app, hour).revision,
+            reason: glory::render::InputEditRejection::TooLong,
+        }),
+    )
+    .unwrap();
+    app.flush().unwrap();
+    assert_eq!(parsed.get(), 0);
+    assert_eq!(value.get(), Some(t("09:30")));
+    assert_eq!(&*rejects.borrow(), &[TimePickerStatus::TooLong]);
+    assert_eq!(props(&app, hour).value, "09");
+    app.clear().unwrap();
+}
 fn commit_edit(app: &App, id: NodeId, value: &str) {
     app.dispatch(
         id,

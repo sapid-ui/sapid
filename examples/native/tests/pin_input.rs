@@ -57,21 +57,16 @@ fn native_pin_has_actual_glyph_aligned_cells_real_hit_targets_focus_and_theme_pi
                 assert_eq!(input.is_password(), masked);
                 input.display_editor().try_layout().unwrap().width()
             });
-            assert!((rect.width - f64::from(advance)).abs() < 0.2);
-            for index in 0..6 {
-                let target = host.renderer().inspect(|dom| {
-                    dom.hit(
-                        (rect.x + rect.width * (index as f64 + 0.5) / 6.) as f32,
-                        (rect.y + rect.height / 2.) as f32,
-                    )
-                    .unwrap()
-                    .node_id
-                });
-                assert_eq!(
-                    target, physical,
-                    "a passive segment cannot intercept editor hits"
-                );
-            }
+            let padding = app
+                .tree()
+                .node(id)
+                .unwrap()
+                .descriptor
+                .view()
+                .style
+                .padding
+                .unwrap();
+            assert!((rect.width - padding.left - padding.right - f64::from(advance)).abs() < 0.2);
             let frame = app.tree().node(id).unwrap().parent.unwrap();
             let cells = app
                 .tree()
@@ -85,17 +80,32 @@ fn native_pin_has_actual_glyph_aligned_cells_real_hit_targets_focus_and_theme_pi
             assert_eq!(cells.len(), 6);
             for (index, cell) in cells.iter().enumerate() {
                 let cell = bounds(app, *cell);
-                assert!((cell.width * 6. - rect.width).abs() < 0.2);
-                assert!((cell.x - (rect.x + rect.width * index as f64 / 6.)).abs() < 0.2);
+                let pitch = f64::from(advance) / 6.;
+                assert!(cell.width >= 24.);
+                assert!((cell.width + 8. - pitch).abs() < 0.2);
+                assert!((cell.x - (rect.x + pitch * index as f64)).abs() < 0.2);
+                let target = host.renderer().inspect(|dom| {
+                    dom.hit(
+                        (cell.x + cell.width / 2.) as f32,
+                        (cell.y + cell.height / 2.) as f32,
+                    )
+                    .unwrap()
+                    .node_id
+                });
+                assert_eq!(
+                    target, physical,
+                    "a passive segment cannot intercept editor hits"
+                );
             }
             app.scope().action(Action::Focus(id)).unwrap();
             app.flush().unwrap();
             assert_eq!(query(app, Query::Focus(id)), QueryValue::Focus(true));
             let mut raster = Raster::new();
             raster.draw(host.renderer()).unwrap();
-            let offset = (((rect.y + 4.).round() as usize)
+            let first = bounds(app, cells[0]);
+            let offset = (((first.y + 4.).round() as usize)
                 * raster.frame().unwrap().width as usize
-                + (rect.x + rect.width / 2. + 2.).round() as usize)
+                + (first.x + first.width / 2.).round() as usize)
                 * 4;
             let actual = &raster.pixels()[offset..offset + 4];
             for (a, b) in

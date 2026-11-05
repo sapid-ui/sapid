@@ -6,7 +6,7 @@ use glory::render::{
     Action, Event, EventKind, FocusMode, NodeId, Orientation, Query, QueryValue, ScrollAxes,
     ScrollCommand, ScrollMetrics, ScrollMovement, Semantics,
 };
-use glory::style::{Edges, Length, Overflow, Style};
+use glory::style::{Edges, Length, Limit, Overflow, PointerEvents, Position, Style};
 use glory::ui::{Result, WeakScope, Widget};
 use glory::{Bond, Cage, Scope, Vary};
 use std::{
@@ -745,17 +745,73 @@ impl Widget for ScrollArea {
     }
 }
 
+/// Share ScrollArea's bounded command queue with structural shell viewports.
+pub(crate) fn vertical_keyboard(
+    scope: &Scope,
+    reference: Cage<Option<NodeId>>,
+    mut observers: Vec<Box<dyn FnMut(Event)>>,
+) -> Result<impl FnMut(Event) + 'static> {
+    let handle = scroll_area("shell-keyboard")
+        .axes(ScrollAxes::Vertical)
+        .node_ref(reference)
+        .controller(scope)?;
+    let weak = scope.downgrade();
+    let owner = scope.id();
+    Ok(move |event| {
+        let Some(scope) = weak.upgrade() else { return };
+        if let Event::ScrollKeyboard { command, .. } = event
+            && let Err(error) = handle.command(command)
+        {
+            scope.report_error(error);
+            return;
+        }
+        observe(&mut observers, owner, event);
+    })
+}
+
 pub struct Scroller {
     area: ScrollArea,
     axis: Orientation,
+    controls: bool,
+    control_size: Option<f64>,
+    scroll_step: Option<f64>,
+    previous_icon: Option<Box<dyn Widget>>,
+    next_icon: Option<Box<dyn Widget>>,
 }
 pub fn scroller(key: impl Into<String>) -> Scroller {
     Scroller {
         area: scroll_area(key).axes(ScrollAxes::Horizontal),
         axis: Orientation::Horizontal,
+        controls: true,
+        control_size: None,
+        scroll_step: None,
+        previous_icon: None,
+        next_icon: None,
     }
 }
 impl Scroller {
+    /// Passive icon content; accessible names remain on the native controls.
+    pub fn previous_icon(mut self, value: impl Widget) -> Self {
+        self.previous_icon = Some(Box::new(value));
+        self
+    }
+    pub fn next_icon(mut self, value: impl Widget) -> Self {
+        self.next_icon = Some(Box::new(value));
+        self
+    }
+    pub fn controls(mut self, value: bool) -> Self {
+        self.controls = value;
+        self
+    }
+    pub fn control_size(mut self, value: f64) -> Self {
+        self.control_size = Some(value);
+        self
+    }
+    /// Use a fixed pixel step instead of one measured viewport page.
+    pub fn scroll_step(mut self, value: f64) -> Self {
+        self.scroll_step = Some(value);
+        self
+    }
     pub fn area(mut self, configure: impl FnOnce(ScrollArea) -> ScrollArea) -> Self {
         self.area = configure(self.area);
         self.area.axes = match self.axis {
@@ -781,9 +837,64 @@ impl Scroller {
 }
 impl Widget for Scroller {
     fn build(&mut self, scope: &Scope) -> Result {
+        let side = self.control_size.unwrap_or(
+            self.area
+                .common
+                .theme
+                .tokens
+                .control(self.area.common.size)
+                .min_height,
+        );
+        if !side.is_finite()
+            || !(20.0..=64.0).contains(&side)
+            || self
+                .scroll_step
+                .is_some_and(|value| !value.is_finite() || !(1.0..=100_000.0).contains(&value))
+        {
+            return Err(invalid(
+                "scroller controls require 20–64px and scroll steps 1–100000px",
+            ));
+        }
         let handle = self.area.controller(scope)?;
         let metrics = handle.metrics();
         let axis = self.axis;
+        let root = scope.cage(None);
+        let own = self.area.common.style.clone();
+        glory::ui::view()
+            .class("sapid-scroller")
+            .node_ref(root)
+            .style(scope.bond(move || {
+                let own = own.get();
+                Style {
+                    width: own.width.or(Some(Length::Percent(100.))),
+                    max_width: own.max_width.or(Some(Limit::Percent(100.))),
+                    min_width: own.min_width.or(Some(Length::Px(0.))),
+                    ..Style::new().position(Position::Relative)
+                }
+            }))
+            .show_in(scope)?;
+        let parent = scope.child_in(root.get().ok_or(glory::ui::Error::Gone)?)?;
+        // Width belongs to the frame; resolving a percentage again on its child
+        // would shrink the viewport twice and detach controls from its edges.
+        let viewport_style = self.area.common.style.clone();
+        self.area.common.style = scope
+            .bond(move || {
+                let mut style = viewport_style.get();
+                style.width = Some(Length::Percent(100.));
+                style.min_width = Some(Length::Px(0.));
+                style.max_width = Some(Limit::Percent(100.));
+                style
+            })
+            .into();
+        let mut ready = self.area.ready.take();
+        self.area.mount_view(&parent, handle.clone())?;
+        if !self.controls {
+            scope.retain(parent)?;
+            if let Some(mut callback) = ready.take() {
+                callback(handle);
+            }
+            return Ok(());
+        }
         for (label, movement, forward) in [
             ("Previous scroll page", ScrollMovement::PageNegative, false),
             ("Next scroll page", ScrollMovement::PagePositive, true),
@@ -808,21 +919,98 @@ impl Widget for Scroller {
                         }
                 })
             });
-            crate::button()
+            let step = self.scroll_step;
+            let mut style = Style::new()
+                .position(Position::Absolute)
+                .width(Length::Px(side))
+                .height(Length::Px(side))
+                .min_width(Length::Px(side))
+                .min_height(Length::Px(side))
+                .padding(Edges::all(0.));
+            if axis == Orientation::Horizontal {
+                style.top = Some(Length::Percent(50.));
+                style.margin = Some(Edges {
+                    top: -side / 2.,
+                    bottom: 0.,
+                    left: 0.,
+                    right: 0.,
+                });
+                if forward {
+                    style.right = Some(Length::Px(8.));
+                } else {
+                    style.left = Some(Length::Px(8.));
+                }
+            } else {
+                style.left = Some(Length::Percent(50.));
+                style.margin = Some(Edges {
+                    left: -side / 2.,
+                    right: 0.,
+                    top: 0.,
+                    bottom: 0.,
+                });
+                if forward {
+                    style.bottom = Some(Length::Px(8.));
+                } else {
+                    style.top = Some(Length::Px(8.));
+                }
+            }
+            let icon = match (axis, forward) {
+                (Orientation::Horizontal, false) => "‹",
+                (Orientation::Horizontal, true) => "›",
+                (Orientation::Vertical, false) => "⌃",
+                (Orientation::Vertical, true) => "⌄",
+            };
+            let icon = if forward {
+                self.next_icon.take()
+            } else {
+                self.previous_icon.take()
+            }
+            .unwrap_or_else(|| Box::new(glory::ui::text().content(icon)));
+            let mut button = crate::action_icon(label)
                 .theme(self.area.common.theme.clone())
                 .size(self.area.common.size)
-                .label(label)
+                .class(if forward {
+                    "sapid-scroller-next"
+                } else {
+                    "sapid-scroller-previous"
+                })
+                .icon(icon)
+                .style(scope.bond(move || {
+                    let mut style = style.clone();
+                    if !enabled.get() {
+                        style.opacity = Some(0.);
+                        style.pointer_events = Some(PointerEvents::None);
+                    }
+                    style
+                }))
                 .enabled(enabled)
                 .on_press(move || {
-                    if let Err(error) = request.command(ScrollCommand { axis, movement })
+                    let result = if let Some(step) = step {
+                        let delta = if forward { step } else { -step };
+                        if axis == Orientation::Horizontal {
+                            request.scroll_by(delta, 0.)
+                        } else {
+                            request.scroll_by(0., delta)
+                        }
+                    } else {
+                        request.command(ScrollCommand { axis, movement })
+                    };
+                    if let Err(error) = result
                         && let Some(scope) = weak.upgrade()
                     {
                         scope.report_error(error);
                     }
-                })
-                .show_in(scope)?;
+                });
+            if self.area.common.unstyled {
+                button = button.unstyled();
+            }
+            button.show_in(&parent)?;
         }
-        self.area.mount_view(scope, handle)
+        scope.retain(parent)?;
+        if let Some(mut callback) = ready.take() {
+            callback(handle);
+        }
+        Ok(())
     }
 }
 

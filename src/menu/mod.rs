@@ -10,8 +10,15 @@ use glory::render::{
     PointerPhase, PopupKind, Role, SemanticId, Semantics,
 };
 use glory::style::{Edges, Length};
+use glory::ui::IntoChildren;
 use glory::ui::{Result, Widget};
 use glory::{Cage, Scope, Vary};
+
+mod content;
+mod search;
+use content::Sections;
+pub use content::{MenuLabel, menu_label};
+pub use search::{MAX_MENU_SEARCH_BYTES, MenuSearch, menu_search};
 
 use crate::appearance::{Common, common_methods, configure, observe};
 use crate::collection::{
@@ -40,6 +47,8 @@ pub struct MenuItem {
     activated: Option<Box<dyn FnMut()>>,
     close: bool,
     check_configured: bool,
+    sections: Sections,
+    visible: Vary<bool>,
 }
 pub fn menu_item(key: impl Into<String>) -> MenuItem {
     MenuItem {
@@ -52,6 +61,8 @@ pub fn menu_item(key: impl Into<String>) -> MenuItem {
         activated: None,
         close: true,
         check_configured: false,
+        sections: Sections::default(),
+        visible: true.into(),
     }
 }
 pub fn menu_checkbox(key: impl Into<String>) -> MenuItem {
@@ -63,6 +74,20 @@ pub fn menu_checkbox(key: impl Into<String>) -> MenuItem {
 }
 impl MenuItem {
     common_methods!();
+    pub fn visible(mut self, visible: impl Into<Vary<bool>>) -> Self {
+        self.visible = visible.into();
+        self
+    }
+    /// Passive content before the label, for action items.
+    pub fn left_section(mut self, children: impl IntoChildren) -> Self {
+        self.sections.left = Some(children.into_children());
+        self
+    }
+    /// Passive content after the label, for action items.
+    pub fn right_section(mut self, children: impl IntoChildren) -> Self {
+        self.sections.right = Some(children.into_children());
+        self
+    }
     pub fn label(mut self, value: impl Into<Vary<String>>) -> Self {
         self.label = value.into();
         self
@@ -95,16 +120,22 @@ pub struct MenuRadioItem {
     common: Common,
     key: String,
     label: Vary<String>,
+    visible: Vary<bool>,
 }
 pub fn menu_radio_item(key: impl Into<String>, label: impl Into<Vary<String>>) -> MenuRadioItem {
     MenuRadioItem {
         common: Common::default(),
         key: key.into(),
         label: label.into(),
+        visible: true.into(),
     }
 }
 impl MenuRadioItem {
     common_methods!();
+    pub fn visible(mut self, visible: impl Into<Vary<bool>>) -> Self {
+        self.visible = visible.into();
+        self
+    }
 }
 pub struct MenuRadioGroup {
     key: String,
@@ -155,13 +186,21 @@ pub struct MenuSubmenu {
     common: Common,
     key: String,
     label: Vary<String>,
+    editor: Option<Box<MenuSearch>>,
+    width: Option<f64>,
+    position: Option<glory::render::AnchorPlacement>,
     open: Value<bool>,
     changed: Option<Box<dyn FnMut(bool)>>,
     entries: Vec<MenuEntry>,
     overflow: bool,
+    sections: Sections,
+    visible: Vary<bool>,
 }
 pub fn menu_submenu(key: impl Into<String>) -> MenuSubmenu {
     MenuSubmenu {
+        editor: None,
+        width: None,
+        position: None,
         common: Common::default(),
         key: key.into(),
         label: "".into(),
@@ -169,10 +208,36 @@ pub fn menu_submenu(key: impl Into<String>) -> MenuSubmenu {
         changed: None,
         entries: Vec::new(),
         overflow: false,
+        sections: Sections::default(),
+        visible: true.into(),
     }
 }
 impl MenuSubmenu {
     common_methods!();
+    pub fn width(mut self, width: f64) -> Self {
+        self.width = Some(width);
+        self
+    }
+    pub fn position(mut self, position: glory::render::AnchorPlacement) -> Self {
+        self.position = Some(position);
+        self
+    }
+    pub fn search(mut self, editor: MenuSearch) -> Self {
+        self.editor = Some(Box::new(editor));
+        self
+    }
+    pub fn visible(mut self, visible: impl Into<Vary<bool>>) -> Self {
+        self.visible = visible.into();
+        self
+    }
+    pub fn left_section(mut self, children: impl IntoChildren) -> Self {
+        self.sections.left = Some(children.into_children());
+        self
+    }
+    pub fn right_section(mut self, children: impl IntoChildren) -> Self {
+        self.sections.right = Some(children.into_children());
+        self
+    }
     pub fn label(mut self, value: impl Into<Vary<String>>) -> Self {
         self.label = value.into();
         self
@@ -257,9 +322,15 @@ fn push_entry(entries: &mut Vec<MenuEntry>, overflow: &mut bool, entry: MenuEntr
 }
 pub enum MenuEntry {
     Item(MenuItem),
+    Label(MenuLabel),
     RadioGroup(MenuRadioGroup),
     Submenu(MenuSubmenu),
     Separator(String),
+}
+impl From<MenuLabel> for MenuEntry {
+    fn from(label: MenuLabel) -> Self {
+        Self::Label(label)
+    }
 }
 impl From<MenuItem> for MenuEntry {
     fn from(item: MenuItem) -> Self {
@@ -281,6 +352,7 @@ pub struct Menu {
     common: Common,
     key: String,
     label: Vary<String>,
+    editor: Option<Box<MenuSearch>>,
     open: Value<bool>,
     changed: Option<Box<dyn FnMut(bool)>>,
     entries: Vec<MenuEntry>,
@@ -300,6 +372,7 @@ pub struct Menu {
 }
 pub fn menu(key: impl Into<String>) -> Menu {
     Menu {
+        editor: None,
         common: Common::default(),
         key: key.into(),
         label: "Menu".into(),
@@ -356,6 +429,18 @@ pub fn dropdown_menu(key: impl Into<String>) -> DropdownMenu {
 }
 impl Menu {
     common_methods!();
+    pub fn width(mut self, width: f64) -> Self {
+        self.panel_width = Some(width);
+        self
+    }
+    pub fn position(mut self, position: glory::render::AnchorPlacement) -> Self {
+        self.position = Some(position);
+        self
+    }
+    pub fn search(mut self, editor: MenuSearch) -> Self {
+        self.editor = Some(Box::new(editor));
+        self
+    }
     pub fn label(mut self, value: impl Into<Vary<String>>) -> Self {
         self.label = value.into();
         self
@@ -443,7 +528,8 @@ impl DropdownMenu {
     dropdown_methods! {
         label(value: impl Into<Vary<String>>); open(value: impl Into<Vary<bool>>); default_open(value: bool);
         on_open_change(callback: impl FnMut(bool) + 'static); item(item: impl Into<MenuEntry>); items(items: impl IntoIterator<Item = MenuItem>);
-        radio_group(group: MenuRadioGroup); submenu(submenu: MenuSubmenu); separator(key: impl Into<String>);
+        radio_group(group: MenuRadioGroup); submenu(submenu: MenuSubmenu); separator(key: impl Into<String>); search(editor: MenuSearch);
+        width(width: f64); position(position: glory::render::AnchorPlacement);
         return_focus(id: SemanticId); direction(direction: Direction); loop_focus(looping: bool); typeahead(config: TypeaheadConfig);
         trigger_ref(reference: Cage<Option<NodeId>>); node_ref(reference: Cage<Option<NodeId>>); class(value: impl Into<Vary<String>>);
         name(value: impl Into<Vary<String>>); style(value: impl Into<Vary<glory::style::Style>>); enabled(value: impl Into<Vary<bool>>);
@@ -485,7 +571,8 @@ impl ContextMenu {
     dropdown_methods! {
         label(value: impl Into<Vary<String>>); open(value: impl Into<Vary<bool>>);
         on_open_change(callback: impl FnMut(bool) + 'static); item(item: impl Into<MenuEntry>); items(items: impl IntoIterator<Item = MenuItem>);
-        radio_group(group: MenuRadioGroup); submenu(submenu: MenuSubmenu); separator(key: impl Into<String>);
+        radio_group(group: MenuRadioGroup); submenu(submenu: MenuSubmenu); separator(key: impl Into<String>); search(editor: MenuSearch);
+        width(width: f64);
         direction(direction: Direction); loop_focus(looping: bool); typeahead(config: TypeaheadConfig);
         node_ref(reference: Cage<Option<NodeId>>); class(value: impl Into<Vary<String>>);
         name(value: impl Into<Vary<String>>); style(value: impl Into<Vary<glory::style::Style>>); enabled(value: impl Into<Vary<bool>>);
@@ -509,6 +596,14 @@ impl ContextMenu {
 }
 fn invalid(message: &'static str) -> glory::ui::Error {
     glory::render::Error::InvalidProps(message).into()
+}
+fn validate_width(width: Option<f64>) -> Result {
+    if width.is_some_and(|width| !width.is_finite() || !(80.0..=1000.0).contains(&width)) {
+        return Err(invalid(
+            "menu dropdown widths require finite 80..=1000 CSS pixels",
+        ));
+    }
+    Ok(())
 }
 fn id(namespace: &str, path: &[String], part: &str) -> Result<SemanticId> {
     let mut value = format!("sapid-menu-{}_{namespace}-{part}", namespace.len());
@@ -541,6 +636,7 @@ fn validate(
     for entry in entries {
         let (name, members) = match entry {
             MenuEntry::Item(item) => (&item.key, 1),
+            MenuEntry::Label(label) => (&label.key, 1),
             MenuEntry::RadioGroup(group) => (&group.key, group.items.len()),
             MenuEntry::Submenu(menu) => (&menu.key, 1),
             MenuEntry::Separator(key) => (key, 1),
@@ -560,13 +656,24 @@ fn validate(
         match entry {
             MenuEntry::Item(item)
                 if item.common.focus != FocusMode::Auto
-                    || item.kind == ItemKind::Action && item.check_configured =>
+                    || item.kind == ItemKind::Action && item.check_configured
+                    || item.kind != ItemKind::Action && !item.sections.is_empty() =>
             {
                 return Err(invalid(
-                    "menu owns item focus and checkbox state requires a checkbox item",
+                    "menu owns focus; checkbox state needs a checkbox item and passive slots need an action item",
                 ));
             }
+            MenuEntry::Label(label) if label.common.focus != FocusMode::Auto => {
+                return Err(invalid("menu labels are passive captions"));
+            }
             MenuEntry::Submenu(menu) => {
+                validate_width(menu.width)?;
+                if let Some(position) = menu.position {
+                    position.validate()?;
+                }
+                if let Some(editor) = &menu.editor {
+                    editor.validate()?;
+                }
                 let open = match &menu.open.source {
                     Some(source) => source.try_get()?,
                     None => menu.open.default,
@@ -614,6 +721,8 @@ struct Child {
     state: Rc<MenuState>,
 }
 struct MenuState {
+    search_editor: Option<Rc<search::SearchState>>,
+    activations: RefCell<Vec<search::Activation>>,
     bar: Option<(String, Weak<bar::BarState>)>,
     open: Control<bool>,
     changed: Callback<bool>,
@@ -688,6 +797,14 @@ impl MenuState {
     }
     fn focus_item(&self, _scope: &Scope, item: crate::MountedItem) -> Result {
         self.roving.accept(&item)?;
+        if let Some(editor) = &self.search_editor {
+            editor
+                .highlighted
+                .try_revise(|current| *current = Some(item.node))?;
+            self.focus_request
+                .try_revise(|pending| *pending = editor.editor.get())?;
+            return Ok(());
+        }
         self.focus_request
             .try_revise(|pending| *pending = Some(item.node))?;
         Ok(())
@@ -739,6 +856,15 @@ impl MenuState {
         Ok(())
     }
     fn command(&self, scope: &Scope, from: NodeId, command: MenuCommand) -> Result {
+        if !self.owner.is_alive() || !self.enabled.try_get()? {
+            return Ok(());
+        }
+        if matches!(
+            command,
+            MenuCommand::SearchNext | MenuCommand::SearchPrevious | MenuCommand::SearchCommit
+        ) {
+            return self.search_command(scope, from, command);
+        }
         self.cancel_pending();
         match command {
             MenuCommand::First | MenuCommand::Last => {
@@ -789,6 +915,9 @@ impl MenuState {
         Ok(())
     }
     fn typeahead(&self, scope: &Scope, from: NodeId, text: &str, at_millis: u64) -> Result {
+        if self.search_editor.is_some() {
+            return Ok(());
+        }
         if !self.visible.try_get()? {
             return Ok(());
         }
@@ -852,6 +981,7 @@ impl MenuState {
 }
 
 struct Level {
+    editor: Option<Box<MenuSearch>>,
     bar: Option<(String, Weak<bar::BarState>)>,
     key: String,
     path: Vec<String>,
@@ -875,16 +1005,24 @@ struct Level {
 }
 impl Level {
     fn build(mut self, scope: &Scope) -> Result<Rc<MenuState>> {
+        let mut search_config = self.editor.take();
+        let search_editor = search_config
+            .as_mut()
+            .map(|editor| editor.prepare(scope, &self.key, &self.path))
+            .transpose()?;
         let panel_id = id(&self.key, &self.path, "panel")?;
         let panel = self.common.node_ref.unwrap_or_else(|| scope.cage(None));
         let control = self.open.mount(scope);
         let source = control.source.clone();
         let parent = self.parent_visible;
-        let visible: Vary<bool> = scope.bond(move || source.get() && parent.get()).into();
         let root_enabled = self.root_enabled;
         let own_enabled = self.common.enabled.clone();
         let enabled: Vary<bool> = scope
             .bond(move || root_enabled.get() && own_enabled.get())
+            .into();
+        let available = enabled.clone();
+        let visible: Vary<bool> = scope
+            .bond(move || source.get() && parent.get() && available.get())
             .into();
         let collection = Collection::new(
             scope,
@@ -897,6 +1035,8 @@ impl Level {
         let search = Typeahead::new(self.typeahead)?;
         let pending = OwnerDelay::new(scope)?;
         let state = Rc::new_cyclic(|this| MenuState {
+            search_editor,
+            activations: RefCell::new(Vec::new()),
             bar: self.bar,
             open: control,
             changed: Callback::new(self.changed.take()),
@@ -941,10 +1081,12 @@ impl Level {
                 glory::render::AnchorAlign::Start,
             )),
             anchor: Some(self.anchor),
-            initial_focus: None,
+            initial_focus: state.search_editor.as_ref().map(|editor| editor.id.clone()),
             return_focus: self.return_focus,
         };
         let stable_id = panel_id.clone();
+        let typeahead = state.search_editor.is_none();
+        let panel_name = self.common.name.clone().unwrap_or(self.label.clone());
         let mut panel_widget = configure!(
             self.common,
             glory::ui::view().role(Role::Menu),
@@ -952,7 +1094,7 @@ impl Level {
             "sapid-menu sapid-layer",
             menu_style(&self.common)
         )
-        .name(self.common.name.clone().unwrap_or(self.label.clone()))
+        .name(panel_name)
         .node_ref(panel)
         .focus(FocusMode::Programmatic)
         .semantics(scope.bond(move || {
@@ -964,7 +1106,7 @@ impl Level {
                 hidden: !open.get(),
                 navigation: Some(Orientation::Vertical),
                 navigation_direction: direction,
-                typeahead: true,
+                typeahead,
                 ..Default::default()
             })
         }));
@@ -1006,8 +1148,14 @@ impl Level {
         panel_widget.show_in(scope)?;
         let panel_node = panel.get().ok_or(glory::ui::Error::Gone)?;
         let content = scope.child_in(panel_node)?;
+        if let Some(editor) = search_config {
+            (*editor).show(&content, &self.common, panel_id.clone(), state.clone())?;
+        }
         for entry in self.entries {
             match entry {
+                MenuEntry::Label(label) => {
+                    content::build_label(&content, &self.common, &self.key, &self.path, label)?
+                }
                 MenuEntry::Item(item) => build_item(
                     &content,
                     &state,
@@ -1022,6 +1170,27 @@ impl Level {
                     path.push(key);
                     glory::ui::view()
                         .role(Role::Separator)
+                        .style(if self.common.unstyled {
+                            glory::style::Style::new()
+                        } else {
+                            glory::style::Style {
+                                border_color: Some(self.common.theme.border),
+                                ..glory::style::Style::new()
+                                    .border_style(glory::style::BorderStyle::Solid)
+                                    .border_width(Edges {
+                                        top: 1.,
+                                        bottom: 0.,
+                                        left: 0.,
+                                        right: 0.,
+                                    })
+                                    .margin(Edges {
+                                        top: 4.,
+                                        bottom: 4.,
+                                        left: 0.,
+                                        right: 0.,
+                                    })
+                            }
+                        })
                         .class(if self.common.unstyled {
                             "sapid-menu-separator sapid-unstyled"
                         } else {
@@ -1052,16 +1221,23 @@ impl Level {
                         .unwrap_or_else(|| content.cage(None));
                     let child_owner = content.child()?;
                     let child_label = submenu.label.clone();
-                    let own_enabled = submenu.common.enabled.clone();
+                    let own_enabled = content::filter_enabled(
+                        &content,
+                        submenu.common.enabled.clone(),
+                        submenu.visible.clone(),
+                    );
+                    let own_visible = submenu.visible.clone();
                     let parent_visible = visible.clone();
                     let active = state.active_child;
                     let child_visible: Vary<bool> = content
                         .bond(move || {
                             parent_visible.get()
+                                && own_visible.get()
                                 && trigger.get().is_some_and(|node| active.get() == Some(node))
                         })
                         .into();
                     let child = Level {
+                        editor: submenu.editor,
                         bar: None,
                         key: self.key.clone(),
                         path: path.clone(),
@@ -1069,6 +1245,11 @@ impl Level {
                             theme: self.common.theme.clone(),
                             size: self.common.size,
                             unstyled: self.common.unstyled || submenu.common.unstyled,
+                            style: submenu
+                                .width
+                                .map(|width| glory::style::Style::new().width(Length::Px(width)))
+                                .unwrap_or_default()
+                                .into(),
                             ..Default::default()
                         },
                         label: child_label.clone(),
@@ -1077,7 +1258,9 @@ impl Level {
                         entries: submenu.entries,
                         anchor: trigger_id.clone(),
                         return_focus: Some(trigger_id.clone()),
-                        placement: (if direction == Direction::Rtl {
+                        placement: (if let Some(position) = submenu.position {
+                            LayerPlacement::Anchor(position)
+                        } else if direction == Direction::Rtl {
                             LayerPlacement::Anchor(
                                 glory::render::AnchorPlacement::new(
                                     glory::render::AnchorSide::Left,
@@ -1109,13 +1292,37 @@ impl Level {
                     content.retain(child_owner)?;
                     let child_panel = id(&self.key, &path, "panel")?;
                     let expanded = child.visible.clone();
-                    let native = glory::ui::button()
-                        .label(child_label.clone())
-                        .node_ref(trigger);
+                    let mut sections = submenu.sections;
+                    if sections.right.is_none() {
+                        sections.right = Some(
+                            crate::input_actions::glyph(
+                                match submenu.position.map(|position| position.side) {
+                                    Some(glory::render::AnchorSide::Left) => {
+                                        crate::Icon::ChevronLeft
+                                    }
+                                    Some(glory::render::AnchorSide::Right) => {
+                                        crate::Icon::ChevronRight
+                                    }
+                                    Some(glory::render::AnchorSide::Top) => crate::Icon::ChevronUp,
+                                    Some(glory::render::AnchorSide::Bottom) => {
+                                        crate::Icon::ChevronDown
+                                    }
+                                    None if direction == Direction::Rtl => crate::Icon::ChevronLeft,
+                                    None => crate::Icon::ChevronRight,
+                                },
+                                self.common.theme.foreground,
+                            )
+                            .class("sapid-menu-chevron")
+                            .into_children(),
+                        );
+                    }
+                    let native = sections
+                        .decorate(glory::ui::button().node_ref(trigger), child_label.clone());
                     let callback = child.clone();
                     let live = state.clone();
                     let weak = content.downgrade();
                     let mut common = submenu.common;
+                    common.enabled = own_enabled.clone();
                     common.theme = self.common.theme.clone();
                     common.size = self.common.size;
                     common.unstyled |= self.common.unstyled;
@@ -1124,15 +1331,17 @@ impl Level {
                         .remove(&EventKind::Activate)
                         .unwrap_or_default();
                     let instance = scope.id();
+                    let trigger_scope = content::member_scope(&content, submenu.visible)?;
+                    search::highlight_style(&trigger_scope, &state, &mut common, trigger);
                     let native = configure!(
                         common,
                         native,
-                        &content,
+                        &trigger_scope,
                         "sapid-menu-item sapid-menu-submenu-trigger",
                         menu_item_style(&self.common)
                     );
                     let item = mount_member(
-                        &content,
+                        &trigger_scope,
                         &state,
                         native,
                         &self.common,
@@ -1152,6 +1361,7 @@ impl Level {
                             ..Default::default()
                         },
                         Some(expanded),
+                        None,
                         move |event| {
                             let Some(scope) = weak.upgrade() else { return };
                             if !live.visible.get() {
@@ -1169,6 +1379,7 @@ impl Level {
                             observe(&mut observers, instance, event);
                         },
                     )?;
+                    content.retain(trigger_scope)?;
                     state.children.borrow_mut().push(Child {
                         trigger: item,
                         state: child,
@@ -1206,8 +1417,23 @@ impl Level {
         scope.effect(move || {
             let Some(scope) = weak.upgrade() else { return };
             let result = (|| -> Result {
+                if !live.enabled.try_get()? {
+                    live.open.accept(&false)?;
+                }
                 let visible = live.visible.try_get()?;
                 live.roving.repair(None)?;
+                if let Some(editor) = &live.search_editor
+                    && let Some(current) = editor.highlighted.try_get()?
+                {
+                    let items = live.collection.mounted()?;
+                    if !visible
+                        || !items
+                            .iter()
+                            .any(|item| item.node == current && item.enabled)
+                    {
+                        editor.highlighted.try_revise(|value| *value = None)?;
+                    }
+                }
                 let requested = live.focus_request.try_get()?;
                 if requested.is_some() {
                     live.focus_request.try_revise(|pending| *pending = None)?;
@@ -1215,6 +1441,16 @@ impl Level {
                 if !visible {
                     live.cancel_pending();
                 } else if let Some(target) = requested {
+                    if live
+                        .search_editor
+                        .as_ref()
+                        .is_some_and(|editor| editor.editor.get() == Some(target))
+                    {
+                        if scope.is_active(target)? {
+                            composite::focus_node(&scope, Some(target))?;
+                        }
+                        return Ok(());
+                    }
                     let items = live.collection.mounted()?;
                     let current = live.roving.current()?;
                     let target = items
@@ -1240,11 +1476,26 @@ impl Level {
                 scope.report_error(error);
             }
         });
+        if let Some(editor) = &state.search_editor {
+            let editor = editor.clone();
+            let live = state.clone();
+            let weak = scope.downgrade();
+            let mut was_visible = visible.get();
+            scope.effect(move || {
+                let Some(scope) = weak.upgrade() else { return };
+                let visible = live.visible.get();
+                let closing = was_visible && !visible;
+                was_visible = visible;
+                if closing && let Err(error) = editor.close(live.owner) {
+                    scope.report_error(error);
+                }
+            });
+        }
         Ok(state)
     }
 }
 fn menu_item_style(common: &Common) -> glory::style::Style {
-    common
+    let mut style = common
         .theme
         .control(common.size)
         .border_width(Edges::all(0.0))
@@ -1255,6 +1506,12 @@ fn menu_item_style(common: &Common) -> glory::style::Style {
             left: 9.0,
             right: 9.0,
         })
+        .display(glory::style::Display::InlineFlex)
+        .width(Length::Percent(100.))
+        .gap(8.);
+    style.align = Some(glory::style::Align::Center);
+    style.justify = Some(glory::style::Justify::Start);
+    style
 }
 fn menu_style(common: &Common) -> glory::style::Style {
     let mut style = composite::column(2.0)
@@ -1263,6 +1520,9 @@ fn menu_style(common: &Common) -> glory::style::Style {
         .radius(common.theme.radius);
     style.background = Some(common.theme.surface);
     style.color = Some(common.theme.foreground);
+    style.border_width = Some(Edges::all(1.));
+    style.border_style = Some(glory::style::BorderStyle::Solid);
+    style.border_color = Some(common.theme.border);
     style
 }
 
@@ -1281,6 +1541,7 @@ fn mount_member<W: MenuControl>(
     own_enabled: Vary<bool>,
     mut semantics: Semantics,
     expanded: Option<Vary<bool>>,
+    checked: Option<Vary<bool>>,
     activation: impl FnMut(Event) + 'static,
 ) -> Result<NodeId> {
     common.theme = parent.theme.clone();
@@ -1289,10 +1550,12 @@ fn mount_member<W: MenuControl>(
     let owner = scope.child()?;
     let token = owner.cage(None::<CollectionMember>);
     let roving = state.roving.clone();
+    let searchable = state.search_editor.is_some();
     let focus = owner.bond(move || {
-        if token
-            .get()
-            .is_some_and(|member| roving.is_tab_stop(&member).unwrap_or(false))
+        if !searchable
+            && token
+                .get()
+                .is_some_and(|member| roving.is_tab_stop(&member).unwrap_or(false))
         {
             FocusMode::TabStop
         } else {
@@ -1303,6 +1566,21 @@ fn mount_member<W: MenuControl>(
     let flag = own_enabled;
     let enabled: Vary<bool> = owner.bond(move || root.get() && flag.get()).into();
     semantics.navigation_item = true;
+    let declaration = if searchable {
+        Some((
+            semantics
+                .id
+                .clone()
+                .ok_or(invalid("menu search actions need stable names"))?,
+            semantics
+                .menu_item
+                .as_ref()
+                .ok_or(invalid("menu search actions need item metadata"))?
+                .kind,
+        ))
+    } else {
+        None
+    };
     let metadata = owner.bond(move || {
         let mut metadata = semantics.clone();
         if let Some(expanded) = &expanded {
@@ -1310,29 +1588,82 @@ fn mount_member<W: MenuControl>(
         }
         composite::metadata(metadata)
     });
-    let control = control.member(focus.into(), enabled.clone(), metadata.into(), activation);
+    let available = enabled.clone();
+    let identity = owner.id();
+    let mut activation = activation;
+    let guarded = move |event| {
+        if identity.is_alive() && available.get() {
+            activation(event);
+        }
+    };
+    let mut guarded = Some(guarded);
+    let dispatch = searchable.then(|| search::handler(guarded.take().expect("one action handler")));
+    let control = if let Some(dispatch) = &dispatch {
+        let callback = dispatch.clone();
+        control.member(
+            focus.into(),
+            enabled.clone(),
+            metadata.into(),
+            move |event| callback.borrow_mut()(event),
+        )
+    } else {
+        control.member(
+            focus.into(),
+            enabled.clone(),
+            metadata.into(),
+            guarded.take().expect("one action handler"),
+        )
+    };
     let mounted = control.mount(&owner)?;
     let member = state
         .collection
         .register(mounted.scope(), key, reference, enabled, label)?;
     token.revise(|token| *token = Some(member.clone()));
     let node = reference.get().ok_or(glory::ui::Error::Gone)?;
-    let live = state.clone();
-    let weak = owner.downgrade();
+    if let Some((name, kind)) = declaration {
+        state.activations.borrow_mut().push(search::Activation {
+            node,
+            name,
+            kind,
+            checked,
+            callback: Rc::downgrade(dispatch.as_ref().expect("search action handler")),
+        });
+        let weak = Rc::downgrade(state);
+        owner.on_cleanup(move || {
+            if let Some(state) = weak.upgrade() {
+                state
+                    .activations
+                    .borrow_mut()
+                    .retain(|item| item.node != node);
+            }
+        })?;
+    }
     let mut pointer_observers = common
         .handlers
         .remove(&EventKind::Pointer)
         .unwrap_or_default();
     let instance = owner.id();
     owner.on(node, EventKind::Pointer, move |event| {
+        observe(&mut pointer_observers, instance, event);
+    })?;
+    // Passive icons and labels have their own origins. Movement belongs to
+    // this member; only crossing its actual boundary cancels a hover task.
+    let live = state.clone();
+    let weak = owner.downgrade();
+    let mut boundary_observers = common
+        .handlers
+        .remove(&EventKind::PointerWithin)
+        .unwrap_or_default();
+    owner.on(node, EventKind::PointerWithin, move |event| {
         let Some(scope) = weak.upgrade() else { return };
-        if let Event::Pointer { from, phase, .. } = &event
-            && let Err(error) = live.pointer(&scope, *from, *phase)
+        if let Event::PointerWithin { phase, .. } = &event
+            && matches!(phase, PointerPhase::Move | PointerPhase::Leave)
+            && let Err(error) = live.pointer(&scope, node, *phase)
         {
             scope.report_error(error);
             return;
         }
-        observe(&mut pointer_observers, instance, event);
+        observe(&mut boundary_observers, instance, event);
     })?;
     let roving = state.roving.clone();
     let weak = owner.downgrade();
@@ -1423,12 +1754,15 @@ fn build_item(
     menu_id: &SemanticId,
     mut item: MenuItem,
 ) -> Result {
-    let owner = scope.child()?;
+    let owner = content::member_scope(scope, item.visible.clone())?;
+    item.common.enabled =
+        content::filter_enabled(&owner, item.common.enabled.clone(), item.visible);
     let reference = item.common.node_ref.unwrap_or_else(|| owner.cage(None));
     let enabled = item.common.enabled.clone();
     item.common.theme = parent.theme.clone();
     item.common.size = parent.size;
     item.common.unstyled |= parent.unstyled;
+    search::highlight_style(&owner, state, &mut item.common, reference);
     let mut path = path.to_vec();
     path.push(item.key.clone());
     let semantics = Semantics {
@@ -1453,11 +1787,12 @@ fn build_item(
     let instance = owner.id();
     let weak = owner.downgrade();
     if item.kind == ItemKind::Action {
+        let native = item
+            .sections
+            .decorate(glory::ui::button().node_ref(reference), item.label.clone());
         let native = configure!(
             item.common,
-            glory::ui::button()
-                .label(item.label.clone())
-                .node_ref(reference),
+            native,
             &owner,
             "sapid-menu-item",
             menu_item_style(parent)
@@ -1478,6 +1813,7 @@ fn build_item(
             reference,
             enabled,
             semantics,
+            None,
             None,
             move |event| {
                 let Some(scope) = weak.upgrade() else { return };
@@ -1529,6 +1865,7 @@ fn build_item(
             enabled,
             semantics,
             None,
+            Some(control.source.clone()),
             move |event| {
                 let Some(scope) = weak.upgrade() else { return };
                 let result = (|| -> Result {
@@ -1627,10 +1964,14 @@ fn build_radios(
     let initial = selected.get();
     let mut references = Vec::new();
     for mut item in group.items {
+        let row = content::member_scope(&content, item.visible.clone())?;
+        item.common.enabled =
+            content::filter_enabled(&row, item.common.enabled.clone(), item.visible);
         item.common.theme = parent.theme.clone();
         item.common.size = parent.size;
         item.common.unstyled |= parent.unstyled;
-        let reference = item.common.node_ref.unwrap_or_else(|| content.cage(None));
+        let reference = item.common.node_ref.unwrap_or_else(|| row.cage(None));
+        search::highlight_style(&row, state, &mut item.common, reference);
         references.push(reference);
         let enabled = item.common.enabled.clone();
         let value = item.key.clone();
@@ -1655,13 +1996,18 @@ fn build_radios(
                 .label(item.label.clone())
                 .checked(initial == item.key)
                 .node_ref(reference),
-            &content,
+            &row,
             "sapid-menu-item sapid-menu-radio",
             menu_item_style(parent)
         );
+        let radio_checked = state.search_editor.as_ref().map(|_| {
+            let source = control.source.clone();
+            let key = item.key.clone();
+            row.bond(move || source.with(|value| value == &key)).into()
+        });
         let live = state.clone();
         let close = group.close;
-        let weak = content.downgrade();
+        let weak = row.downgrade();
         let instance = owner.id();
         let mut observers = item
             .common
@@ -1669,7 +2015,7 @@ fn build_radios(
             .remove(&EventKind::CheckedChanged)
             .unwrap_or_default();
         mount_member(
-            &content,
+            &row,
             state,
             native,
             parent,
@@ -1680,6 +2026,7 @@ fn build_radios(
             enabled,
             semantics,
             None,
+            radio_checked,
             move |event| {
                 let Some(scope) = weak.upgrade() else { return };
                 let result = (|| -> Result {
@@ -1703,6 +2050,7 @@ fn build_radios(
                 observe(&mut observers, instance, event);
             },
         )?;
+        content.retain(row)?;
     }
     owner.retain(content)?;
     let weak = owner.downgrade();
@@ -1731,6 +2079,13 @@ fn build_radios(
 
 impl Widget for Menu {
     fn build(&mut self, scope: &Scope) -> Result {
+        validate_width(self.panel_width)?;
+        if let Some(position) = self.position {
+            position.validate()?;
+        }
+        if let Some(editor) = &self.editor {
+            editor.validate()?;
+        }
         if self.overflow {
             return Err(invalid("menu configuration budget exhausted"));
         }
@@ -1813,6 +2168,7 @@ impl Widget for Menu {
         let unstyled = common.unstyled;
         let bar = self.bar.take();
         let state = Level {
+            editor: self.editor.take(),
             bar: bar
                 .as_ref()
                 .map(|config| (config.key.clone(), config.state.clone())),
@@ -1931,6 +2287,9 @@ impl Widget for Menu {
                 }))
                 .on(EventKind::Activate, move |event| {
                     let Some(scope) = weak.upgrade() else { return };
+                    if !source.owner.is_alive() || !source.enabled.get() {
+                        return;
+                    }
                     let result = if let Some((key, bar)) = &bar_action
                         && let Some(bar) = bar.upgrade()
                     {
@@ -1957,12 +2316,19 @@ impl Widget for Menu {
                     menu_observers.emit(instance, event);
                 });
             if !unstyled {
-                let mut style = theme.control(size);
-                if is_bar {
-                    style.background = Some(glory::style::Color(0, 0, 0, 0));
-                    style.border_width = Some(Edges::all(0.));
-                }
-                button = button.style(style);
+                let available = enabled.clone();
+                button = button.style(scope.bond(move || {
+                    let mut style = theme.control(size);
+                    if !available.get() {
+                        style.background = Some(theme.disabled);
+                        style.color = Some(theme.disabled_text);
+                    }
+                    if is_bar {
+                        style.background = Some(glory::style::Color(0, 0, 0, 0));
+                        style.border_width = Some(Edges::all(0.));
+                    }
+                    style
+                }));
             }
             button.show_in(scope)?;
             if let Some(config) = bar

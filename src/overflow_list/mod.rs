@@ -982,6 +982,11 @@ impl Widget for OverflowList {
                         total.get().saturating_sub(count.get())
                     )
                 }))
+                .trigger_style(Style {
+                    white_space: Some(WhiteSpace::NoWrap),
+                    shrink: Some(0.0),
+                    ..Style::new()
+                })
                 .open(scope.bond(move || open.get() && count.get() < total.get()))
                 .enabled(self.common.enabled.clone())
                 .show_close(false)

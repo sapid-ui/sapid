@@ -329,7 +329,6 @@ pub struct Calendar {
     previous_controls: bool,
     next_controls: bool,
     navigation_step: u8,
-    mini: bool,
     changed: Option<Box<dyn FnMut(Option<CivilDate>)>>,
     month_changed: Option<Box<dyn FnMut(YearMonth)>>,
     level_control: Option<Box<dyn FnMut(())>>,
@@ -357,17 +356,10 @@ pub fn calendar(key: impl Into<String>, provider: impl Into<Vary<DatesProvider>>
         previous_controls: true,
         next_controls: true,
         navigation_step: 1,
-        mini: false,
         changed: None,
         month_changed: None,
         level_control: None,
     }
-}
-pub fn mini_calendar(key: impl Into<String>, provider: impl Into<Vary<DatesProvider>>) -> Calendar {
-    let mut c = calendar(key, provider);
-    c.common.size = crate::Size::ExtraSmall;
-    c.mini = true;
-    c
 }
 impl Calendar {
     common_methods!();
@@ -627,11 +619,7 @@ impl Widget for Calendar {
         let direction = self.direction;
         let (classes, appearance) = self.common.appearance(
             scope,
-            if self.mini {
-                "sapid-calendar sapid-mini-calendar"
-            } else {
-                "sapid-calendar"
-            },
+            "sapid-calendar",
             Style {
                 color: Some(theme.foreground),
                 background: Some(theme.surface),
@@ -686,18 +674,9 @@ impl Widget for Calendar {
             (12, "Next year"),
         ] {
             if base_delta == 1 {
-                let mini = self.mini;
                 let label = scope.bond(move || {
                     let s = accepted.get();
-                    if mini && s.provider.locale_value() == DateLocale::En {
-                        format!(
-                            "{} {}",
-                            &s.provider.locale_value().month_name(s.month)[..3],
-                            s.month.year()
-                        )
-                    } else {
-                        s.provider.locale_value().month_label(s.month)
-                    }
+                    s.provider.locale_value().month_label(s.month)
                 });
                 if has_level_control && !static_mode {
                     let level = state.clone();
@@ -706,10 +685,15 @@ impl Widget for Calendar {
                         .label(label)
                         .name("Choose month or year")
                         .style(Style {
-                            font_size: Some(if self.mini { 11. } else { 14. }),
+                            font_size: Some(14.),
                             background: Some(theme.surface),
                             color: Some(theme.foreground),
                             ..Style::new()
+                                .min_height(Length::Px(size))
+                                .min_width(Length::Px(0.))
+                                .padding(Edges::all(4.))
+                                .border_width(Edges::all(0.))
+                                .radius(theme.radius)
                         })
                         .on(EventKind::Activate, move |_| {
                             level.level_control.emit(level.owner, ())
@@ -720,7 +704,7 @@ impl Widget for Calendar {
                         .class("sapid-calendar-month")
                         .content(label)
                         .style(Style {
-                            font_size: Some(if self.mini { 11. } else { 14. }),
+                            font_size: Some(14.),
                             ..Style::new()
                         })
                         .show_in(&header_scope)?;
@@ -742,7 +726,6 @@ impl Widget for Calendar {
             let r = scope.cage(None);
             let s = state.clone();
             let observers = activate.clone();
-            let border = theme.border;
             let foreground = theme.foreground;
             let mut style = Style::new()
                 .width(Length::Px(size * 0.75))
@@ -754,7 +737,7 @@ impl Widget for Calendar {
                 style = style
                     .border_width(Edges::all(1.))
                     .border_style(BorderStyle::Solid)
-                    .border_color(border);
+                    .border_color(glory::style::Color(0, 0, 0, 0));
             }
             glory::ui::button()
                 .label(match base_delta {
@@ -1026,7 +1009,7 @@ impl Widget for Calendar {
                                     s.provider.locale_value().weekday_short(day).to_owned()
                                 }))
                                 .style(Style {
-                                    font_size: Some(if self.mini { 10. } else { 12. }),
+                                    font_size: Some(12.),
                                     ..Style::new()
                                 }),
                         )
@@ -1203,6 +1186,12 @@ impl Widget for DayButton {
             let s = accepted.get();
             let date = s.grid.cells()[index];
             let chosen = date.is_some_and(|d| s.selection.contains(d));
+            let interior = date.is_some_and(|date| match s.selection {
+                DateSelection::Range(crate::DateRangeSelection::Complete(range)) => {
+                    range.start() < date && date < range.end()
+                }
+                _ => false,
+            });
             let enabled = date.is_some_and(|d| style_state.allowed(s, d));
             let focused = reference.get().is_some_and(|id| physical.get() == Some(id));
             let mut style = Style::new()
@@ -1216,9 +1205,17 @@ impl Widget for DayButton {
                 .min_width(Length::Px(0.));
             if themed {
                 style.font_size = Some(if size < 30. { 11. } else { 14. });
-                style.background = Some(if chosen { theme.accent } else { theme.surface });
+                style.background = Some(if interior {
+                    theme.accent_soft
+                } else if chosen {
+                    theme.accent
+                } else {
+                    theme.surface
+                });
                 style.color = Some(if !enabled {
                     theme.disabled_text
+                } else if interior {
+                    theme.accent
                 } else if chosen {
                     theme.on_accent
                 } else if date.is_some_and(|d| d.year_month() != s.month) {
@@ -1230,7 +1227,11 @@ impl Widget for DayButton {
                     .radius(theme.radius)
                     .border_width(Edges::all(1.))
                     .border_style(BorderStyle::Solid)
-                    .border_color(if focused { theme.accent } else { theme.border });
+                    .border_color(if focused {
+                        theme.accent
+                    } else {
+                        glory::style::Color(0, 0, 0, 0)
+                    });
             }
             style
         });
@@ -1297,7 +1298,7 @@ impl Widget for DayButton {
                 }
             });
         if let Some(content) = content {
-            button = button.fill(glory::ui::group().fill(content));
+            button = button.label("").fill(glory::ui::group().fill(content));
         }
         // The date is always Some while this scoped branch is mounted. Its
         // reactive source can disappear only through this branch's retirement.

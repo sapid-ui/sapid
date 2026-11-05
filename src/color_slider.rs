@@ -2,8 +2,10 @@
 use crate::appearance::Common;
 use crate::color_model::Hsva;
 use crate::{composite, state::Value};
-use glory::render::{Direction, Event, EventKind};
-use glory::style::{Color, Length, LinearGradient, Overflow, PointerEvents, Position, Style};
+use glory::render::{Direction, Event, EventKind, GraphicPoint, GraphicProps, PathCommand};
+use glory::style::{
+    Align, Color, Display, Length, LinearGradient, Overflow, PointerEvents, Position, Style,
+};
 use glory::ui::{Result, Widget};
 use glory::{Scope, Vary};
 
@@ -188,6 +190,33 @@ struct Trail {
     color: Vary<Color>,
     direction: Direction,
 }
+fn transparency_checker(color: Color) -> GraphicProps {
+    // One passive, bounded path. The centered drawing keeps its square cells;
+    // a narrow track clips the outer parts instead of stretching them vertically.
+    let mut commands = Vec::with_capacity(240);
+    for y in 0..2 {
+        for x in 0..48 {
+            if (x + y) % 2 == 0 {
+                let x = x as f64 * 4.;
+                let y = y as f64 * 4.;
+                commands.extend([
+                    PathCommand::Move(GraphicPoint::new(x, y)),
+                    PathCommand::Line(GraphicPoint::new(x + 4., y)),
+                    PathCommand::Line(GraphicPoint::new(x + 4., y + 4.)),
+                    PathCommand::Line(GraphicPoint::new(x, y + 4.)),
+                    PathCommand::Close,
+                ]);
+            }
+        }
+    }
+    GraphicProps {
+        width: 192.,
+        height: 8.,
+        commands,
+        fill: Some(color),
+        ..Default::default()
+    }
+}
 impl Widget for Trail {
     fn build(&mut self, scope: &Scope) -> Result {
         let reference = scope.cage(None);
@@ -209,22 +238,31 @@ impl Widget for Trail {
         if alpha {
             glory::ui::view()
                 .class("sapid-alpha-slider-background")
-                .style(
-                    Style::new()
-                        .background_image(LinearGradient {
-                            angle: if self.direction == Direction::Rtl {
-                                270.
-                            } else {
-                                90.
-                            },
-                            stops: self.checker.to_vec(),
-                        })
+                .style(Style {
+                    align: Some(Align::Center),
+                    background: Some(self.checker[1]),
+                    ..Style::new()
+                        .display(Display::Flex)
+                        .overflow_x(Overflow::Hidden)
+                        .overflow_y(Overflow::Hidden)
                         .position(Position::Absolute)
                         .left(Length::Px(0.))
                         .top(Length::Px(0.))
                         .width(Length::Percent(100.))
                         .height(Length::Percent(100.))
-                        .pointer_events(PointerEvents::None),
+                        .pointer_events(PointerEvents::None)
+                })
+                .fill(
+                    glory::ui::graphic()
+                        .class("sapid-alpha-slider-checker")
+                        .drawing(transparency_checker(self.checker[0]))
+                        .style(Style {
+                            shrink: Some(0.),
+                            ..Style::new()
+                                .width(Length::Percent(100.))
+                                .height(Length::Auto)
+                                .pointer_events(PointerEvents::None)
+                        }),
                 )
                 .show_in(&parent)?;
         }
@@ -233,7 +271,7 @@ impl Widget for Trail {
         let direction = self.direction;
         let style = scope.bond(move || {
             let stops = match channel {
-                Channel::Hue => [0., 60., 120., 170., 240., 300., 360.]
+                Channel::Hue => [0., 60., 120., 180., 240., 300., 360.]
                     .into_iter()
                     .map(|hue| {
                         Hsva {

@@ -91,3 +91,7 @@ source/language replacement and complete collapsed JSON. All four themes and
 CSR/hydration paths passed. `json-tree-copy-browser-web29.log` records this run
 and the nine-group Json Tree/CopyButton regressions. Native interactive text-range selection is not promised by code display
 acceptance.
+
+## Runnable documentation examples
+
+See [Extension pages](extension-pages.md) for the independent complete-source examples, application ownership rules and current acceptance boundaries.

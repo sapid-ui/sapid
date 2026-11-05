@@ -351,7 +351,7 @@ impl Widget for NativeSelect {
             "sapid-native-select",
             self.common.theme.control(self.common.size)
         )
-        .enabled(enabled)
+        .enabled(enabled.clone())
         .semantics(metadata)
         .node_ref(reference);
         let mut on_value = self.on_value.take();
@@ -367,6 +367,19 @@ impl Widget for NativeSelect {
         let validate = config.clone();
         inner = inner.on(EventKind::SelectChanged, move |event| {
             let Some(scope) = weak.upgrade() else { return };
+            match enabled.try_get() {
+                Ok(true) => {}
+                Ok(false) => {
+                    if let Err(error) = pulse.touch() {
+                        scope.report_error(error);
+                    }
+                    return;
+                }
+                Err(error) => {
+                    scope.report_error(error);
+                    return;
+                }
+            }
             if let Event::SelectChanged { keys, .. } = &event {
                 let proposal: Vec<_> = keys.iter().map(|key| key.as_str().to_owned()).collect();
                 let result = (|| -> Result {

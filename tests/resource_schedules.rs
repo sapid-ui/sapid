@@ -372,8 +372,8 @@ fn classes(app: &App, name: &str) -> Vec<NodeId> {
         })
         .collect()
 }
-fn button(app: &App, label: &str) -> NodeId {
-    all(app).into_iter().find(|id|matches!(app.tree().node(*id).unwrap().descriptor.view().props,Props::Button(p) if p.label==label||p.label.starts_with(label))).unwrap_or_else(||panic!("missing {label}"))
+fn button(app: &App, wanted: &str) -> NodeId {
+    all(app).into_iter().find(|id|{let tree=app.tree();let value=tree.node(*id).unwrap().descriptor.view();matches!(value.props,Props::Button(props) if value.name.as_ref().is_some_and(|name|name.starts_with(wanted))||props.label.starts_with(wanted))}).unwrap_or_else(||panic!("missing button: {wanted}"))
 }
 fn slot(app: &App, prefix: &str) -> NodeId {
     classes(app, "sapid-resources-slot")
@@ -857,6 +857,28 @@ fn unified_resource_schedule_switches_real_views_after_matching_window_acceptanc
     app.flush().unwrap();
     assert_eq!(classes(&app, "sapid-resources-month-view").len(), 1);
     assert_eq!(button(&app, "Day"), day);
+    assert_eq!(
+        app.tree()
+            .node(day)
+            .unwrap()
+            .descriptor
+            .view()
+            .semantics
+            .as_ref()
+            .and_then(|value| value.pressed),
+        Some(false)
+    );
+    assert_eq!(
+        app.tree()
+            .node(button(&app, "Month"))
+            .unwrap()
+            .descriptor
+            .view()
+            .semantics
+            .as_ref()
+            .and_then(|value| value.pressed),
+        Some(true)
+    );
     assert_eq!(changes.get(), 2);
 
     let previous_month = classes(&app, "sapid-resources-month-view")[0];
@@ -879,4 +901,81 @@ fn unified_resource_schedule_switches_real_views_after_matching_window_acceptanc
         previous_month
     );
     assert_eq!(button(&app, "Day"), day);
+}
+
+#[test]
+fn multiple_unified_resource_schedules_preserve_distinct_full_budget_namespaces() {
+    let app = App::memory();
+    let source = app
+        .scope()
+        .cage(model_for_resource_view(ResourceScheduleView::Day));
+    let second = app.scope().cage(None);
+    app.mount(
+        glory::ui::view().fill((
+            resources_schedule("r".repeat(40), source).available_views([ResourceScheduleView::Day]),
+            resources_schedule("second", model_for_resource_view(ResourceScheduleView::Day))
+                .available_views([ResourceScheduleView::Day])
+                .node_ref(second),
+        )),
+    )
+    .unwrap();
+    let retained = second.get();
+    source.revise(|current| {
+        *current = ResourceScheduleData::new(
+            ScheduleData::new(
+                current.data().zone().clone(),
+                ScheduleWindow::days(CivilDate::new(2024, 3, 1).unwrap(), 1).unwrap(),
+                current.data().events().iter().cloned(),
+            )
+            .unwrap(),
+            current.resources().clone(),
+            current.resource_window(),
+        )
+        .unwrap()
+    });
+    app.flush().unwrap();
+    assert_eq!(second.get(), retained);
+    assert_eq!(classes(&app, "sapid-resources-day-view").len(), 2);
+    app.clear().unwrap();
+    assert_eq!(second.get(), None);
+    for key in [String::new(), "bad key".into(), "r".repeat(41)] {
+        let rejected = App::memory();
+        assert!(
+            rejected
+                .mount(
+                    resources_schedule(key, model_for_resource_view(ResourceScheduleView::Day))
+                        .available_views([ResourceScheduleView::Day])
+                )
+                .is_err()
+        );
+        assert_eq!(rejected.stats().nodes, 0);
+    }
+}
+
+#[test]
+fn unified_resource_snapshot_updates_keep_the_current_view_instance() {
+    let app = App::memory();
+    let source = app
+        .scope()
+        .cage(model_for_resource_view(ResourceScheduleView::Day));
+    app.mount(
+        resources_schedule("updated-booking", source).available_views([ResourceScheduleView::Day]),
+    )
+    .unwrap();
+    let before = classes(&app, "sapid-resources-day-view")[0];
+    source.revise(|current| {
+        *current = ResourceScheduleData::new(
+            ScheduleData::new(
+                current.data().zone().clone(),
+                current.data().window(),
+                current.data().events().iter().take(1).cloned(),
+            )
+            .unwrap(),
+            current.resources().clone(),
+            current.resource_window(),
+        )
+        .unwrap();
+    });
+    app.flush().unwrap();
+    assert_eq!(classes(&app, "sapid-resources-day-view")[0], before);
 }

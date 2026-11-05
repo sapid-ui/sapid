@@ -1,5 +1,23 @@
 # Stepper
 
+## Workflow guide and track geometry
+
+The public usage example is a small account workflow with content, Previous/Next
+and an explicit completed stage. Four complete compiled sections cover controlled
+refusal and skip policies, status/optional text and all five sizes, a vertical
+track with an independently unavailable step, and retained versus retired editor
+content. Header requests use the last accepted active state even after an invalid
+source update; current availability and skip flags are checked before callbacks
+when an event runs.
+
+Markers use the selected theme control size for width, height and both minimums.
+Completed/current/error remain independent visual states. Real decorative track
+elements join the markers in both orientations, with completed and error colors.
+A narrow horizontal track scrolls locally; actual focused headers request reveal
+through the shared host action. Vertical layout remains an explicit configuration.
+Four-theme native CPU geometry checks cover all five sizes, both directions and
+retained physical marker identity. They do not establish OS input or readers.
+
 P6-06 provides finite workflow steps with current, optional, completed, and error states. It installs no router, automatic validation, or HTTP transport.
 
 ```rust

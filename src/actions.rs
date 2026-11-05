@@ -70,6 +70,7 @@ fn square(common: &Common) -> Style {
     style.width = Some(Length::Px(side));
     style.height = Some(Length::Px(side));
     style.min_width = Some(Length::Px(side));
+    style.min_height = Some(Length::Px(side));
     style.padding = Some(Edges::all(0.0));
     style.display = Some(Display::InlineFlex);
     style.align = Some(Align::Center);
@@ -117,6 +118,7 @@ pub struct ActionIcon {
     class: &'static str,
     variant: ActionIconVariant,
     presses: Vec<Box<dyn FnMut()>>,
+    loading: Vary<bool>,
 }
 pub fn action_icon(name: impl Into<String>) -> ActionIcon {
     ActionIcon {
@@ -126,10 +128,56 @@ pub fn action_icon(name: impl Into<String>) -> ActionIcon {
         class: "sapid-action-icon",
         variant: ActionIconVariant::Default,
         presses: Vec::new(),
+        loading: false.into(),
+    }
+}
+// Button content permits semantic Groups but not layout Views. Keep this one
+// boxless group live so loading never rebuilds a caller's decorative widget.
+struct ActionIconContent {
+    content: Option<Children>,
+    loading: Vary<bool>,
+}
+impl Widget for ActionIconContent {
+    fn build(&mut self, scope: &Scope) -> Result {
+        let initial = self.loading.try_get()?;
+        let group = scope.create(glory::render::Descriptor::new(glory::render::Props::Group))?;
+        let child = scope.child_in(group)?;
+        let content = glory::ui::fragment(self.content.take().ok_or(glory::ui::Error::Gone)?)
+            .mount(&child)?;
+        if initial {
+            content.suspend()?;
+        }
+        scope.retain(child)?;
+        let source = self.loading.clone();
+        let weak = scope.downgrade();
+        let mut previous = initial;
+        scope.effect(move || {
+            let Some(scope) = weak.upgrade() else { return };
+            let result = (|| -> Result {
+                let next = source.try_get()?;
+                if next != previous {
+                    if next {
+                        content.suspend()?;
+                    } else {
+                        content.place_before(None)?;
+                    }
+                    previous = next;
+                }
+                Ok(())
+            })();
+            if let Err(error) = result {
+                scope.report_error(error);
+            }
+        });
+        Ok(())
     }
 }
 impl ActionIcon {
     action_methods!();
+    pub fn loading(mut self, value: impl Into<Vary<bool>>) -> Self {
+        self.loading = value.into();
+        self
+    }
     pub fn variant(mut self, variant: ActionIconVariant) -> Self {
         self.variant = variant;
         self
@@ -149,6 +197,12 @@ impl Widget for ActionIcon {
         let icon = self.icon.take().ok_or(glory::render::Error::InvalidProps(
             "action icon requires icon content",
         ))?;
+        let has_loading = self.loading.is_reactive() || self.loading.try_get()?;
+        if has_loading {
+            let enabled = self.common.enabled.clone();
+            let loading = self.loading.clone();
+            self.common.enabled = scope.bond(move || enabled.get() && !loading.get()).into();
+        }
         let mut base = square(&self.common);
         let theme = self.common.theme.clone();
         match self.variant {
@@ -204,8 +258,52 @@ impl Widget for ActionIcon {
             Style::new()
         )
         .name(self.action_name.clone())
-        .enabled(self.common.enabled.clone())
-        .fill(icon);
+        .enabled(self.common.enabled.clone());
+        button = if has_loading {
+            let busy = self.loading.clone();
+            let visible = self.loading.clone();
+            let rotating = self.loading.clone();
+            let loader_color = self.common.theme.accent;
+            button
+                .semantics(scope.bond(move || {
+                    Some(Box::new(Semantics {
+                        busy: Some(busy.get()),
+                        ..Default::default()
+                    }))
+                }))
+                .fill((
+                    ActionIconContent {
+                        content: Some(icon),
+                        loading: self.loading.clone(),
+                    },
+                    glory::ui::graphic()
+                        .class("sapid-action-icon-loader")
+                        .drawing(scope.bond(move || {
+                            let mut drawing =
+                                crate::progress::arc(16., 2., false, 0.75, loader_color);
+                            drawing.animation =
+                                rotating
+                                    .get()
+                                    .then_some(glory::render::GraphicAnimation::Rotate {
+                                        period_millis: 1000,
+                                    });
+                            drawing
+                        }))
+                        .style(scope.bond(move || {
+                            Style::new()
+                                .display(if visible.get() {
+                                    Display::Block
+                                } else {
+                                    Display::None
+                                })
+                                .width(Length::Px(16.))
+                                .height(Length::Px(16.))
+                                .pointer_events(glory::style::PointerEvents::None)
+                        })),
+                ))
+        } else {
+            button.fill(icon)
+        };
         let owner = scope.id();
         let mut presses = std::mem::take(&mut self.presses);
         let mut observers = self
@@ -214,7 +312,22 @@ impl Widget for ActionIcon {
             .remove(&EventKind::Activate)
             .unwrap_or_default();
         if !presses.is_empty() || !observers.is_empty() {
+            let active = self.common.enabled.clone();
+            let weak = scope.downgrade();
             button = button.on(EventKind::Activate, move |event| {
+                if !owner.is_alive() {
+                    return;
+                }
+                match active.try_get() {
+                    Ok(true) => {}
+                    Ok(false) => return,
+                    Err(error) => {
+                        if let Some(scope) = weak.upgrade() {
+                            scope.report_error(error);
+                        }
+                        return;
+                    }
+                }
                 for press in &mut presses {
                     if !owner.is_alive() {
                         return;
@@ -234,18 +347,25 @@ impl Widget for ActionIcon {
 /// A named close action, reusing the same native activation/disabled behavior.
 pub struct CloseButton {
     inner: ActionIcon,
+    custom_icon: bool,
 }
 pub fn close_button() -> CloseButton {
-    let mut inner = action_icon("Close")
-        .variant(ActionIconVariant::Subtle)
-        .icon(glory::ui::text().content("×").selectable(false));
+    let mut inner = action_icon("Close").variant(ActionIconVariant::Subtle);
     inner.class = "sapid-action-icon sapid-close-button";
-    CloseButton { inner }
+    CloseButton {
+        inner,
+        custom_icon: false,
+    }
 }
 impl CloseButton {
+    pub fn loading(mut self, value: impl Into<Vary<bool>>) -> Self {
+        self.inner = self.inner.loading(value);
+        self
+    }
     /// Replace the decorative close glyph while retaining the named action.
     pub fn icon(mut self, icon: impl IntoChildren) -> Self {
         self.inner = self.inner.icon(icon);
+        self.custom_icon = true;
         self
     }
     pub fn variant(mut self, variant: ActionIconVariant) -> Self {
@@ -299,8 +419,70 @@ impl CloseButton {
 }
 impl Widget for CloseButton {
     fn build(&mut self, scope: &Scope) -> Result {
+        if !self.custom_icon {
+            let side = match self.inner.common.size {
+                crate::Size::ExtraSmall => 12.,
+                crate::Size::Small => 14.,
+                crate::Size::Medium => 16.,
+                crate::Size::Large => 18.,
+                crate::Size::ExtraLarge => 20.,
+            };
+            let enabled = self.inner.common.enabled.clone();
+            let theme = self.inner.common.theme.clone();
+            let variant = self.inner.variant;
+            self.inner.icon = Some(
+                glory::ui::graphic()
+                    .class("sapid-close-button-icon")
+                    .drawing(scope.bond(move || {
+                        crate::Icon::Close.drawing(if !enabled.get() {
+                            theme.disabled_text
+                        } else if variant == ActionIconVariant::Filled {
+                            theme.on_accent
+                        } else {
+                            theme.muted
+                        })
+                    }))
+                    .style(
+                        Style::new()
+                            .width(Length::Px(side))
+                            .height(Length::Px(side))
+                            .pointer_events(glory::style::PointerEvents::None),
+                    )
+                    .into_children(),
+            );
+        }
         self.inner.build(scope)
     }
+}
+
+pub(crate) fn loading_indicator(
+    scope: &Scope,
+    loading: Vary<bool>,
+    color: Color,
+) -> glory::ui::Graphic {
+    let rotating = loading.clone();
+    glory::ui::graphic()
+        .class("sapid-button-loader")
+        .drawing(scope.bond(move || {
+            let mut drawing = crate::progress::arc(16., 2., false, 0.75, color);
+            drawing.animation = rotating
+                .get()
+                .then_some(glory::render::GraphicAnimation::Rotate {
+                    period_millis: 1000,
+                });
+            drawing
+        }))
+        .style(scope.bond(move || {
+            Style::new()
+                .display(if loading.get() {
+                    Display::Block
+                } else {
+                    Display::None
+                })
+                .width(Length::Px(16.))
+                .height(Length::Px(16.))
+                .pointer_events(glory::style::PointerEvents::None)
+        }))
 }
 
 /// A named disclosure button. It controls only expanded state: panel ownership,

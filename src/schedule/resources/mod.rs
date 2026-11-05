@@ -652,7 +652,12 @@ impl ResourceSchedule {
         let header = scope.cage(None);
         glory::ui::view()
             .class("sapid-resource-schedule-view-controls")
-            .style(Style::new().display(Display::Flex).gap(8.))
+            .style(
+                Style::new()
+                    .display(Display::Flex)
+                    .flex_wrap(FlexWrap::Wrap)
+                    .gap(4.),
+            )
             .node_ref(header)
             .show_in(&content)?;
         let header_scope = child(scope, header)?;
@@ -666,6 +671,8 @@ impl ResourceSchedule {
                 .theme(self.common.theme.clone())
                 .size(self.common.size)
                 .label(resource_view_name(view))
+                .compact(true)
+                .pressed(scope.bond(move || current.get() == view))
                 .variant(crate::ButtonVariant::Secondary)
                 .enabled(self.common.enabled.clone())
                 .on_press(move || {
@@ -699,6 +706,7 @@ impl ResourceSchedule {
         let size = self.common.size;
         let unstyled = self.common.unstyled;
         let selection_source = selection.source.clone();
+        let namespace = self.key.clone();
         let rows = scope.bond({
             let data = data.clone();
             let available = available.clone();
@@ -718,38 +726,39 @@ impl ResourceSchedule {
             }
         });
         glory::ui::each(rows)
-            .key(|(_, data)| Rc::as_ptr(data) as usize)
+            .key(|(view, data)| {
+                (
+                    *view as u8,
+                    data.data().window().start(),
+                    data.data().window().end(),
+                    data.resource_window().first(),
+                    data.resource_window().count(),
+                )
+            })
             .children(move |entry| {
-                let (view, child_data) = entry
-                    .value
-                    .with_untracked(|(view, data)| (*view, data.as_ref().clone()));
+                let view = entry.value.with_untracked(|(view, _)| *view);
+                let child_data = entry.value.map(|(_, data)| data.as_ref().clone());
                 let requested = requested.clone();
                 let selected = selected.clone();
                 let selection = selection.clone();
                 let edited = edited.clone();
-                let mut child = resources_schedule(
-                    format!(
-                        "resources-{}",
-                        resource_view_name(view).to_ascii_lowercase()
-                    ),
-                    child_data,
-                )
-                .view(view)
-                .theme(theme.clone())
-                .size(size)
-                .enabled(enabled.clone())
-                .readonly(readonly.clone())
-                .time_window(time)
-                .direction(direction)
-                .locale(locale)
-                .column_width(column_width)
-                .viewport_height(viewport_height)
-                .selection(selection_source.clone())
-                .on_window_request(move |request| requested.emit(owner, request))
-                .on_selection_change(move |value| {
-                    let _ = selection.accept(&Some(value.clone()));
-                    selected.emit(owner, value);
-                });
+                let mut child = resources_schedule(namespace.clone(), child_data)
+                    .view(view)
+                    .theme(theme.clone())
+                    .size(size)
+                    .enabled(enabled.clone())
+                    .readonly(readonly.clone())
+                    .time_window(time)
+                    .direction(direction)
+                    .locale(locale)
+                    .column_width(column_width)
+                    .viewport_height(viewport_height)
+                    .selection(selection_source.clone())
+                    .on_window_request(move |request| requested.emit(owner, request))
+                    .on_selection_change(move |value| {
+                        let _ = selection.accept(&Some(value.clone()));
+                        selected.emit(owner, value);
+                    });
                 if editable {
                     child = child.on_edit(move |value| edited.emit(owner, value));
                 }
@@ -772,9 +781,6 @@ impl ResourceSchedule {
 
 impl Widget for ResourceSchedule {
     fn build(&mut self, scope: &Scope) -> Result {
-        if !self.available_views.is_empty() {
-            return self.build_switcher(scope);
-        }
         if self.key.is_empty()
             || self.key.len() > 40
             || !self
@@ -788,6 +794,9 @@ impl Widget for ResourceSchedule {
             || self.page_capacity.is_some_and(|v| !(1..=8).contains(&v))
         {
             return Err(invalid());
+        }
+        if !self.available_views.is_empty() {
+            return self.build_switcher(scope);
         }
         let view = self.view;
         let axis = self.axis.unwrap_or(if view == ResourceScheduleView::Month {
@@ -944,7 +953,18 @@ impl Widget for ResourceSchedule {
             let mut b = crate::button()
                 .theme(self.common.theme.clone())
                 .size(self.common.size)
-                .label(label)
+                .label(match (dates, resources, self.direction) {
+                    (value, 0, glory::render::Direction::Ltr) if value < 0 => "‹ Dates",
+                    (_, 0, glory::render::Direction::Ltr) => "Dates ›",
+                    (value, 0, _) if value < 0 => "Dates ›",
+                    (_, 0, _) => "‹ Dates",
+                    (_, value, glory::render::Direction::Ltr) if value < 0 => "‹ Rooms",
+                    (_, _, glory::render::Direction::Ltr) => "Rooms ›",
+                    (_, value, _) if value < 0 => "Rooms ›",
+                    _ => "‹ Rooms",
+                })
+                .name(label)
+                .compact(true)
                 .enabled(button_enabled)
                 .on_press(move || {
                     s.report(s.request(dates, resources));
@@ -955,14 +975,15 @@ impl Widget for ResourceSchedule {
             }
             b.show_in(&header_scope)?;
         }
+        let locale = self.locale;
         crate::text()
             .theme(self.common.theme.clone())
             .class("sapid-resources-window")
-            .content(accepted.map(|m| {
+            .content(accepted.map(move |m| {
                 format!(
                     "{} — {} · resources {}–{} / {}",
-                    m.data().window().start().date(),
-                    m.data().window().end().date(),
+                    locale.date_label(m.data().window().start().date()),
+                    locale.date_label(m.data().window().end().date()),
                     if m.visible_resources().is_empty() {
                         0
                     } else {

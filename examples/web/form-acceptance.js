@@ -63,7 +63,7 @@ async (hostPage) => {
       assert(page.url()===url,`${mode}: form navigated`);
       const cdp=await context.newCDPSession(page);const ax=await cdp.send('Accessibility.getFullAXTree');await cdp.detach();
       assert(ax.nodes.some(n=>n.role?.value==='form'&&n.name?.value==='Profile settings'),`${mode}: AX form landmark missing`);
-      await page.screenshot({path:`D:/BuildCache/sapid/${mode}.png`,fullPage:true});
+      await page.screenshot({path:`target/verification/sapid/${mode}.png`,fullPage:true});
       reports.push({suite:mode,status:'passed',checks:'pointer/Enter/Space submit, implicit Enter, textarea newline, typed-before-observer, error/caret identity, controlled rejection, readonly/disabled successful controls, no native reset/navigation, external silence, AX landmark'});
     }
     await page.goto('http://127.0.0.1:8794/forms.html');await page.waitForFunction(()=>window.ready===true);

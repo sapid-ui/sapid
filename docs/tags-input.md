@@ -1,5 +1,28 @@
 # TagsInput and PillsInput
 
+## Shared wrapping editor frame
+
+TagsInput and PillsInput render tokens and the genuine editor in one bordered,
+wrapping surface. Short tokens leave space for typing; additional tokens grow
+the intrinsic height. Long labels clip inside their token while removal keeps
+its full accessible name. The user node reference still identifies the real
+Input. Programmatic source replacement preserves editor identity, selection and
+the existing composition protocol.
+
+Border, width and caller geometry belong to the frame once. Clear remains a
+24-pixel action; loading remains a passive 16-pixel indicator. Both align with
+the final editor row in all five sizes. Accepted removal and clear request focus
+through the live controller, so retirement of a token or clear action cannot
+discard the focus request. Disabled, read-only and composition guards are
+rechecked when the event runs.
+
+The public guides contain independent compiled modules for atomic controlled
+state/refusal, loading, separators, duplicate policies, limits and rejection,
+blur commitment, paste/empty Backspace, wrapping and unavailable states. The
+wrapping PillsInput example derives its hint from accepted values rather than
+replacing the editor. These are finite Rust APIs; they do not expose arbitrary
+nested controls inside the token editor.
+
 P4-09 has model, shared protocol, native host connection and actual browser evidence.
 The final browser report uses the unified root Web16 snapshot; the earlier
 isolated `tags-next` report remains useful diagnostic evidence.

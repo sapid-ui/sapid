@@ -216,6 +216,12 @@ impl Widget for Toolbar {
                     Style::new()
                         .display(Display::Flex)
                         .flex_direction(axis)
+                        .flex_wrap(if self.orientation == Orientation::Horizontal {
+                            FlexWrap::Wrap
+                        } else {
+                            FlexWrap::NoWrap
+                        })
+                        .white_space(glory::style::WhiteSpace::NoWrap)
                         .gap(4.)
                         .min_width(Length::Px(0.)),
                 )
@@ -393,9 +399,21 @@ impl Widget for ActionBar {
                     ));
         }
         let count = self.count.clone();
+        let mut style = if self.toolbar.common.unstyled {
+            Style::new()
+        } else {
+            self.toolbar.common.theme.label(self.toolbar.common.size)
+        };
+        style.display = Some(Display::Flex);
+        style.align = Some(glory::style::Align::Center);
+        style.flex_wrap = Some(FlexWrap::Wrap);
+        style.gap = Some(8.);
+        style.min_width = Some(Length::Px(0.));
+        style.max_width = Some(glory::style::Limit::Percent(100.));
         let bar = self.toolbar.take_for_build();
         glory::ui::view()
             .class("sapid-action-bar")
+            .style(style)
             .semantics(scope.bond(move || {
                 Some(Box::new(Semantics {
                     hidden: !visible.get(),

@@ -35,6 +35,63 @@ fn metadata(app: &App, id: NodeId) -> Semantics {
         .unwrap()
 }
 #[test]
+fn trigger_style_is_reactive_and_does_not_style_the_panel_or_replace_the_trigger() {
+    use glory::style::{Length, Style};
+    let app = App::memory();
+    let style = app.scope().cage(Style::new().width(Length::Px(36.)));
+    app.mount(
+        dialog("trigger-style")
+            .trigger_style(style)
+            .style(Style::new().width(Length::Px(280.))),
+    )
+    .unwrap();
+    let trigger = nodes(&app, "sapid-dialog-trigger")[0];
+    let panel = nodes(&app, "sapid-dialog")[0];
+    assert_eq!(
+        app.tree()
+            .node(trigger)
+            .unwrap()
+            .descriptor
+            .view()
+            .style
+            .width,
+        Some(Length::Px(36.))
+    );
+    assert_eq!(
+        app.tree()
+            .node(panel)
+            .unwrap()
+            .descriptor
+            .view()
+            .style
+            .width,
+        Some(Length::Px(280.))
+    );
+    style.revise(|old| *old = Style::new().width(Length::Px(44.)));
+    app.flush().unwrap();
+    assert_eq!(nodes(&app, "sapid-dialog-trigger"), [trigger]);
+    assert_eq!(
+        app.tree()
+            .node(trigger)
+            .unwrap()
+            .descriptor
+            .view()
+            .style
+            .width,
+        Some(Length::Px(44.))
+    );
+    assert_eq!(
+        app.tree()
+            .node(panel)
+            .unwrap()
+            .descriptor
+            .view()
+            .style
+            .width,
+        Some(Length::Px(280.))
+    );
+}
+#[test]
 fn shared_layer_state_relations_and_local_dismissals() {
     let app = App::memory();
     let calls = Rc::new(RefCell::new(Vec::new()));
@@ -376,4 +433,58 @@ fn dismiss_callbacks_precede_observers_and_hidden_requests_do_not_escape() {
     assert_eq!(calls.borrow().len(), 3);
     app.clear().unwrap();
     assert_eq!(app.tree().len(), 0);
+}
+
+#[test]
+fn pending_trigger_disable_cancels_open_proposals_and_generic_observers() {
+    for kind in [
+        "dialog",
+        "drawer",
+        "popover",
+        "floating-dialog",
+        "alert-dialog",
+    ] {
+        let app = App::memory();
+        let enabled = app.scope().cage(true);
+        let open = app.scope().cage(false);
+        let proposals = app.scope().cage(0usize);
+        let observed = app.scope().cage(0usize);
+        macro_rules! configure {
+            ($widget:expr) => {
+                $widget
+                    .enabled(enabled)
+                    .open(open)
+                    .on_open_change(move |_| proposals.revise(|v| *v += 1))
+                    .on(glory::render::EventKind::Activate, move |_| {
+                        observed.revise(|v| *v += 1)
+                    })
+            };
+        }
+        match kind {
+            "dialog" => app.mount(configure!(dialog("guard"))),
+            "drawer" => app.mount(configure!(drawer("guard"))),
+            "popover" => app.mount(configure!(popover("guard"))),
+            "floating-dialog" => {
+                app.mount(configure!(sapid::floating_dialog("guard").title("Notice")))
+            }
+            _ => app.mount(configure!(
+                sapid::alert_dialog("guard")
+                    .title("Remove draft?")
+                    .description("Remove the temporary draft.")
+            )),
+        }
+        .unwrap();
+        let trigger = nodes(&app, &format!("sapid-{kind}-trigger"))[0];
+        enabled.revise(|v| *v = false);
+        app.dispatch(trigger, Event::Activate).unwrap();
+        app.flush().unwrap();
+        assert_eq!(proposals.get(), 0, "{kind}");
+        assert_eq!(observed.get(), 0, "{kind}");
+        enabled.revise(|v| *v = true);
+        app.flush().unwrap();
+        app.dispatch(trigger, Event::Activate).unwrap();
+        assert_eq!(proposals.get(), 1);
+        assert_eq!(observed.get(), 1);
+        assert!(!open.get());
+    }
 }

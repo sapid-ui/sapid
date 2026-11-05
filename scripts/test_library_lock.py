@@ -1,4 +1,8 @@
 """Exercise fresh MSRV/release entrypoints with real Cargo and local Git only."""
+from pathlib import Path as _BuildPath
+import sys as _build_sys
+_build_sys.path.insert(0, str(_BuildPath(__file__).resolve().parents[1] / "scripts"))
+from local_build_paths import local_build_path
 import json
 import os
 from pathlib import Path
@@ -12,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class LibraryLockTests(unittest.TestCase):
     def setUp(self):
-        parent = Path("D:/BuildCache/sapid/fixes/pr12-review/lock-regressions")
+        parent = Path(local_build_path('sapid/fixes/pr12-review/lock-regressions'))
         parent.mkdir(parents=True, exist_ok=True)
         self.temporary = tempfile.TemporaryDirectory(prefix="fresh-", dir=parent)
         self.addCleanup(self.temporary.cleanup)
@@ -32,7 +36,7 @@ class LibraryLockTests(unittest.TestCase):
             lock.write_bytes(f'version = 4\n# Committed {name} application resolution\n'.encode())
             self.application_locks[lock] = lock.read_bytes()
         self.environment = {**os.environ, "CARGO_TARGET_DIR": str(self.root / "target"),
-                            "CARGO_HOME": os.environ.get("CARGO_HOME") or "D:/BuildCache/glory-semantic-ui/cargo",
+                            "CARGO_HOME": os.environ.get("CARGO_HOME") or str(Path.home() / ".cargo"),
                             "CARGO_NET_OFFLINE": "true", "CARGO_BUILD_JOBS": "1",
                             "CARGO_INCREMENTAL": "0", "CARGO_PROFILE_DEV_DEBUG": "0",
                             "TEMP": str(self.root / "tmp"), "TMP": str(self.root / "tmp"),
@@ -83,12 +87,12 @@ class LibraryLockTests(unittest.TestCase):
         self.assertFalse((self.project / "Cargo.lock").exists())
         self.assert_applications_unchanged()
 
-    def test_unconfigured_target_fails_before_creating_a_lock(self):
+    def test_unconfigured_target_uses_normal_cargo_configuration(self):
         self.environment.pop("CARGO_TARGET_DIR")
         result = self.prepare()
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn("Set CARGO_TARGET_DIR", result.stderr)
-        self.assertFalse((self.project / "Cargo.lock").exists())
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(Path(json.loads(result.stdout)["target_directory"]), self.project / "target")
+        self.assertTrue((self.project / "Cargo.lock").is_file())
 
     def test_real_release_archive_from_fresh_lock_keeps_git_clean(self):
         (self.project / "release.json").write_text(json.dumps({

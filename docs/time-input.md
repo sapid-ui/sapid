@@ -128,3 +128,10 @@ The original TimeInput12 suite also passed, errors `[]`, against immutable
 FORMAT-10 Web33 on Chromium 148.0.7778.96:
 `D:/BuildCache/sapid/time-input-browser-web33.json`; raw sequential runner log
 `time-browser-web33.log`.
+
+## Complete public page examples
+
+The remaining date/time pages now have dedicated primary examples, independently
+compiled full-source sections and matching contents links. See [date page
+contracts](date-pages.md) for selection domains, editor/draft behavior, inline versus
+popup use, responsive actions and current browser/native acceptance boundaries.

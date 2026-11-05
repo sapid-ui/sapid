@@ -558,15 +558,25 @@ fn picker_input_is_readonly_successful_input_and_real_dialog_with_stable_shells(
     let v = t.node(input).unwrap().descriptor.view();
     assert!(matches!(v.props, Props::Input(_)));
     assert!(v.readonly());
+    assert!(
+        v.semantics.as_ref().unwrap().form_control.is_none(),
+        "the display spelling is not submitted twice"
+    );
     assert_eq!(
-        v.semantics
-            .as_ref()
-            .unwrap()
-            .form_control
-            .as_ref()
-            .unwrap()
-            .name,
-        "appointment"
+        all(&app)
+            .into_iter()
+            .filter(|id| app
+                .tree()
+                .node(*id)
+                .unwrap()
+                .descriptor
+                .view()
+                .semantics
+                .as_ref()
+                .and_then(|value| value.form_control.as_ref())
+                .is_some_and(|control| control.name == "appointment"))
+            .count(),
+        1
     );
     assert_eq!(
         t.node(panel).unwrap().descriptor.view().role,
@@ -703,6 +713,7 @@ fn range_and_multiple_inputs_preserve_partial_and_multi_open_policy_and_exact_su
         app.mount(
             date_picker_input("mode", p())
                 .mode(mode)
+                .form_name("dates")
                 .default_open(true)
                 .node_ref(input)
                 .panel_ref(panel),
@@ -731,7 +742,7 @@ fn range_and_multiple_inputs_preserve_partial_and_multi_open_policy_and_exact_su
         assert_eq!(
             v.value,
             if mode == DatePickerMode::Range {
-                "2024-02-26/"
+                "2024-02-26 –"
             } else {
                 "2024-02-26"
             }
@@ -747,9 +758,9 @@ fn range_and_multiple_inputs_preserve_partial_and_multi_open_policy_and_exact_su
         assert_eq!(
             v.value,
             if mode == DatePickerMode::Range {
-                "2024-02-26/2024-02-29"
+                "2024-02-26 – 2024-02-29"
             } else {
-                "2024-02-26,2024-02-29"
+                "2024-02-26, 2024-02-29"
             }
         );
         assert_eq!(

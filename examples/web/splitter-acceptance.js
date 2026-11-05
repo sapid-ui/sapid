@@ -28,7 +28,7 @@ async (hostPage) => {
    await page.evaluate(()=>window.demo.splitter_policy(true,true));await draft.focus();await page.evaluate(()=>window.demo.splitter_value(0));await settle(page);assert(await handle.evaluate(e=>e===document.activeElement),`${label}: collapsing focused pane lost focus`);
    await page.evaluate(()=>window.demo.splitter_value(50));await settle(page);assert(await draft.evaluate(e=>e===window.splitDraft&&e.value==='Stable splitter draft'),`${label}: resize replaced pane editor`);
    assert((await page.locator('.splitter-status').textContent()).includes('ordered=true'),`${label}: generic event preceded typed callback`);
-   await page.screenshot({path:`D:/BuildCache/sapid/${label}.png`,fullPage:true});reports.push({suite:label,status:'passed',checks:'range/line semantics, keyboard boundaries, controlled rejection, captured mouse release, layout conservation, vertical local state, disabled Tab skip, collapsed focus, stable editor and typed order'});
+   await page.screenshot({path:`target/verification/sapid/${label}.png`,fullPage:true});reports.push({suite:label,status:'passed',checks:'range/line semantics, keyboard boundaries, controlled rejection, captured mouse release, layout conservation, vertical local state, disabled Tab skip, collapsed focus, stable editor and typed order'});
   }
   await page.goto('http://127.0.0.1:8794/splitter-hydrate-green-dark.html?manual');await page.waitForFunction(()=>window.moduleReady===true);
   const draft=page.locator('.first-draft');await draft.fill('Before splitter hydration');await draft.evaluate(e=>{window.beforeSplitter=e;e.focus();e.setSelectionRange(2,9,'backward')});

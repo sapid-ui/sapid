@@ -1,4 +1,8 @@
 """Exercise the real formatter across isolated workspaces and a sibling dependency."""
+from pathlib import Path as _BuildPath
+import sys as _build_sys
+_build_sys.path.insert(0, str(_BuildPath(__file__).resolve().parents[1] / "scripts"))
+from local_build_paths import local_build_path
 import os
 from pathlib import Path
 import shutil
@@ -12,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class WorkspaceFormattingTests(unittest.TestCase):
     def test_native_drift_is_detected_without_formatting_path_dependencies(self):
-        parent = Path(os.environ.get("TEMP", "D:/BuildCache/sapid/tmp"))
+        parent = Path(os.environ.get("TEMP", local_build_path('sapid/tmp')))
         parent.mkdir(parents=True, exist_ok=True)
         with tempfile.TemporaryDirectory(prefix="format-regression-", dir=parent) as directory:
             root = Path(directory) / "sapid"

@@ -5,6 +5,33 @@ use std::{cell::RefCell, rc::Rc};
 fn root(app: &App) -> NodeId {
     app.tree().roots()[0]
 }
+
+#[test]
+fn pressed_is_controlled_semantics_and_preserves_explicit_style_and_button_identity() {
+    let app = App::memory();
+    let pressed = app.scope().cage(false);
+    app.mount(
+        button()
+            .label("Bold")
+            .variant(sapid::ButtonVariant::Subtle)
+            .pressed(pressed)
+            .style(Style::new().font_weight(700.)),
+    )
+    .unwrap();
+    let id = root(&app);
+    app.dispatch(id, Event::Activate).unwrap();
+    assert!(
+        !pressed.get(),
+        "pressing only proposes through application callbacks"
+    );
+    pressed.revise(|value| *value = true);
+    app.flush().unwrap();
+    let tree = app.tree();
+    let descriptor = tree.node(id).unwrap().descriptor.view();
+    assert_eq!(descriptor.semantics.as_ref().unwrap().pressed, Some(true));
+    assert_eq!(descriptor.style.font_weight, Some(700.));
+    assert_eq!(root(&app), id);
+}
 fn label(app: &App) -> NodeId {
     let tree = app.tree();
     let mut ids = tree.roots().to_vec();

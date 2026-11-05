@@ -55,3 +55,12 @@ Evidence on unified Web15 / Chromium 148.0.7778.96:
   Shared render, HTML field oracle, SSR stream and explicit native rejection
   evidence are listed in [Sheet](sheet.md). The complete native/Web gate passes
   in `D:/BuildCache/sapid/gate-snapshot15.log`.
+
+## Documentation revision (2026-11-05)
+
+The Drawer page now has a retained workspace primary and five complete compiled
+sections: physical edges, widths/close title layout, scrolling, controlled
+dismissal and nested modal focus. The default header uses a compact named vector
+close beside a wrapping title. Width is explicit Style; size is control metrics.
+Native edge layers and snap gestures retain their explicit rejection; successful
+Dialog/Popover CPU geometry does not widen that boundary. See [Overlay pages](overlay-pages.md).

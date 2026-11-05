@@ -6,7 +6,9 @@ use crate::state::Value;
 use glory::render::{
     Current, Event, EventKind, FocusMode, NodeId, Orientation, Role, SemanticId, Semantics,
 };
-use glory::style::{Display, Edges, FlexDirection, Style};
+use glory::style::{
+    Align, Display, Edges, FlexDirection, Justify, Length, Overflow, Position, Style,
+};
 use glory::ui::{Result, Widget};
 use glory::{Cage, Scope, Vary};
 use std::rc::Rc;
@@ -260,7 +262,12 @@ impl Widget for Stepper {
                     } else {
                         FlexDirection::Column
                     })
-                    .gap(12.0)
+                    .gap(if self.orientation == Orientation::Horizontal {
+                        12.
+                    } else {
+                        0.
+                    })
+                    .overflow_x(Overflow::Auto)
                     .width(glory::style::Length::Percent(100.0))
                     .margin(Edges {
                         top: 0.0,
@@ -278,6 +285,12 @@ impl Widget for Stepper {
                 .unwrap_or_default(),
         );
         let owner = scope.id();
+        let diameter = self
+            .common
+            .theme
+            .tokens
+            .control(self.common.size)
+            .min_height;
         let mut panels = glory::ui::group();
         for (index, mut step) in std::mem::take(&mut self.steps).into_iter().enumerate() {
             let trigger_id = composite::id("stepper", &self.key, "trigger", &step.inner.key)?;
@@ -338,17 +351,36 @@ impl Widget for Stepper {
                         ..Default::default()
                     })
                 }));
-            if let Some(reference) = step.inner.trigger {
-                button = button.node_ref(reference);
-            }
+            let reference = step.inner.trigger.unwrap_or_else(|| scope.cage(None));
+            let weak = scope.downgrade();
+            button = button
+                .node_ref(reference)
+                .on(EventKind::FocusChanged, move |event| {
+                    if matches!(event, Event::FocusChanged(true))
+                        && let Some(scope) = weak.upgrade()
+                        && scope.capabilities().is_ok_and(|c| c.scroll)
+                        && let Some(node) = reference.get()
+                    {
+                        match scope.action(glory::render::Action::ScrollIntoView(node)) {
+                            Ok(())
+                            | Err(glory::ui::Error::Render(glory::render::Error::Unsupported(_))) =>
+                                {}
+                            Err(error) => scope.report_error(error),
+                        }
+                    }
+                });
             if !self.common.unstyled {
                 let theme = self.common.theme.clone();
                 let size = self.common.size;
                 button = button.style(scope.bond(move || {
                     let mut style = theme.control(size);
-                    style.width = Some(glory::style::Length::Px(36.0));
-                    style.height = Some(glory::style::Length::Px(36.0));
-                    style.min_width = Some(glory::style::Length::Px(36.0));
+                    style.width = Some(Length::Px(diameter));
+                    style.height = Some(Length::Px(diameter));
+                    style.min_width = Some(Length::Px(diameter));
+                    style.min_height = Some(Length::Px(diameter));
+                    style.display = Some(Display::InlineFlex);
+                    style.align = Some(Align::Center);
+                    style.justify = Some(Justify::Center);
                     style.padding = Some(Edges::all(0.0));
                     style.radius = Some(999.0);
                     style.shrink = Some(0.0);
@@ -369,11 +401,23 @@ impl Widget for Stepper {
             let control = control.clone();
             let callback = callback.clone();
             let observers = observers.clone();
+            let own_available = step.inner.enabled.clone();
+            let common_available = self.common.enabled.clone();
+            let can_select = self.selectable.clone();
+            let can_skip = self.skip.clone();
             let weak = scope.downgrade();
             button = button.on(EventKind::Activate, move |event| {
                 let Some(scope) = weak.upgrade() else { return };
                 let result = (|| -> Result {
-                    if enabled.try_get()? && accepted.try_get()? != index {
+                    let current = accepted.try_get()?;
+                    if !common_available.try_get()?
+                        || !own_available.try_get()?
+                        || !can_select.try_get()?
+                        || (index > current.saturating_add(1) && !can_skip.try_get()?)
+                    {
+                        return Ok(());
+                    }
+                    if current != index {
                         control.accept(&index)?;
                         callback.emit(owner, index);
                     }
@@ -421,13 +465,64 @@ impl Widget for Stepper {
                         .min_width(glory::style::Length::Px(0.0)),
                 );
                 step_view = step_view.style(Style {
-                    align: Some(glory::style::Align::Center),
+                    align: Some(if self.orientation == Orientation::Horizontal {
+                        Align::Center
+                    } else {
+                        Align::Start
+                    }),
                     grow: Some(1.0),
-                    ..Style::new().display(Display::Flex).gap(12.0)
+                    shrink: Some(0.),
+                    ..Style::new()
+                        .display(Display::Flex)
+                        .position(Position::Relative)
+                        .gap(12.0)
+                        .padding(Edges {
+                            bottom: if self.orientation == Orientation::Vertical
+                                && index + 1 < count
+                            {
+                                20.
+                            } else {
+                                0.
+                            },
+                            ..Edges::all(0.)
+                        })
                 });
             }
             text_column = text_column.fill((label, caption));
             step_view = step_view.fill((button, text_column));
+            if !self.common.unstyled && index + 1 < count {
+                let vertical = self.orientation == Orientation::Vertical;
+                let theme = self.common.theme.clone();
+                step_view =
+                    step_view.fill(glory::ui::view().class("sapid-stepper-connector").style(
+                        scope.bond(move || {
+                            let mut style = if vertical {
+                                Style::new()
+                                    .position(Position::Absolute)
+                                    .left(Length::Px((diameter - 2.) / 2.))
+                                    .top(Length::Px(diameter))
+                                    .bottom(Length::Px(0.))
+                                    .width(Length::Px(2.))
+                            } else {
+                                Style {
+                                    grow: Some(1.),
+                                    shrink: Some(0.),
+                                    ..Style::new()
+                                        .height(Length::Px(2.))
+                                        .min_width(Length::Px(16.))
+                                }
+                            };
+                            style.background = Some(if status.get() == StepStatus::Completed {
+                                theme.accent
+                            } else if status.get() == StepStatus::Error {
+                                theme.danger
+                            } else {
+                                theme.border
+                            });
+                            style
+                        }),
+                    ));
+            }
             headers = headers.fill(step_view);
             panels = panels.fill(StepPanel {
                 id: panel_id,

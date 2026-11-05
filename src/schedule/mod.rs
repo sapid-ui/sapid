@@ -478,7 +478,12 @@ impl Schedule {
         let header = scope.cage(None);
         glory::ui::view()
             .class("sapid-schedule-view-controls")
-            .style(Style::new().display(Display::Flex).gap(8.))
+            .style(
+                Style::new()
+                    .display(Display::Flex)
+                    .flex_wrap(FlexWrap::Wrap)
+                    .gap(4.),
+            )
             .node_ref(header)
             .show_in(&content)?;
         let header_scope = child(scope, header)?;
@@ -493,6 +498,8 @@ impl Schedule {
                 .theme(self.common.theme.clone())
                 .size(self.common.size)
                 .label(view_name(view))
+                .compact(true)
+                .pressed(scope.bond(move || current.get() == view))
                 .variant(crate::ButtonVariant::Secondary)
                 .enabled(self.common.enabled.clone())
                 .on_press(move || {
@@ -535,6 +542,7 @@ impl Schedule {
         let selection_source = selection.source.clone();
         let child_activated = activated.clone();
         let child_grid_events = grid_events.clone();
+        let namespace = self.key.clone();
         let rows = scope.bond({
             let data = data.clone();
             let available = available.clone();
@@ -564,38 +572,35 @@ impl Schedule {
                 let selection = selection.clone();
                 let activated = child_activated.clone();
                 let grid_events = child_grid_events.clone();
-                let mut child = schedule(
-                    format!("schedule-{}", view_name(view).to_ascii_lowercase()),
-                    child_data,
-                )
-                .view(view)
-                .theme(theme.clone())
-                .size(size)
-                .enabled(enabled.clone())
-                .readonly(readonly.clone())
-                .locale(locale)
-                .time_window(time_window)
-                .direction(direction)
-                .viewport_height(viewport_height)
-                .week_start(week_start)
-                .with_header(with_header)
-                .with_weekdays(with_weekdays)
-                .show_outside_days(show_outside_days)
-                .max_events_per_day(max_events_per_day)
-                .with_all_day(with_all_day)
-                .slot_height(slot_height)
-                .selection(selection_source.clone())
-                .on(EventKind::Activate, move |event| {
-                    activated.emit(owner, event)
-                })
-                .on(EventKind::GridNavigate, move |event| {
-                    grid_events.emit(owner, event)
-                })
-                .on_window_request(move |request| requested.emit(owner, request))
-                .on_selection_change(move |value| {
-                    let _ = selection.accept(&Some(value.clone()));
-                    selected.emit(owner, value);
-                });
+                let mut child = schedule(namespace.clone(), child_data)
+                    .view(view)
+                    .theme(theme.clone())
+                    .size(size)
+                    .enabled(enabled.clone())
+                    .readonly(readonly.clone())
+                    .locale(locale)
+                    .time_window(time_window)
+                    .direction(direction)
+                    .viewport_height(viewport_height)
+                    .week_start(week_start)
+                    .with_header(with_header)
+                    .with_weekdays(with_weekdays)
+                    .show_outside_days(show_outside_days)
+                    .max_events_per_day(max_events_per_day)
+                    .with_all_day(with_all_day)
+                    .slot_height(slot_height)
+                    .selection(selection_source.clone())
+                    .on(EventKind::Activate, move |event| {
+                        activated.emit(owner, event)
+                    })
+                    .on(EventKind::GridNavigate, move |event| {
+                        grid_events.emit(owner, event)
+                    })
+                    .on_window_request(move |request| requested.emit(owner, request))
+                    .on_selection_change(move |value| {
+                        let _ = selection.accept(&Some(value.clone()));
+                        selected.emit(owner, value);
+                    });
                 if let Some(width) = column_width {
                     child = child.column_width(width);
                 }
@@ -614,9 +619,6 @@ impl Schedule {
 }
 impl Widget for Schedule {
     fn build(&mut self, scope: &Scope) -> Result {
-        if !self.available_views.is_empty() {
-            return self.build_switcher(scope);
-        }
         if self.key.is_empty()
             || self.key.len() > 48
             || !self
@@ -633,6 +635,9 @@ impl Widget for Schedule {
             || !(1..=16).contains(&self.max_events_per_day)
         {
             return Err(invalid());
+        }
+        if !self.available_views.is_empty() {
+            return self.build_switcher(scope);
         }
         let view = self.view;
         let time_window = self.time_window;
@@ -658,13 +663,17 @@ impl Widget for Schedule {
             dirty: Dirty::new(scope),
             requested: Callback::new(self.requested.take()),
             selected: Callback::new(self.selected.take()),
-            grid_events: Observers::new(if view == ScheduleView::Agenda {
-                vec![]
-            } else {
-                self.common
+            grid_events: Observers::new({
+                let handlers = self
+                    .common
                     .handlers
                     .remove(&EventKind::GridNavigate)
-                    .unwrap_or_default()
+                    .unwrap_or_default();
+                if view == ScheduleView::Agenda {
+                    vec![]
+                } else {
+                    handlers
+                }
             }),
             activated: Observers::new(
                 self.common
@@ -746,7 +755,15 @@ impl Widget for Schedule {
             ] {
                 let s = state.clone();
                 let mut button = crate::button()
-                    .label(label)
+                    .label(
+                        if (delta < 0) == (self.direction == glory::render::Direction::Ltr) {
+                            "‹"
+                        } else {
+                            "›"
+                        },
+                    )
+                    .name(label)
+                    .compact(true)
                     .variant(crate::ButtonVariant::Secondary)
                     .theme(self.common.theme.clone())
                     .size(self.common.size)
@@ -951,8 +968,12 @@ impl Widget for AgendaDayWidget {
             .node_ref(root)
             .show_in(scope)?;
         let content = child(scope, root)?;
-        crate::title(2)
+        crate::title(3)
             .theme(self.theme.clone())
+            .class("sapid-agenda-heading")
+            .font_size(16.)
+            .weight(400.)
+            .style(Style::new().margin(Edges::all(0.)))
             .content(day.map(|day| day.label.clone()))
             .show_in(&content)?;
         let list = scope.cage(None);
@@ -964,11 +985,8 @@ impl Widget for AgendaDayWidget {
             })))
             .class("sapid-agenda-events")
             .style(
-                Style::new()
-                    .padding(Edges {
-                        left: 20.,
-                        ..Edges::all(0.)
-                    })
+                composite::column(4.)
+                    .padding(Edges::all(0.))
                     .margin(Edges::all(0.)),
             )
             .node_ref(list)
@@ -1014,7 +1032,7 @@ impl Widget for AgendaEventWidget {
                 ..Default::default()
             })))
             .class("sapid-agenda-event")
-            .style(Style::new().margin(Edges::all(0.)))
+            .style(Style::new().display(Display::Flex).margin(Edges::all(0.)))
             .node_ref(root)
             .show_in(scope)?;
         let content = child(scope, root)?;
@@ -1024,11 +1042,17 @@ impl Widget for AgendaEventWidget {
             let selected = chosen.get();
             row.with(|row| {
                 let range = if row.all_day {
-                    format!(
-                        "All day {} — {}",
-                        row.interval.start().date(),
-                        row.interval.end().date().checked_add_days(-1).unwrap()
-                    )
+                    if row.interval.start().date().checked_add_days(1).ok()
+                        == Some(row.interval.end().date())
+                    {
+                        "All day".to_owned()
+                    } else {
+                        format!(
+                            "All day {} — {}",
+                            row.interval.start().date(),
+                            row.interval.end().date().checked_add_days(-1).unwrap()
+                        )
+                    }
                 } else if row.interval.start().date() == row.interval.end().date() {
                     format!(
                         "{} — {}",

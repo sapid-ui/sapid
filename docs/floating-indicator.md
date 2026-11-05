@@ -28,3 +28,12 @@ The four themes supply an accent stroke. `.color(source)` overrides it independe
 SSR has no physical observation, so it emits the same hidden, unmeasured marker as the first client shape. Adoption validates this shape before initial measurement; dirty editor values, focus and selection remain owned by the original controls.
 
 Evidence: five component lifecycle/finite/query/ancestry tests, two local-coordinate model tests, four shared staged ancestry tests, and strict component/Web/native Clippy. Two real native tests cover four-theme geometry, raster interpolation, engine identity, actual editor focus, the default Reduce policy and hidden/reappearance motion cancellation (`D:/BuildCache/sapid/floating-native-final.log`). All nine browser scenarios passed in Chromium 148.0.7778.96 on the same-source `layer-next` snapshot: four-theme CSR/adoption, intermediate paths, reversal, live Reduce, editor identity/selection/focus, current target retirement/re-registration, physical direction changes, mobile bounds and dirty pre-adoption input. The initial SSR marker is hidden and agrees with the first client shape; measurement begins after adoption. Raw results: `D:/BuildCache/sapid/floating-indicator-browser-layer-next.json`; representative mobile image: `D:/BuildCache/sapid/floating-indicator-green-dark-hydrate.png`. These checks establish renderer motion and actual browser/native focus, not OS preference synchronization or screen-reader announcements.
+
+## Public examples (2026-11-05)
+
+The primary now selects Projects/Teams/Activity. Three complete compiled sources
+demonstrate live dimensions and stable keyed reordering, row/column geometry and
+explicit measurement revision, and current-target retirement plus motion control.
+RTL uses actual physical boxes; direction-only changes need a refresh. No
+measurement/status counters or acceptance controls remain in the primary example.
+See [Overlay pages](overlay-pages.md).

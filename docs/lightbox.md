@@ -54,3 +54,7 @@ strict checks pass in `plots-lightbox-native-strict.log`. Source and hashes are
 under `D:/BuildCache/sapid/web39-source`. Native fixtures inject a test provider;
 this is not a
 production transport or screen-reader acceptance claim.
+
+## Runnable documentation examples
+
+See [Extension pages](extension-pages.md) for the independent complete-source examples, application ownership rules and current acceptance boundaries.

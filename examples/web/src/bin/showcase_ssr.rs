@@ -87,6 +87,18 @@ fn document(
         )
 }
 fn main() -> Result<(), Box<dyn Error>> {
+    // Windows executable entry threads default to 1 MiB. Keep the complete
+    // debug documentation tree on the same bounded 2 MiB stack as Rust tests;
+    // construct and retire all local UI state inside that thread.
+    std::thread::Builder::new()
+        .name("showcase-ssr".into())
+        .stack_size(2 * 1024 * 1024)
+        .spawn(|| generate().map_err(|error| error.to_string()))?
+        .join()
+        .map_err(|_| "showcase SSR generator panicked")??;
+    Ok(())
+}
+fn generate() -> Result<(), Box<dyn Error>> {
     let directory = PathBuf::from(
         std::env::args()
             .nth(1)
@@ -114,6 +126,23 @@ fn main() -> Result<(), Box<dyn Error>> {
     let csr = document("", "", "blue", "light", false, &assets, "/showcase.html");
     fs::write(directory.join("showcase.html"), &csr)?;
     fs::write(directory.join("index.html"), csr)?;
+    fs::write(
+        directory.join("shell-window.html"),
+        include_str!("../../shell-window.html")
+            .replace(
+                "<!--BASE_CSS-->",
+                &format!("<style>{}</style>", glory::html::BASE_CSS),
+            )
+            .replace(
+                "href=\"sapid.css\"",
+                &format!("href=\"{assets}/sapid.css\""),
+            )
+            .replace("href=\"site.css\"", &format!("href=\"{assets}/site.css\""))
+            .replace(
+                "'./sapid_web_example.js'",
+                &format!("'./{assets}/sapid_web_example.js'"),
+            ),
+    )?;
     // This is a deliberately representative SSR set, not 181 × four renders.
     // All 181 canonical documents remain directly addressable in the CSR shell.
     for &(selection, name) in sapid_web_example::showcase_navigation::SSR_PAGES {

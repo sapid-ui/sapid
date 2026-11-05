@@ -685,7 +685,7 @@ impl<T: DatePeriod> Widget for PeriodPicker<T> {
                 style = style
                     .border_width(Edges::all(1.))
                     .border_style(BorderStyle::Solid)
-                    .border_color(theme.border);
+                    .border_color(glory::style::Color(0, 0, 0, 0));
             }
             glory::ui::button()
                 .label(if delta < 0 { "‹" } else { "›" })
@@ -734,6 +734,11 @@ impl<T: DatePeriod> Widget for PeriodPicker<T> {
                             background: Some(theme.surface),
                             color: Some(theme.foreground),
                             ..Style::new()
+                                .min_height(Length::Px(height))
+                                .min_width(Length::Px(0.))
+                                .padding(Edges::all(4.))
+                                .border_width(Edges::all(0.))
+                                .radius(theme.radius)
                         })
                         .on(EventKind::Activate, move |_| {
                             level.level_control.emit(level.owner, ())
@@ -974,6 +979,12 @@ impl<T: DatePeriod> Widget for PeriodButton<T> {
                 let snap = accepted.get();
                 let value = snap.cells[at];
                 let chosen = value.is_some_and(|v| snap.value.contains(v));
+                let interior = value.is_some_and(|value| match snap.value {
+                    crate::PeriodSelection::Range(crate::PeriodRangeSelection::Complete(range)) => {
+                        range.start() < value && value < range.end()
+                    }
+                    _ => false,
+                });
                 let enabled = value.is_some_and(|v| style_state.allowed(snap, v));
                 let actual = reference.get().is_some_and(|id| physical.get() == Some(id));
                 let mut style = Style::new()
@@ -983,9 +994,17 @@ impl<T: DatePeriod> Widget for PeriodButton<T> {
                     .min_width(Length::Px(0.));
                 if themed {
                     style.font_size = Some(if height < 30. { 11. } else { 14. });
-                    style.background = Some(if chosen { theme.accent } else { theme.surface });
+                    style.background = Some(if interior {
+                        theme.accent_soft
+                    } else if chosen {
+                        theme.accent
+                    } else {
+                        theme.surface
+                    });
                     style.color = Some(if !enabled {
                         theme.disabled_text
+                    } else if interior {
+                        theme.accent
                     } else if chosen {
                         theme.on_accent
                     } else {
@@ -995,7 +1014,11 @@ impl<T: DatePeriod> Widget for PeriodButton<T> {
                         .radius(theme.radius)
                         .border_width(Edges::all(1.))
                         .border_style(BorderStyle::Solid)
-                        .border_color(if actual { theme.accent } else { theme.border });
+                        .border_color(if actual {
+                            theme.accent
+                        } else {
+                            glory::style::Color(0, 0, 0, 0)
+                        });
                 }
                 style
             }))

@@ -171,6 +171,7 @@ struct Controller {
     control: Control<f64>,
     local: bool,
     accepted: Cage<Snapshot>,
+    read: Rc<dyn Fn(Option<f64>) -> Result<Snapshot>>,
     reference: Cage<Option<NodeId>>,
     changed: Callback<f64>,
     committed: Callback<f64>,
@@ -185,6 +186,28 @@ struct Controller {
     last_point: Cell<Option<f64>>,
 }
 impl Controller {
+    fn synchronize(&self) -> Result {
+        let next = (self.read)(None)?;
+        let previous = self.accepted.try_get()?;
+        if next != previous {
+            if !previous.domain_matches(&next)
+                || previous.range.range.value != next.range.range.value
+                    && self.expected.get() != Some(next.range.range.value)
+            {
+                self.cancel();
+            }
+            self.accepted.try_revise(|value| *value = next)?;
+            self.expected.set(None);
+            self.confirmed.set(None);
+        }
+        Ok(())
+    }
+    fn event_snapshot(&self) -> Result<Snapshot> {
+        let accepted = self.accepted.try_get()?;
+        // Configurations are live, while an unrelated pending controlled value
+        // remains unaccepted. Invalid configurations retain the last valid one.
+        Ok((self.read)(Some(accepted.range.range.value)).unwrap_or(accepted))
+    }
     fn ensure(&self) -> Result {
         if self.live.get() && self.owner.is_alive() {
             Ok(())
@@ -220,7 +243,7 @@ impl Controller {
     }
     fn propose(&self, value: f64) -> Result {
         self.ensure()?;
-        let state = self.accepted.try_get()?;
+        let state = self.event_snapshot()?;
         if !state.enabled || state.readonly {
             return Ok(());
         }
@@ -244,6 +267,13 @@ impl Controller {
         Ok(())
     }
     fn commit(&self, value: f64) -> Result {
+        if self.ensure().is_err() {
+            return Ok(());
+        }
+        let state = self.event_snapshot()?;
+        if !state.enabled || state.readonly {
+            return Ok(());
+        }
         let before = self.source_stamp()?;
         self.committed.emit(self.owner, value);
         self.confirm_acceptance(value, before)
@@ -259,7 +289,7 @@ impl Controller {
     fn key(&self, command: RangeCommand) -> Result {
         self.ensure()?;
         self.cancel();
-        let state = self.accepted.try_get()?;
+        let state = self.event_snapshot()?;
         if !state.enabled || state.readonly {
             return Ok(());
         }
@@ -315,7 +345,7 @@ impl Controller {
         if self.active.get() != Some(ticket) || self.ensure().is_err() {
             return Ok(());
         }
-        let state = self.accepted.try_get()?;
+        let state = self.event_snapshot()?;
         if !state.enabled || state.readonly {
             self.cancel();
             return Ok(());
@@ -712,7 +742,7 @@ impl Widget for Slider {
         let marks: Rc<[SliderMark]> = std::mem::take(&mut self.marks).into();
         let restrict_to_marks = self.restrict_to_marks;
         let read_marks = marks.clone();
-        let read = move || -> Result<Snapshot> {
+        let read = move |event_value: Option<f64>| -> Result<Snapshot> {
             let step = step.try_get()?;
             let page = page
                 .as_ref()
@@ -722,7 +752,11 @@ impl Widget for Slider {
                     range: RangeValue {
                         min: min.try_get()?,
                         max: max.try_get()?,
-                        value: source.try_get()?,
+                        value: if let Some(value) = event_value {
+                            value
+                        } else {
+                            source.try_get()?
+                        },
                     },
                     axis,
                     direction,
@@ -753,7 +787,8 @@ impl Widget for Slider {
             }
             Ok(snapshot)
         };
-        let accepted = scope.cage(read()?);
+        let read: Rc<dyn Fn(Option<f64>) -> Result<Snapshot>> = Rc::new(read);
+        let accepted = scope.cage(read(None)?);
         let reference = self.common.node_ref.unwrap_or_else(|| scope.cage(None));
         let range_events = Observers::new(
             self.common
@@ -774,6 +809,7 @@ impl Widget for Slider {
             control,
             local,
             accepted,
+            read,
             reference,
             changed: Callback::new(self.changed.take()),
             committed: Callback::new(self.committed.take()),
@@ -795,23 +831,7 @@ impl Widget for Slider {
         })?;
         let state = controller.clone();
         scope.structural(move || {
-            let result = (|| -> Result {
-                let next = read()?;
-                let previous = state.accepted.try_get()?;
-                if next != previous {
-                    if !previous.domain_matches(&next)
-                        || previous.range.range.value != next.range.range.value
-                            && state.expected.get() != Some(next.range.range.value)
-                    {
-                        state.cancel()
-                    }
-                    state.accepted.try_revise(|value| *value = next)?;
-                    state.expected.set(None);
-                    state.confirmed.set(None);
-                }
-                Ok(())
-            })();
-            if let Err(error) = result {
+            if let Err(error) = state.synchronize() {
                 state.cancel();
                 state.report(error)
             }
@@ -949,7 +969,7 @@ impl Widget for Slider {
         }
         let track_color = self.common.theme.border;
         let fill_color = self.common.theme.accent;
-        let thumb_color = self.common.theme.surface;
+        let thumb_color = self.common.theme.control_thumb;
         let unstyled = self.common.unstyled;
         let custom_track = self.track_content.is_some();
         let preview = self.thumb_color.clone();

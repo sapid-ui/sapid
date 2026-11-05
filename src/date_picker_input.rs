@@ -7,7 +7,7 @@ use crate::{
     DateSelectionError, DatesProvider, FieldControl, Weekday, YearMonth,
 };
 use glory::render::{Direction, FormControl, NodeId};
-use glory::style::{Align, Display, FlexDirection, Style};
+use glory::style::Display;
 use glory::ui::{Result, Widget};
 use glory::{Cage, Scope, Vary};
 #[derive(Clone, Copy, PartialEq)]
@@ -46,6 +46,9 @@ pub struct DatePickerInput {
     default_level: DatePickerLevel,
     max_level: DatePickerLevel,
     display_format: DateInputFormat,
+    placeholder: Vary<String>,
+    clearable: bool,
+    clear_label: String,
     trigger_label: Vary<String>,
     title: Vary<String>,
     close_label: Vary<String>,
@@ -91,6 +94,9 @@ pub fn date_picker_input(
         default_level: DatePickerLevel::Month,
         max_level: DatePickerLevel::Decade,
         display_format: DateInputFormat::Iso,
+        placeholder: "Choose dates".into(),
+        clearable: false,
+        clear_label: "Clear dates".into(),
         trigger_label: "Choose dates".into(),
         title: "Choose dates".into(),
         close_label: "Close date picker".into(),
@@ -229,6 +235,18 @@ impl DatePickerInput {
         self.display_format = value;
         self
     }
+    pub fn placeholder(mut self, value: impl Into<Vary<String>>) -> Self {
+        self.placeholder = value.into();
+        self
+    }
+    pub fn clearable(mut self, value: bool) -> Self {
+        self.clearable = value;
+        self
+    }
+    pub fn clear_label(mut self, value: impl Into<String>) -> Self {
+        self.clear_label = value.into();
+        self
+    }
     pub fn trigger_label(mut self, v: impl Into<Vary<String>>) -> Self {
         self.trigger_label = v.into();
         self
@@ -284,6 +302,9 @@ impl Widget for DatePickerInput {
                 .bytes()
                 .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
             || self.excluded.len() > crate::MAX_CALENDAR_EXCLUDED_DATES
+            || self.clear_label.trim().is_empty()
+            || self.clear_label.len() > 120
+            || self.clear_label.contains(['\0', '\r', '\n'])
             || self.presets.len() > crate::MAX_DATE_PICKER_PRESETS
             || self.columns == 0
             || self.columns > crate::MAX_DATE_PICKER_COLUMNS
@@ -355,8 +376,16 @@ impl Widget for DatePickerInput {
             self.invalid.clone(),
         );
         let form_name = composite::form_name(scope, &self.form_name)?;
+        let placeholder = composite::validated(scope, &self.placeholder, |value| {
+            if value.len() <= 240 && !value.contains(['\0', '\r', '\n']) {
+                Ok(())
+            } else {
+                Err(glory::render::Error::InvalidProps("invalid picker placeholder").into())
+            }
+        })?;
         let metadata = scope.bond(move || {
             let mut s = metadata.get().unwrap_or_default();
+            s.placeholder = Some(placeholder.get());
             if let Some(name) = form_name {
                 s.form_control = Some(FormControl {
                     name: name.get(),
@@ -365,39 +394,30 @@ impl Widget for DatePickerInput {
             }
             Some(s)
         });
-        let wrapper = scope.cage(None);
-        glory::ui::view()
-            .class("sapid-date-picker-input")
-            .style(
-                Style {
-                    align: Some(Align::Center),
-                    ..Style::new()
-                }
-                .display(Display::Flex)
-                .flex_direction(FlexDirection::Row)
-                .gap(8.),
-            )
-            .node_ref(wrapper)
-            .show_in(scope)?;
-        let content = scope.child_in(wrapper.get().ok_or(glory::ui::Error::Gone)?)?;
-        let (classes, style) = self.common.appearance(
+        let content = crate::input_actions::frame(scope, &self.common, "sapid-date-picker-input")?;
+        let classes = self.common.classes(scope, "sapid-date-picker-display");
+        let style = crate::input_actions::display_style(
             scope,
-            "sapid-date-picker-display",
-            self.common.theme.control(self.common.size),
+            &self.common,
+            enabled.clone(),
+            metadata.into(),
+            if self.clearable { 2 } else { 1 },
         );
+        let display_ref = self.common.node_ref.unwrap_or_else(|| scope.cage(None));
         let display_format = self.display_format;
         let mut input = glory::ui::input()
             .class(classes)
             .style(style)
             .enabled(enabled.clone())
             .focus(self.common.focus)
+            .node_ref(display_ref)
             .value(scope.bond(move || accepted.with(|s| s.value.format_display(display_format))))
-            .semantics(metadata);
+            .semantics(crate::input_actions::display_metadata(
+                scope,
+                metadata.into(),
+            ));
         if let Some(name) = self.common.name.take() {
             input = input.name(name);
-        }
-        if let Some(reference) = self.common.node_ref {
-            input = input.node_ref(reference);
         }
         for (kind, mut callbacks) in std::mem::take(&mut self.common.handlers) {
             input = input.on(kind, move |e| {
@@ -405,6 +425,59 @@ impl Widget for DatePickerInput {
             });
         }
         input.show_in(&content)?;
+        crate::input_actions::submission(
+            &content,
+            metadata.into(),
+            accepted.map(|s| s.value.format_iso()).into(),
+            enabled.clone(),
+        )?;
+        if self.clearable {
+            let clear_enabled = enabled.clone();
+            let clear_readonly = readonly.clone();
+            let available = scope.bond(move || {
+                clear_enabled.get()
+                    && !clear_readonly.get()
+                    && accepted.with(|s| s.value.anchor().is_some())
+            });
+            let style = crate::input_actions::action_style(&self.common, 1);
+            let control = value.clone();
+            let callback = changed.clone();
+            let weak = scope.downgrade();
+            glory::ui::button()
+                .name(self.clear_label.clone())
+                .class("sapid-date-picker-clear")
+                .fill(crate::input_actions::glyph(
+                    crate::Icon::Close,
+                    self.common.theme.muted,
+                ))
+                .style(scope.bond(move || {
+                    let mut style = style.clone();
+                    if accepted.with(|value| value.value.anchor().is_none()) {
+                        style.display = Some(Display::None);
+                    }
+                    style
+                }))
+                .enabled(available)
+                .on(glory::render::EventKind::Activate, move |_| {
+                    if !available.get() {
+                        return;
+                    }
+                    let Some(scope) = weak.upgrade() else { return };
+                    let result = (|| -> Result {
+                        let empty = DateSelection::empty(mode);
+                        control.accept(&empty)?;
+                        callback.emit(owner, empty);
+                        if owner.is_alive() {
+                            composite::focus_node(&scope, display_ref.get())?;
+                        }
+                        Ok(())
+                    })();
+                    if let Err(error) = result {
+                        scope.report_error(error);
+                    }
+                })
+                .show_in(&content)?;
+        }
         let key = format!("{}-calendar", self.key);
         let theme = self.common.theme.clone();
         let size = self.common.size;
@@ -435,6 +508,11 @@ impl Widget for DatePickerInput {
         let mut dialog = crate::dialog(format!("{}-dialog", self.key))
             .initial_focus(initial_focus)
             .label(self.trigger_label.clone())
+            .trigger_style(crate::input_actions::action_style(&self.common, 0))
+            .trigger_content({
+                let color = self.common.theme.muted;
+                move || crate::input_actions::glyph(crate::Icon::Calendar, color)
+            })
             .title(self.title.clone())
             .close_label(self.close_label.clone())
             .theme(theme.clone())

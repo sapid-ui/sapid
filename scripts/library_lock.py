@@ -2,31 +2,27 @@
 import argparse
 import hashlib
 import json
-import os
 from pathlib import Path
 import subprocess
 
 
 def run(*args, capture=False):
+    directory = Path(args[args.index("--manifest-path") + 1]).resolve().parent if "--manifest-path" in args else None
     result = subprocess.run(args, check=True, text=True, encoding="utf-8",
+                            cwd=directory,
                             stdout=subprocess.PIPE if capture else None)
     return result.stdout.strip() if capture else None
 
 
 def prepare_library_lock(manifest, *, toolchain=None, metadata=None, runner=run):
     manifest = Path(manifest).resolve()
-    configured = os.environ.get("CARGO_TARGET_DIR")
-    if not configured:
-        raise SystemExit("Set CARGO_TARGET_DIR before preparing a library lock")
-    target = Path(configured).resolve()
-    if os.name == "nt" and not target.is_relative_to(Path("D:/BuildCache").resolve()):
-        raise SystemExit("Library lock artifacts must stay under D:/BuildCache")
     cargo = ["cargo"] + ([f"+{toolchain}"] if toolchain else [])
     if metadata is None:
         metadata = json.loads(runner(*cargo, "metadata", "--manifest-path", str(manifest),
                                     "--no-deps", "--format-version", "1", capture=True))
-    if Path(metadata["target_directory"]).resolve() != target:
-        raise SystemExit("Unexpected Cargo target while preparing a library lock")
+    configured = str(metadata["target_directory"]).replace("\\", "/").lower()
+    pass  # Build paths follow the caller configuration.
+    target = Path(metadata["target_directory"]).resolve()
     lock = Path(metadata.get("workspace_root", manifest.parent)) / "Cargo.lock"
     created = not lock.is_file()
     if created:

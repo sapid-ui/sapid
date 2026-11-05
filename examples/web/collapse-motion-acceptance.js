@@ -99,7 +99,7 @@ async (hostPage) => {
       assert((await status()).open&&(await status()).proposals===refused.proposals+1&&await panel.getAttribute('data-gly-collapse-revision')===revision,`${mode}: controlled refusal animated or mutated source`);
       await page.setViewportSize({width:390,height:900});await turn();
       assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`${mode}: mobile overflow`);
-      if(hydrate)await page.screenshot({path:`D:/BuildCache/sapid/${mode}.png`,fullPage:true});
+      if(hydrate)await page.screenshot({path:`target/verification/sapid/${mode}.png`,fullPage:true});
       await page.emulateMedia({reducedMotion:'no-preference'});await motionFrame(panel,'Close from source',grown,true);
       await page.evaluate(()=>window.demo.unmount_display());await turn();await pause(400);
       assert(await page.locator('#app').textContent()==='',`${mode}: retirement left DOM`);

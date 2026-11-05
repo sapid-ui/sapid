@@ -1,40 +1,43 @@
-param([switch]$Web, [switch]$Native, [switch]$Serve, [string]$Bindgen = 'wasm-bindgen', [string]$BuildRoot = 'D:/BuildCache/sapid')
+param([switch]$Web, [switch]$Native, [switch]$Serve, [string]$Bindgen = 'wasm-bindgen', [string]$BuildRoot = '')
+. "$PSScriptRoot/local-build-paths.ps1"
+
 $ErrorActionPreference = 'Stop'
 $taskRoot = Split-Path -Parent $PSScriptRoot
+if (-not $BuildRoot) { $BuildRoot = Join-Path (Get-NormalCargoTarget) 'verification/sapid' }
 $taskBuild = [IO.Path]::GetFullPath($BuildRoot)
-if ($taskBuild -notmatch '^D:\\BuildCache\\[^\\]+') { throw 'BuildRoot must be inside D:/BuildCache' }
 $saved = @{}
-foreach ($name in @('CARGO_PROFILE_DEV_DEBUG', 'CARGO_PROFILE_TEST_DEBUG', 'CARGO_INCREMENTAL', 'CARGO_HOME', 'CARGO_TARGET_DIR', 'CARGO_BUILD_JOBS', 'TEMP', 'TMP', 'PYTHONPYCACHEPREFIX', 'GLORY_DOCUMENT_STREAM_FIXTURE', 'GLORY_MENU_STREAM_FIXTURE', 'GLORY_HINTS_STREAM_FIXTURE', 'GLORY_SELECT_STREAM_FIXTURE', 'GLORY_GRAPHICS_STREAM_FIXTURE', 'GLORY_PROGRESS_STREAM_FIXTURE', 'GLORY_SPINNER_STREAM_FIXTURE', 'GLORY_CHOICE_STREAM_FIXTURE', 'GLORY_INERT_STREAM_FIXTURE', 'GLORY_SHEET_STREAM_FIXTURE', 'GLORY_GRAPHIC_TRANSITION_STREAM_FIXTURE', 'GLORY_DRAG_CAPTURE_STREAM_FIXTURE', 'GLORY_COLLAPSE_STREAM_FIXTURE', 'GLORY_COMMAND_STREAM_FIXTURE', 'GLORY_ANCHOR_STREAM_FIXTURE', 'GLORY_TABLE_STREAM_FIXTURE', 'GLORY_DATA_TABLE_STREAM_FIXTURE', 'GLORY_TRANSLATION_STREAM_FIXTURE', 'GLORY_FOCUS_SCOPE_STREAM_FIXTURE', 'GLORY_ENVIRONMENT_STREAM_FIXTURE', 'GLORY_RICH_EDITOR_STREAM_FIXTURE', 'GLORY_FILES_STREAM_FIXTURE')) {
+foreach ($name in @('GLORY_DOCUMENT_STREAM_FIXTURE', 'GLORY_MENU_STREAM_FIXTURE', 'GLORY_HINTS_STREAM_FIXTURE', 'GLORY_SELECT_STREAM_FIXTURE', 'GLORY_GRAPHICS_STREAM_FIXTURE', 'GLORY_PROGRESS_STREAM_FIXTURE', 'GLORY_SPINNER_STREAM_FIXTURE', 'GLORY_CHOICE_STREAM_FIXTURE', 'GLORY_INERT_STREAM_FIXTURE', 'GLORY_SHEET_STREAM_FIXTURE', 'GLORY_GRAPHIC_TRANSITION_STREAM_FIXTURE', 'GLORY_DRAG_CAPTURE_STREAM_FIXTURE', 'GLORY_COLLAPSE_STREAM_FIXTURE', 'GLORY_COMMAND_STREAM_FIXTURE', 'GLORY_ANCHOR_STREAM_FIXTURE', 'GLORY_TABLE_STREAM_FIXTURE', 'GLORY_DATA_TABLE_STREAM_FIXTURE', 'GLORY_TRANSLATION_STREAM_FIXTURE', 'GLORY_FOCUS_SCOPE_STREAM_FIXTURE', 'GLORY_ENVIRONMENT_STREAM_FIXTURE', 'GLORY_RICH_EDITOR_STREAM_FIXTURE', 'GLORY_FILES_STREAM_FIXTURE')) {
     $saved[$name] = [Environment]::GetEnvironmentVariable($name, 'Process')
 }
 function Invoke-Cargo {
     param([string[]]$Arguments)
-    & cargo @Arguments
-    if ($LASTEXITCODE -ne 0) { throw "cargo $Arguments failed" }
+    $manifestIndex = [Array]::IndexOf($Arguments, '--manifest-path')
+    $directory = Split-Path -Parent $PSScriptRoot
+    if ($manifestIndex -ge 0) {
+        $Arguments[$manifestIndex + 1] = [IO.Path]::GetFullPath((Join-Path $directory $Arguments[$manifestIndex + 1]))
+        $directory = Split-Path -Parent $Arguments[$manifestIndex + 1]
+    }
+    Push-Location $directory
+    try {
+        & cargo @Arguments
+        if ($LASTEXITCODE -ne 0) { throw "cargo $Arguments failed" }
+    } finally { Pop-Location }
 }
 function Confirm-Target([string]$manifest) {
-    $metadata = & cargo metadata --manifest-path $manifest --no-deps --format-version 1 | ConvertFrom-Json
-    if ($LASTEXITCODE -ne 0) { throw 'cargo metadata failed' }
-    if ([IO.Path]::GetFullPath($metadata.target_directory) -ne [IO.Path]::GetFullPath($env:CARGO_TARGET_DIR)) {
-        throw "Unexpected target directory: $($metadata.target_directory)"
-    }
-    Write-Output "Verified target: $($metadata.target_directory)"
+    $target = Get-NormalCargoTarget -ManifestPath (Join-Path (Split-Path -Parent $PSScriptRoot) $manifest)
+    Write-Output "Verified target: $target"
 }
 Push-Location $taskRoot
 try {
-    if (-not $env:CARGO_HOME) { $env:CARGO_HOME = 'D:/BuildCache/glory-semantic-ui/cargo' }
-    if ([IO.Path]::GetFullPath($env:CARGO_HOME) -notmatch '^D:\\BuildCache\\[^\\]+') { throw 'CARGO_HOME must be on D drive' }
-    $env:CARGO_TARGET_DIR = "$taskBuild/target"
-    $env:TEMP = "$taskBuild/tmp"
-    $env:TMP = $env:TEMP
-    $env:PYTHONPYCACHEPREFIX = "$taskBuild/pycache"
-    $env:CARGO_BUILD_JOBS = '2'
-    $env:CARGO_INCREMENTAL = '0'
-    $env:CARGO_PROFILE_DEV_DEBUG = '0'
-    $env:CARGO_PROFILE_TEST_DEBUG = '0'
-    $env:CARGO_PROFILE_DEV_DEBUG = '0'
-    $env:CARGO_PROFILE_TEST_DEBUG = '0'
+
+
+
+
+
+
+
     New-Item -ItemType Directory -Force -Path $env:TEMP | Out-Null
+    New-Item -ItemType Directory -Force -Path $taskBuild | Out-Null
     Confirm-Target 'Cargo.toml'
     & python "$PSScriptRoot/library_lock.py" --manifest-path Cargo.toml
     if ($LASTEXITCODE -ne 0) { throw 'Library lock preparation failed' }
@@ -53,12 +56,10 @@ try {
     Invoke-Cargo -Arguments @('test', '--locked', '--manifest-path', '../glory/Cargo.toml', '-p', 'glory-style', '-p', 'glory-core', '-p', 'glory-render', '-p', 'glory-ui', '-p', 'glory-html', '-p', 'glory-ssr', '--all-features')
     Invoke-Cargo -Arguments @('clippy', '--locked', '--manifest-path', '../glory/Cargo.toml', '-p', 'glory-style', '-p', 'glory-core', '-p', 'glory-render', '-p', 'glory-ui', '-p', 'glory-html', '-p', 'glory-ssr', '--all-features', '--all-targets', '--', '-D', 'warnings')
     if ($Native) {
-        # Isolate this gate's native output as well as its portable output.
-        # The shared Cargo home still reuses downloaded engine dependencies.
-        $env:CARGO_TARGET_DIR = "$taskBuild/native-target"
-        $env:CARGO_BUILD_JOBS = '1'
-        $env:TEMP = "$taskBuild/tmp"
-        $env:TMP = $env:TEMP
+        # Run native checks in each owning workspace with caller configuration.
+
+
+
         New-Item -ItemType Directory -Force -Path $env:TEMP | Out-Null
         Confirm-Target '../glory/Cargo.toml'
         Invoke-Cargo -Arguments @('test', '--locked', '--manifest-path', '../glory/Cargo.toml', '-p', 'glory-apace', '--features', 'shell,accesskit,raster', '--all-targets', '--', '--test-threads=1')
@@ -66,19 +67,19 @@ try {
         Confirm-Target 'examples/native/Cargo.toml'
         Invoke-Cargo -Arguments @('test', '--locked', '--manifest-path', 'examples/native/Cargo.toml', '--all-features', '--', '--test-threads=1')
         Invoke-Cargo -Arguments @('clippy', '--locked', '--manifest-path', 'examples/native/Cargo.toml', '--all-features', '--all-targets', '--', '-D', 'warnings')
-        $env:CARGO_TARGET_DIR = "$taskBuild/target"
-        $env:CARGO_BUILD_JOBS = '2'
-        $env:TEMP = "$taskBuild/tmp"
-        $env:TMP = $env:TEMP
+
+
+
     }
     if ($Web) {
         $manifest = 'examples/web/Cargo.toml'
         Confirm-Target $manifest
+        $webTarget = Get-NormalCargoTarget -ManifestPath (Join-Path $taskRoot $manifest)
         Invoke-Cargo -Arguments @('clippy', '--locked', '--manifest-path', $manifest, '--all-targets', '--', '-D', 'warnings')
         Invoke-Cargo -Arguments @('clippy', '--locked', '--manifest-path', $manifest, '--lib', '--target', 'wasm32-unknown-unknown', '--', '-D', 'warnings')
         if ((& $Bindgen --version).Trim() -ne 'wasm-bindgen 0.2.130') { throw 'Requires wasm-bindgen-cli 0.2.130 (pass -Bindgen for a specific executable)' }
         Invoke-Cargo -Arguments @('build', '--locked', '--manifest-path', $manifest, '--lib', '--target', 'wasm32-unknown-unknown')
-        & $Bindgen "$taskBuild/target/wasm32-unknown-unknown/debug/sapid_web_example.wasm" --target web --out-dir "$taskBuild/web"
+        & $Bindgen "$webTarget/wasm32-unknown-unknown/debug/sapid_web_example.wasm" --target web --out-dir "$taskBuild/web"
         if ($LASTEXITCODE -ne 0) { throw 'wasm-bindgen failed' }
         # Include every static entry, including newly added acceptance pages.
         foreach ($entry in Get-ChildItem -LiteralPath examples/web -File -Filter '*.html') {

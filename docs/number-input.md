@@ -35,8 +35,25 @@ reactive `step`/`page_step`, `locale`, `grouping`, `controls`, `field`, `form_na
 `required`, `readonly`, `invalid`, and the common theme/size/unstyled/style/name/
 enabled/focus/node_ref/event methods. `node_ref` addresses the actual input.
 `controls(false)` omits the buttons and retains keyboard and accessibility input.
+`clamp_behavior(NumberClampBehavior::Blur)` is the default. Actual focus loss
+and Enter normalize a complete or terminal incomplete numeric draft and clamp it
+to the current bounds. `Strict` refuses complete out-of-range user edits, while
+retaining empty/incomplete editing states. `None` normalizes a committed number
+without clamping it; out-of-range validity remains visible. Steps remain bounded
+in every mode. Controlled commits are proposals delivered to `on_commit`; the
+application must update its source to accept them. Composition and current
+readonly/disabled state block blur normalization. Input commands recheck Field
+availability before callbacks and generic observers, and use valid current
+range/step declarations within the same host packet.
 Defaults are empty, no explicit bounds, step 1, page step 10, EnUs and no grouping.
 `min(None)`/`max(None)` deliberately omit the corresponding accessibility bound.
+
+The public page has a focused quantity example and five complete compiled source
+sections for explicit locale/exact precision, three clamp policies, stepping,
+controlled/unavailable states and all sizes. Configurable fixed decimal padding
+is not provided: Decimal values are normalized, while accepted Text drafts
+preserve typed trailing zeroes. The 18-digit exact step example describes that
+finite precision rather than claiming an arbitrary JavaScript formatting API.
 
 ## Exact values and drafts
 

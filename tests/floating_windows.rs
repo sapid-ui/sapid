@@ -42,6 +42,84 @@ fn geometry(app: &App, panel: NodeId) -> WindowBounds {
     }
 }
 #[test]
+fn compact_window_actions_are_disclosed_and_keep_real_keyboard_commands() {
+    let app = App::memory();
+    app.mount(floating_window("chrome")).unwrap();
+    let panel = find(&app, "sapid-floating-window");
+    let actions = find(&app, "sapid-window-actions");
+    let toggle = find(&app, "sapid-window-actions-toggle");
+    let close = find(&app, "sapid-window-close");
+    let named = |label: &str| {
+        let tree = app.tree();
+        tree.node(actions)
+            .unwrap()
+            .children
+            .iter()
+            .copied()
+            .find(|id| tree.node(*id).unwrap().descriptor.view().name.as_deref() == Some(label))
+            .unwrap()
+    };
+    let right = named("Move window right");
+    assert!(
+        app.tree()
+            .node(actions)
+            .unwrap()
+            .descriptor
+            .view()
+            .semantics
+            .as_ref()
+            .unwrap()
+            .hidden
+    );
+    assert!(!app.dispatch(right, Event::Activate).unwrap());
+    assert_eq!(geometry(&app, panel), WindowBounds::default());
+    app.dispatch(toggle, Event::Activate).unwrap();
+    assert!(
+        !app.tree()
+            .node(actions)
+            .unwrap()
+            .descriptor
+            .view()
+            .semantics
+            .as_ref()
+            .unwrap()
+            .hidden
+    );
+    app.dispatch(right, Event::Activate).unwrap();
+    assert_eq!(geometry(&app, panel).x, WindowBounds::default().x + 10.);
+    let tree = app.tree();
+    assert_eq!(
+        tree.node(close).unwrap().descriptor.view().name.as_deref(),
+        Some("Close window")
+    );
+    assert_eq!(
+        tree.node(panel)
+            .unwrap()
+            .descriptor
+            .view()
+            .semantics
+            .as_ref()
+            .unwrap()
+            .layer
+            .as_ref()
+            .unwrap()
+            .initial_focus,
+        tree.node(close)
+            .unwrap()
+            .descriptor
+            .view()
+            .semantics
+            .as_ref()
+            .unwrap()
+            .id
+    );
+    drop(tree);
+    app.dispatch(toggle, Event::Activate).unwrap();
+    assert!(!app.dispatch(right, Event::Activate).unwrap());
+    app.clear().unwrap();
+    assert_eq!(app.stats().nodes, 0);
+}
+#[test]
 fn window_is_a_named_nonmodal_dialog_with_true_buttons_and_pointer_regions() {
     let app = App::memory();
     app.mount(

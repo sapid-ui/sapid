@@ -13,6 +13,17 @@ fn page(template: &str, html: &str) -> String {
         )
 }
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Build and retire the local UI graph on the same bounded worker used by
+    // the public documentation generator; no reactive handles cross threads.
+    std::thread::Builder::new()
+        .name("acceptance-ssr".into())
+        .stack_size(2 * 1024 * 1024)
+        .spawn(|| generate().map_err(|error| error.to_string()))?
+        .join()
+        .map_err(|_| "acceptance SSR worker panicked")?
+        .map_err(Into::into)
+}
+fn generate() -> Result<(), Box<dyn std::error::Error>> {
     let directory = std::path::PathBuf::from(std::env::args().nth(1).ok_or("output directory")?);
     let dsl = glory::ssr::snapshot(sapid_web_example::dsl::fixture::demo(sapid::Theme::light()))?;
     std::fs::write(

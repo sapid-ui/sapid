@@ -38,6 +38,64 @@ fn class_count(app: &App, class: &str) -> usize {
 }
 
 #[test]
+fn current_step_and_unavailable_state_apply_to_the_next_key_in_the_same_packet() {
+    let app = App::memory();
+    let step = app.scope().cage(10.);
+    let enabled = app.scope().cage(true);
+    let lower = app.scope().cage(None);
+    app.mount(
+        range_slider("live-key-config")
+            .default_value([20., 80.])
+            .step(step)
+            .enabled(enabled)
+            .thumb_ref(RangeThumb::Lower, lower),
+    )
+    .unwrap();
+    let lower = lower.get().unwrap();
+    key(&app, lower, RangeCommand::Increase);
+    app.scope()
+        .batch(|| {
+            step.revise(|v| *v = 1.);
+            key(&app, lower, RangeCommand::Increase);
+        })
+        .unwrap();
+    assert_eq!(range(&app, lower).range.value, 31.);
+    app.scope()
+        .batch(|| {
+            enabled.revise(|v| *v = false);
+            key(&app, lower, RangeCommand::Increase);
+        })
+        .unwrap();
+    assert_eq!(range(&app, lower).range.value, 31.);
+}
+
+#[test]
+fn refreshing_event_configuration_does_not_accept_a_pending_external_pair() {
+    let app = App::memory();
+    let value = app.scope().cage([25., 75.]);
+    let step = app.scope().cage(10.);
+    let lower = app.scope().cage(None);
+    let proposals = app.scope().cage(Vec::new());
+    app.mount(
+        range_slider("pending-pair")
+            .value(value)
+            .step(step)
+            .thumb_ref(RangeThumb::Lower, lower)
+            .on_value_change(move |v| proposals.revise(|values| values.push(v))),
+    )
+    .unwrap();
+    app.scope()
+        .batch(|| {
+            value.revise(|v| *v = [50., 90.]);
+            step.revise(|v| *v = 1.);
+            key(&app, lower.get().unwrap(), RangeCommand::Increase);
+        })
+        .unwrap();
+    assert_eq!(proposals.get(), [[26., 75.]]);
+    assert_eq!(value.get(), [50., 90.]);
+}
+
+#[test]
 fn restricted_marks_keep_both_thumbs_on_declared_values_and_respect_the_gap() {
     let app = App::memory();
     let lower = app.scope().cage(None);

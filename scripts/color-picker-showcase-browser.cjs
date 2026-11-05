@@ -24,7 +24,9 @@ const { chromium, base, outputPath, outputRoot, writeReport } = require('./showc
     assert.equal(await only.locator('.sapid-color-picker-swatch').count(), 7);
     assert.equal(await only.locator('.sapid-color-picker').evaluate(element => getComputedStyle(element).width), '420px');
     await only.getByRole('button', { name: '#12b886', exact: true }).click();
-    await only.getByText('#12b886', { exact: true }).waitFor();
+    await page.waitForFunction(() => document.querySelector('#picker-swatches-only')?.parentElement
+      ?.querySelector('button[aria-label="#12b886"]')?.getAttribute('aria-pressed') === 'true');
+    assert.equal(await only.locator('.sapid-color-picker-swatch[aria-pressed=true]').count(), 1);
     report.checks.push('Swatches-only full-width picker publishes the selected color');
 
     const precision = page.locator('#picker-precision').locator('..');
@@ -45,6 +47,7 @@ const { chromium, base, outputPath, outputRoot, writeReport } = require('./showc
       && document.documentElement.getAttribute('data-sapid-widget') === 'color-input');
 
     const sectionIds = [
+      'swatches-only',
       'controlled', 'loading', 'formats', 'preserve-invalid-input', 'change-end',
       'disable-free-input', 'with-swatches', 'close-dropdown-on-swatch-click',
       'hide-dropdown', 'eye-dropper', 'eye-dropper-icon', 'left-right-sections',
@@ -83,6 +86,8 @@ const { chromium, base, outputPath, outputRoot, writeReport } = require('./showc
 
     const closeSection = page.locator('#close-dropdown-on-swatch-click').locator('..');
     const closeDialog = page.locator('[id*="showcase-color-close-swatch-p-panel"]');
+    await closeSection.locator('.sapid-color-editor').focus();
+    await closeDialog.waitFor({state:'visible'});
     assert.equal(await closeDialog.locator('.sapid-color-plane').count(), 1);
     assert.equal(await closeDialog.locator('.sapid-color-swatch').count(), 3);
     await closeDialog.getByRole('button', { name: '#12b886', exact: true }).click();

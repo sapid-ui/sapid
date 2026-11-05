@@ -185,6 +185,35 @@ fn ssr_scroll_area_has_real_native_overflow_and_independent_keyboard_without_cus
 }
 
 #[test]
+fn scroller_rejects_invalid_control_geometry_before_allocating_and_can_omit_controls() {
+    for size in [f64::NAN, 19., 65.] {
+        let app = App::memory();
+        assert!(
+            app.mount(sapid::scroller("invalid-size").control_size(size))
+                .is_err()
+        );
+        assert_eq!(app.stats().nodes, 0);
+    }
+    for step in [f64::INFINITY, 0., 100001.] {
+        let app = App::memory();
+        assert!(
+            app.mount(sapid::scroller("invalid-step").scroll_step(step))
+                .is_err()
+        );
+        assert_eq!(app.stats().nodes, 0);
+    }
+    let html = glory::ssr::render(
+        sapid::scroller("native-only")
+            .controls(false)
+            .area(|area| area.name("Plain viewport")),
+    )
+    .unwrap();
+    assert!(html.contains("Plain viewport"));
+    assert!(!html.contains("Next scroll page"));
+    assert!(html.contains("data-gly-scroll-keyboard=\"horizontal\""));
+}
+
+#[test]
 fn fractional_destination_uses_current_extents_and_shares_the_ordered_barrier() {
     let (app, wire, handle) = fixture();
     assert!(handle.scroll_to_fraction(0.0, f64::NAN).is_err());

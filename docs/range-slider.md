@@ -46,3 +46,12 @@ The shared Slider contract has 5 passing tests, including readonly closed interv
 Chromium 148.0.7778.96 passed **10/10** cases on the unified root **Web16** snapshot, with no console/page errors: four themes × CSR/hydration, exact per-thumb names and neighbour-limited ranges, singleton readonly/focus/unlock, controlled rejection and a same-frame queued two-thumb commit-only pair, captured mouse release/clamp, vertical/RTL keys, Field errors and repeated snapshot metadata, stable thumb/editor identity and caret. Extra cases cover dirty-editor hydration and Owner cleanup, and CDP touch start/move/end/cancel without page scrolling, editor-selection loss or cancel commits. The final green/dark hydration screenshot was visually inspected.
 
 Reports: `D:/BuildCache/sapid/range-slider-browser-root16.json` and `.log`; screenshots `range-slider-{hue}-{scheme}-{csr|hydrate}.png`; Rust transcript `range-slider-rust.log`; native transcript `range-slider-native.log`. A private pre-fix browser run exposed HTML's aria-labelledby priority over each thumb's explicit name. The final implementation retains the Field label on the group and clears the conflicting per-thumb labelled_by, keeping both explicit thumb names consistent across HTML and native AX. That failed private run is not counted as passing evidence.
+
+The public guide has a compact price-range example and eight complete compiled
+source sections, including all three collision policies and live keyboard
+configuration. Push moves the other thumb atomically; Clamp stops the current
+thumb at its neighbour's gap; Hold refuses the overlap proposal. Neither policy
+swaps identities. Arrow/Page/Home/End commands use current valid configuration
+without adopting a pending external pair. Current enabled/readonly state is
+checked before proposals and commits, including during a host packet. Native
+physical layout tests and public browser checks remain separate from OS input.

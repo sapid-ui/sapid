@@ -318,6 +318,7 @@ struct State {
     follows: bool,
     intent: Callback<String>,
     columns: bool,
+    columns_select_branches: bool,
 }
 impl State {
     fn ensure(&self) -> Result {
@@ -373,7 +374,10 @@ impl State {
                 .node(&key)
                 .is_some_and(|node| node.kind != TreeKind::Leaf)
         {
-            return self.expand(key, true, true);
+            self.expand(key.clone(), true, true)?;
+            if !self.columns_select_branches || !self.owner.is_alive() || !self.usable(&key) {
+                return Ok(());
+            }
         }
         if self.mode != TreeSelectionMode::None {
             self.selected.propose(
@@ -593,6 +597,7 @@ pub struct Tree {
     intent: Option<Box<dyn FnMut(String)>>,
     popup: Option<TreePopup>,
     columns: bool,
+    columns_select_branches: bool,
     with_lines: bool,
     empty_message: Option<String>,
     drag_drop: Option<DropCallback>,
@@ -626,6 +631,7 @@ pub fn tree(key: impl Into<String>) -> Tree {
         intent: None,
         popup: None,
         columns: false,
+        columns_select_branches: false,
         with_lines: true,
         empty_message: None,
         drag_drop: None,
@@ -686,8 +692,9 @@ impl Tree {
         self.common.focus = FocusMode::Programmatic;
         self
     }
-    pub(crate) fn column_layout(mut self) -> Self {
+    pub(crate) fn column_layout(mut self, select_branches: bool) -> Self {
         self.columns = true;
+        self.columns_select_branches = select_branches;
         self
     }
     pub fn on_expanded_change(mut self, callback: impl FnMut(BTreeSet<String>) + 'static) -> Self {
@@ -851,6 +858,7 @@ impl Widget for Tree {
             follows: self.follows,
             intent: Callback::new(self.intent.take()),
             columns: self.columns,
+            columns_select_branches: self.columns_select_branches,
         });
         let weak = Rc::downgrade(&state);
         scope.structural(move || {

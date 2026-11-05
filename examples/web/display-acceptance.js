@@ -57,7 +57,7 @@ async(hostPage)=>{
       await page.setViewportSize({width:390,height:844});await tick();
       assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`${mode}: mobile overflow`);
       await page.setViewportSize({width:1440,height:1000});
-      if(hydration){await page.screenshot({path:`D:/BuildCache/sapid/${family}-${hue}-${scheme}.png`,fullPage:true})}
+      if(hydration){await page.screenshot({path:`target/verification/sapid/${family}-${hue}-${scheme}.png`,fullPage:true})}
       await page.evaluate(()=>window.demo.unmount_display());assert(await page.locator('#app').evaluate(e=>e.childElementCount===0),`${mode}: teardown`);
       reports.push({suite:mode,status:'passed'});
     }

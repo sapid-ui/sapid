@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en"><head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AppShell full-window workspace · Sapid</title>
+  <!--BASE_CSS-->
+  <link rel="stylesheet" href="sapid.css">
+  <link rel="stylesheet" href="site.css">
+</head><body style="margin:0">
+  <div id="app"></div>
+  <script type="module">
+    import init, { mount_shell_window } from './sapid_web_example.js';
+    await init();
+    const params = new URL(location.href).searchParams;
+    mount_shell_window(params.get('theme') || 'blue', params.get('scheme') || 'light');
+    window.ready = true;
+  </script>
+</body></html>

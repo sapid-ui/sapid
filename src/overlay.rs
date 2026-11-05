@@ -55,6 +55,7 @@ struct Overlay {
     dismiss: Option<Box<dyn FnMut(DismissReason)>>,
     content: Option<Factory>,
     trigger_content: Option<Factory>,
+    trigger_style: Option<Vary<Style>>,
     close_content: Option<Factory>,
     policy: ContentPolicy,
     trigger: Option<Cage<Option<NodeId>>>,
@@ -99,6 +100,7 @@ impl Overlay {
             dismiss: None,
             content: None,
             trigger_content: None,
+            trigger_style: None,
             close_content: None,
             policy: ContentPolicy::Unmount,
             trigger: None,
@@ -172,6 +174,11 @@ macro_rules! overlay {
                 mut factory: impl FnMut() -> W + 'static,
             ) -> Self {
                 self.inner.trigger_content = Some(Box::new(move || Box::new(factory())));
+                self
+            }
+            /// Style only the real trigger; panel geometry remains independent.
+            pub fn trigger_style(mut self, value: impl Into<Vary<Style>>) -> Self {
+                self.inner.trigger_style = Some(value.into());
                 self
             }
             /// Visual children of the real close/cancel Button. `close_label`
@@ -302,6 +309,14 @@ macro_rules! managed_focus {
     })+};
 }
 managed_focus!(Dialog, Drawer, Popover, AlertDialog);
+impl FloatingDialog {
+    /// Position the nonmodal notice in viewport CSS pixels. The shared host
+    /// constrains it to the viewport; opening still preserves actual focus.
+    pub fn position(mut self, position: glory::render::ViewportPlacement) -> Self {
+        self.inner.config.placement = LayerPlacement::Viewport(position);
+        self
+    }
+}
 impl Dialog {
     /// Fill the host viewport while preserving the same modal focus and dismissal protocol.
     pub fn full_screen(mut self, value: bool) -> Self {
@@ -373,6 +388,9 @@ impl Popover {
     pub(crate) fn external_trigger(mut self, anchor: SemanticId) -> Self {
         self.inner.show_trigger = false;
         self.inner.external_anchor = Some(anchor);
+        // Editor-anchored popups leave editing focus in place. Their caller
+        // owns any explicit focus return after interacting with popup controls.
+        self.inner.config.focus = glory::render::LayerFocus::Preserve;
         self
     }
     pub fn placement(mut self, placement: AnchorPlacement) -> Self {
@@ -413,6 +431,83 @@ impl Popover {
         self
     }
 }
+fn icon_close(
+    mut button: glory::ui::Button,
+    label: Vary<String>,
+    theme: &crate::Theme,
+    size: crate::Size,
+    unstyled: bool,
+) -> glory::ui::Button {
+    let mut style = if unstyled {
+        Style::new()
+    } else {
+        theme.label(size)
+    };
+    style.width = Some(Length::Px(24.));
+    style.height = Some(Length::Px(24.));
+    style.min_width = Some(Length::Px(24.));
+    style.min_height = Some(Length::Px(24.));
+    style.padding = Some(Edges::all(0.));
+    style.border_width = Some(Edges::all(0.));
+    style.background = Some(glory::style::Color(0, 0, 0, 0));
+    style.display = Some(glory::style::Display::InlineFlex);
+    style.align = Some(glory::style::Align::Center);
+    style.justify = Some(glory::style::Justify::Center);
+    style.shrink = Some(0.);
+    button = button.name(label).label("").style(style).fill(
+        glory::ui::graphic()
+            .drawing(crate::Icon::Close.drawing(theme.foreground))
+            .style(Style::new().width(Length::Px(16.)).height(Length::Px(16.))),
+    );
+    button
+}
+fn layer_header(
+    scope: &Scope,
+    title: Option<Vary<String>>,
+    title_id: &SemanticId,
+    close: Option<glory::ui::Button>,
+    theme: &crate::Theme,
+    size: crate::Size,
+    unstyled: bool,
+) -> Result {
+    if title.is_none() && close.is_none() {
+        return Ok(());
+    }
+    let mut header = glory::ui::view().class("sapid-layer-header").style(Style {
+        align: Some(glory::style::Align::Center),
+        justify: Some(glory::style::Justify::End),
+        ..Style::new()
+            .display(glory::style::Display::Flex)
+            .gap(12.)
+            .min_width(Length::Px(0.))
+    });
+    if let Some(title) = title {
+        let mut style = if unstyled {
+            Style::new()
+        } else {
+            theme.label(size).font_weight(600.)
+        };
+        style.grow = Some(1.);
+        style.min_width = Some(Length::Px(0.));
+        style.margin = Some(Edges::all(0.));
+        header = header.fill(
+            glory::ui::text()
+                .class("sapid-layer-title")
+                .kind(TextKind::Heading(2))
+                .content(title)
+                .style(style)
+                .semantics(composite::metadata(Semantics {
+                    id: Some(title_id.clone()),
+                    ..Default::default()
+                })),
+        );
+    }
+    if let Some(button) = close {
+        header = header.fill(button);
+    }
+    header.show_in(scope)
+}
+
 impl Widget for Overlay {
     fn build(&mut self, scope: &Scope) -> Result {
         if let LayerPlacement::Anchor(placement) = self.config.placement {
@@ -524,6 +619,7 @@ impl Widget for Overlay {
         let id = trigger_id.clone();
         let target = panel_id.clone();
         let open = source.clone();
+        let trigger_enabled = self.common.enabled.clone();
         let mut trigger = glory::ui::button()
             .label(self.label.clone())
             .class(format!("sapid-{}-trigger", self.kind))
@@ -540,6 +636,9 @@ impl Widget for Overlay {
             .on(EventKind::Activate, move |event| {
                 let Some(scope) = weak.upgrade() else { return };
                 let result = (|| -> Result {
+                    if !trigger_enabled.try_get()? {
+                        return Ok(());
+                    }
                     let next = !c.source.try_get()?;
                     c.accept(&next)?;
                     cb.emit(owner, next);
@@ -563,9 +662,22 @@ impl Widget for Overlay {
                 .label("")
                 .fill(glory::ui::widget(move |scope| factory().show_in(scope)));
         }
-        if !self.common.unstyled {
-            trigger = trigger.style(self.common.theme.control(self.common.size));
-        }
+        let trigger_base = if self.common.unstyled {
+            Style::new()
+        } else {
+            self.common.theme.control(self.common.size)
+        };
+        trigger = if let Some(own) = self.trigger_style.take() {
+            if own.is_reactive() {
+                trigger.style(
+                    scope.bond(move || crate::appearance::merge(trigger_base.clone(), own.get())),
+                )
+            } else {
+                trigger.style(crate::appearance::merge(trigger_base, own.get()))
+            }
+        } else {
+            trigger.style(trigger_base)
+        };
         let mut config = self.config.clone();
         if self.kind == "popover"
             && let LayerPlacement::Anchor(mut placement) = config.placement
@@ -745,6 +857,14 @@ impl Widget for Overlay {
             base.max_height = Some(glory::style::Limit::None);
             base.radius = Some(0.);
         }
+        let text = self
+            .common
+            .theme
+            .typography(crate::TypographyRole::Body, self.common.size);
+        base.font_family = Some(vec![glory::style::Family::System]);
+        base.font_size = Some(text.font_size);
+        base.line_height = Some(text.line_height);
+        base.font_weight = text.weight;
         base.background = Some(self.common.theme.surface);
         base.color = Some(self.common.theme.foreground);
         let presentation = if self.full_screen {
@@ -804,34 +924,7 @@ impl Widget for Overlay {
                     unstyled,
                 )?;
             }
-            if let Some(title) = title.clone() {
-                glory::ui::text()
-                    .kind(TextKind::Heading(2))
-                    .content(title)
-                    .semantics(composite::metadata(Semantics {
-                        id: Some(title_id.clone()),
-                        ..Default::default()
-                    }))
-                    .show_in(scope)?;
-            }
-            if let Some(description) = description.clone() {
-                glory::ui::text()
-                    .content(description)
-                    .semantics(composite::metadata(Semantics {
-                        id: Some(description_id.clone()),
-                        ..Default::default()
-                    }))
-                    .show_in(scope)?;
-            }
-            if let Some(mut factory) = factory.take() {
-                match policy {
-                    ContentPolicy::Unmount => {
-                        glory::ui::when(content_open.clone(), factory).show_in(scope)?
-                    }
-                    ContentPolicy::KeepMounted => factory().show_in(scope)?,
-                }
-            }
-            if show_close {
+            let mut close = if show_close {
                 let c = control.clone();
                 let cb = change.clone();
                 let weak = weak.clone();
@@ -858,15 +951,53 @@ impl Widget for Overlay {
                 if alert && !unstyled {
                     cancel_button = cancel_button.style(theme.control(size));
                 }
+                let custom_close = close_content.is_some();
                 if let Some(mut factory) = close_content.take() {
                     cancel_button = cancel_button
                         .name(close_label.clone())
                         .label("")
                         .fill(glory::ui::widget(move |scope| factory().show_in(scope)));
                 }
-                cancel_button.show_in(scope)?;
+                if !alert && !custom_close {
+                    cancel_button =
+                        icon_close(cancel_button, close_label.clone(), &theme, size, unstyled);
+                } else if !alert && !unstyled {
+                    cancel_button = cancel_button.style(theme.control(size));
+                }
+                Some(cancel_button)
+            } else {
+                None
+            };
+            layer_header(
+                scope,
+                title.clone(),
+                &title_id,
+                if alert { None } else { close.take() },
+                &theme,
+                size,
+                unstyled,
+            )?;
+            if let Some(description) = description.clone() {
+                glory::ui::text()
+                    .content(description)
+                    .semantics(composite::metadata(Semantics {
+                        id: Some(description_id.clone()),
+                        ..Default::default()
+                    }))
+                    .show_in(scope)?;
+            }
+            if let Some(mut factory) = factory.take() {
+                match policy {
+                    ContentPolicy::Unmount => {
+                        glory::ui::when(content_open.clone(), factory).show_in(scope)?
+                    }
+                    ContentPolicy::KeepMounted => factory().show_in(scope)?,
+                }
             }
             if alert {
+                if let Some(button) = close.take() {
+                    button.show_in(scope)?;
+                }
                 let c = control.clone();
                 let cb = change.clone();
                 let confirm = confirm.clone();

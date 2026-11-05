@@ -3,6 +3,26 @@ mod model;
 use glory::render::Direction;
 use model::*;
 #[test]
+fn indicators_stay_bounded_and_cover_current_at_both_ends_and_the_middle() {
+    for count in [0, 1, 3, 9, 10, MAX_CAROUSEL_COUNT] {
+        for current in [0, count / 2, count.saturating_sub(1)] {
+            let page = Page {
+                count,
+                current,
+                looping: false,
+                overscan: 1,
+            };
+            let indicators = page.indicators();
+            assert_eq!(indicators.len(), count.min(MAX_CAROUSEL_INDICATORS));
+            assert!(indicators.windows(2).all(|pair| pair[1] == pair[0] + 1));
+            assert!(indicators.iter().all(|index| *index < count));
+            if count > 0 {
+                assert!(indicators.contains(&current));
+            }
+        }
+    }
+}
+#[test]
 fn million_slide_window_is_bounded_and_edges_do_not_wrap_implicitly() {
     let page = Page {
         count: MAX_CAROUSEL_COUNT,

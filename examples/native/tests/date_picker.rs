@@ -30,6 +30,28 @@ fn all(app: &App) -> Vec<NodeId> {
     }
     result
 }
+fn submitted(app: &App, name: &str) -> String {
+    let controls = all(app)
+        .into_iter()
+        .filter(|id| {
+            app.tree()
+                .node(*id)
+                .unwrap()
+                .descriptor
+                .view()
+                .semantics
+                .as_ref()
+                .and_then(|value| value.form_control.as_ref())
+                .is_some_and(|control| control.name == name)
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(controls.len(), 1);
+    let tree = app.tree();
+    let Props::Input(input) = tree.node(controls[0]).unwrap().descriptor.view().props else {
+        panic!("input")
+    };
+    input.value.clone()
+}
 fn class(app: &App, class: &str) -> Vec<NodeId> {
     all(app)
         .into_iter()
@@ -87,7 +109,16 @@ fn native_week_number_column_is_passive_physical_table_content() {
     let week = weeks
         .iter()
         .copied()
-        .find(|id| app.tree().node(*id).unwrap().descriptor.view().name.as_deref() == Some("Week 9"))
+        .find(|id| {
+            app.tree()
+                .node(*id)
+                .unwrap()
+                .descriptor
+                .view()
+                .name
+                .as_deref()
+                == Some("Week 9")
+        })
         .unwrap();
     let week_bounds = bounds(app, week);
     let day_bounds = bounds(app, day(app, d("2024-02-29")));
@@ -131,7 +162,7 @@ fn native_multi_column_range_has_consecutive_real_grids_and_shared_selection() {
     app.settle(16).unwrap();
     assert_eq!(value.get().format_iso(), "2024-02-28/2024-03-02");
 
-    let selected = all(app)
+    let selected = class(app, "sapid-calendar-cell")
         .into_iter()
         .filter(|id| {
             app.tree()
@@ -144,7 +175,10 @@ fn native_multi_column_range_has_consecutive_real_grids_and_shared_selection() {
                 .is_some_and(|semantics| semantics.selected == Some(true))
         })
         .count();
-    assert_eq!(selected, 4);
+    assert_eq!(
+        selected, 4,
+        "count day cells independently from retained month/year grids"
+    );
     app.clear().unwrap();
 }
 
@@ -162,6 +196,7 @@ fn native_range_preset_is_a_real_action_and_closes_only_after_controlled_accepta
     ));
     host.mount(
         date_picker_input("native-range-preset", DatesProvider::new(d("2024-02-29")))
+            .form_name("preset")
             .mode(DatePickerMode::Range)
             .default_open(true)
             .node_ref(input)
@@ -192,7 +227,9 @@ fn native_range_preset_is_a_real_action_and_closes_only_after_controlled_accepta
     else {
         panic!()
     };
-    assert_eq!(props.value, "2024-02-26/2024-02-29");
+    assert_eq!(props.value, "2024-02-26 – 2024-02-29");
+    drop(tree);
+    assert_eq!(submitted(app, "preset"), "2024-02-26/2024-02-29");
 }
 
 #[test]
@@ -337,7 +374,7 @@ fn native_range_projection_readonly_and_disabled_keep_finite_real_selection_and_
         .unwrap();
     app.settle(16).unwrap();
     assert_eq!(value.get().format_iso(), "2024-02-26/2024-02-29");
-    let cells = all(app)
+    let cells = class(app, "sapid-calendar-cell")
         .into_iter()
         .filter(|id| {
             app.tree()
@@ -377,6 +414,7 @@ fn native_initially_open_range_input_retains_partial_then_closes_only_the_comple
     let trigger = app.scope().cage(None);
     host.mount(
         date_picker_input("initial-range", DatesProvider::new(d("2024-02-29")))
+            .form_name("range")
             .mode(DatePickerMode::Range)
             .default_open(true)
             .node_ref(input)
@@ -399,8 +437,9 @@ fn native_initially_open_range_input_retains_partial_then_closes_only_the_comple
     else {
         panic!()
     };
-    assert_eq!(p.value, "2024-02-26/");
+    assert_eq!(p.value, "2024-02-26 –");
     drop(t);
+    assert_eq!(submitted(app, "range"), "2024-02-26/");
     app.dispatch(day(app, d("2024-02-29")), Event::Activate)
         .unwrap();
     app.settle(16).unwrap();
@@ -419,8 +458,9 @@ fn native_initially_open_range_input_retains_partial_then_closes_only_the_comple
     else {
         panic!()
     };
-    assert_eq!(p.value, "2024-02-26/2024-02-29");
+    assert_eq!(p.value, "2024-02-26 – 2024-02-29");
     drop(t);
+    assert_eq!(submitted(app, "range"), "2024-02-26/2024-02-29");
     app.clear().unwrap();
     assert_eq!(app.stats().queries, 0);
 }

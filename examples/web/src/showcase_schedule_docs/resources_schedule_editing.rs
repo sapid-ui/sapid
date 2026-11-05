@@ -1,0 +1,308 @@
+use glory::prelude::*;
+use sapid::prelude::*;
+fn day(value: &str) -> CivilDate {
+    CivilDate::parse_iso(value).unwrap()
+}
+fn dt(value: &str) -> LocalDateTime {
+    parse_local_date_time(value).unwrap()
+}
+fn window(view: ScheduleView) -> ScheduleWindow {
+    match view {
+        ScheduleView::Day => ScheduleWindow::days(day("2026-11-04"), 1),
+        ScheduleView::Week | ScheduleView::Agenda => ScheduleWindow::days(day("2026-11-02"), 7),
+        ScheduleView::Month | ScheduleView::MobileMonth => {
+            ScheduleWindow::month(YearMonth::new(2026, 11).unwrap())
+        }
+        ScheduleView::Year => ScheduleWindow::year(CivilYear::new(2026).unwrap()),
+    }
+    .unwrap()
+}
+fn interval_label(span: ScheduleInterval) -> String {
+    format!(
+        "{} to {} (end exclusive)",
+        format_local_date_time(span.start()),
+        format_local_date_time(span.end())
+    )
+}
+fn selection_label(data: &ScheduleData, value: &Option<ScheduleSelection>) -> String {
+    match value {
+        Some(ScheduleSelection::Event { key, interval, .. }) => format!(
+            "Selected: {} · {}",
+            data.events()
+                .iter()
+                .find(|event| event.key() == key)
+                .map_or("Event", |event| event.title()),
+            interval_label(*interval)
+        ),
+        Some(ScheduleSelection::Slot { interval, .. }) => {
+            format!("Selected time: {}", interval_label(*interval))
+        }
+        None => "Choose an event or an available time.".to_owned(),
+    }
+}
+fn resource_window(view: ResourceScheduleView) -> ScheduleWindow {
+    window(match view {
+        ResourceScheduleView::Day => ScheduleView::Day,
+        ResourceScheduleView::Week => ScheduleView::Week,
+        ResourceScheduleView::Month => ScheduleView::Month,
+    })
+}
+fn resource_sample(view: ResourceScheduleView) -> ResourceScheduleData {
+    let rooms = [
+        ("room-a", "Room A", "Project planning"),
+        ("room-b", "Room B", "Design review"),
+        ("room-c", "Room C", "Workshop"),
+        ("room-d", "Room D", "Testing"),
+        ("room-e", "Room E", "Interview"),
+        ("room-f", "Room F", "Research"),
+    ];
+    let permission = SchedulePermissions {
+        select: true,
+        move_event: true,
+        resize_event: true,
+    };
+    let mut events = rooms
+        .iter()
+        .enumerate()
+        .map(|(index, (room, _, title))| {
+            ScheduleEvent::new(
+                ScheduleKey::new(format!("booking-{index}")).unwrap(),
+                *title,
+                ScheduleInterval::new(dt("2026-11-04T09:00"), dt("2026-11-04T10:00")).unwrap(),
+            )
+            .unwrap()
+            .resource(ScheduleKey::new(*room).unwrap())
+            .permissions(permission)
+        })
+        .collect::<Vec<_>>();
+    events.push(
+        ScheduleEvent::new(
+            ScheduleKey::new("overlap").unwrap(),
+            "Client review",
+            ScheduleInterval::new(dt("2026-11-04T09:30"), dt("2026-11-04T10:30")).unwrap(),
+        )
+        .unwrap()
+        .resource(ScheduleKey::new("room-a").unwrap())
+        .permissions(permission),
+    );
+    events.push(
+        ScheduleEvent::new(
+            ScheduleKey::new("release").unwrap(),
+            "Release day",
+            ScheduleInterval::all_day(day("2026-11-04"), day("2026-11-05")).unwrap(),
+        )
+        .unwrap()
+        .all_day()
+        .unwrap()
+        .resource(ScheduleKey::new("room-a").unwrap()),
+    );
+    ResourceScheduleData::new(
+        ScheduleData::new(ScheduleZone::Civil, resource_window(view), events).unwrap(),
+        ScheduleResources::new(rooms.iter().map(|(room, title, _)| {
+            ScheduleResource::new(ScheduleKey::new(*room).unwrap(), *title).unwrap()
+        }))
+        .unwrap(),
+        ScheduleResourceWindow::new(0, 2).unwrap(),
+    )
+    .unwrap()
+}
+fn resource_request(source: Cage<ResourceScheduleData>, request: ResourceScheduleRequest) {
+    source.revise(|current| {
+        *current = ResourceScheduleData::new(
+            ScheduleData::new(
+                request.zone,
+                request.window,
+                current.data().events().iter().cloned(),
+            )
+            .unwrap(),
+            current.resources().clone(),
+            request.resource_window,
+        )
+        .unwrap()
+    });
+}
+fn apply_booking(
+    current: &ResourceScheduleData,
+    edit: &ScheduleEdit,
+    prevent_overlap: bool,
+) -> std::result::Result<ResourceScheduleData, String> {
+    current
+        .data()
+        .validate_edit(current.resources(), edit)
+        .map_err(|error| error.to_string())?;
+    let mut events = Vec::with_capacity(current.data().events().len());
+    for event in current.data().events() {
+        if event.key() != &edit.event {
+            events.push(event.clone());
+            continue;
+        }
+        if event.recurrence().is_some() {
+            return Err("Choose a recurrence edit policy before saving a repeated booking.".into());
+        }
+        let resource = edit
+            .proposed_resource
+            .clone()
+            .ok_or("Choose a room before saving.")?;
+        let mut next = ScheduleEvent::new(event.key().clone(), event.title(), edit.proposed)
+            .map_err(|error| error.to_string())?
+            .permissions(event.edit_permissions())
+            .resource(resource);
+        if event.is_all_day() {
+            next = next.all_day().map_err(|error| error.to_string())?;
+        }
+        events.push(
+            next.except_dates(event.exceptions().iter().copied())
+                .map_err(|error| error.to_string())?,
+        );
+    }
+    let model = ScheduleData::new(
+        current.data().zone().clone(),
+        current.data().window(),
+        events,
+    )
+    .map_err(|error| error.to_string())?;
+    if prevent_overlap {
+        let occurrences = model
+            .expand(MAX_SCHEDULE_OCCURRENCES)
+            .map_err(|error| error.to_string())?;
+        let conflicts = model
+            .conflicts(ScheduleConflictPolicy::SameResource, MAX_SCHEDULE_CONFLICTS)
+            .map_err(|error| error.to_string())?;
+        if conflicts.iter().any(|conflict| {
+            [conflict.first, conflict.second].into_iter().any(|at| {
+                model
+                    .event(occurrences[at])
+                    .is_some_and(|event| event.key() == &edit.event)
+            })
+        }) {
+            return Err("That room is already occupied during the proposed time.".into());
+        }
+    }
+    ResourceScheduleData::new(
+        model,
+        current.resources().clone(),
+        current.resource_window(),
+    )
+    .map_err(|error| error.to_string())
+}
+pub fn demo(theme: sapid::Theme) -> impl Widget {
+    widget(move |scope| {
+        let data = scope.cage(resource_sample(ResourceScheduleView::Day));
+        let selected = scope.cage(None::<ScheduleSelection>);
+        let prevent_overlap = scope.cage(true);
+        let accept_edits = scope.cage(true);
+        let current_view = scope.cage(ResourceScheduleView::Day);
+        let view_owner = scope.downgrade();
+        let feedback = scope.cage("Choose a booking to review or edit.".to_owned());
+        let edit_owner = scope.downgrade();
+        let window_status = data.map(|model| {
+            format!(
+                "Rooms: {} · {} to {} (end exclusive)",
+                model
+                    .visible_resources()
+                    .iter()
+                    .map(|room| room.title())
+                    .collect::<Vec<_>>()
+                    .join(", "),
+                model.data().window().start().date(),
+                model.data().window().end().date()
+            )
+        });
+        let selection_status = scope.bond(move || {
+            data.with(|model| selected.with(|value| selection_label(model.data(), value)))
+        });
+        let bookings = resources_schedule("resources-schedule-editing", data)
+            .theme(theme.clone())
+            .name("Room bookings")
+            .viewport_height(320.)
+            .column_width(160.)
+            .resource_page_size(2)
+            .time_window(ScheduleTimeWindow::new(8 * 60, 16 * 60, 30).unwrap())
+            .view_value(current_view)
+            .available_views([
+                ResourceScheduleView::Day,
+                ResourceScheduleView::Week,
+                ResourceScheduleView::Month,
+            ])
+            .on_view_change(move |next| {
+                if let Some(owner) = view_owner.upgrade()
+                    && let Err(error) = owner.batch(|| {
+                        data.revise(|value| *value = resource_sample(next));
+                        current_view.revise(|value| *value = next);
+                        selected.revise(|value| *value = None);
+                    })
+                {
+                    owner.report_error(error);
+                }
+            })
+            .selection(selected)
+            .on_selection_change(move |value| selected.revise(|old| *old = Some(value)))
+            .on_window_request(move |request| {
+                resource_request(data, request);
+                selected.revise(|old| *old = None);
+            })
+            .on_edit(move |edit| {
+                if !accept_edits.get() {
+                    feedback.revise(|old| *old = "Changes were not saved.".into());
+                    return;
+                }
+                let result =
+                    data.with(|current| apply_booking(current, &edit, prevent_overlap.get()));
+                match result {
+                    Err(error) => {
+                        feedback.revise(|old| *old = format!("Booking not saved: {error}"))
+                    }
+                    Ok(next) => {
+                        let title = next
+                            .data()
+                            .events()
+                            .iter()
+                            .find(|event| event.key() == &edit.event)
+                            .unwrap()
+                            .title()
+                            .to_owned();
+                        if let Some(owner) = edit_owner.upgrade()
+                            && let Err(error) = owner.batch(|| {
+                                data.revise(|old| *old = next);
+                                selected.revise(|old| {
+                                    *old = Some(ScheduleSelection::Event {
+                                        key: edit.event,
+                                        candidate: edit.candidate,
+                                        interval: edit.proposed,
+                                    })
+                                });
+                                feedback.revise(|old| {
+                                    *old =
+                                        format!("Saved {title} · {}", interval_label(edit.proposed))
+                                });
+                            })
+                        {
+                            owner.report_error(error);
+                        }
+                    }
+                }
+            });
+        sapid::stack()
+            .theme(theme.clone())
+            .fill((
+                sapid::switch()
+                    .theme(theme.clone())
+                    .label("Accept booking edits")
+                    .checked(accept_edits)
+                    .on_checked_change(move |value| accept_edits.revise(|old| *old = value)),
+                sapid::switch()
+                    .theme(theme.clone())
+                    .label("Prevent overlapping bookings")
+                    .checked(prevent_overlap)
+                    .on_checked_change(move |value| prevent_overlap.revise(|old| *old = value)),
+                sapid::text().theme(theme.clone()).content(
+                    "Use a booking’s Edit action, then choose Move later or a resize action.",
+                ),
+                bookings,
+                sapid::text().theme(theme.clone()).content(window_status),
+                sapid::text().theme(theme.clone()).content(selection_status),
+                sapid::text().theme(theme.clone()).content(feedback),
+            ))
+            .show_in(scope)
+    })
+}

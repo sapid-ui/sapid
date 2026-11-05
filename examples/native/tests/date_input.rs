@@ -48,6 +48,76 @@ fn date(v: &str) -> CivilDate {
     CivilDate::parse_iso(v).unwrap()
 }
 #[test]
+fn editable_date_picker_action_is_inside_the_editor_border_in_all_four_themes() {
+    for theme in [
+        Theme::blue_light(),
+        Theme::blue_dark(),
+        Theme::green_light(),
+        Theme::green_dark(),
+    ] {
+        let host = WindowApp::new();
+        host.renderer().set_viewport(320, 700, 1.).unwrap();
+        let app = host.app();
+        let reference = app.scope().cage(None);
+        host.mount(
+            glory::ui::view()
+                .style(Style::new().width(Length::Px(280.)))
+                .fill(
+                    date_input("inset-date", DatesProvider::new(date("2026-11-04")))
+                        .theme(theme)
+                        .node_ref(reference)
+                        .picker_label("Choose appointment"),
+                ),
+        )
+        .unwrap();
+        app.settle(16).unwrap();
+        let input = reference.get().unwrap();
+        let mut todo = app.tree().roots().to_vec();
+        let mut action = None;
+        while let Some(id) = todo.pop() {
+            let tree = app.tree();
+            let d = tree.node(id).unwrap();
+            todo.extend(d.children.iter().copied());
+            let v = d.descriptor.view();
+            if matches!(v.props,Props::Button(p) if p.label=="Choose appointment")
+                || v.name.as_deref() == Some("Choose appointment")
+            {
+                action = Some(id);
+            }
+        }
+        let action = action.unwrap();
+        let QueryValue::Bounds(editor) = query(app, Query::Bounds(input)) else {
+            panic!()
+        };
+        let QueryValue::Bounds(action_rect) = query(app, Query::Bounds(action)) else {
+            panic!()
+        };
+        assert!(
+            action_rect.x >= editor.x
+                && action_rect.x + action_rect.width <= editor.x + editor.width + 0.5
+                && action_rect.y >= editor.y
+                && action_rect.y + action_rect.height <= editor.y + editor.height + 0.5,
+            "editor {editor:?}, action {action_rect:?}"
+        );
+        assert!(action_rect.width >= 24. && action_rect.width <= 40.);
+        let identity = host
+            .renderer()
+            .engine_id(input, glory::html::Part::Main)
+            .unwrap();
+        app.dispatch(action, Event::Activate).unwrap();
+        app.settle(16).unwrap();
+        assert_eq!(host.renderer().inspect(|d| d.top_layers().len()), 1);
+        assert_eq!(
+            host.renderer()
+                .engine_id(input, glory::html::Part::Main)
+                .unwrap(),
+            identity
+        );
+        app.clear().unwrap();
+        assert!(app.tree().is_empty());
+    }
+}
+#[test]
 fn native_date_input_four_themes_preserve_drafts_actual_editor_caret_geometry_and_pixels() {
     for theme in [
         Theme::blue_light(),
@@ -201,7 +271,8 @@ fn native_date_input_default_dialog_updates_same_editor_and_readonly_disabled_un
         let t = app.tree();
         let node = t.node(n).unwrap();
         todo.extend(node.children.iter().copied());
-        if matches!(node.descriptor.view().props,Props::Button(p) if p.label=="Choose native civil date")
+        if matches!(node.descriptor.view().props, Props::Button(_))
+            && node.descriptor.view().name.as_deref() == Some("Choose native civil date")
         {
             trigger = Some(n);
         }

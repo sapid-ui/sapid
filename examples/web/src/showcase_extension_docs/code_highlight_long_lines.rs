@@ -1,0 +1,4 @@
+use glory::prelude::*;
+pub fn demo(theme: sapid::Theme) -> impl Widget {
+    sapid::code_highlight().theme(theme).name("Long line source").source("let message = \"A long source line remains inside this code viewport. A long source line remains inside this code viewport. A long source line remains inside this code viewport. A long source line remains inside this code viewport. A long source line remains inside this code viewport. A long source line remains inside this code viewport. A long source line remains inside this code viewport. A long source line remains inside this code viewport. A long source line remains inside this code viewport. A long source line remains inside this code viewport. A long source line remains inside this code viewport. A long source line remains inside this code viewport. \";\n")
+}

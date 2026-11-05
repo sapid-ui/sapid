@@ -1,0 +1,4 @@
+use glory::prelude::*;
+pub fn demo(theme: sapid::Theme) -> impl Widget {
+    sapid::stack().theme(theme.clone()).gap(12.).fill((sapid::field("tags-editing-field").theme(theme.clone()).label("Edit project keywords").description("Paste several comma-separated keywords, or remove the last keyword with Backspace while the editor is empty.").control(|field|sapid::tags_input("tags-editing").field(field).default_value(vec!["Rust".into(),"Design".into()]).max_tags(4).placeholder("Add a keyword").clearable(true)),sapid::field("tags-unavailable-field").theme(theme.clone()).label("Unavailable keywords").control(|field|sapid::tags_input("tags-unavailable").field(field).default_value(vec!["Rust".into()]).enabled(false)),sapid::field("tags-readonly-field").theme(theme).label("Read-only keywords").control(|field|sapid::tags_input("tags-readonly").field(field).default_value(vec!["Rust".into()]).readonly(true))))
+}

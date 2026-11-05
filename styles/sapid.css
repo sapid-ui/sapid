@@ -5,6 +5,12 @@
 .sapid-password-toggle:where(:not(.sapid-unstyled)):focus-visible{outline:2px solid var(--sp-ring);outline-offset:-2px}
 .sapid-password-toggle:disabled{cursor:not-allowed}
 .sapid-password-input::-ms-reveal{display:none}
+.sapid-pin-input:where(:not(.sapid-unstyled)) .sapid-pin-editor:focus{outline:none}
+.sapid-select-value{text-align:start;text-overflow:ellipsis}
+.sapid-menu-item-label{text-overflow:ellipsis}
+.sapid-window-title{text-overflow:ellipsis}
+.sapid-floating-window:where(:not(.sapid-unstyled)) :is(.sapid-window-actions-toggle,.sapid-window-close,.sapid-window-command):focus-visible{outline:2px solid var(--sp-ring);outline-offset:-2px}
+.sapid-floating-window:where(:not(.sapid-unstyled)) :is(.sapid-window-actions-toggle,.sapid-window-close,.sapid-window-command):hover:enabled{background:var(--sp-disabled)!important}
 .sapid-app-shell:where(:not(.sapid-unstyled)){box-sizing:border-box}
 .sapid-app-shell:where(:not(.sapid-unstyled))>.sapid-shell-skip{position:absolute;left:12px;top:8px;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap;z-index:2}
 .sapid-app-shell:where(:not(.sapid-unstyled))>.sapid-shell-skip:focus{width:auto;height:auto;clip-path:none;padding:8px 12px;background:var(--sp-surface);outline:2px solid var(--sp-ring);border-radius:4px}
@@ -89,7 +95,6 @@
 .sapid-menu-item:where(:not(.sapid-unstyled)):disabled,.sapid-menu-item:where(:not(.sapid-unstyled)):has(input:disabled){opacity:.55;cursor:not-allowed}
 .sapid-menu-check:where(:not(.sapid-unstyled)) input,.sapid-menu-radio:where(:not(.sapid-unstyled)) input{width:16px;height:16px;margin:0;accent-color:var(--sp-accent)}
 .sapid-menu-submenu-trigger:where(:not(.sapid-unstyled)){justify-content:space-between}
-.sapid-menu-submenu-trigger:where(:not(.sapid-unstyled))::after{content:'›' / '';font-size:18px}
 .sapid-menu[dir=rtl]:where(:not(.sapid-unstyled))>.sapid-menu-submenu-trigger::after{content:'‹' / ''}
 .sapid-menu-radio-group:where(:not(.sapid-unstyled)){display:flex;flex-direction:column;gap:2px}
 .sapid-menu-separator:where(:not(.sapid-unstyled)){height:0;margin:4px 2px;border-top:1px solid var(--sp-border)}
@@ -111,7 +116,6 @@
 :is(.sapid-pill,.sapid-multi-select-tag,.sapid-tags-input-tag,.sapid-pill-input-tag):where(:not(.sapid-unstyled)){box-sizing:border-box;width:fit-content;flex-shrink:0;vertical-align:middle}
 :is(.sapid-pill,.sapid-multi-select-tag,.sapid-tags-input-tag,.sapid-pill-input-tag):where(:not(.sapid-unstyled))>:is(.sapid-pill-label,.sapid-tag-label){min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 :is(.sapid-tag-remove,.sapid-pill-remove):where(:not(.sapid-unstyled)):focus-visible{outline-offset:-1px}
-.sapid-multi-select-values:where(:not(.sapid-unstyled)):not(:empty),.sapid-tags-input-values:where(:not(.sapid-unstyled)):not(:empty){margin-bottom:6px}
 
 /* Editable choices receive the same focus/error treatment as TextField. */
 :is(.sapid-combobox,.sapid-tags-input,.sapid-pills-input):where(:not(.sapid-unstyled)){box-sizing:border-box;width:100%;outline:0;box-shadow:none;transition:border-color .12s}
@@ -232,3 +236,5 @@
   color: currentColor;
   opacity: 0.72;
 }
+
+.sapid-multi-select-disclosure:focus-visible{outline:2px solid var(--sp-ring);outline-offset:-2px}

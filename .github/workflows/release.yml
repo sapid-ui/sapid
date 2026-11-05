@@ -55,12 +55,7 @@ jobs:
       contents: write
       actions: read
     env:
-      CARGO_HOME: D:/BuildCache/sapid-release/cargo
-      CARGO_TARGET_DIR: D:/BuildCache/sapid-release/target
-      RUSTUP_HOME: D:/BuildCache/sapid-release/rustup
-      TEMP: D:/BuildCache/sapid-release/tmp
-      TMP: D:/BuildCache/sapid-release/tmp
-      PYTHONPYCACHEPREFIX: D:/BuildCache/sapid-release/pycache
+      CARGO_TARGET_DIR: ${{ github.workspace }}/sapid/target
       CARGO_INCREMENTAL: '0'
       CARGO_PROFILE_DEV_DEBUG: '0'
       CARGO_BUILD_JOBS: '2'
@@ -111,7 +106,7 @@ jobs:
           python-version: '3.13'
       - name: Prepare compiler and storage
         run: |
-          New-Item -ItemType Directory -Force $env:CARGO_HOME,$env:CARGO_TARGET_DIR,$env:RUSTUP_HOME,$env:TEMP | Out-Null
+          New-Item -ItemType Directory -Force $env:CARGO_TARGET_DIR,$env:TEMP | Out-Null
           rustup toolchain install 1.98.0 --profile minimal
           if ($LASTEXITCODE) { throw 'Toolchain installation failed' }
           rustup default 1.98.0

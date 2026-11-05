@@ -8,7 +8,7 @@ use crate::{CivilDate, DateSelection, DatesProvider, FieldControl};
 use glory::render::{
     Event, EventKind, InputEdit, InputEditCapture, InputEditRejection, SemanticId, Semantics,
 };
-use glory::style::{Display, FlexDirection, Length, Style};
+use glory::style::{Display, FlexDirection, Style};
 use glory::ui::{Result, WeakScope, Widget};
 use glory::{Cage, Scope, Vary};
 use std::{
@@ -578,36 +578,13 @@ impl Widget for DateInput {
             .node_ref(wrapper)
             .show_in(scope)?;
         let content = scope.child_in(wrapper.get().ok_or(glory::ui::Error::Gone)?)?;
-        let default_height = self
-            .common
-            .theme
-            .control(self.common.size)
-            .min_height
-            .unwrap_or(Length::Px(36.));
-        let (class, appearance) = self.common.appearance(
-            scope,
-            "sapid-date-input",
-            self.common
-                .theme
-                .control(self.common.size)
-                .width(Length::Px(240.)),
-        );
-        let style = scope.bond(move || {
-            let mut style = appearance.get();
-            style.width.get_or_insert(Length::Px(240.));
-            style.min_height.get_or_insert(default_height);
-            style
-        });
+        let input_content =
+            crate::input_actions::frame(&content, &self.common, "sapid-date-input-frame")?;
+        let class = self.common.classes(scope, "sapid-date-input");
         let id = self.common.node_ref.unwrap_or_else(|| scope.cage(None));
         let error = error_id.clone();
-        let mut input = glory::ui::input()
-            .class(class)
-            .style(style)
-            .value(initial_text.clone())
-            .node_ref(id)
-            .focus(self.common.focus)
-            .enabled(scope.bond(move || accepted.with(|s| s.enabled)))
-            .semantics(scope.bond(move || {
+        let input_metadata: Vary<Option<Box<Semantics>>> = scope
+            .bond(move || {
                 let mut meta = accepted.with(|s| s.metadata.clone());
                 if draft.with(|d| d.status.is_error()) {
                     meta.invalid = true;
@@ -616,7 +593,23 @@ impl Widget for DateInput {
                     }
                 }
                 Some(Box::new(meta))
-            }));
+            })
+            .into();
+        let style = crate::input_actions::display_style(
+            scope,
+            &self.common,
+            accepted.map(|s| s.enabled).into(),
+            input_metadata.clone(),
+            usize::from(self.picker),
+        );
+        let mut input = glory::ui::input()
+            .class(class)
+            .style(style)
+            .value(initial_text.clone())
+            .node_ref(id)
+            .focus(self.common.focus)
+            .enabled(scope.bond(move || accepted.with(|s| s.enabled)))
+            .semantics(input_metadata);
         if let Some(name) = self.common.name.take() {
             input = input.name(name);
         }
@@ -642,7 +635,7 @@ impl Widget for DateInput {
                 crate::appearance::observe(&mut handlers, owner, e)
             });
         }
-        input.show_in(&content)?;
+        input.show_in(&input_content)?;
         let node = id.get().ok_or(glory::ui::Error::Gone)?;
         let owner = scope.downgrade();
         let weak = Rc::downgrade(&state);
@@ -724,6 +717,11 @@ impl Widget for DateInput {
             crate::dialog(dialog_key)
                 .initial_focus(close)
                 .label(self.picker_label.clone())
+                .trigger_style(crate::input_actions::action_style(&self.common, 0))
+                .trigger_content({
+                    let color = self.common.theme.muted;
+                    move || crate::input_actions::glyph(crate::Icon::Calendar, color)
+                })
                 .title(self.picker_title.clone())
                 .close_label(self.picker_close.clone())
                 .open(open)
@@ -754,9 +752,10 @@ impl Widget for DateInput {
                             }
                         })
                 })
-                .show_in(&content)?;
+                .show_in(&input_content)?;
         }
         scope.retain(state)?;
+        scope.retain(input_content)?;
         scope.retain(content)
     }
 }

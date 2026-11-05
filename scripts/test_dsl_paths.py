@@ -1,4 +1,8 @@
 """Run the DSL gate's real path preparation and a real Windows Rust link smoke."""
+from pathlib import Path as _BuildPath
+import sys as _build_sys
+_build_sys.path.insert(0, str(_BuildPath(__file__).resolve().parents[1] / "scripts"))
+from local_build_paths import local_build_path
 import json
 import os
 from pathlib import Path
@@ -13,6 +17,7 @@ PWSH = shutil.which("pwsh")
 RUSTC = shutil.which("rustc")
 PREPARE = r"""
 $ErrorActionPreference = 'Stop'
+. (Join-Path (Split-Path -Parent $env:DSL_TEST_SCRIPT) 'local-build-paths.ps1')
 $tokens = $null; $errors = $null
 $ast = [Management.Automation.Language.Parser]::ParseFile($env:DSL_TEST_SCRIPT, [ref]$tokens, [ref]$errors)
 if ($errors.Count) { throw ($errors | Out-String) }
@@ -40,7 +45,7 @@ if ($env:DSL_TEST_NATIVE -eq '1') {
 @unittest.skipUnless(os.name == "nt" and PWSH and RUSTC, "Windows, PowerShell 7 and Rust are required")
 class DslBuildPathTests(unittest.TestCase):
     def setUp(self):
-        parent = Path(os.environ.get("BUILD_ROOT", "D:/BuildCache/sapid/fixes/gates")) / "dsl-path-tests"
+        parent = Path(os.environ.get("BUILD_ROOT", local_build_path('sapid/fixes/gates'))) / "dsl-path-tests"
         parent.mkdir(parents=True, exist_ok=True)
         self.directory = tempfile.TemporaryDirectory(prefix="standalone-", dir=parent)
         self.addCleanup(self.directory.cleanup)
@@ -49,7 +54,10 @@ class DslBuildPathTests(unittest.TestCase):
         self.env = os.environ.copy()
         self.env.update(DSL_TEST_SCRIPT=str(ROOT / "scripts/check-dsl.ps1"),
                         DSL_TEST_BUILD_ROOT=str(self.build),
-                        CARGO_HOME=os.environ.get("CARGO_HOME") or "D:/BuildCache/glory-semantic-ui/cargo")
+                        CARGO_HOME=os.environ.get("CARGO_HOME") or str(Path.home() / ".cargo"),
+                        CARGO_TARGET_DIR=str(self.root / "target"),
+                        TEMP=str(self.root / "tmp"), TMP=str(self.root / "tmp"))
+        (self.root / "tmp").mkdir()
 
     def prepare(self, native=False, **overrides):
         env = self.env | {"DSL_TEST_NATIVE": "1" if native else "0"} | overrides
@@ -70,8 +78,8 @@ class DslBuildPathTests(unittest.TestCase):
         prepared = self.prepare(native=True)
         self.assertEqual(prepared.returncode, 0, prepared.stdout + prepared.stderr)
         paths = json.loads(prepared.stdout)
-        self.assertEqual(Path(paths["target"]), self.build / "native-target")
-        self.assertEqual(Path(paths["temp"]), self.build / "tmp")
+        self.assertEqual(Path(paths["target"]), Path(self.env["CARGO_TARGET_DIR"]))
+        self.assertEqual(Path(paths["temp"]), Path(self.env["TEMP"]))
         self.assertEqual(paths["temp"], paths["tmp"])
         self.assertEqual(paths["cargo"], self.env["CARGO_HOME"])
         self.assertTrue(Path(paths["target"]).is_dir())
@@ -89,26 +97,31 @@ class DslBuildPathTests(unittest.TestCase):
         portable = self.prepare()
         self.assertEqual(portable.returncode, 0, portable.stdout + portable.stderr)
         paths = json.loads(portable.stdout)
-        self.assertEqual(Path(paths["target"]), self.build / "target")
+        self.assertEqual(Path(paths["target"]), Path(self.env["CARGO_TARGET_DIR"]))
         self.assertEqual(Path(paths["site"]), self.build / "dsl")
         self.assertTrue(Path(paths["temp"]).is_dir())
         native = self.prepare(native=True)
         self.assertEqual(native.returncode, 0, native.stdout + native.stderr)
         paths = json.loads(native.stdout)
-        self.assertEqual(Path(paths["target"]), self.build / "native-target")
-        self.assertEqual(Path(paths["temp"]), self.build / "tmp")
+        self.assertEqual(Path(paths["target"]), Path(self.env["CARGO_TARGET_DIR"]))
+        self.assertEqual(Path(paths["temp"]), Path(self.env["TEMP"]))
 
-    def test_foreign_build_root_is_rejected_before_any_directory_is_created(self):
-        result = self.prepare(native=True, DSL_TEST_BUILD_ROOT="C:/outside-dsl-build")
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn("BuildRoot must be inside D:/BuildCache/sapid", result.stderr)
-        self.assertFalse(self.build.exists())
+    def test_explicit_output_directory_is_accepted(self):
+        custom = self.root / "custom-output"
+        result = self.prepare(native=True, DSL_TEST_BUILD_ROOT=str(custom))
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        paths = json.loads(result.stdout)
+        self.assertEqual(Path(paths["site"]), custom / "dsl")
+        self.assertEqual(Path(paths["target"]), Path(self.env["CARGO_TARGET_DIR"]))
 
-    def test_foreign_cargo_home_is_rejected_before_any_directory_is_created(self):
-        result = self.prepare(native=True, CARGO_HOME="C:/outside-cargo-home")
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn("CARGO_HOME must be on D drive", result.stderr)
-        self.assertFalse(self.build.exists())
+    def test_caller_cargo_home_and_temp_are_preserved(self):
+        custom = self.root / "caller-cargo-home"
+        result = self.prepare(native=True, CARGO_HOME=str(custom))
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        paths = json.loads(result.stdout)
+        self.assertEqual(Path(paths["cargo"]), custom)
+        self.assertEqual(paths["temp"], self.env["TEMP"])
+        self.assertEqual(paths["tmp"], self.env["TMP"])
 
 
 if __name__ == "__main__":

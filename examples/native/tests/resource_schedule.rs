@@ -77,8 +77,8 @@ fn classes(app: &App, class: &str) -> Vec<NodeId> {
         })
         .collect()
 }
-fn button(app: &App, label: &str) -> NodeId {
-    all(app).into_iter().find(|id|matches!(app.tree().node(*id).unwrap().descriptor.view().props,Props::Button(p) if p.label.starts_with(label))).unwrap()
+fn button(app: &App, wanted: &str) -> NodeId {
+    all(app).into_iter().find(|id|{let tree=app.tree();let value=tree.node(*id).unwrap().descriptor.view();matches!(value.props,Props::Button(props) if value.name.as_ref().is_some_and(|name|name.starts_with(wanted))||props.label.starts_with(wanted))}).unwrap_or_else(||panic!("missing button: {wanted}"))
 }
 fn query(app: &App, q: Query) -> QueryValue {
     let result = Rc::new(RefCell::new(None));

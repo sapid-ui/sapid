@@ -469,6 +469,31 @@ fn composition_and_field_readonly_disable_the_live_popup_picker_channels() {
     app.clear().unwrap();
     assert_eq!(app.stats().nodes, 0);
 }
+#[test]
+fn editor_focus_proposes_controlled_popup_open_and_readonly_refuses_it() {
+    for readonly in [false, true] {
+        let app = App::memory();
+        let open = app.scope().cage(false);
+        let proposals = Rc::new(RefCell::new(Vec::new()));
+        let out = proposals.clone();
+        app.mount(
+            color_input("focus-proposal")
+                .open(open)
+                .readonly(readonly)
+                .on_open_change(move |next| out.borrow_mut().push(next)),
+        )
+        .unwrap();
+        let editor = nodes(&app, "sapid-color-editor")[0];
+        app.dispatch(editor, Event::FocusChanged(true)).unwrap();
+        assert_eq!(
+            *proposals.borrow(),
+            if readonly { vec![] } else { vec![true] }
+        );
+        assert!(!open.get());
+        let panel = nodes(&app, "sapid-popover")[0];
+        assert!(metadata(&app, panel).hidden);
+    }
+}
 
 #[test]
 fn standalone_picker_formats_a_live_real_input_form_proxy_without_losing_hsva() {
@@ -536,4 +561,218 @@ fn color_input_uses_only_the_explicit_eye_dropper_service_and_commits_its_result
     let editor = nodes(&app, "sapid-color-editor")[0];
     assert_eq!(input(&app, editor).value, "#12b886");
     assert_eq!((changes.get(), commits.get()), (1, 1));
+}
+
+#[test]
+fn controlled_invalid_blur_proposes_the_restored_value_before_commit() {
+    let app = App::memory();
+    let source = app.scope().cage("#228be6".to_owned());
+    let log = Rc::new(RefCell::new(Vec::new()));
+    let changes = log.clone();
+    let commits = log.clone();
+    app.mount(
+        color_input("controlled-correction")
+            .value(source)
+            .on_value_change(move |v| {
+                changes.borrow_mut().push(format!("change:{v}"));
+                source.revise(|old| *old = v);
+            })
+            .on_commit(move |v| commits.borrow_mut().push(format!("commit:{v}"))),
+    )
+    .unwrap();
+    let editor = nodes(&app, "sapid-color-editor")[0];
+    edit(&app, editor, "unfinished");
+    log.borrow_mut().clear();
+    app.dispatch(
+        editor,
+        Event::Commit {
+            value: "unfinished".into(),
+            revision: input(&app, editor).revision,
+        },
+    )
+    .unwrap();
+    assert_eq!(source.get(), "#228be6");
+    assert_eq!(*log.borrow(), ["change:#228be6", "commit:#228be6"]);
+    edit(&app, editor, "incomplete after Enter");
+    log.borrow_mut().clear();
+    app.dispatch(editor, Event::FocusChanged(false)).unwrap();
+    assert_eq!(source.get(), "#228be6");
+    assert_eq!(*log.borrow(), ["change:#228be6", "commit:#228be6"]);
+    app.dispatch(editor, Event::FocusChanged(false)).unwrap();
+    assert_eq!(log.borrow().len(), 2);
+}
+
+#[test]
+fn blur_correction_respects_opt_out_composition_and_current_unavailable_state() {
+    for mode in 0..5 {
+        let app = App::memory();
+        let value = app.scope().cage("#228be6".to_owned());
+        let readonly = app.scope().cage(false);
+        let enabled = app.scope().cage(true);
+        let commits = app.scope().cage(0);
+        app.mount(
+            color_input("blur-policy")
+                .show_picker(false)
+                .value(value)
+                .fix_on_blur(mode != 1)
+                .readonly(readonly)
+                .enabled(enabled)
+                .on_value_change(move |v| value.revise(|old| *old = v))
+                .on_commit(move |_| commits.revise(|n| *n += 1)),
+        )
+        .unwrap();
+        let editor = nodes(&app, "sapid-color-editor")[0];
+        edit(&app, editor, "draft");
+        app.scope()
+            .batch(|| {
+                match mode {
+                    2 => {
+                        app.dispatch(editor, Event::Composition { active: true })
+                            .unwrap();
+                    }
+                    3 => readonly.revise(|v| *v = true),
+                    4 => enabled.revise(|v| *v = false),
+                    _ => {}
+                }
+                app.dispatch(editor, Event::FocusChanged(false)).unwrap();
+            })
+            .unwrap();
+        assert_eq!(
+            value.get(),
+            if mode == 0 { "#228be6" } else { "draft" },
+            "mode {mode}"
+        );
+        assert_eq!(commits.get(), usize::from(mode == 0));
+    }
+}
+
+#[test]
+fn swatches_only_input_accepts_controlled_popup_state_and_proposes_selection_and_close() {
+    let app = App::memory();
+    let opened = app.scope().cage(true);
+    let value = app.scope().cage("#228be6".to_owned());
+    let requests = app.scope().cage(Vec::new());
+    app.mount(
+        color_input("controlled-palette-only")
+            .show_picker(false)
+            .swatches(["#fa5252", "#12b886"])
+            .open(opened)
+            .value(value)
+            .close_on_color_swatch_click(true)
+            .on_value_change(move |v| value.revise(|old| *old = v))
+            .on_open_change(move |v| {
+                requests.revise(|values| values.push(v));
+                opened.revise(|old| *old = v);
+            }),
+    )
+    .unwrap();
+    assert!(nodes(&app, "sapid-color-plane").is_empty());
+    let swatch = nodes(&app, "sapid-color-swatch")
+        .into_iter()
+        .find(|id| {
+            app.tree()
+                .node(*id)
+                .unwrap()
+                .descriptor
+                .view()
+                .name
+                .as_deref()
+                == Some("#fa5252")
+        })
+        .unwrap();
+    app.dispatch(swatch, Event::Activate).unwrap();
+    assert_eq!(value.get(), "#fa5252");
+    assert_eq!(requests.get(), [false]);
+    assert!(!opened.get());
+    let preview = nodes(&app, "sapid-color-input-preview")[0];
+    app.dispatch(preview, Event::Activate).unwrap();
+    assert_eq!(requests.get(), [false, true]);
+    assert!(opened.get());
+}
+
+#[test]
+fn palette_pressed_state_follows_the_accepted_color_and_controlled_close_proposes_once() {
+    let app = App::memory();
+    let source = app.scope().cage(Hsva::default());
+    app.mount(
+        color_picker("selection-mark")
+            .value(source)
+            .swatches(["#fa5252", "#12b886"])
+            .on_value_change(move |v| source.revise(|old| *old = v)),
+    )
+    .unwrap();
+    let swatches = nodes(&app, "sapid-color-picker-swatch");
+    let first = swatches[0];
+    app.dispatch(first, Event::Activate).unwrap();
+    assert_eq!(metadata(&app, first).pressed, Some(true));
+    assert_eq!(metadata(&app, swatches[1]).pressed, Some(false));
+    app.clear().unwrap();
+    let opened = app.scope().cage(true);
+    let requests = app.scope().cage(Vec::new());
+    app.mount(
+        color_input("swatch-close")
+            .open(opened)
+            .swatches(["#fa5252"])
+            .close_on_color_swatch_click(true)
+            .on_open_change(move |v| {
+                requests.revise(|old| old.push(v));
+                opened.revise(|old| *old = v);
+            }),
+    )
+    .unwrap();
+    let swatch = nodes(&app, "sapid-color-swatch")
+        .into_iter()
+        .find(|id| {
+            app.tree()
+                .node(*id)
+                .unwrap()
+                .descriptor
+                .view()
+                .name
+                .as_deref()
+                == Some("#fa5252")
+        })
+        .unwrap();
+    app.dispatch(swatch, Event::Activate).unwrap();
+    assert!(!opened.get());
+    assert_eq!(requests.get(), vec![false]);
+}
+
+#[test]
+fn inset_preview_reopens_a_focused_editor_once_and_rechecks_a_replaced_loading_slot() {
+    let app = App::memory();
+    let opened = app.scope().cage(false);
+    let loading = app.scope().cage(false);
+    let requests = app.scope().cage(Vec::new());
+    app.mount(
+        color_input("preview-action")
+            .open(opened)
+            .loading(loading)
+            .loading_position(sapid::ColorInputSectionPosition::Left)
+            .on_open_change(move |v| {
+                requests.revise(|values| values.push(v));
+                opened.revise(|old| *old = v);
+            }),
+    )
+    .unwrap();
+    let editor = nodes(&app, "sapid-color-editor")[0];
+    let preview = nodes(&app, "sapid-color-input-preview")[0];
+    app.dispatch(editor, Event::FocusChanged(true)).unwrap();
+    opened.revise(|v| *v = false);
+    app.flush().unwrap();
+    requests.revise(Vec::clear);
+    app.dispatch(preview, Event::Activate).unwrap();
+    app.dispatch(preview, Event::Activate).unwrap();
+    assert_eq!(requests.get(), vec![true]);
+    opened.revise(|v| *v = false);
+    app.flush().unwrap();
+    requests.revise(Vec::clear);
+    app.scope()
+        .batch(|| {
+            loading.revise(|v| *v = true);
+            app.dispatch(preview, Event::Activate).unwrap();
+        })
+        .unwrap();
+    assert!(requests.get().is_empty());
+    assert!(!opened.get());
 }

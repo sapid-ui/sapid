@@ -1,5 +1,20 @@
 # Tree and FileTree
 
+## File-tree guide
+
+The public usage example is a project file tree with branch/file graphics,
+connecting guides, real keyboard/pointer selection and readable selected-key
+feedback. Controlled refusal, owner switches and bulk data probes remain
+acceptance concerns rather than the primary reader flow.
+
+All eight detail sections now include the complete Rust module actually compiled
+for its preview, including its data and helpers: controlled expansion/selection,
+bulk expansion, cascading and independent checks, application-owned deferred
+children, external search, drag/drop proposals and passive custom labels.
+The deferred example publishes local sample data and performs no implicit I/O.
+The existing tree controller, finite model and shared host navigation remain the
+same; these guides do not claim arbitrary upstream hooks or full API compatibility.
+
 `tree(key).nodes(source)` renders real Tree/TreeItem semantics with independent
 focus, expansion and selection. `TreeNode` supplies a stable key, explicit parent,
 plain-text label, Leaf/Branch/Lazy kind and disabled flag. Current data is bounded

@@ -32,7 +32,7 @@ async(hostPage,baseURL='http://127.0.0.1:8794')=>{
       await page.getByRole('button',{name:'Before colors',exact:true}).focus();await page.keyboard.press('Tab');assert(await h.evaluate(e=>e===document.activeElement),`${mode}: hue tab stop`);await page.keyboard.press('Tab');assert(await a.evaluate(e=>e===document.activeElement),`${mode}: alpha tab stop without passive trail focus`);
       const cdp=await context.newCDPSession(page);const ax=await cdp.send('Accessibility.getFullAXTree');await cdp.detach();assert(ax.nodes.some(n=>n.role?.value==='slider'&&n.name?.value==='Hue channel')&&ax.nodes.some(n=>n.role?.value==='slider'&&n.name?.value==='Alpha channel'),`${mode}: actual two named AX sliders`);
       await page.setViewportSize({width:390,height:844});await tick();assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`${mode}: mobile geometry`);await page.setViewportSize({width:1100,height:900});
-      if(hue==='green'&&scheme==='dark'&&hydrate)await page.screenshot({path:'D:/BuildCache/sapid/color-sliders-green-dark-hydrate.png',fullPage:true});
+      if(hue==='green'&&scheme==='dark'&&hydrate)await page.screenshot({path:'target/verification/sapid/color-sliders-green-dark-hydrate.png',fullPage:true});
       await page.evaluate(()=>demo.unmount_color_sliders());assert(await page.locator('#app').evaluate(e=>e.childElementCount===0),`${mode}: Owner cleanup`);
       reports.push({suite:mode,status:'passed',checks:'exact numeric channels, continuous color and alpha backing gradients without stitched cells, Field/AX, fractional/RTL keys, controlled refusal and same-tick commit acceptance, captured pointer, independent RGB updates, stable editor, readonly/disabled, mobile, retirement'});
     }

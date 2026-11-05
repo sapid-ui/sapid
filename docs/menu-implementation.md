@@ -54,12 +54,50 @@ Menu 使用共享非模态 Layer，包含实际浏览器 top layer、侧向锚�
 CheckboxGroup/Chip 的外部多选输入：借用验证长度和键预算后才 clone；非法百万项来源
 不会先复制整份 Vec，也不会从事件提出无效选择。
 
-`Semantics.popup: Option<PopupKind>` 是唯一 popup 真值，目前为 Dialog/Menu。
+`Semantics.popup: Option<PopupKind>` 是唯一 popup 真值，涵盖 Dialog/Menu/Listbox/Tree。
 旧布尔字段已删除。HTML full-shape differential oracle 覆盖 MenuItem/Radio/Layer/Role
-和默认 reset，SSR/CSR 属性形状相同。经典 stream 仍使用 HTML v3 的有限属性/属性值编辑，
+和默认 reset，SSR/CSR 属性形状相同。初次经典 stream 验收使用 HTML v3 的有限属性/属性值编辑，
 验证 PopupKind Set/Clear、checked property、hidden reset、侧锚点和 End rekey。
 Hydration 全子树验证通过后才修复 inactive/disabled Check 的脏 checked；活动可交互输入
 仍由正常语义事件接受用户编辑。隐藏菜单不会因被过滤的脏事件残留 DOM/ARIA 不一致。
+
+## 2026-11-05 组合与搜索
+
+`menu_label(key, text)` 提供独立的非交互组标题，可通过 `visible` 筛选。
+动作项和子菜单支持 `left_section` / `right_section`，内容遵循共享 Button 的被动
+Text/Graphic/Group 合同，保留完整 label 作为可访问名称和 typeahead 文本。
+图形可使用 `Icon::drawing(color)`；不允许在动作内部嵌套按钮或编辑器。
+Checkbox/Radio 保留其内在标签和勾选控件，不能配置动作专用的内容槽。
+子菜单默认显示方向图标；显式 right_section 替换它。
+
+`Menu` / `DropdownMenu` / `MenuSubmenu` 的 `width` 设置面板宽度，有限范围为
+80–1000px。`position(AnchorPlacement)` 复用共享定位、翻转和碰撞处理；子菜单可独立
+覆盖宽度和位置。根的 style 负责面板，子菜单的 style 负责触发项；单独的 width 不改变触发器宽度。
+默认面板和分隔线使用 typed 边框，禁用触发器有原生与无 CSS 下都可见的状态。
+
+```rust
+dropdown_menu("search-actions")
+    .search(menu_search().value(query)
+        .on_value_change(move |next| query.revise(|old| *old = next)))
+    .item(menu_item("save").label("Save")
+        .visible(query.map(|query| "save".contains(query.as_str()))))
+```
+
+MenuSearch 的输入、选区、IME、拒绝恢复沿用 TextField。上下键仅改变当前高亮，
+Enter 调用同一个动作/勾选/单选/子菜单回调；输入和菜单项的真实身份不会因筛选而替换。
+左右/Home/End 保持光标编辑，Tab 使用共享 ExitMenu。查询最多 4096 UTF-8 字节。
+过滤由应用的 visible 来源决定，父菜单需在子项匹配时保持可见；没有内置业务来源扫描。
+筛选用隐藏范围保留整个 Check 标签/输入及其 Owner，跳过禁用/隐藏项；当前弱动作注册随
+Owner 退休，没有访问历史。应用可组合条件 menu_label 展示空结果。
+
+默认 `clear_on_close(true)` 在逻辑关闭后提出空查询；受控来源可以拒绝。
+`clear_on_close(false)` 保留文本。没有声明等待尚未实现的菜单退出动画完成。
+Glory 的独立 menu_search 语义和有限命令在浏览器与 Apace 中路由；原生 Click 与
+PointerDown 都保留当前搜索输入焦点，AX 仅解析当前可用的菜单项。Wry 显式拒绝该能力。
+这些模型/CPU 检查不表示系统菜单服务或真实读屏器、移动键盘已经验收。
+
+公开页面使用独立主例和六段精确编译源码，覆盖内容、受控拒绝、勾选/单选、查询/空结果、
+定位/子菜单、键盘/RTL/禁用/unstyled；快捷键注释仅为展示，应用另行注册全局快捷键。
 
 ## 验收证据
 

@@ -85,3 +85,11 @@ classic cases on that same artifact. The current protocol is HTML11; its
 independent Environment upgrade does not change these focus policy fields.
 Actual OS IME, screen-reader announcements and platform AT client acceptance
 require their own evidence; protocol tests do not establish them.
+
+## Shipping form examples
+
+The public FocusTrap page now builds real labeled shipping editors. It passes
+the address FieldControl identity through a reactive configuration before
+activation, contains Tab and restores the live invoking button on completion.
+Policy and nested-scope examples have separate full sources and anchors.
+See [miscellaneous page contracts](misc-pages.md#focus-portal-and-hidden-text).
