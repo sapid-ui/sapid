@@ -265,7 +265,9 @@ fn header(
                             ),
                         )),
                     view().class("site-header-tools").fill((
-                        text().class("site-version").content("v0.6.1"),
+                        text()
+                            .class("site-version")
+                            .content(format!("v{}", sapid::VERSION)),
                         view().class("site-search").fill((
                             when(is_empty, || {
                                 text()

@@ -4,6 +4,9 @@
 //! controlled state, event ordering, theming, and current accessibility scope.
 #![doc = include_str!("../README.md")]
 
+/// The version of the Sapid package linked into this application.
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+
 mod accordion;
 mod actions;
 mod affix;

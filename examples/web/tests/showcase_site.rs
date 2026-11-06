@@ -161,8 +161,9 @@ fn representative_ssr_documents_render_in_all_themes_without_frames() {
             assert!(html.contains("sapid-site"));
             assert!(!html.contains("<iframe"));
             assert!(html.contains("Search widgets"));
-            assert!(html.contains("v0.6.1"));
-            assert!(!html.contains("v0.6.0"));
+            assert!(html.contains(&format!("v{}", sapid::VERSION)));
+            assert!(html.contains("v0.7.0"));
+            assert!(!html.contains("v0.6.1"));
             if !id.is_empty() {
                 assert!(html.contains("site-code"));
                 assert!(html.contains(">Tested<") || html.contains(">Model only<"));

@@ -1,6 +1,6 @@
 # Releases
 
-Publish Glory 0.6.1 and its exact engine prerequisites before Sapid 0.6.1.
+Publish Glory 0.7.0 and its exact engine prerequisites before Sapid 0.7.0.
 Library, example and benchmark locks remain local and ignored; generate and
 validate them without adding them to Git.
 
@@ -9,11 +9,11 @@ Push an annotated `v<version>` tag after updating manifests, local resolutions a
 The release workflow first resolves the requested tag to a commit SHA. Repository checks and the publisher both check out that frozen SHA before publishing the dependency-ordered `release.json` allowlist to crates.io and creating a GitHub Release. A push must still resolve to the event's commit; a tag that moves after validation is rejected before publication.
 Configure the repository Actions secret `CARGO_REGISTRY_TOKEN`. Never commit credentials.
 Run `python scripts/release.py` with the approved Cargo artifact directory to validate the plan locally.
-Windows Cargo homes, build output and compiler temporaries belong under `D:/BuildCache`.
+Builds inherit the caller environment and normal project configuration. Do not redirect Cargo home, target or TEMP/TMP to a global cache root. Obtain artifact paths from `cargo metadata --no-deps --format-version 1` in the owning workspace; do not use or recreate the retired `D:/BuildCache` directory.
 
 If workflow environment setup needs repair after a tag was pushed, fix the workflow on main and run the Release workflow manually with that existing tag. The tag is resolved once, and both validation and publication use the resulting SHA. Release tooling and browser acceptance sources come from the immutable workflow revision, so repaired validation can also publish an older product tag. The publisher still requires the tag's exact version and commit. Do not move the tag or overwrite a published crate version.
 
-Browser acceptance scripts are independently versioned by the workflow commit. Release builds and Rust/native/DSL checks use the frozen product SHA. The browser harness runs against those exact built fixtures; its own source hashes, fixture hashes and product/harness revisions are preserved as CI artifacts and attached to the GitHub Release. This permits correcting test-driver assumptions without changing the released product source or weakening its assertions. CI runs the browser suites serially to avoid contention between their layout and focus checks.
+Browser acceptance scripts are independently versioned by the workflow commit. Release builds and Rust/native/DSL checks use the frozen product SHA. The browser harness runs against those exact built fixtures; its own source hashes, fixture hashes and product/harness revisions are preserved as CI artifacts and attached to the GitHub Release. This permits correcting test-driver assumptions without changing the released product source or weakening its assertions. Routine CI uses two isolated browser workers, with clipboard suites serialized. Release acceptance retains the full page and palette matrix; routine commits keep behavior suites and representative showcase checks.
 
 Successful checks return an exact attempt-specific artifact name and a SHA-256 digest of its provenance. Failed or partial browser runs use a separate artifact name. Before Cargo metadata or any registry operation, the publisher verifies that provenance digest, the complete report digest, `complete: true`, no errors, the entire suite list and every suite source hash against the workflow checkout. Provenance must identify this repository and workflow run, the frozen product SHA, the Glory repository/pinned SHA and the acceptance SHA; the publisher's local product, Glory and harness checkouts must agree. CI also verifies the report's fixture hashes against the actual built files before recording successful provenance.
 
