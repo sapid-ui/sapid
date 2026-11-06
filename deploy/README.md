@@ -46,8 +46,12 @@ directory is checked before compilation. Individual assets must fit Pages'
 Cargo caches use `cargo metadata --no-deps --format-version 1` in the explicit
 library, web, native and Glory workspaces to find their actual target directories.
 They retain compiled debug/release/WASM outputs and the caller's Cargo downloads,
-with separate compiler/workload keys and cross-commit restore prefixes. They do
-not cache local lockfiles or move Cargo home/target/TEMP. Verified bindgen downloads,
+with separate compiler/workload keys based on manifests, resolved dependency
+locks and build/check configuration. Source-only commits reuse that key, avoiding a full cache upload per commit.
+Completed CI jobs prune disposable test/application executables and debug symbols;
+build-script executables, proc-macro DLLs and native libraries remain cached.
+Cleanup preflights every target under the workspace and rejects directory links.
+The cache does not contain project lockfiles or move Cargo home/target/TEMP. Verified bindgen downloads,
 npm downloads and Chromium have a separate tools cache; Node modules are always
 installed from the committed lockfile before a fresh receipt is recorded.
 

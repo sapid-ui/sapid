@@ -137,6 +137,7 @@ jobs:
           if ($LASTEXITCODE) { throw 'Chromium installation failed' }
       - name: Validate release, inventory and showcase sources
         run: |
+          & ../ci-support/scripts/test-ci-cache.ps1 -ProjectRoot $PWD.Path
           python -m unittest discover -s scripts -p test_release.py
           if ($LASTEXITCODE) { throw 'Release tooling tests failed' }
           python scripts/widget-plan.py --check
@@ -210,6 +211,9 @@ jobs:
             ${{ github.workspace }}/sapid/target/verification/sapid/browser-provenance.json
             ${{ github.workspace }}/sapid/target/verification/sapid/library-Cargo.lock
           if-no-files-found: ignore
+
+      - name: Trim disposable Cargo cache binaries
+        run: '& ../ci-support/scripts/ci-cache-paths.ps1 -ProjectRoot $PWD.Path -OutputFile "" -Prune'
 
   deploy:
     needs: [widgets, showcase]

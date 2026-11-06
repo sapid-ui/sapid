@@ -22,8 +22,10 @@ runs:
       uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
       with:
         path: ${{ steps.paths.outputs.paths }}
-        key: sapid-cargo-v1-${{ runner.os }}-${{ inputs.toolchain }}-${{ inputs.scope }}-${{ hashFiles('sapid/**/Cargo.toml', 'glory/**/Cargo.toml', 'apace/**/Cargo.toml', 'takia/**/Cargo.toml', 'wingy/**/Cargo.toml', 'sapid/deploy/dependencies.json') }}-${{ github.sha }}
+        key: sapid-cargo-v2-${{ runner.os }}-${{ inputs.toolchain }}-${{ inputs.scope }}-${{ hashFiles('sapid/**/Cargo.toml', 'glory/**/Cargo.toml', 'apace/**/Cargo.toml', 'takia/**/Cargo.toml', 'wingy/**/Cargo.toml', 'sapid/deploy/dependencies.json') }}-${{ hashFiles('sapid/Cargo.lock', 'sapid/examples/web/Cargo.lock', 'sapid/examples/native/Cargo.lock', 'glory/Cargo.lock') }}-${{ hashFiles('sapid/.github/workflows/*.yml', 'sapid/.github/actions/build-cache/action.yml', 'sapid/scripts/check*.ps1', 'sapid/scripts/ci-cache-paths.ps1') }}
         restore-keys: |
+          sapid-cargo-v2-${{ runner.os }}-${{ inputs.toolchain }}-${{ inputs.scope }}-${{ hashFiles('sapid/**/Cargo.toml', 'glory/**/Cargo.toml', 'apace/**/Cargo.toml', 'takia/**/Cargo.toml', 'wingy/**/Cargo.toml', 'sapid/deploy/dependencies.json') }}-
+          sapid-cargo-v2-${{ runner.os }}-${{ inputs.toolchain }}-${{ inputs.scope }}-
           sapid-cargo-v1-${{ runner.os }}-${{ inputs.toolchain }}-${{ inputs.scope }}-${{ hashFiles('sapid/**/Cargo.toml', 'glory/**/Cargo.toml', 'apace/**/Cargo.toml', 'takia/**/Cargo.toml', 'wingy/**/Cargo.toml', 'sapid/deploy/dependencies.json') }}-
           sapid-cargo-v1-${{ runner.os }}-${{ inputs.toolchain }}-${{ inputs.scope }}-
     - name: Restore verified tools and npm downloads

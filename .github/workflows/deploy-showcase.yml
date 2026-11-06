@@ -138,3 +138,5 @@ jobs:
           path: ${{ env.BUILD_ROOT }}/acceptance
           if-no-files-found: warn
           retention-days: 14
+      - name: Trim disposable Cargo cache binaries
+        run: '& ../ci-support/scripts/ci-cache-paths.ps1 -ProjectRoot $PWD.Path -OutputFile "" -Prune'
