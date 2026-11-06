@@ -4,6 +4,15 @@ Publish Glory 0.7.0 and its exact engine prerequisites before Sapid 0.7.0.
 Library, example and benchmark locks remain local and ignored; generate and
 validate them without adding them to Git.
 
+A Sapid-only fix can ship as a Sapid patch release using the existing compatible
+Glory release. Publish a new Glory version only when the fix also changes Glory;
+website-only style or documentation updates can deploy without a crate release.
+
+Routine CI follows the [change-scope policy](docs/ci-scopes.md): documentation
+and public showcase styles do not run the entire Rust/native suite. Release
+validation always runs the complete checks and page/palette matrix against the
+frozen source, regardless of the paths changed by the release commit.
+
 
 Push an annotated `v<version>` tag after updating manifests, local resolutions and reviewed `releases/<version>.md` notes.
 The release workflow first resolves the requested tag to a commit SHA. Repository checks and the publisher both check out that frozen SHA before publishing the dependency-ordered `release.json` allowlist to crates.io and creating a GitHub Release. A push must still resolve to the event's commit; a tag that moves after validation is rejected before publication.

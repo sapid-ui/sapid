@@ -34,4 +34,6 @@ shortcut or an empty widget provenance result.
 
 Documentation checks reject newly introduced broken repository links and links
 whose targets were removed. They preserve historical broken references, skip code
-examples and external/machine-local URLs, and make no network requests.
+examples and external/machine-local URLs, and make no network requests. Literal
+Rust `include_str!`/`include_bytes!` inputs ending in `.md` must still exist, so
+deleting a compile-time README cannot silently pass the documentation path.
