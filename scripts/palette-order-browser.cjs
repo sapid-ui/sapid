@@ -4,10 +4,14 @@ const { chromium, base, outputPath, outputRoot, writeReport } = require('./showc
 const output = process.env.SAPID_PALETTE_REPORT || outputPath('palette-order-browser.json');
 (async () => {
   const browser = await chromium.launch({ headless: true });
-  const report = { base, checks: [], errors: [] };
+  const report = { base, checks: [], errors: [], diagnostics: [] };
+  let page;
   try {
     const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
-    const page = await context.newPage();
+    page = await context.newPage();
+    const record = diagnostic => { if (report.diagnostics.length < 100) report.diagnostics.push(diagnostic); };
+    page.on('requestfailed', request => record({ type: 'requestfailed', url: request.url(), error: request.failure()?.errorText }));
+    page.on('response', response => { if (response.status() >= 400) record({ type: 'response', url: response.url(), status: response.status() }); });
     page.on('pageerror', error => report.errors.push(String(error)));
     const ready = () => page.waitForFunction(() => window.ready === true);
     const settled = () => page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
@@ -63,6 +67,10 @@ const output = process.env.SAPID_PALETTE_REPORT || outputPath('palette-order-bro
     }
   } catch (error) {
     report.errors.push(error.stack || String(error));
+    report.url = page?.url();
+    if (page) {
+      try { await page.screenshot({ path: outputPath('palette-order-failure.png'), timeout: 5000 }); } catch {}
+    }
   } finally {
     await browser.close();
     fs.writeFileSync(output, JSON.stringify(report, null, 2));

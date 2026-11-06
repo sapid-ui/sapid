@@ -28,7 +28,7 @@ test('quick coverage retains every behavior suite and skips only the redundant a
   const full = showcaseSuites(root, temporary, 'full'), quick = showcaseSuites(root, temporary, 'quick');
   assert.deepEqual(quick.map(suite => suite.id), full.filter(suite => suite.id !== 'all-pages-docs').map(suite => suite.id));
   assert.equal(quick.find(suite => suite.id === 'theme-export').after, 'theme-studio');
-  for (const id of ['showcase', 'theme-studio', 'buttons-docs', 'combobox-docs']) {
+  for (const id of ['showcase', 'theme-studio', 'theme-export', 'buttons-docs', 'combobox-docs']) {
     assert.equal(quick.find(suite => suite.id === id).exclusive, true);
   }
   assert.throws(() => showcaseSuites(root, temporary, 'invalid'), /Unknown showcase mode/);

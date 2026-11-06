@@ -106,7 +106,7 @@ function showcaseSuites(root, output, mode = 'full') {
       copiedExport: path.join(artifactRoot, 'studio-export.rs') },
     { ...browser('palette-order', 'palette-order-browser.cjs'), report: path.join(output, 'palette-order-browser.json') },
     { id: 'theme-export', program: process.env.SAPID_PWSH || 'pwsh', source: script('check-theme-export.ps1'),
-      args: ['-NoProfile', '-File', script('check-theme-export.ps1')], after: 'theme-studio' },
+      args: ['-NoProfile', '-File', script('check-theme-export.ps1')], after: 'theme-studio', exclusive: true },
     browser('navigation', 'showcase-navigation-browser.cjs'),
     browser('routing', 'showcase-routing-browser.cjs'),
     browser('navigation-docs', 'showcase-remediation-navigation.cjs', 'navigation-remediation.json'),
@@ -215,7 +215,9 @@ async function runAcceptance(options) {
       result.durationMs = Date.now() - started;
       save();
     }
-    // An exclusive suite owns the desktop clipboard. Dependencies (the copied
+    // Clipboard suites and the Rust export compiler run alone: compiling the
+    // export while a new browser initializes WASM can exhaust a small runner.
+    // Dependencies (the copied
     // theme export) only become runnable after their producer has passed.
     const active = new Map();
     while (summary.suites.some(result => result.status === 'pending') || active.size) {
