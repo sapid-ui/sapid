@@ -67,7 +67,7 @@ const { chromium, base, outputPath, outputRoot, writeReport } = require('./showc
   await button('Copy theme code').click();await page.waitForFunction(()=>document.querySelector('.site-saved-actions>.sapid-copy-button').textContent==='Copied');assert.deepEqual(await actionPositions(),originalActionPositions);ok('Copy feedback preserves theme action positions');await page.waitForTimeout(100);source=await page.evaluate(()=>navigator.clipboard.readText());assert(source.includes('"custom-1"'));
   fs.writeFileSync(outputPath('studio-export.rs'),source);ok('Save adds selected custom header swatch, full-page preview and copy action');
   await go('/showcase.html?widget=modal&theme=custom-1&scheme=dark');
-  await button('Open modal').click();
+  await page.locator('.site-preview .site-demo').first().getByRole('button',{name:'Edit profile',exact:true}).click();
   const dialog=page.getByRole('dialog',{name:'Edit your profile'});await dialog.waitFor();
   await until(async()=>await dialog.evaluate(e=>getComputedStyle(e,'::backdrop').backgroundColor)==='rgba(40, 28, 64, 0.4)','custom backdrop color');
   await page.keyboard.press('Escape');ok('Modal backdrop reads the selected palette override');

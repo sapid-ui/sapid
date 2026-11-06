@@ -150,6 +150,7 @@ jobs:
           sparse-checkout: |
             .gitattributes
             scripts/browser.cjs
+            scripts/showcase-browser-env.cjs
             scripts/release.py
             scripts/library_lock.py
             examples/web

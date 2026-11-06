@@ -120,7 +120,7 @@ jobs:
           if ($LASTEXITCODE) { throw 'Pinned audit installation failed' }
       - name: Regression checks for the audit gate
         run: |
-          node --test scripts/test_showcase_acceptance.cjs
+          node --test scripts/test_showcase_acceptance.cjs scripts/test_browser_fixture.cjs
           if ($LASTEXITCODE) { throw 'Showcase runner regressions failed' }
           python -m unittest discover -s scripts -p test_audit.py
           if ($LASTEXITCODE) { throw 'Audit gate regressions failed' }

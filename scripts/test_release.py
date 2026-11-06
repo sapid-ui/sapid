@@ -485,6 +485,26 @@ class ReleaseProvenanceTests(unittest.TestCase):
                 self.write_evidence()
                 self.assert_rejected_before_registry('Invalid browser acceptance report')
 
+    def test_configured_fixture_origin_requires_the_exact_effective_suite_sources(self):
+        runner = self.harness / 'scripts/browser.cjs'
+        runner.write_bytes(runner.read_bytes() + b'// verifyServedArtifacts\n')
+        source = b"async page => page.goto('http://127.0.0.1:8794/product.js')"
+        (self.harness / 'examples/web/acceptance.js').write_bytes(source)
+        self.report['sourceHashes'] = {'acceptance.js': hashlib.sha256(source).hexdigest()}
+        self.report['fixtureBase'] = 'http://127.0.0.1:8914'
+        self.report['effectiveSourceHashes'] = {'acceptance.js': hashlib.sha256(
+            source.replace(b'http://127.0.0.1:8794', b'http://127.0.0.1:8914')).hexdigest()}
+        self.write_report()
+        publisher.acceptance_report(self.results, self.harness, self.fixtures)
+        original = dict(self.report)
+        for mutation in [dict(fixtureBase='http://example.com'), dict(fixtureBase='http://127.0.0.1:99999'),
+                         dict(effectiveSourceHashes={}), dict(fixtureBase='http://127.0.0.1:8915')]:
+            with self.subTest(mutation=mutation):
+                self.report = {**original, **mutation}
+                self.write_report()
+                with self.assertRaisesRegex(SystemExit, 'Invalid browser acceptance report'):
+                    publisher.acceptance_report(self.results, self.harness, self.fixtures)
+
     def test_results_or_runner_digest_changes_are_rejected(self):
         self.results.write_bytes(self.results.read_bytes() + b'\n')
         self.assert_rejected_before_registry('digest differs')

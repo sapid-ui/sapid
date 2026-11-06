@@ -2,7 +2,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
-const { chromium, outputRoot } = require('./showcase-browser-env.cjs');
+const { outputRoot } = require('./showcase-browser-env.cjs');
 const suites = ['style-acceptance.js', 'acceptance.js', 'composite-acceptance.js', 'accordion-dynamic-acceptance.js', 'tabs-dynamic-acceptance.js', 'collapse-motion-acceptance.js', 'overflow-list-acceptance.js', 'table-of-contents-acceptance.js', 'table-acceptance.js', 'data-table-acceptance.js', 'data-table-server-acceptance.js', 'code-acceptance.js', 'json-viewer-acceptance.js', 'carousel-acceptance.js', 'rich-editor-acceptance.js', 'rich-editor-stream-acceptance.js', 'rich-editor-extra-acceptance.js', 'files-acceptance.js', 'files-stream-acceptance.js', 'copy-button-acceptance.js', 'floating-window-acceptance.js', 'tour-acceptance.js', 'tree-acceptance.js', 'tree-choices-acceptance.js', 'charts-acceptance.js', 'plots-acceptance.js', 'lightbox-acceptance.js', 'json-tree-acceptance.js', 'code-copy-acceptance.js', 'translation-acceptance.js', 'text-motion-acceptance.js', 'floating-indicator-acceptance.js', 'overlay-acceptance.js', 'popover-placement-acceptance.js', 'layer-document-acceptance.js', 'portal-acceptance.js', 'focus-scope-acceptance.js', 'focus-scope-stream-acceptance.js', 'gallery-acceptance.js', 'environment-acceptance.js', 'responsive-acceptance.js', 'environment-stream-acceptance.js', 'field-acceptance.js', 'input-acceptance.js', 'choice-acceptance.js', 'form-acceptance.js', 'display-acceptance.js', 'document-acceptance.js', 'document-stream-acceptance.js', 'toggle-acceptance.js', 'layout-acceptance.js', 'typography-acceptance.js', 'timeline-acceptance.js', 'spoiler-acceptance.js', 'navigation-acceptance.js', 'grid-acceptance.js', 'visually-hidden-acceptance.js', 'stepper-acceptance.js', 'menu-acceptance.js', 'context-menu-acceptance.js', 'command-acceptance.js', 'menubar-acceptance.js', 'avatar-acceptance.js', 'shell-acceptance.js', 'hints-acceptance.js', 'image-acceptance.js', 'buttons-acceptance.js', 'burger-acceptance.js', 'scroll-area-acceptance.js', 'alerts-acceptance.js', 'modals-acceptance.js', 'notifications-acceptance.js', 'toolbar-acceptance.js', 'color-swatch-acceptance.js', 'color-sliders-acceptance.js', 'color-picker-acceptance.js', 'sheet-acceptance.js', 'drawer-acceptance.js', 'loading-overlay-acceptance.js', 'graphics-acceptance.js', 'native-select-acceptance.js', 'select-acceptance.js', 'combobox-acceptance.js', 'choice-extras-acceptance.js', 'tags-acceptance.js', 'progress-acceptance.js', 'spinner-acceptance.js', 'navigation-progress-acceptance.js', 'splitter-acceptance.js', 'affix-acceptance.js', 'navigation-menu-acceptance.js', 'slider-acceptance.js', 'range-slider-acceptance.js', 'angle-slider-acceptance.js', 'rating-acceptance.js', 'number-input-acceptance.js', 'pin-input-acceptance.js', 'mask-input-acceptance.js', 'calendar-acceptance.js', 'date-picker-acceptance.js', 'date-input-acceptance.js', 'period-picker-acceptance.js', 'time-input-acceptance.js', 'time-picker-acceptance.js', 'date-time-picker-acceptance.js', 'schedule-acceptance.js', 'schedule-timeline-acceptance.js', 'schedule-calendar-acceptance.js', 'resource-schedule-acceptance.js', 'json-input-acceptance.js'];
 const output = outputRoot;
 const sourceRoot = path.join(__dirname, '../examples/web');
@@ -11,6 +11,26 @@ const jobsArg = process.argv.slice(2).find(arg => arg.startsWith('--jobs='));
 const jobs = Number(jobsArg?.slice('--jobs='.length) || 1);
 if (!Number.isInteger(jobs) || jobs < 1 || jobs > 4) throw new Error('--jobs must be an integer in 1..4');
 const hash = value => crypto.createHash('sha256').update(value).digest('hex');
+const defaultBase = 'http://127.0.0.1:8794';
+function normalizeBase(value = defaultBase) {
+  const url = new URL(value);
+  if (url.protocol !== 'http:' || url.hostname !== '127.0.0.1' || url.pathname !== '/'
+    || url.search || url.hash || url.username || url.password) throw Error('Fixture base must be a loopback HTTP origin');
+  return url.origin;
+}
+function sourceAtBase(source, base) {
+  // Configure only the fixture origin. All paths and assertions remain intact.
+  return source.replaceAll(defaultBase, normalizeBase(base));
+}
+async function verifyServedArtifacts(base, hashes) {
+  for (const [name, expected] of Object.entries(hashes)) {
+    const response = await fetch(`${base}/${name.split('/').map(encodeURIComponent).join('/')}`, { signal: AbortSignal.timeout(30000) });
+    if (!response.ok) throw Error(`Fixture ${name}: HTTP ${response.status}`);
+    const digest = crypto.createHash('sha256');
+    for await (const bytes of response.body) digest.update(bytes);
+    if (digest.digest('hex') !== expected) throw Error(`Served fixture differs from built artifact: ${name}`);
+  }
+}
 function fixtureHashes(directory = fixtureRoot, prefix = '') {
   const result = {};
   for (const entry of fs.readdirSync(directory, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
@@ -29,8 +49,11 @@ async function withClipboardLock(run) {
   await before;
   try { return await run(); } finally { release(); }
 }
-(async () => {
+async function runBrowser() {
+  const { chromium } = require('./showcase-browser-env.cjs');
+  const fixtureBase = normalizeBase(process.env.SAPID_FIXTURE_BASE);
   const sourceHashes = Object.fromEntries(suites.map(file => [file, hash(fs.readFileSync(path.join(sourceRoot, file)))]));
+  const effectiveSourceHashes = Object.fromEntries(suites.map(file => [file, hash(sourceAtBase(fs.readFileSync(path.join(sourceRoot, file), 'utf8'), fixtureBase))]));
   const artifactHashes = fixtureHashes();
   const results = new Array(suites.length), versions = new Set(), runErrors = [];
   let cursor = 0;
@@ -38,13 +61,15 @@ async function withClipboardLock(run) {
     const done = results.filter(Boolean);
     return { browser: [...versions].join(', '), jobs, browserIsolation: 'suite', complete,
       completedSuites: done.map(result => result.file), reports: done.flatMap(result => result.reports),
-      errors: [...runErrors, ...done.flatMap(result => result.errors)], sourceHashes, artifactHashes };
+      errors: [...runErrors, ...done.flatMap(result => result.errors)], sourceHashes, effectiveSourceHashes, fixtureBase, artifactHashes };
   }
   function save(name, value) {
     const destination = path.join(output, name), temporary = `${destination}.tmp`;
     fs.writeFileSync(temporary, JSON.stringify(value, null, 2));
     fs.renameSync(temporary, destination);
   }
+  try { await verifyServedArtifacts(fixtureBase, artifactHashes); }
+  catch (error) { runErrors.push(error.stack || String(error)); save('browser-progress.json', snapshot(false)); throw error; }
   async function worker(workerId) {
     let browser, processed = 0, diagnostics = [];
     async function launchBrowser() {
@@ -78,7 +103,7 @@ async function withClipboardLock(run) {
           const page = await browser.newPage();
           try {
             if (hash(source) !== sourceHashes[file]) throw new Error('acceptance source changed during this run');
-            const acceptance = new Function(`return (${source})`)();
+            const acceptance = new Function(`return (${sourceAtBase(source, fixtureBase)})`)();
             const result = await acceptance(page);
             return { file, reports: result.reports, errors: result.errors.map(error => `${file}: ${error}`) };
           } catch (error) {
@@ -104,16 +129,18 @@ async function withClipboardLock(run) {
   const browser = await chromium.launch({ headless: true, executablePath: process.env.SAPID_CHROME });
   try {
     const page = await browser.newPage();
-    await page.goto('http://127.0.0.1:8794/');
+    await page.goto(`${fixtureBase}/`);
     await page.waitForFunction(() => window.ready === true);
     await page.screenshot({ path: `${output}/widgets.png`, fullPage: true });
-    await page.goto('http://127.0.0.1:8794/composites.html');
+    await page.goto(`${fixtureBase}/composites.html`);
     await page.waitForFunction(() => window.ready === true);
     await page.screenshot({ path: `${output}/composites.png`, fullPage: true });
-    await page.goto('http://127.0.0.1:8794/overlays.html');
+    await page.goto(`${fixtureBase}/overlays.html`);
     await page.waitForFunction(() => window.ready === true);
     await page.getByRole('button', { name: 'Open dialog', exact: true }).click();
     await page.waitForFunction(() => document.activeElement?.matches('.dialog-input'));
     await page.screenshot({ path: `${output}/overlays.png` });
   } finally { await browser.close(); }
-})().catch(error => { console.error(error); process.exitCode = 1; });
+}
+module.exports = { normalizeBase, sourceAtBase, verifyServedArtifacts };
+if (require.main === module) runBrowser().catch(error => { console.error(error); process.exitCode = 1; });

@@ -129,6 +129,16 @@ def acceptance_report(results_path, harness_root, fixtures_root=None):
                 or report.get("errors") != [] or report.get("completedSuites") != suites
                 or report.get("sourceHashes") != sources):
             raise ValueError("Browser acceptance is incomplete, failed or uses different suite sources")
+        if b"verifyServedArtifacts" in runner:
+            base = report.get("fixtureBase")
+            if (not isinstance(base, str) or not re.fullmatch(r"http://127\.0\.0\.1(?::[1-9][0-9]{0,4})?", base)
+                    or int(base.rsplit(":", 1)[-1] if base.count(":") == 2 else "80") > 65535):
+                raise ValueError("Missing or invalid verified fixture origin")
+            effective = {name: hashlib.sha256(
+                (Path(harness_root) / "examples/web" / name).read_bytes().replace(
+                    b"http://127.0.0.1:8794", base.encode("ascii"))).hexdigest() for name in suites}
+            if report.get("effectiveSourceHashes") != effective:
+                raise ValueError("Configured browser suite sources differ from the recorded fixture origin")
         artifacts = report.get("artifactHashes")
         if (not isinstance(artifacts, dict) or not artifacts
                 or any(not isinstance(name, str) or not isinstance(digest, str)

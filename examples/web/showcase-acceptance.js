@@ -56,7 +56,7 @@ async (hostPage) => {
     await p.waitForFunction(() => document.querySelectorAll('.site-nav-link').length === 181);
     reports.push({suite:'showcase-live-search',status:'passed'});
 
-    const demo = p.locator('.site-preview .site-demo');
+    const demo = p.locator('.site-preview .site-demo').first();
     const preview = demo.getByRole('button',{name:'Filled button',exact:true});
     await preview.evaluate(e => window.showcasePreview = e);
     await preview.click();
@@ -87,12 +87,12 @@ async (hostPage) => {
     await p.locator('.site-code').first().waitFor();
     assert(await p.locator('.site-demo').count() === 0, 'Rust Source tab replaces demo content');
     await p.getByRole('button',{name:'Documentation',exact:true}).click();
-    await p.locator('.site-preview .site-demo').waitFor();
+    await p.locator('.site-preview .site-demo').first().waitFor();
     await p.getByRole('button',{name:'Capabilities',exact:true}).click();
     await p.getByRole('heading',{name:'Host support',exact:true}).waitFor();
     assert(await p.locator('.site-support-row').first().textContent() === 'WebTested', 'Documentation switches directly to readable host capabilities');
     await p.getByRole('button',{name:'Documentation',exact:true}).click();
-    await p.locator('.site-preview .site-demo').waitFor();
+    await p.locator('.site-preview .site-demo').first().waitFor();
     await p.getByRole('button',{name:'Properties',exact:true}).click();
     await p.getByRole('heading',{name:'Button properties',exact:true}).waitFor();
     assert(await p.locator('.site-api-tokens',{hasText:'left_section'}).count() > 0, 'Sapid Rust builder API is available');
@@ -102,7 +102,7 @@ async (hostPage) => {
     await p.getByRole('heading',{name:'Widget classes',exact:true}).waitFor();
     assert(await p.locator('.site-api-tokens',{hasText:'sapid-button'}).count() > 0, 'Real widget classes are available');
     await p.getByRole('button',{name:'Documentation',exact:true}).click();
-    await p.locator('.site-preview .site-demo').waitFor();
+    await p.locator('.site-preview .site-demo').first().waitFor();
     await shot(p, 'button-light');
     reports.push({suite:'showcase-button-and-source',status:'passed'});
 

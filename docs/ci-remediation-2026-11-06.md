@@ -45,9 +45,19 @@ their historical reports; they are not used to infer acceptance of changed UI.
 The gate remains fail-fast. It hashes served artifacts and test sources, records
 pending suites, rejects missing/stale reports, nonzero drivers, caught assertion
 `failure` fields and browser `errors`, and retains reports/logs/screenshots.
-The six runner regressions include a guard requiring every current documentation
-batch exactly once. Canonical inventory/capability/gallery drift is now checked
+The eight runner regressions include a guard requiring every current documentation
+batch exactly once and real HTTP rejection of stale/missing fixture bytes. Canonical inventory/capability/gallery drift is now checked
 by CI before compilation.
+
+The widget fixture driver accepts `SAPID_FIXTURE_BASE` for an owned loopback
+HTTP origin while keeping 8794 as the CI default. Before any browser assertion,
+every served artifact must match the recorded on-disk SHA-256. Only the fixture
+origin is configured in the finite test sources; paths and assertions remain
+unchanged. Reports retain both original and configured source hashes and the
+origin, which the release provenance validator checks independently. This lets
+local checks use an ephemeral server without terminating an older developer
+server or accidentally testing its stale WASM/CSS/stream files. Frozen harness
+checkouts include the shared browser path helper as well as the driver.
 
 Current native evidence and intentionally unpromoted platform claims are recorded
 in [the capability review](capability-evidence-review-2026-11-06.md). The standalone
