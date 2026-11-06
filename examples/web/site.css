@@ -409,3 +409,7 @@ html,body{margin:0;padding:0}
 .sapid-site .site-shell-nav-link[aria-current=page]{background:var(--sp-accent-soft);font-weight:600}
 .sapid-site .site-shell-example .sapid-shell-header>.sapid-group{min-width:0;flex-wrap:wrap}
 .sapid-site .site-shell-example .sapid-shell-main .sapid-card{width:100%}
+
+/* Pointer selection keeps the rating visible without a half-star focus box. */
+.sapid-site .sapid-rating-focus{visibility:hidden}
+.sapid-site .sapid-rating-part:has(input:focus-visible) .sapid-rating-focus,.sapid-site .sapid-rating-clear:has(input:focus-visible) .sapid-rating-focus{visibility:visible}
