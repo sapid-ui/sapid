@@ -47,6 +47,16 @@ const {matrix,chromium,base,outputPath,writeReport}=require('./showcase-browser-
     }else if(slug==='color-input'){
      assert.equal(await page.getByRole('dialog').count(),0,'all documentation popups start closed');const editor=primary.getByLabel('Accent color',{exact:true}),popup=primary.getByRole('dialog',{name:'Choose color',exact:true});await editor.evaluate(e=>{window.colorEditor=e;});
      await editor.click();await popup.waitFor({state:'visible'});await tick(page);assert(await editor.evaluate(e=>e===document.activeElement));const rect=await popup.boundingBox();assert(rect.x>=0&&rect.x+rect.width<=width+1);
+     for(const [name,max] of [['Hue',360],['Opacity',1]]){
+      const slider=popup.getByRole('slider',{name,exact:true}),box=await slider.boundingBox(),thumb=await slider.locator('.sapid-slider-thumb').boundingBox();
+      await page.mouse.move(thumb.x+thumb.width/2,thumb.y+thumb.height/2);await page.mouse.down();
+      try{for(const fraction of [.25,.4,.65,.85]){
+       await page.mouse.move(box.x+box.width*fraction,fraction===.65?box.y-12:box.y+box.height/2,{steps:4});await tick(page);
+       near(await value(slider),fraction*max);
+       const moved=await slider.locator('.sapid-slider-thumb').boundingBox();assert(Math.abs(moved.x+moved.width/2-(box.x+box.width*fraction))<1,`${name}: thumb stopped following the held pointer`);
+      }}finally{await page.mouse.up();}await tick(page);
+     }
+
      await popup.getByRole('slider',{name:'Hue',exact:true}).focus();await page.keyboard.press('ArrowRight');await page.keyboard.press('Escape');await popup.waitFor({state:'hidden'});await tick(page);assert(await editor.evaluate(e=>e===document.activeElement&&e===window.colorEditor));
      await primary.getByRole('button',{name:'Open color picker',exact:true}).click();await popup.waitFor({state:'visible'});await page.keyboard.press('Escape');await popup.waitFor({state:'hidden'});
      await editor.fill('#12345678');await editor.press('Tab');await tick(page);assert.equal(await editor.inputValue(),'#12345678');await page.keyboard.press('Escape');await tick(page);await editor.fill('unfinished color');await tick(page);assert.equal(await editor.getAttribute('aria-invalid'),'true');await editor.press('Tab');await tick(page);assert.equal(await editor.inputValue(),'#12345678');
@@ -60,7 +70,15 @@ const {matrix,chromium,base,outputPath,writeReport}=require('./showcase-browser-
   }
   for(const theme of matrix.themes)for(const scheme of matrix.schemes){
    const context=await browser.newContext({viewport:{width:390,height:900},hasTouch:true,isMobile:true});const p=await context.newPage();watch(p);const key=`color-input-touch-${theme}-${scheme}`;
-   try{await p.goto(`${base}/showcase.html?widget=color-input&theme=${theme}&scheme=${scheme}`);await p.waitForFunction(()=>window.ready===true,undefined,{timeout:20000});const primary=p.locator('.site-preview .site-demo').first(),editor=primary.getByLabel('Accent color',{exact:true});await editor.tap();const popup=primary.getByRole('dialog',{name:'Choose color',exact:true});await popup.waitFor({state:'visible'});const before=await editor.inputValue(),plane=popup.locator('.sapid-color-plane'),rect=await plane.boundingBox();await plane.tap({position:{x:rect.width*.2,y:rect.height*.8}});await tick(p);assert.notEqual(await editor.inputValue(),before);await p.touchscreen.tap(388,898);await popup.waitFor({state:'hidden'});await primary.getByRole('button',{name:'Open color picker',exact:true}).tap();await popup.waitFor({state:'visible'});report.pages.push({key,passed:true});console.log(`PASS ${key}`);}catch(error){report.pages.push({key,passed:false,failure:error.stack});console.error(`FAIL ${key}: ${error.message}`);}finally{await context.close();}
+   try{await p.goto(`${base}/showcase.html?widget=color-input&theme=${theme}&scheme=${scheme}`);await p.waitForFunction(()=>window.ready===true,undefined,{timeout:20000});const primary=p.locator('.site-preview .site-demo').first(),editor=primary.getByLabel('Accent color',{exact:true});await editor.tap();const popup=primary.getByRole('dialog',{name:'Choose color',exact:true});await popup.waitFor({state:'visible'});const before=await editor.inputValue(),plane=popup.locator('.sapid-color-plane'),rect=await plane.boundingBox();await plane.tap({position:{x:rect.width*.2,y:rect.height*.8}});await tick(p);assert.notEqual(await editor.inputValue(),before);
+     const client=await context.newCDPSession(p);
+     try{for(const [name,max] of [['Hue',360],['Opacity',1]]){
+      const slider=popup.getByRole('slider',{name,exact:true}),box=await slider.boundingBox(),thumb=await slider.locator('.sapid-slider-thumb').boundingBox();
+      await client.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{id:11,x:thumb.x+thumb.width/2,y:thumb.y+thumb.height/2}]});
+      try{for(const fraction of [.25,.7,.9]){await client.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{id:11,x:box.x+box.width*fraction,y:box.y+box.height/2}]});await tick(p);near(await value(slider),fraction*max);}}
+      finally{await client.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});}await tick(p);
+     }}finally{await client.detach();}
+     await p.touchscreen.tap(388,898);await popup.waitFor({state:'hidden'});await primary.getByRole('button',{name:'Open color picker',exact:true}).tap();await popup.waitFor({state:'visible'});report.pages.push({key,passed:true});console.log(`PASS ${key}`);}catch(error){report.pages.push({key,passed:false,failure:error.stack});console.error(`FAIL ${key}: ${error.message}`);}finally{await context.close();}
   }
   assert.equal(report.pages.filter(p=>!p.passed).length,0,'color cases failed; inspect individual reports');assert.deepEqual(report.errors,[]);
  }finally{writeReport('color-remediation.json',report);await browser.close();}

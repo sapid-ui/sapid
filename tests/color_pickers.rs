@@ -776,3 +776,77 @@ fn inset_preview_reopens_a_focused_editor_once_and_rechecks_a_replaced_loading_s
     assert!(requests.get().is_empty());
     assert!(!opened.get());
 }
+
+#[test]
+fn color_input_picker_keeps_precise_channels_when_the_formatted_color_is_accepted() {
+    for format in [
+        ColorFormat::Hex,
+        ColorFormat::Hexa,
+        ColorFormat::Rgb,
+        ColorFormat::Rgba,
+        ColorFormat::Hsl,
+        ColorFormat::Hsla,
+    ] {
+        for controlled in [false, true] {
+            let app = App::memory();
+            let initial = sapid::format_color(Color(34, 139, 230, 179), format);
+            let source = app.scope().cage(initial.clone());
+            let mut widget = color_input("precise-channels")
+                .format(format)
+                .default_open(true);
+            widget = if controlled {
+                widget
+                    .value(source)
+                    .on_value_change(move |next| source.revise(|old| *old = next))
+            } else {
+                widget.default_value(initial)
+            };
+            app.mount(widget).unwrap();
+            let hue = slider(&app, "Hue");
+            for value in [183., 199., 306., 360.] {
+                key(&app, hue, RangeCommand::Set(value));
+                app.flush().unwrap();
+                assert_eq!(
+                    number(&app, hue),
+                    value,
+                    "{format:?}, controlled={controlled}"
+                );
+            }
+            if format.alpha() {
+                let alpha = slider(&app, "Opacity");
+                for value in [0.25, 0.4, 0.65, 0.85] {
+                    key(&app, alpha, RangeCommand::Set(value));
+                    app.flush().unwrap();
+                    assert_eq!(
+                        number(&app, alpha),
+                        value,
+                        "{format:?}, controlled={controlled}"
+                    );
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn color_input_picker_refusal_and_external_colors_override_proposed_coordinates() {
+    let app = App::memory();
+    let source = app.scope().cage("#228be6b3".to_owned());
+    app.mount(
+        color_input("refused-channels")
+            .format(ColorFormat::Hexa)
+            .value(source)
+            .default_open(true),
+    )
+    .unwrap();
+    let hue = slider(&app, "Hue");
+    let initial = number(&app, hue);
+    key(&app, hue, RangeCommand::Set(183.));
+    app.flush().unwrap();
+    assert_eq!(number(&app, hue), initial);
+    assert_eq!(source.get(), "#228be6b3");
+    source.revise(|value| *value = "#00ff0080".into());
+    app.flush().unwrap();
+    assert_eq!(number(&app, hue), 120.);
+    assert_eq!(number(&app, slider(&app, "Opacity")), 128. / 255.);
+}

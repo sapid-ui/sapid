@@ -55,6 +55,24 @@ fn draft(value: &str) -> Result {
         Ok(())
     }
 }
+// Keep exact picker coordinates while the source echoes their formatted color.
+// Re-decoding that echo would round hue/alpha and look like an external write
+// to the shared Slider controller, cancelling an otherwise accepted drag.
+fn picker_coordinates(color: glory::style::Color, format: ColorFormat, previous: Hsva) -> Hsva {
+    let encoded = previous
+        .to_rgba()
+        .ok()
+        .and_then(|color| parse_color(&format_color(color, format), format).ok());
+    if encoded == Some(color) {
+        return previous;
+    }
+    let mut next = Hsva::from_rgba(color);
+    if next.saturation == 0. {
+        next.hue = previous.hue;
+    }
+    next
+}
+
 pub struct ColorInput {
     key: String,
     common: Common,
@@ -362,11 +380,8 @@ impl Widget for ColorInput {
         scope.effect(move || {
             let next = status.get();
             if let ColorValidity::Valid(color) = next {
-                let mut hsv = Hsva::from_rgba(color);
                 let old = palette.get();
-                if hsv.saturation == 0. {
-                    hsv.hue = old.hue;
-                }
+                let hsv = picker_coordinates(color, format, old);
                 if hsv != old {
                     palette.revise(|value| *value = hsv);
                 }
@@ -614,13 +629,7 @@ impl Widget for ColorInput {
         let raw = control.source.clone();
         let picker_value = scope.bond(move || {
             raw.with(|value| match parse_color(value, format) {
-                Ok(color) => {
-                    let mut hsv = Hsva::from_rgba(color);
-                    if hsv.saturation == 0. {
-                        hsv.hue = read_palette.get().hue;
-                    }
-                    hsv
-                }
+                Ok(color) => picker_coordinates(color, format, read_palette.get()),
                 Err(_) => read_palette.get(),
             })
         });
@@ -695,7 +704,14 @@ impl Widget for ColorInput {
                         let text =
                             format_color(value.to_rgba().expect("validated picker value"), format);
                         match editing.accept(&text) {
-                            Ok(()) => changed.emit(owner, text),
+                            Ok(()) => {
+                                let coordinates = Hsva {
+                                    alpha: if format.alpha() { value.alpha } else { 1. },
+                                    ..value
+                                };
+                                palette.revise(|current| *current = coordinates);
+                                changed.emit(owner, text);
+                            }
                             Err(error) => {
                                 if let Some(scope) = weak.upgrade() {
                                     scope.report_error(error)
