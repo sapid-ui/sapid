@@ -46,7 +46,10 @@ async (hostPage) => {
         assert(await retained.evaluate(el=>el.isConnected),`${mode}: source reorder replaced retained key`);
         await main().click();await turn();await root.getByRole('button',{name:'Toggle Remote files',exact:true}).click();await turn();
         assert((await page.locator('.path-choice-loads').textContent()).includes('1')&&await item(root,'Remote files').getAttribute('aria-expanded')==='true',`${mode}: lazy request`);
-        await page.getByRole('button',{name:'Publish remote children',exact:true}).click();await turn();await main().click();await turn();
+        // Model an external lazy-load completion while the open tree covers the host's diagnostic button.
+        const beforePublishFocus=await page.evaluate(()=>{window.beforePublishFocus=document.activeElement;return true;});
+        await page.getByRole('button',{name:'Publish remote children',exact:true}).evaluate(button=>button.click());await turn();
+        assert(beforePublishFocus&&await root.evaluate(el=>el.matches(':popover-open'))&&await page.evaluate(()=>document.activeElement===window.beforePublishFocus),`${mode}: lazy publication lost open state or actual tree focus`);
         await item(root,'Loaded child').click();await turn();assert((await current()).includes('remote/loaded'),`${mode}: explicit lazy publication`);
         const multi=page.getByRole('combobox',{name:'Checked destinations',exact:true}),checks=await popup(multi);
         await multi.click();await turn();await item(checks,'Main file').click();await turn();

@@ -5,7 +5,7 @@ async(hostPage,suppliedBase)=>{
  try{
   const page=await context.newPage();page.on('pageerror',error=>errors.push(error.message));page.on('console',message=>{if(message.type()==='error')errors.push(message.text())});
   const turn=()=>page.evaluate(()=>new Promise(resolve=>{let count=0;const next=()=>++count===8?resolve():requestAnimationFrame(next);requestAnimationFrame(next)}));
-  const main=()=>page.locator('.rich-main');const toolbar=()=>main().locator('..').getByRole('toolbar',{name:'Rich text formatting',exact:true});
+  const main=()=>page.locator('.rich-main');const toolbar=()=>page.locator('.sapid-rich-editor-shell').filter({has:main()}).getByRole('toolbar',{name:'Rich text formatting',exact:true});
   const button=name=>page.getByRole('button',{name,exact:true});
   const change=async name=>{await button(name).click();await turn();};
   const summary=async()=>{const text=await page.locator('.rich-status').textContent();const events=text.match(/events:(\d+)/),undo=text.match(/undo: (\d+)/),redo=text.match(/redo: (\d+)/),bytes=text.match(/charged_bytes: (\d+)/),rejected=text.match(/rejected:(\d+)/);assert(events&&rejected,`bad editor status: ${text}`);return{text,events:+events[1],undo:undo?+undo[1]:0,redo:redo?+redo[1]:0,bytes:bytes?+bytes[1]:0,rejected:+rejected[1]};};

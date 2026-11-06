@@ -83,7 +83,7 @@ async (hostPage) => {
       const control=page.locator(family==='index'?'.echo':family==='composites'?'.profile-input':'.dialog-input');
       await control.waitFor({state:'visible'});
       assert(await control.evaluate(e=>getComputedStyle(e).backgroundColor)===(scheme==='dark'?'rgb(37, 38, 43)':'rgb(255, 255, 255)'),`${family}/${hue}/${scheme}/${hydration}: gallery control theme mismatch`);
-      if(family==='composites')assert(await page.locator('.auto-tabs [role=tab][aria-selected=true]').evaluate(e=>getComputedStyle(e).backgroundColor)===(hue==='green'?'rgb(35, 112, 50)':'rgb(25, 113, 194)'),'selected tab accent differs from theme');
+      if(family==='composites')assert(await page.locator('.auto-tabs [role=tab][aria-selected=true]').evaluate(e=>getComputedStyle(e).borderBottomColor)===(hue==='green'?'rgb(35, 112, 50)':'rgb(25, 113, 194)')&&await page.locator('.auto-tabs [role=tab][aria-selected=true]').evaluate(e=>getComputedStyle(e).borderBottomWidth==='2px'),'selected default line-tab accent differs from theme');
       if(hue==='green'&&scheme==='dark'&&hydration){await page.evaluate(()=>scrollTo(0,0));await page.screenshot({path:`target/verification/sapid/gallery-${family}-green-dark.png`,fullPage:family!=='overlays'});}
     }
     await page.goto('http://127.0.0.1:8794/composites.html');await page.waitForFunction(()=>window.ready===true);

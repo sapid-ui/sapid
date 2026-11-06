@@ -14,7 +14,7 @@ async (hostPage) => {
    const nav=page.getByRole('navigation',{name:'Workspace navigation'}), draft=nav.getByRole('textbox',{name:'Sidebar draft'}),trigger=page.locator('.sapid-sidebar-trigger');
    await draft.fill('Kept across layout moves');await draft.evaluate(e=>window.sidebarDraft=e);await nav.evaluate(e=>window.sidebarNav=e);
    await trigger.click();await tick();assert((await status()).includes('collapsed=true'),`${mode}: collapse request failed`);
-   assert(Math.abs((await page.locator('.sapid-sidebar-dock').boundingBox()).width-72)<1,`${mode}: collapsed rail is not 72px`);
+   assert(Math.abs((await page.locator('.sapid-sidebar').boundingBox()).width-72)<1,`${mode}: collapsed rail is not 72px`);
    await page.evaluate(()=>window.demo.shell_policy(false));await trigger.click();await tick();assert((await status()).includes('collapsed=true'),`${mode}: rejected controlled collapse changed source`);
    const requests=(await status()).match(/requests=(\d+)/)[1];await page.evaluate(()=>window.demo.shell_controls(false,false));await tick();assert((await status()).includes('collapsed=false')&&(await status()).includes(`requests=${requests}`),`${mode}: external write emitted a request`);
    await page.evaluate(()=>window.demo.shell_policy(true));

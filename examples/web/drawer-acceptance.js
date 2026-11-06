@@ -16,7 +16,9 @@ async (hostPage) => {
       await panel.evaluate(element => window.savedDrawerPanel = element);
       await trigger.click();
       await page.waitForFunction(id => document.getElementById(id)?.matches(':popover-open'), id);
-      await page.waitForFunction(() => document.activeElement?.matches('.drawer-action'));
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      assert(await panel.locator(':scope > .sapid-layer-header .sapid-layer-close').evaluate(element => document.activeElement === element), `${mode}: default focus follows the first enabled header control`);
+      await destination.focus();
       assert(await panel.getAttribute('data-gly-sheet') === null, `${mode}: baseline unexpectedly opted into gestures`);
       assert(await panel.getAttribute('aria-modal') === 'true' && await trigger.getAttribute('aria-expanded') === 'true', `${mode}: modal/expanded state`);
       const box = await panel.boundingBox();
@@ -27,7 +29,7 @@ async (hostPage) => {
       assert(ax.nodes.some(node => !node.ignored && node.role?.value === 'dialog' && node.name?.value === 'Navigation' && node.properties?.some(property => property.name === 'modal' && property.value.value === true)), `${mode}: real Chrome dialog AX`);
       await cdp.detach();
       await destination.press('Shift+Tab');
-      assert(await panel.locator(':scope > .sapid-layer-close').evaluate(element => document.activeElement === element), `${mode}: reverse Tab cycle or disabled skipping`);
+      assert(await panel.locator(':scope > .sapid-layer-header .sapid-layer-close').evaluate(element => document.activeElement === element), `${mode}: reverse Tab reaches header close while skipping disabled controls`);
       await page.keyboard.press('Tab');
       assert(await destination.evaluate(element => document.activeElement === element), `${mode}: forward Tab cycle`);
       await page.locator('#foreign').evaluate(element => element.focus());
@@ -39,11 +41,13 @@ async (hostPage) => {
       assert(await destination.count() === 0, `${mode}: default Unmount retained content`);
       await trigger.click();
       await page.waitForFunction(id => document.getElementById(id)?.matches(':popover-open'), id);
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
       assert(await panel.evaluate(element => element === window.savedDrawerPanel), `${mode}: reopen replaced panel identity`);
       await page.mouse.click(5, 5);
       await page.waitForFunction(id => !document.getElementById(id)?.matches(':popover-open'), id);
       await trigger.click();
       await page.waitForFunction(id => document.getElementById(id)?.matches(':popover-open'), id);
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
       await page.evaluate(() => window.demo.unmount());
       assert(await page.locator(':popover-open').count() === 0 && await page.locator('[inert]').count() === 0 && await page.locator('#app').evaluate(element => element.childNodes.length === 0), `${mode}: Owner retirement leaked layer/inert/content`);
       reports.push({ suite: mode, status: 'passed', checks: 'ordinary non-snap Drawer, real right-edge geometry, Chrome dialog AX and modality, disabled skipping and Tab cycle, focus containment/return, Escape/outside, stable panel and default Unmount, Owner cleanup' });

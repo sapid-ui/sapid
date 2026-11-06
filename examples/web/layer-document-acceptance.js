@@ -23,7 +23,8 @@ async(hostPage,baseURL='http://127.0.0.1:8794')=>{
       });await tick();
       const originalY=await page.evaluate(()=>scrollY);
       await page.getByRole('button',{name:'Open a',exact:true}).click();await opened('a');await tick();
-      assert(await first('a').evaluate(e=>e===document.activeElement),'first App initial focus');
+      assert(await dialog('a').locator(':scope > .sapid-layer-header .sapid-layer-close').evaluate(e=>e===document.activeElement),'first App default focus follows its first enabled header control');
+      await first('a').focus();assert(await first('a').evaluate(e=>e===document.activeElement),'first App real input focus');
       assert(await page.locator('#app-b').evaluate(e=>!!e.closest('[inert]')),'second App has document inert lease');
       assert(await page.evaluate(()=>document.documentElement.style.getPropertyValue('overflow-y')==='hidden'&&document.body.style.getPropertyPriority('overflow-y')==='important'),'document scrollbar lock');
       await state('a','reject',true);
@@ -31,7 +32,8 @@ async(hostPage,baseURL='http://127.0.0.1:8794')=>{
       assert(await page.locator('.document-clicks-b').textContent()==='clicks:0'&&await dialog('a').evaluate(e=>e.matches(':popover-open')),'foreign background activation blocked during controlled refusal');
       await state('a','reject',false);await second('a').focus();
       await state('b','open',true);await opened('b');await tick();
-      assert(await first('b').evaluate(e=>e===document.activeElement),'later foreign App owns focus');
+      assert(await dialog('b').locator(':scope > .sapid-layer-header .sapid-layer-close').evaluate(e=>e===document.activeElement),'later foreign App owns initial header focus');
+      await first('b').focus();assert(await first('b').evaluate(e=>e===document.activeElement),'later foreign App owns real input focus');
       assert(await page.locator('#app-a').evaluate(e=>!!e.closest('[inert]')),'older App becomes inert');
       const cdp=await context.newCDPSession(page),ax=await cdp.send('Accessibility.getFullAXTree');await cdp.detach();
       assert(ax.nodes.some(n=>!n.ignored&&n.role?.value==='dialog'&&n.name?.value==='Modal b')&&!ax.nodes.some(n=>!n.ignored&&n.role?.value==='dialog'&&n.name?.value==='Modal a'),'AX exposes current document modal');

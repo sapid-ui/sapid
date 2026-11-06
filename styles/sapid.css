@@ -5,6 +5,8 @@
 .sapid-password-toggle:where(:not(.sapid-unstyled)):focus-visible{outline:2px solid var(--sp-ring);outline-offset:-2px}
 .sapid-password-toggle:disabled{cursor:not-allowed}
 .sapid-password-input::-ms-reveal{display:none}
+/* Color slider thumbs carry their own typed focus ring; avoid a second UA frame. */
+:is(.sapid-hue-slider,.sapid-alpha-slider):where(:not(.sapid-unstyled,.sapid-unstyled *)):focus-visible{outline:none}
 .sapid-pin-input:where(:not(.sapid-unstyled)) .sapid-pin-editor:focus{outline:none}
 .sapid-select-value{text-align:start;text-overflow:ellipsis}
 .sapid-menu-item-label{text-overflow:ellipsis}

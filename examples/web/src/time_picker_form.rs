@@ -127,6 +127,11 @@ pub fn form(scope: &Scope, theme: Theme) -> (impl Widget + use<>, State) {
                 .theme(theme.clone())
                 .class("chinese-time-picker")
                 .name("Chinese picker")
+                .hour_label("小时")
+                .minute_label("分钟")
+                .second_label("秒")
+                .period_label("时段")
+                .period_labels("上午", "下午")
                 .format(TimeFormat::new(
                     HourCycle::H12,
                     TimePrecision::Minute,

@@ -16,8 +16,10 @@ async (hostPage) => {
       await page.waitForFunction(() => window.ready === true);
       const dialog = await panel('Open dialog');
       const dialogTrigger = trigger('Open dialog');
-      await dialogTrigger.click(); await opened(dialog);
-      await page.waitForFunction(() => document.activeElement?.matches('.dialog-input'));
+      await dialogTrigger.click(); await opened(dialog); await tick();
+      assert(await dialog.locator(':scope > .sapid-layer-header .sapid-layer-close').evaluate(e => e === document.activeElement), 'default managed focus chooses the first enabled header control');
+      await page.locator('.dialog-input').focus();
+      assert(await page.locator('.dialog-input').evaluate(e => e === document.activeElement), 'real dialog editor accepts focus');
       assert(await dialog.getAttribute('aria-modal') === 'true', 'missing dialog modality');
       const cdp = await context.newCDPSession(page);
       const ax = await cdp.send('Accessibility.getFullAXTree');
@@ -26,7 +28,7 @@ async (hostPage) => {
       assert(await page.locator('#foreign').getAttribute('inert') !== null, 'modal did not inert sibling app content');
       const input = page.locator('.dialog-input');
       await input.press('Shift+Tab');
-      assert(await dialog.locator(':scope > .sapid-layer-close').evaluate(e => document.activeElement === e), 'Shift+Tab did not loop');
+      assert(await dialog.locator(':scope > .sapid-layer-header .sapid-layer-close').evaluate(e => document.activeElement === e), 'Shift+Tab did not reach header close');
       await page.keyboard.press('Tab');
       assert(await input.evaluate(e => document.activeElement === e), 'Tab did not loop');
       await page.locator('#foreign').evaluate(e => e.focus());
@@ -34,8 +36,9 @@ async (hostPage) => {
 
       const nested = await panel('Nested popover');
       const nestedTrigger = trigger('Nested popover');
-      await nestedTrigger.click(); await opened(nested);
-      await page.waitForFunction(() => document.activeElement?.matches('.nested-action'));
+      await nestedTrigger.click(); await opened(nested); await tick();
+      assert(await nested.locator(':scope > .sapid-layer-header .sapid-layer-close').evaluate(e => e === document.activeElement), 'nested default focus chooses its first enabled header control');
+      await page.locator('.nested-action').focus();
       await page.keyboard.press('Escape'); await closed(nested); await tick();
       assert(await dialog.evaluate(e => e.matches(':popover-open')), 'nested Escape also closed parent');
       assert(await nestedTrigger.evaluate(e => document.activeElement === e), 'nested focus did not restore');
@@ -48,8 +51,9 @@ async (hostPage) => {
       assert(await page.locator('#foreign').getAttribute('inert') === null, 'inert leaked after close');
 
       const drawer = await panel('Open drawer');
-      await trigger('Open drawer').click(); await opened(drawer);
-      await page.waitForFunction(() => document.activeElement?.matches('.drawer-action'));
+      await trigger('Open drawer').click(); await opened(drawer); await tick();
+      assert(await drawer.locator(':scope > .sapid-layer-header .sapid-layer-close').evaluate(e => e === document.activeElement), 'drawer default focus chooses its first enabled header control');
+      await page.locator('.drawer-action').focus();
       const bounds = await drawer.boundingBox();
       assert(bounds.x + bounds.width > 1098 && bounds.y === 0, 'drawer is not pinned to viewport edge');
       await page.keyboard.press('Escape'); await closed(drawer);

@@ -151,6 +151,7 @@ pub fn form(scope: &Scope, theme: Theme) -> (impl Widget + use<>, State) {
                 .size(Size::ExtraSmall)
                 .name("Unstyled date")
                 .class("unstyled-date-input")
+                .style(Style::new().width(Length::Px(240.)))
                 .default_value(Some(d("2024-02-29"))),
             text_field()
                 .theme(theme.clone())

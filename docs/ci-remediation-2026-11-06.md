@@ -64,3 +64,43 @@ in [the capability review](capability-evidence-review-2026-11-06.md). The standa
 stylesheet regression also found and fixed disabled/unstyled Sidebar and nested
 Menubar trigger cursor leakage; all four focus-contrast variants and isolation
 checks pass against the library stylesheet without showcase CSS masking it.
+
+## Remaining fixture assumptions found by the complete browser scan
+
+The classic stream handoff had a real runtime defect: it validated HTML format
+19 but emitted version-14 root markers at End. Glory now derives both markers
+from the validated End frame. Current positive protocol fixtures use format 19;
+old-version rejection and failure-prefix assertions remain in place.
+
+The current fixture checks also reflect the implemented public contracts:
+
+- Rich editor commands are scoped to their owning editor shell, rather than
+  assuming the toolbar is inside the content wrapper. Both original rich suites
+  retain typing, UTF-16 selection, history, IME, refusal and retirement checks.
+- The header close control is the first enabled control under the documented
+  default managed-focus policy. Tests verify that default, then exercise real
+  editor focus, Tab/Escape, nested/cross-App scopes and return focus. They do not
+  change the component policy to satisfy an older DOM-order assumption.
+- Stepper checks its full accessible label separately from the number glyph;
+  default line Tabs check their themed 2px underline; Sidebar measures its 72px
+  outer border box rather than the 71px content box.
+- Scroller buttons are found by accessible labels, not vector-glyph text. The
+  color plane checks four bounded continuous-gradient layers and all four real
+  keyboard sliders instead of expecting the retired 256-cell raster grid.
+- The legacy clamping RangeSlider fixture explicitly selects `RangeCollision::Clamp`.
+  The public default remains Push; the documentation suites separately exercise
+  Push/Hold/Clamp. The unstyled date fixture declares its intended 240px width,
+  and the Chinese time fixture declares its segment and period labels.
+- Agenda uses native list/listitem semantics and level-3 date headings. Its
+  all-day interval is checked on the correct single date rather than requiring
+  the old raw timestamp caption. The MiniCalendar boundary checks its range
+  navigator, not controls belonging to the full Calendar.
+- Lazy tree publication is an explicit application source update while the tree
+  remains open and focused. Pointer submission of the multiple-choice form first
+  closes its covering listbox with Escape. No forced pointer click bypasses a
+  top-layer popup.
+
+The scan's original failures are retained under `target/remediation`, including
+`ci-first-full-fixture-results.json`, `ci-first-full-fixture-failures.json` and
+`ci-fixture-browser-owned.log`. A changed source or artifact invalidates a run;
+passing evidence must come from a fresh immutable run after the repairs.

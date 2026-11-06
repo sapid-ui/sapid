@@ -3,8 +3,8 @@
 This review reconciles the explicit capability matrix with current consumer
 tests. Inventory completion and browser-page acceptance do not establish native
 interaction or OS accessibility. The source baseline is Sapid `6999373` with
-Glory `d8aa609`; subsequent changes in this review concern verification and
-evidence bookkeeping.
+Glory `d8aa609`. Later CI repairs include the browser stream handoff and
+verification tooling; they do not expand this review's native acceptance.
 
 ## Current native consumers
 

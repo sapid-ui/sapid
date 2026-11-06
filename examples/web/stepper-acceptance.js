@@ -10,7 +10,7 @@ async (hostPage) => {
    await page.goto(url);await page.waitForFunction(()=>window.ready===true);
    const workflow=page.locator('.main-stepper');const header=index=>workflow.locator('.sapid-stepper-trigger').nth(index);
    const email=workflow.getByRole('textbox',{name:'Account email',exact:true});const status=page.locator('.stepper-status');
-   const current=()=>workflow.locator('[aria-current=step]').textContent();
+   const current=()=>workflow.locator('[aria-current=step]').getAttribute('aria-label');
    assert(await current()==='1. Account'&&await workflow.getByRole('list').count()===1,`${mode}: current/list semantics missing`);
    assert(await header(2).isDisabled(),`${mode}: forward skip enabled by default`);
    assert(await page.locator('.readonly-stepper .sapid-stepper-headers').evaluate(e=>getComputedStyle(e).flexDirection)==='column',`${mode}: vertical layout missing`);
