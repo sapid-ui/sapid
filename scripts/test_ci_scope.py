@@ -90,6 +90,14 @@ class GitScopeTests(unittest.TestCase):
         self.assertEqual(len(errors), 2, errors)
         self.assertTrue(any("README.md" in error for error in errors))
 
+    def test_deleted_compile_time_markdown_input_cannot_pass_documentation_checks(self):
+        self.write("src/lib.rs", '#![doc = include_str!("../README.md")]\n')
+        old = self.commit()
+        (self.root / "README.md").unlink()
+        self.commit()
+        errors = check_doc_links.check(self.root, old)
+        self.assertTrue(any("missing included documentation README.md" in error for error in errors), errors)
+
     def test_reference_html_encoded_paths_and_inline_examples(self):
         self.write("docs/has space.md", "# Present")
         self.write("docs/links.md", '[file](has%20space.md#heading)\n[file]: <has space.md>\n<img src="has%20space.md">\n`[sample](no.md)`\n')

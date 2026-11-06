@@ -17,8 +17,8 @@ def links(text):
         if marker:
             kind = marker[1][0]
             if fence is None:
-                fence = kind
-            elif fence == kind:
+                fence = (kind, len(marker[1]))
+            elif fence[0] == kind and len(marker[1]) >= fence[1]:
                 fence = None
             continue
         if fence:
@@ -61,6 +61,16 @@ def check(root, base):
         except subprocess.CalledProcessError:
             return False
     failures = []
+    # Markdown can be a compile-time input (notably the crate's README).
+    # Check literal includes without compiling the Rust/native graph.
+    for name in filter(None, git("ls-files", "-z", "--", "*.rs").decode().split("\0")):
+        source = root / name
+        if not source.is_file():
+            continue
+        for include in re.findall(r'include_(?:str|bytes)!\(\s*"([^"\n]+\.md)"\s*\)', source.read_text(encoding="utf-8")):
+            target = repository_target(name, include)
+            if target is not None and not (root / target).is_file():
+                failures.append(f"{name}: missing included documentation {target}")
     names = git("ls-files", "-z", "--", "*.md").decode().split("\0")
     for name in filter(None, names):
         file = root / name
