@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "review_date": "2026-10-29",
+  "review_date": "2026-11-06",
   "states": [
     "tested",
     "model-only",
@@ -78,14 +78,14 @@
       },
       "native": {
         "state": "tested",
-        "notes": "Finite declared contract; variant-specific limits remain in the linked canonical evidence. Optional Input placeholder metadata is explicitly rejected by Apace before model/engine changes; base inputs without the hint retain their existing contract.",
+        "notes": "Finite declared contract; variant-specific limits remain in the linked canonical evidence. Current native placeholder admission/patches and hint painting preserve editor identity, selection and composition; the hint is presentation metadata, not a label or password value. See the reviewed native placeholder evidence; OS IME/readers remain separate.",
         "evidence": [
           "inventory:P0-02"
         ]
       },
       "accesskit": {
         "state": "tested",
-        "notes": "Actual finite semantic projection tested; OS client/speech acceptance remains separate. Optional Input placeholder metadata is explicitly rejected by Apace before model/engine changes; base inputs without the hint retain their existing contract.",
+        "notes": "Actual finite semantic projection tested; OS client/speech acceptance remains separate. Placeholder is separate AccessKit metadata, never a label or a password value; this does not widen the existing component-specific projection state or claim OS reader acceptance.",
         "evidence": [
           "inventory:P0-02"
         ]
@@ -141,32 +141,28 @@
         "state": "tested",
         "notes": "Finite model and ownership rules are separately tested.",
         "evidence": [
-          "inventory:P0-04",
-          "docs/misc-pages.md: finite contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P0-04"
         ]
       },
       "ssr": {
         "state": "tested",
         "notes": "Structural serialization/adoption shape only; SSR does not advertise an input driver.",
         "evidence": [
-          "inventory:P0-04",
-          "docs/misc-pages.md: finite contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P0-04"
         ]
       },
       "web": {
         "state": "tested",
         "notes": "Finite declared contract; variant-specific limits remain in the linked canonical evidence.",
         "evidence": [
-          "inventory:P0-04",
-          "docs/misc-pages.md: finite contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P0-04"
         ]
       },
       "native": {
         "state": "tested",
         "notes": "Finite declared contract; variant-specific limits remain in the linked canonical evidence.",
         "evidence": [
-          "inventory:P0-04",
-          "docs/misc-pages.md: finite contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P0-04"
         ]
       },
       "accesskit": {
@@ -433,32 +429,28 @@
         "state": "tested",
         "notes": "Finite model and ownership rules are separately tested.",
         "evidence": [
-          "inventory:P0-11",
-          "docs/misc-pages.md: finite contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P0-11"
         ]
       },
       "ssr": {
         "state": "tested",
         "notes": "Structural serialization/adoption shape only; SSR does not advertise an input driver.",
         "evidence": [
-          "inventory:P0-11",
-          "docs/misc-pages.md: finite contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P0-11"
         ]
       },
       "web": {
         "state": "tested",
         "notes": "Separate FocusScope, Portal and finite Dialog layers tested; unsupported popup facets remain rejected.",
         "evidence": [
-          "inventory:P0-11",
-          "docs/misc-pages.md: finite contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P0-11"
         ]
       },
       "native": {
         "state": "tested",
         "notes": "Separate FocusScope, Portal and finite Dialog layers tested; unsupported popup facets remain rejected.",
         "evidence": [
-          "inventory:P0-11",
-          "docs/misc-pages.md: finite contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P0-11"
         ]
       },
       "accesskit": {
@@ -519,32 +511,28 @@
         "state": "tested",
         "notes": "Finite model and ownership rules are separately tested.",
         "evidence": [
-          "inventory:P0-13",
-          "docs/misc-pages.md: finite contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P0-13"
         ]
       },
       "ssr": {
         "state": "tested",
         "notes": "Structural serialization/adoption shape only; SSR does not advertise an input driver.",
         "evidence": [
-          "inventory:P0-13",
-          "docs/misc-pages.md: finite contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P0-13"
         ]
       },
       "web": {
         "state": "tested",
         "notes": "Finite declared contract; variant-specific limits remain in the linked canonical evidence.",
         "evidence": [
-          "inventory:P0-13",
-          "docs/misc-pages.md: finite contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P0-13"
         ]
       },
       "native": {
         "state": "tested",
         "notes": "Finite declared contract; variant-specific limits remain in the linked canonical evidence.",
         "evidence": [
-          "inventory:P0-13",
-          "docs/misc-pages.md: finite contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P0-13"
         ]
       },
       "accesskit": {
@@ -583,7 +571,7 @@
       },
       "native": {
         "state": "model-only",
-        "notes": "This is a static browser gallery and evidence ledger; no native gallery executable or AT client acceptance is claimed.",
+        "notes": "The Rust documentation website and bounded static audit gallery have current browser evidence. There is no native documentation-site executable or native gallery input/AT claim.",
         "evidence": [
           "inventory:P0-14"
         ]
@@ -747,14 +735,14 @@
       },
       "native": {
         "state": "tested",
-        "notes": "Fixed-row Textarea supported; intrinsic autosizing FieldSizing explicitly rejected. Optional Input placeholder metadata is explicitly rejected by Apace before model/engine changes; base inputs without the hint retain their existing contract.",
+        "notes": "Fixed-row Textarea supported; intrinsic autosizing FieldSizing explicitly rejected. Current native placeholder admission/patches and hint painting preserve editor identity, selection and composition; the hint is presentation metadata, not a label or password value. See the reviewed native placeholder evidence; OS IME/readers remain separate.",
         "evidence": [
           "inventory:P1-04"
         ]
       },
       "accesskit": {
         "state": "model-only",
-        "notes": "No component-specific AT client claim; shared projection is not screen-reader acceptance. Optional Input placeholder metadata is explicitly rejected by Apace before model/engine changes; base inputs without the hint retain their existing contract.",
+        "notes": "No component-specific AT client claim; shared projection is not screen-reader acceptance. Placeholder is separate AccessKit metadata, never a label or a password value; this does not widen the existing component-specific projection state or claim OS reader acceptance.",
         "evidence": [
           "inventory:P1-04"
         ]
@@ -788,14 +776,14 @@
       },
       "native": {
         "state": "tested",
-        "notes": "Finite declared contract; variant-specific limits remain in the linked canonical evidence. Optional Input placeholder metadata is explicitly rejected by Apace before model/engine changes; base inputs without the hint retain their existing contract.",
+        "notes": "Finite declared contract; variant-specific limits remain in the linked canonical evidence. Current native placeholder admission/patches and hint painting preserve editor identity, selection and composition; the hint is presentation metadata, not a label or password value. See the reviewed native placeholder evidence; OS IME/readers remain separate.",
         "evidence": [
           "inventory:P1-05"
         ]
       },
       "accesskit": {
         "state": "tested",
-        "notes": "Actual finite semantic projection tested; OS client/speech acceptance remains separate. Optional Input placeholder metadata is explicitly rejected by Apace before model/engine changes; base inputs without the hint retain their existing contract.",
+        "notes": "Actual finite semantic projection tested; OS client/speech acceptance remains separate. Placeholder is separate AccessKit metadata, never a label or a password value; this does not widen the existing component-specific projection state or claim OS reader acceptance.",
         "evidence": [
           "inventory:P1-05"
         ]
@@ -1300,32 +1288,28 @@
         "state": "tested",
         "notes": "Finite model and ownership rules are separately tested.",
         "evidence": [
-          "inventory:P3-01",
-          "docs/misc-pages.md: finite contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P3-01"
         ]
       },
       "ssr": {
         "state": "tested",
         "notes": "Structural serialization/adoption shape only; SSR does not advertise an input driver.",
         "evidence": [
-          "inventory:P3-01",
-          "docs/misc-pages.md: finite contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P3-01"
         ]
       },
       "web": {
         "state": "tested",
         "notes": "Finite declared contract; variant-specific limits remain in the linked canonical evidence.",
         "evidence": [
-          "inventory:P3-01",
-          "docs/misc-pages.md: finite contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P3-01"
         ]
       },
       "native": {
         "state": "tested",
         "notes": "Finite declared contract; variant-specific limits remain in the linked canonical evidence.",
         "evidence": [
-          "inventory:P3-01",
-          "docs/misc-pages.md: finite contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P3-01"
         ]
       },
       "accesskit": {
@@ -1714,32 +1698,28 @@
         "state": "tested",
         "notes": "Finite model and ownership rules are separately tested.",
         "evidence": [
-          "inventory:P3-11",
-          "docs/misc-pages.md: finite contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P3-11"
         ]
       },
       "ssr": {
         "state": "tested",
         "notes": "Structural serialization/adoption shape only; SSR does not advertise an input driver.",
         "evidence": [
-          "inventory:P3-11",
-          "docs/misc-pages.md: finite contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P3-11"
         ]
       },
       "web": {
         "state": "tested",
         "notes": "Finite declared contract; variant-specific limits remain in the linked canonical evidence.",
         "evidence": [
-          "inventory:P3-11",
-          "docs/misc-pages.md: finite contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P3-11"
         ]
       },
       "native": {
         "state": "tested",
         "notes": "Finite declared contract; variant-specific limits remain in the linked canonical evidence.",
         "evidence": [
-          "inventory:P3-11",
-          "docs/misc-pages.md: finite contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P3-11"
         ]
       },
       "accesskit": {
@@ -1759,32 +1739,28 @@
         "state": "tested",
         "notes": "Finite model and ownership rules are separately tested.",
         "evidence": [
-          "inventory:P3-12",
-          "docs/misc-pages.md: finite contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P3-12"
         ]
       },
       "ssr": {
         "state": "tested",
         "notes": "Structural serialization/adoption shape only; SSR does not advertise an input driver.",
         "evidence": [
-          "inventory:P3-12",
-          "docs/misc-pages.md: finite contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P3-12"
         ]
       },
       "web": {
         "state": "tested",
         "notes": "Finite declared contract; variant-specific limits remain in the linked canonical evidence.",
         "evidence": [
-          "inventory:P3-12",
-          "docs/misc-pages.md: finite contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P3-12"
         ]
       },
       "native": {
         "state": "tested",
         "notes": "Finite declared contract; variant-specific limits remain in the linked canonical evidence.",
         "evidence": [
-          "inventory:P3-12",
-          "docs/misc-pages.md: finite contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P3-12"
         ]
       },
       "accesskit": {
@@ -2191,8 +2167,8 @@
         ]
       },
       "native": {
-        "state": "model-only",
-        "notes": "Current Glory supplies the shared native menu/choice/select/tags driver. Historical consumer evidence remains in the inventory; this migration has no dedicated current Sapid consumer test for this family, so it does not claim full adapter acceptance.",
+        "state": "tested",
+        "notes": "Current Sapid WindowApp Menu consumer passed in all four themes: real focus, search/filtering, stable editor identity, command activation, controlled checkbox/radio state and cleanup. This finite engine input test does not establish platform system-menu services, OS input or reader speech.",
         "evidence": [
           "inventory:P4-01"
         ]
@@ -2233,7 +2209,7 @@
       },
       "native": {
         "state": "model-only",
-        "notes": "Current Glory supplies the shared native menu/choice/select/tags driver. Historical consumer evidence remains in the inventory; this migration has no dedicated current Sapid consumer test for this family, so it does not claim full adapter acceptance.",
+        "notes": "Historical Sapid ContextMenu consumer evidence and current shared native renderer tests are retained. No current dedicated Sapid ContextMenu consumer was rerun in this review; model-only deliberately preserves that evidence boundary.",
         "evidence": [
           "inventory:P4-02"
         ]
@@ -2273,8 +2249,8 @@
         ]
       },
       "native": {
-        "state": "model-only",
-        "notes": "Current Glory supplies the shared native menu/choice/select/tags driver. Historical consumer evidence remains in the inventory; this migration has no dedicated current Sapid consumer test for this family, so it does not claim full adapter acceptance.",
+        "state": "tested",
+        "notes": "Current Sapid WindowApp Menubar consumer passed in all four themes: real focus, search/filtering, stable editor identity, command activation, controlled checkbox/radio state and cleanup. Platform system menus, OS input and reader speech remain separate.",
         "evidence": [
           "inventory:P4-03"
         ]
@@ -2355,8 +2331,8 @@
         ]
       },
       "native": {
-        "state": "model-only",
-        "notes": "Current Glory supplies the shared native menu/choice/select/tags driver. Historical consumer evidence remains in the inventory; this migration has no dedicated current Sapid consumer test for this family, so it does not claim full adapter acceptance.",
+        "state": "tested",
+        "notes": "Current Select consumers pass four-theme native hit/focus/geometry, clear actions, sizing, custom trigger identity and an anchored empty message. These tests cover the stated consumer subset; exhaustive popup selection, OS input and assistive-technology acceptance are separate.",
         "evidence": [
           "inventory:P4-05"
         ]
@@ -2397,7 +2373,7 @@
       },
       "native": {
         "state": "model-only",
-        "notes": "Current Glory supplies the shared native menu/choice/select/tags driver. Historical consumer evidence remains in the inventory; this migration has no dedicated current Sapid consumer test for this family, so it does not claim full adapter acceptance.",
+        "notes": "Select consumers exercise the shared Combobox Select path, but this review has no dedicated current editable Combobox consumer acceptance. Historical evidence remains available; native editable matching/selection is not newly claimed.",
         "evidence": [
           "inventory:P4-06"
         ]
@@ -2438,7 +2414,7 @@
       },
       "native": {
         "state": "model-only",
-        "notes": "Current Glory supplies the shared native menu/choice/select/tags driver. Historical consumer evidence remains in the inventory; this migration has no dedicated current Sapid consumer test for this family, so it does not claim full adapter acceptance.",
+        "notes": "Current shared Autocomplete host support is distinct from Sapid consumer acceptance. No dedicated current Sapid Autocomplete consumer was rerun in this review; historical evidence does not establish new OS input or reader acceptance.",
         "evidence": [
           "inventory:P4-07"
         ]
@@ -2478,8 +2454,8 @@
         ]
       },
       "native": {
-        "state": "model-only",
-        "notes": "Current Glory supplies the shared native menu/choice/select/tags driver. Historical consumer evidence remains in the inventory; this migration has no dedicated current Sapid consumer test for this family, so it does not claim full adapter acceptance.",
+        "state": "tested",
+        "notes": "Current MultiSelect consumer passes actual token/editor layout, wrapping, long labels, inset clear/loading alignment and disclosure focus with one open proposal. This finite subset does not claim exhaustive popup selection or OS keyboard/reader acceptance.",
         "evidence": [
           "inventory:P4-08"
         ]
@@ -2519,8 +2495,8 @@
         ]
       },
       "native": {
-        "state": "model-only",
-        "notes": "Current Glory supplies the shared native menu/choice/select/tags driver. Historical consumer evidence remains in the inventory; this migration has no dedicated current Sapid consumer test for this family, so it does not claim full adapter acceptance.",
+        "state": "tested",
+        "notes": "Current TagsInput/PillsInput consumers pass real token/editor layout, wrapping and clearing while retaining the editor and current focus. Injected clipboard coverage is recorded separately; stock OS clipboard, IME and reader acceptance are not implied.",
         "evidence": [
           "inventory:P4-09"
         ]
@@ -2542,32 +2518,28 @@
         "state": "tested",
         "notes": "Finite model and ownership rules are separately tested.",
         "evidence": [
-          "inventory:P4-10",
-          "docs/extension-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
+          "inventory:P4-10"
         ]
       },
       "ssr": {
         "state": "tested",
         "notes": "Structural serialization/adoption shape only; SSR does not advertise an input driver.",
         "evidence": [
-          "inventory:P4-10",
-          "docs/extension-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
+          "inventory:P4-10"
         ]
       },
       "web": {
         "state": "tested",
         "notes": "Finite declared contract; variant-specific limits remain in the linked canonical evidence.",
         "evidence": [
-          "inventory:P4-10",
-          "docs/extension-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
+          "inventory:P4-10"
         ]
       },
       "native": {
         "state": "model-only",
-        "notes": "Current Glory supplies the shared native menu/choice/select/tags driver. Historical consumer evidence remains in the inventory; this migration has no dedicated current Sapid consumer test for this family, so it does not claim full adapter acceptance.",
+        "notes": "The actual Spotlight primary source mounts and retires in all four themes in extension_docs.rs. That closed-shell lifecycle test does not exercise Command/Spotlight popup matching, activation or focus, so this family remains model-only for native interaction.",
         "evidence": [
-          "inventory:P4-10",
-          "docs/extension-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
+          "inventory:P4-10"
         ]
       },
       "accesskit": {
@@ -2792,32 +2764,28 @@
         "state": "tested",
         "notes": "Finite model and ownership rules are separately tested.",
         "evidence": [
-          "inventory:P5-06",
-          "docs/extension-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
+          "inventory:P5-06"
         ]
       },
       "ssr": {
         "state": "tested",
         "notes": "Structural serialization/adoption shape only; SSR does not advertise an input driver.",
         "evidence": [
-          "inventory:P5-06",
-          "docs/extension-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
+          "inventory:P5-06"
         ]
       },
       "web": {
         "state": "tested",
         "notes": "Default notifications/timer controls supported; precise hover interest unsupported.",
         "evidence": [
-          "inventory:P5-06",
-          "docs/extension-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
+          "inventory:P5-06"
         ]
       },
       "native": {
         "state": "tested",
         "notes": "Default notifications/timer controls supported; precise hover interest unsupported.",
         "evidence": [
-          "inventory:P5-06",
-          "docs/extension-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
+          "inventory:P5-06"
         ]
       },
       "accesskit": {
@@ -2919,32 +2887,28 @@
         "state": "tested",
         "notes": "Finite model and ownership rules are separately tested.",
         "evidence": [
-          "inventory:P5-09",
-          "docs/extension-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
+          "inventory:P5-09"
         ]
       },
       "ssr": {
         "state": "tested",
         "notes": "Structural serialization/adoption shape only; SSR does not advertise an input driver.",
         "evidence": [
-          "inventory:P5-09",
-          "docs/extension-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
+          "inventory:P5-09"
         ]
       },
       "web": {
         "state": "tested",
         "notes": "Finite declared contract; variant-specific limits remain in the linked canonical evidence.",
         "evidence": [
-          "inventory:P5-09",
-          "docs/extension-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
+          "inventory:P5-09"
         ]
       },
       "native": {
         "state": "tested",
         "notes": "Finite declared contract; variant-specific limits remain in the linked canonical evidence.",
         "evidence": [
-          "inventory:P5-09",
-          "docs/extension-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
+          "inventory:P5-09"
         ]
       },
       "accesskit": {
@@ -3087,32 +3051,28 @@
         "state": "tested",
         "notes": "Finite model and ownership rules are separately tested.",
         "evidence": [
-          "inventory:P5-13",
-          "docs/extension-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
+          "inventory:P5-13"
         ]
       },
       "ssr": {
         "state": "tested",
         "notes": "Structural serialization/adoption shape only; SSR does not advertise an input driver.",
         "evidence": [
-          "inventory:P5-13",
-          "docs/extension-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
+          "inventory:P5-13"
         ]
       },
       "web": {
         "state": "tested",
         "notes": "Finite declared contract; variant-specific limits remain in the linked canonical evidence.",
         "evidence": [
-          "inventory:P5-13",
-          "docs/extension-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
+          "inventory:P5-13"
         ]
       },
       "native": {
         "state": "tested",
         "notes": "Four-theme real top-layer FIFO, geometry/hits/raster, stable editor/selection, safe Cancel, final opener focus and Owner retirement; handoff follows only valid fallbacks in the current closing managed scopes. Preserve does not participate.",
         "evidence": [
-          "inventory:P5-13",
-          "docs/extension-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
+          "inventory:P5-13"
         ]
       },
       "accesskit": {
@@ -3461,32 +3421,28 @@
         "state": "tested",
         "notes": "Finite model and ownership rules are separately tested.",
         "evidence": [
-          "inventory:P6-07",
-          "docs/misc-pages.md: finite contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P6-07"
         ]
       },
       "ssr": {
         "state": "tested",
         "notes": "Structural serialization/adoption shape only; SSR does not advertise an input driver.",
         "evidence": [
-          "inventory:P6-07",
-          "docs/misc-pages.md: finite contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P6-07"
         ]
       },
       "web": {
         "state": "tested",
         "notes": "Finite declared contract; variant-specific limits remain in the linked canonical evidence.",
         "evidence": [
-          "inventory:P6-07",
-          "docs/misc-pages.md: finite contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P6-07"
         ]
       },
       "native": {
         "state": "tested",
         "notes": "Finite declared contract; variant-specific limits remain in the linked canonical evidence.",
         "evidence": [
-          "inventory:P6-07",
-          "docs/misc-pages.md: finite contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P6-07"
         ]
       },
       "accesskit": {
@@ -3588,32 +3544,28 @@
         "state": "tested",
         "notes": "Finite model and ownership rules are separately tested.",
         "evidence": [
-          "inventory:P6-10",
-          "docs/misc-pages.md: finite contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P6-10"
         ]
       },
       "ssr": {
         "state": "tested",
         "notes": "Structural serialization/adoption shape only; SSR does not advertise an input driver.",
         "evidence": [
-          "inventory:P6-10",
-          "docs/misc-pages.md: finite contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P6-10"
         ]
       },
       "web": {
         "state": "tested",
         "notes": "Finite declared contract; variant-specific limits remain in the linked canonical evidence.",
         "evidence": [
-          "inventory:P6-10",
-          "docs/misc-pages.md: finite contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P6-10"
         ]
       },
       "native": {
         "state": "tested",
         "notes": "Finite declared contract; variant-specific limits remain in the linked canonical evidence.",
         "evidence": [
-          "inventory:P6-10",
-          "docs/misc-pages.md: finite contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P6-10"
         ]
       },
       "accesskit": {
@@ -3756,32 +3708,28 @@
         "state": "tested",
         "notes": "Finite model and ownership rules are separately tested.",
         "evidence": [
-          "inventory:P6-14",
-          "docs/misc-pages.md: finite contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P6-14"
         ]
       },
       "ssr": {
         "state": "tested",
         "notes": "Structural serialization/adoption shape only; SSR does not advertise an input driver.",
         "evidence": [
-          "inventory:P6-14",
-          "docs/misc-pages.md: finite contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P6-14"
         ]
       },
       "web": {
         "state": "tested",
         "notes": "Finite declared contract; variant-specific limits remain in the linked canonical evidence.",
         "evidence": [
-          "inventory:P6-14",
-          "docs/misc-pages.md: finite contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P6-14"
         ]
       },
       "native": {
         "state": "tested",
         "notes": "Finite declared contract; variant-specific limits remain in the linked canonical evidence.",
         "evidence": [
-          "inventory:P6-14",
-          "docs/misc-pages.md: finite contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P6-14"
         ]
       },
       "accesskit": {
@@ -4231,14 +4179,14 @@
       },
       "native": {
         "state": "tested",
-        "notes": "Finite declared contract; variant-specific limits remain in the linked canonical evidence. Optional Input placeholder metadata is explicitly rejected by Apace before model/engine changes; base inputs without the hint retain their existing contract.",
+        "notes": "Finite declared contract; variant-specific limits remain in the linked canonical evidence. Current native placeholder admission/patches and hint painting preserve editor identity, selection and composition; the hint is presentation metadata, not a label or password value. See the reviewed native placeholder evidence; OS IME/readers remain separate.",
         "evidence": [
           "inventory:P7-11"
         ]
       },
       "accesskit": {
         "state": "model-only",
-        "notes": "No component-specific AT client claim; shared projection is not screen-reader acceptance. Optional Input placeholder metadata is explicitly rejected by Apace before model/engine changes; base inputs without the hint retain their existing contract.",
+        "notes": "No component-specific AT client claim; shared projection is not screen-reader acceptance. Placeholder is separate AccessKit metadata, never a label or a password value; this does not widen the existing component-specific projection state or claim OS reader acceptance.",
         "evidence": [
           "inventory:P7-11"
         ]
@@ -4478,7 +4426,7 @@
       },
       "native": {
         "state": "model-only",
-        "notes": "Finite declared contract; variant-specific limits remain in the linked canonical evidence.",
+        "notes": "Host-independent date/provider model. Native widget consumers are recorded separately; this row does not claim a native input driver.",
         "evidence": [
           "inventory:P9-01"
         ]
@@ -4500,32 +4448,28 @@
         "state": "tested",
         "notes": "Finite model and ownership rules are separately tested.",
         "evidence": [
-          "inventory:P9-02",
-          "docs/date-pages.md: finite civil date/time contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P9-02"
         ]
       },
       "ssr": {
         "state": "tested",
         "notes": "Structural serialization/adoption shape only; SSR does not advertise an input driver.",
         "evidence": [
-          "inventory:P9-02",
-          "docs/date-pages.md: finite civil date/time contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P9-02"
         ]
       },
       "web": {
         "state": "tested",
         "notes": "Finite declared contract; variant-specific limits remain in the linked canonical evidence.",
         "evidence": [
-          "inventory:P9-02",
-          "docs/date-pages.md: finite civil date/time contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P9-02"
         ]
       },
       "native": {
         "state": "tested",
         "notes": "Finite declared contract; variant-specific limits remain in the linked canonical evidence.",
         "evidence": [
-          "inventory:P9-02",
-          "docs/date-pages.md: finite civil date/time contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P9-02"
         ]
       },
       "accesskit": {
@@ -4546,32 +4490,28 @@
         "state": "tested",
         "notes": "Finite model and ownership rules are separately tested.",
         "evidence": [
-          "inventory:P9-03",
-          "docs/date-pages.md: finite civil date/time contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P9-03"
         ]
       },
       "ssr": {
         "state": "tested",
         "notes": "Structural serialization/adoption shape only; SSR does not advertise an input driver.",
         "evidence": [
-          "inventory:P9-03",
-          "docs/date-pages.md: finite civil date/time contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P9-03"
         ]
       },
       "web": {
         "state": "tested",
         "notes": "Finite declared contract; variant-specific limits remain in the linked canonical evidence.",
         "evidence": [
-          "inventory:P9-03",
-          "docs/date-pages.md: finite civil date/time contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P9-03"
         ]
       },
       "native": {
         "state": "tested",
         "notes": "Finite declared contract; variant-specific limits remain in the linked canonical evidence.",
         "evidence": [
-          "inventory:P9-03",
-          "docs/date-pages.md: finite civil date/time contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P9-03"
         ]
       },
       "accesskit": {
@@ -4591,32 +4531,28 @@
         "state": "tested",
         "notes": "Finite model and ownership rules are separately tested.",
         "evidence": [
-          "inventory:P9-04",
-          "docs/date-pages.md: finite civil date/time contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P9-04"
         ]
       },
       "ssr": {
         "state": "tested",
         "notes": "Structural serialization/adoption shape only; SSR does not advertise an input driver.",
         "evidence": [
-          "inventory:P9-04",
-          "docs/date-pages.md: finite civil date/time contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P9-04"
         ]
       },
       "web": {
         "state": "tested",
         "notes": "Finite declared contract; variant-specific limits remain in the linked canonical evidence.",
         "evidence": [
-          "inventory:P9-04",
-          "docs/date-pages.md: finite civil date/time contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P9-04"
         ]
       },
       "native": {
         "state": "tested",
         "notes": "Finite declared contract; variant-specific limits remain in the linked canonical evidence.",
         "evidence": [
-          "inventory:P9-04",
-          "docs/date-pages.md: finite civil date/time contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P9-04"
         ]
       },
       "accesskit": {
@@ -4636,32 +4572,28 @@
         "state": "tested",
         "notes": "Finite model and ownership rules are separately tested.",
         "evidence": [
-          "inventory:P9-05",
-          "docs/date-pages.md: finite civil date/time contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P9-05"
         ]
       },
       "ssr": {
         "state": "tested",
         "notes": "Structural serialization/adoption shape only; SSR does not advertise an input driver.",
         "evidence": [
-          "inventory:P9-05",
-          "docs/date-pages.md: finite civil date/time contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P9-05"
         ]
       },
       "web": {
         "state": "tested",
         "notes": "Finite declared contract; variant-specific limits remain in the linked canonical evidence.",
         "evidence": [
-          "inventory:P9-05",
-          "docs/date-pages.md: finite civil date/time contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P9-05"
         ]
       },
       "native": {
         "state": "tested",
         "notes": "Finite declared contract; variant-specific limits remain in the linked canonical evidence.",
         "evidence": [
-          "inventory:P9-05",
-          "docs/date-pages.md: finite civil date/time contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P9-05"
         ]
       },
       "accesskit": {
@@ -4681,32 +4613,28 @@
         "state": "tested",
         "notes": "Finite model and ownership rules are separately tested.",
         "evidence": [
-          "inventory:P9-06",
-          "docs/date-pages.md: finite civil date/time contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P9-06"
         ]
       },
       "ssr": {
         "state": "tested",
         "notes": "Structural serialization/adoption shape only; SSR does not advertise an input driver.",
         "evidence": [
-          "inventory:P9-06",
-          "docs/date-pages.md: finite civil date/time contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P9-06"
         ]
       },
       "web": {
         "state": "tested",
         "notes": "Finite declared contract; variant-specific limits remain in the linked canonical evidence.",
         "evidence": [
-          "inventory:P9-06",
-          "docs/date-pages.md: finite civil date/time contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P9-06"
         ]
       },
       "native": {
         "state": "tested",
         "notes": "Finite declared contract; variant-specific limits remain in the linked canonical evidence.",
         "evidence": [
-          "inventory:P9-06",
-          "docs/date-pages.md: finite civil date/time contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P9-06"
         ]
       },
       "accesskit": {
@@ -4726,32 +4654,28 @@
         "state": "tested",
         "notes": "Finite model and ownership rules are separately tested.",
         "evidence": [
-          "inventory:P9-07",
-          "docs/date-pages.md: finite civil date/time contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P9-07"
         ]
       },
       "ssr": {
         "state": "tested",
         "notes": "Structural serialization/adoption shape only; SSR does not advertise an input driver.",
         "evidence": [
-          "inventory:P9-07",
-          "docs/date-pages.md: finite civil date/time contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P9-07"
         ]
       },
       "web": {
         "state": "tested",
         "notes": "Finite declared contract; variant-specific limits remain in the linked canonical evidence.",
         "evidence": [
-          "inventory:P9-07",
-          "docs/date-pages.md: finite civil date/time contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P9-07"
         ]
       },
       "native": {
         "state": "tested",
         "notes": "TimeInput and TimeValue preserve hours, minutes, seconds, 12/24-hour formats, empty values and localization. Glory native supports precise Chinese UTF-16 selection; checks cover real editors, readonly/disabled states, identity and pixels. OS input and assistive-technology clients require separate acceptance.",
         "evidence": [
-          "inventory:P9-07",
-          "docs/date-pages.md: finite civil date/time contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P9-07"
         ]
       },
       "accesskit": {
@@ -4771,32 +4695,28 @@
         "state": "tested",
         "notes": "Finite model and ownership rules are separately tested.",
         "evidence": [
-          "inventory:P9-08",
-          "docs/date-pages.md: finite civil date/time contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P9-08"
         ]
       },
       "ssr": {
         "state": "tested",
         "notes": "Structural serialization/adoption shape only; SSR does not advertise an input driver.",
         "evidence": [
-          "inventory:P9-08",
-          "docs/date-pages.md: finite civil date/time contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P9-08"
         ]
       },
       "web": {
         "state": "tested",
         "notes": "Finite declared contract; variant-specific limits remain in the linked canonical evidence.",
         "evidence": [
-          "inventory:P9-08",
-          "docs/date-pages.md: finite civil date/time contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P9-08"
         ]
       },
       "native": {
         "state": "tested",
         "notes": "Finite declared contract; variant-specific limits remain in the linked canonical evidence.",
         "evidence": [
-          "inventory:P9-08",
-          "docs/date-pages.md: finite civil date/time contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P9-08"
         ]
       },
       "accesskit": {
@@ -4816,32 +4736,28 @@
         "state": "tested",
         "notes": "Finite model and ownership rules are separately tested.",
         "evidence": [
-          "inventory:P9-09",
-          "docs/date-pages.md: finite civil date/time contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P9-09"
         ]
       },
       "ssr": {
         "state": "tested",
         "notes": "Structural serialization/adoption shape only; SSR does not advertise an input driver.",
         "evidence": [
-          "inventory:P9-09",
-          "docs/date-pages.md: finite civil date/time contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P9-09"
         ]
       },
       "web": {
         "state": "tested",
         "notes": "Finite declared contract; variant-specific limits remain in the linked canonical evidence.",
         "evidence": [
-          "inventory:P9-09",
-          "docs/date-pages.md: finite civil date/time contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P9-09"
         ]
       },
       "native": {
         "state": "tested",
         "notes": "Finite declared contract; variant-specific limits remain in the linked canonical evidence.",
         "evidence": [
-          "inventory:P9-09",
-          "docs/date-pages.md: finite civil date/time contracts and current browser/native evidence; no additional OS acceptance"
+          "inventory:P9-09"
         ]
       },
       "accesskit": {
@@ -5025,32 +4941,28 @@
         "state": "tested",
         "notes": "Finite implemented contract and actual host evidence in docs/lightbox.md. SSR proves shape/adoption only; it has no input driver. Native scope excludes optional unsupported facets and does not imply OS/AT acceptance.",
         "evidence": [
-          "inventory:P10-05",
-          "docs/extension-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
+          "inventory:P10-05"
         ]
       },
       "ssr": {
         "state": "tested",
         "notes": "Finite implemented contract and actual host evidence in docs/lightbox.md. SSR proves shape/adoption only; it has no input driver. Native scope excludes optional unsupported facets and does not imply OS/AT acceptance.",
         "evidence": [
-          "inventory:P10-05",
-          "docs/extension-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
+          "inventory:P10-05"
         ]
       },
       "web": {
         "state": "tested",
         "notes": "Finite implemented contract and actual host evidence in docs/lightbox.md. SSR proves shape/adoption only; it has no input driver. Native scope excludes optional unsupported facets and does not imply OS/AT acceptance.",
         "evidence": [
-          "inventory:P10-05",
-          "docs/extension-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
+          "inventory:P10-05"
         ]
       },
       "native": {
         "state": "tested",
         "notes": "Finite implemented contract and actual host evidence in docs/lightbox.md. SSR proves shape/adoption only; it has no input driver. Native scope excludes optional unsupported facets and does not imply OS/AT acceptance.",
         "evidence": [
-          "inventory:P10-05",
-          "docs/extension-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
+          "inventory:P10-05"
         ]
       },
       "accesskit": {
@@ -5070,32 +4982,28 @@
         "state": "tested",
         "notes": "Finite model and ownership rules are separately tested.",
         "evidence": [
-          "inventory:P10-06",
-          "docs/extension-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
+          "inventory:P10-06"
         ]
       },
       "ssr": {
         "state": "tested",
         "notes": "Structural serialization/adoption shape only; SSR does not advertise an input driver.",
         "evidence": [
-          "inventory:P10-06",
-          "docs/extension-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
+          "inventory:P10-06"
         ]
       },
       "web": {
         "state": "tested",
         "notes": "Finite declared contract; variant-specific limits remain in the linked canonical evidence.",
         "evidence": [
-          "inventory:P10-06",
-          "docs/extension-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
+          "inventory:P10-06"
         ]
       },
       "native": {
         "state": "tested",
         "notes": "Finite declared contract; variant-specific limits remain in the linked canonical evidence.",
         "evidence": [
-          "inventory:P10-06",
-          "docs/extension-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
+          "inventory:P10-06"
         ]
       },
       "accesskit": {
@@ -5113,32 +5021,28 @@
         "state": "tested",
         "notes": "Finite model and ownership rules are separately tested.",
         "evidence": [
-          "inventory:P10-07",
-          "docs/extension-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
+          "inventory:P10-07"
         ]
       },
       "ssr": {
         "state": "tested",
         "notes": "Structural serialization/adoption shape only; SSR does not advertise an input driver.",
         "evidence": [
-          "inventory:P10-07",
-          "docs/extension-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
+          "inventory:P10-07"
         ]
       },
       "web": {
         "state": "tested",
         "notes": "Finite declared contract; variant-specific limits remain in the linked canonical evidence.",
         "evidence": [
-          "inventory:P10-07",
-          "docs/extension-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
+          "inventory:P10-07"
         ]
       },
       "native": {
         "state": "tested",
         "notes": "Finite declared contract; variant-specific limits remain in the linked canonical evidence.",
         "evidence": [
-          "inventory:P10-07",
-          "docs/extension-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
+          "inventory:P10-07"
         ]
       },
       "accesskit": {
@@ -5240,32 +5144,28 @@
         "state": "tested",
         "notes": "Finite implemented contract and actual host evidence in docs/charts.md. SSR proves shape/adoption only; it has no input driver. Native scope excludes optional unsupported facets and does not imply OS/AT acceptance.",
         "evidence": [
-          "inventory:P11-02",
-          "docs/chart-pages.md: finite portable geometry and current browser/native evidence; no additional OS acceptance"
+          "inventory:P11-02"
         ]
       },
       "ssr": {
         "state": "tested",
         "notes": "Finite implemented contract and actual host evidence in docs/charts.md. SSR proves shape/adoption only; it has no input driver. Native scope excludes optional unsupported facets and does not imply OS/AT acceptance.",
         "evidence": [
-          "inventory:P11-02",
-          "docs/chart-pages.md: finite portable geometry and current browser/native evidence; no additional OS acceptance"
+          "inventory:P11-02"
         ]
       },
       "web": {
         "state": "tested",
         "notes": "Finite implemented contract and actual host evidence in docs/charts.md. SSR proves shape/adoption only; it has no input driver. Native scope excludes optional unsupported facets and does not imply OS/AT acceptance.",
         "evidence": [
-          "inventory:P11-02",
-          "docs/chart-pages.md: finite portable geometry and current browser/native evidence; no additional OS acceptance"
+          "inventory:P11-02"
         ]
       },
       "native": {
         "state": "tested",
         "notes": "Finite implemented contract and actual host evidence in docs/charts.md. SSR proves shape/adoption only; it has no input driver. Native scope excludes optional unsupported facets and does not imply OS/AT acceptance.",
         "evidence": [
-          "inventory:P11-02",
-          "docs/chart-pages.md: finite portable geometry and current browser/native evidence; no additional OS acceptance"
+          "inventory:P11-02"
         ]
       },
       "accesskit": {
@@ -5285,32 +5185,28 @@
         "state": "tested",
         "notes": "Finite implemented contract and actual host evidence in docs/plots.md. SSR proves shape/adoption only; it has no input driver. Native scope excludes optional unsupported facets and does not imply OS/AT acceptance.",
         "evidence": [
-          "inventory:P11-03",
-          "docs/chart-pages.md: finite portable geometry and current browser/native evidence; no additional OS acceptance"
+          "inventory:P11-03"
         ]
       },
       "ssr": {
         "state": "tested",
         "notes": "Finite implemented contract and actual host evidence in docs/plots.md. SSR proves shape/adoption only; it has no input driver. Native scope excludes optional unsupported facets and does not imply OS/AT acceptance.",
         "evidence": [
-          "inventory:P11-03",
-          "docs/chart-pages.md: finite portable geometry and current browser/native evidence; no additional OS acceptance"
+          "inventory:P11-03"
         ]
       },
       "web": {
         "state": "tested",
         "notes": "Finite implemented contract and actual host evidence in docs/plots.md. SSR proves shape/adoption only; it has no input driver. Native scope excludes optional unsupported facets and does not imply OS/AT acceptance.",
         "evidence": [
-          "inventory:P11-03",
-          "docs/chart-pages.md: finite portable geometry and current browser/native evidence; no additional OS acceptance"
+          "inventory:P11-03"
         ]
       },
       "native": {
         "state": "tested",
         "notes": "Finite implemented contract and actual host evidence in docs/plots.md. SSR proves shape/adoption only; it has no input driver. Native scope excludes optional unsupported facets and does not imply OS/AT acceptance.",
         "evidence": [
-          "inventory:P11-03",
-          "docs/chart-pages.md: finite portable geometry and current browser/native evidence; no additional OS acceptance"
+          "inventory:P11-03"
         ]
       },
       "accesskit": {
@@ -5330,32 +5226,28 @@
         "state": "tested",
         "notes": "Finite implemented contract and actual host evidence in docs/plots.md. SSR proves shape/adoption only; it has no input driver. Native scope excludes optional unsupported facets and does not imply OS/AT acceptance.",
         "evidence": [
-          "inventory:P11-04",
-          "docs/chart-pages.md: finite portable geometry and current browser/native evidence; no additional OS acceptance"
+          "inventory:P11-04"
         ]
       },
       "ssr": {
         "state": "tested",
         "notes": "Finite implemented contract and actual host evidence in docs/plots.md. SSR proves shape/adoption only; it has no input driver. Native scope excludes optional unsupported facets and does not imply OS/AT acceptance.",
         "evidence": [
-          "inventory:P11-04",
-          "docs/chart-pages.md: finite portable geometry and current browser/native evidence; no additional OS acceptance"
+          "inventory:P11-04"
         ]
       },
       "web": {
         "state": "tested",
         "notes": "Finite implemented contract and actual host evidence in docs/plots.md. SSR proves shape/adoption only; it has no input driver. Native scope excludes optional unsupported facets and does not imply OS/AT acceptance.",
         "evidence": [
-          "inventory:P11-04",
-          "docs/chart-pages.md: finite portable geometry and current browser/native evidence; no additional OS acceptance"
+          "inventory:P11-04"
         ]
       },
       "native": {
         "state": "tested",
         "notes": "Finite implemented contract and actual host evidence in docs/plots.md. SSR proves shape/adoption only; it has no input driver. Native scope excludes optional unsupported facets and does not imply OS/AT acceptance.",
         "evidence": [
-          "inventory:P11-04",
-          "docs/chart-pages.md: finite portable geometry and current browser/native evidence; no additional OS acceptance"
+          "inventory:P11-04"
         ]
       },
       "accesskit": {
@@ -5375,32 +5267,28 @@
         "state": "tested",
         "notes": "Finite implemented contract and actual host evidence in docs/plots.md. SSR proves shape/adoption only; it has no input driver. Native scope excludes optional unsupported facets and does not imply OS/AT acceptance.",
         "evidence": [
-          "inventory:P11-05",
-          "docs/chart-pages.md: finite portable geometry and current browser/native evidence; no additional OS acceptance"
+          "inventory:P11-05"
         ]
       },
       "ssr": {
         "state": "tested",
         "notes": "Finite implemented contract and actual host evidence in docs/plots.md. SSR proves shape/adoption only; it has no input driver. Native scope excludes optional unsupported facets and does not imply OS/AT acceptance.",
         "evidence": [
-          "inventory:P11-05",
-          "docs/chart-pages.md: finite portable geometry and current browser/native evidence; no additional OS acceptance"
+          "inventory:P11-05"
         ]
       },
       "web": {
         "state": "tested",
         "notes": "Finite implemented contract and actual host evidence in docs/plots.md. SSR proves shape/adoption only; it has no input driver. Native scope excludes optional unsupported facets and does not imply OS/AT acceptance.",
         "evidence": [
-          "inventory:P11-05",
-          "docs/chart-pages.md: finite portable geometry and current browser/native evidence; no additional OS acceptance"
+          "inventory:P11-05"
         ]
       },
       "native": {
         "state": "tested",
         "notes": "Finite implemented contract and actual host evidence in docs/plots.md. SSR proves shape/adoption only; it has no input driver. Native scope excludes optional unsupported facets and does not imply OS/AT acceptance.",
         "evidence": [
-          "inventory:P11-05",
-          "docs/chart-pages.md: finite portable geometry and current browser/native evidence; no additional OS acceptance"
+          "inventory:P11-05"
         ]
       },
       "accesskit": {
@@ -5420,32 +5308,28 @@
         "state": "tested",
         "notes": "Finite implemented contract and actual host evidence in docs/plots.md. SSR proves shape/adoption only; it has no input driver. Native scope excludes optional unsupported facets and does not imply OS/AT acceptance.",
         "evidence": [
-          "inventory:P11-06",
-          "docs/chart-pages.md: finite portable geometry and current browser/native evidence; no additional OS acceptance"
+          "inventory:P11-06"
         ]
       },
       "ssr": {
         "state": "tested",
         "notes": "Finite implemented contract and actual host evidence in docs/plots.md. SSR proves shape/adoption only; it has no input driver. Native scope excludes optional unsupported facets and does not imply OS/AT acceptance.",
         "evidence": [
-          "inventory:P11-06",
-          "docs/chart-pages.md: finite portable geometry and current browser/native evidence; no additional OS acceptance"
+          "inventory:P11-06"
         ]
       },
       "web": {
         "state": "tested",
         "notes": "Finite implemented contract and actual host evidence in docs/plots.md. SSR proves shape/adoption only; it has no input driver. Native scope excludes optional unsupported facets and does not imply OS/AT acceptance.",
         "evidence": [
-          "inventory:P11-06",
-          "docs/chart-pages.md: finite portable geometry and current browser/native evidence; no additional OS acceptance"
+          "inventory:P11-06"
         ]
       },
       "native": {
         "state": "tested",
         "notes": "Finite implemented contract and actual host evidence in docs/plots.md. SSR proves shape/adoption only; it has no input driver. Native scope excludes optional unsupported facets and does not imply OS/AT acceptance.",
         "evidence": [
-          "inventory:P11-06",
-          "docs/chart-pages.md: finite portable geometry and current browser/native evidence; no additional OS acceptance"
+          "inventory:P11-06"
         ]
       },
       "accesskit": {
@@ -5465,32 +5349,28 @@
         "state": "tested",
         "notes": "Finite implemented contract and actual host evidence in docs/plots.md. SSR proves shape/adoption only; it has no input driver. Native scope excludes optional unsupported facets and does not imply OS/AT acceptance.",
         "evidence": [
-          "inventory:P11-07",
-          "docs/chart-pages.md: finite portable geometry and current browser/native evidence; no additional OS acceptance"
+          "inventory:P11-07"
         ]
       },
       "ssr": {
         "state": "tested",
         "notes": "Finite implemented contract and actual host evidence in docs/plots.md. SSR proves shape/adoption only; it has no input driver. Native scope excludes optional unsupported facets and does not imply OS/AT acceptance.",
         "evidence": [
-          "inventory:P11-07",
-          "docs/chart-pages.md: finite portable geometry and current browser/native evidence; no additional OS acceptance"
+          "inventory:P11-07"
         ]
       },
       "web": {
         "state": "tested",
         "notes": "Finite implemented contract and actual host evidence in docs/plots.md. SSR proves shape/adoption only; it has no input driver. Native scope excludes optional unsupported facets and does not imply OS/AT acceptance.",
         "evidence": [
-          "inventory:P11-07",
-          "docs/chart-pages.md: finite portable geometry and current browser/native evidence; no additional OS acceptance"
+          "inventory:P11-07"
         ]
       },
       "native": {
         "state": "tested",
         "notes": "Finite implemented contract and actual host evidence in docs/plots.md. SSR proves shape/adoption only; it has no input driver. Native scope excludes optional unsupported facets and does not imply OS/AT acceptance.",
         "evidence": [
-          "inventory:P11-07",
-          "docs/chart-pages.md: finite portable geometry and current browser/native evidence; no additional OS acceptance"
+          "inventory:P11-07"
         ]
       },
       "accesskit": {
@@ -5510,32 +5390,28 @@
         "state": "tested",
         "notes": "Finite implemented contract and actual host evidence in docs/plots.md. SSR proves shape/adoption only; it has no input driver. Native scope excludes optional unsupported facets and does not imply OS/AT acceptance.",
         "evidence": [
-          "inventory:P11-08",
-          "docs/chart-pages.md: finite portable geometry and current browser/native evidence; no additional OS acceptance"
+          "inventory:P11-08"
         ]
       },
       "ssr": {
         "state": "tested",
         "notes": "Finite implemented contract and actual host evidence in docs/plots.md. SSR proves shape/adoption only; it has no input driver. Native scope excludes optional unsupported facets and does not imply OS/AT acceptance.",
         "evidence": [
-          "inventory:P11-08",
-          "docs/chart-pages.md: finite portable geometry and current browser/native evidence; no additional OS acceptance"
+          "inventory:P11-08"
         ]
       },
       "web": {
         "state": "tested",
         "notes": "Finite implemented contract and actual host evidence in docs/plots.md. SSR proves shape/adoption only; it has no input driver. Native scope excludes optional unsupported facets and does not imply OS/AT acceptance.",
         "evidence": [
-          "inventory:P11-08",
-          "docs/chart-pages.md: finite portable geometry and current browser/native evidence; no additional OS acceptance"
+          "inventory:P11-08"
         ]
       },
       "native": {
         "state": "tested",
         "notes": "Finite implemented contract and actual host evidence in docs/plots.md. SSR proves shape/adoption only; it has no input driver. Native scope excludes optional unsupported facets and does not imply OS/AT acceptance.",
         "evidence": [
-          "inventory:P11-08",
-          "docs/chart-pages.md: finite portable geometry and current browser/native evidence; no additional OS acceptance"
+          "inventory:P11-08"
         ]
       },
       "accesskit": {
@@ -5555,32 +5431,28 @@
         "state": "tested",
         "notes": "Finite model and ownership rules are separately tested.",
         "evidence": [
-          "inventory:P12-01",
-          "docs/schedule-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
+          "inventory:P12-01"
         ]
       },
       "ssr": {
         "state": "model-only",
         "notes": "Structural serialization/adoption shape only; SSR does not advertise an input driver.",
         "evidence": [
-          "inventory:P12-01",
-          "docs/schedule-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
+          "inventory:P12-01"
         ]
       },
       "web": {
         "state": "model-only",
         "notes": "Host-independent model only.",
         "evidence": [
-          "inventory:P12-01",
-          "docs/schedule-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
+          "inventory:P12-01"
         ]
       },
       "native": {
         "state": "model-only",
-        "notes": "Finite declared contract; variant-specific limits remain in the linked canonical evidence.",
+        "notes": "Host-independent event/recurrence model. Native schedule view/editing consumers are recorded in P12-02 through P12-05, separately from this model row.",
         "evidence": [
-          "inventory:P12-01",
-          "docs/schedule-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
+          "inventory:P12-01"
         ]
       },
       "accesskit": {
@@ -5600,32 +5472,28 @@
         "state": "tested",
         "notes": "Finite implemented contract and actual host evidence in docs/schedule-timelines.md. SSR proves shape/adoption only; it has no input driver. Native scope excludes optional unsupported facets and does not imply OS/AT acceptance.",
         "evidence": [
-          "inventory:P12-02",
-          "docs/schedule-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
+          "inventory:P12-02"
         ]
       },
       "ssr": {
         "state": "tested",
         "notes": "Finite implemented contract and actual host evidence in docs/schedule-timelines.md. SSR proves shape/adoption only; it has no input driver. Native scope excludes optional unsupported facets and does not imply OS/AT acceptance.",
         "evidence": [
-          "inventory:P12-02",
-          "docs/schedule-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
+          "inventory:P12-02"
         ]
       },
       "web": {
         "state": "tested",
         "notes": "Finite implemented contract and actual host evidence in docs/schedule-timelines.md. SSR proves shape/adoption only; it has no input driver. Native scope excludes optional unsupported facets and does not imply OS/AT acceptance.",
         "evidence": [
-          "inventory:P12-02",
-          "docs/schedule-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
+          "inventory:P12-02"
         ]
       },
       "native": {
         "state": "tested",
         "notes": "Finite implemented contract and actual host evidence in docs/schedule-timelines.md. SSR proves shape/adoption only; it has no input driver. Native scope excludes optional unsupported facets and does not imply OS/AT acceptance.",
         "evidence": [
-          "inventory:P12-02",
-          "docs/schedule-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
+          "inventory:P12-02"
         ]
       },
       "accesskit": {
@@ -5645,32 +5513,28 @@
         "state": "tested",
         "notes": "Finite Month/Year/Mobile calendar grids and detail views; original Web39 twelve cases and actual four-theme native geometry/hit/pixels. Read-only selection/paging; no resource editing claim.",
         "evidence": [
-          "inventory:P12-03",
-          "docs/schedule-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
+          "inventory:P12-03"
         ]
       },
       "ssr": {
         "state": "tested",
         "notes": "Finite Month/Year/Mobile calendar grids and detail views; original Web39 twelve cases and actual four-theme native geometry/hit/pixels. Read-only selection/paging; no resource editing claim.",
         "evidence": [
-          "inventory:P12-03",
-          "docs/schedule-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
+          "inventory:P12-03"
         ]
       },
       "web": {
         "state": "tested",
         "notes": "Finite Month/Year/Mobile calendar grids and detail views; original Web39 twelve cases and actual four-theme native geometry/hit/pixels. Read-only selection/paging; no resource editing claim.",
         "evidence": [
-          "inventory:P12-03",
-          "docs/schedule-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
+          "inventory:P12-03"
         ]
       },
       "native": {
         "state": "tested",
         "notes": "Finite Month/Year/Mobile calendar grids and detail views; original Web39 twelve cases and actual four-theme native geometry/hit/pixels. Read-only selection/paging; no resource editing claim.",
         "evidence": [
-          "inventory:P12-03",
-          "docs/schedule-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
+          "inventory:P12-03"
         ]
       },
       "accesskit": {
@@ -5690,32 +5554,28 @@
         "state": "tested",
         "notes": "Finite model and ownership rules are separately tested.",
         "evidence": [
-          "inventory:P12-04",
-          "docs/schedule-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
+          "inventory:P12-04"
         ]
       },
       "ssr": {
         "state": "tested",
         "notes": "Structural serialization/adoption shape only; SSR does not advertise an input driver.",
         "evidence": [
-          "inventory:P12-04",
-          "docs/schedule-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
+          "inventory:P12-04"
         ]
       },
       "web": {
         "state": "tested",
         "notes": "Finite declared contract; variant-specific limits remain in the linked canonical evidence.",
         "evidence": [
-          "inventory:P12-04",
-          "docs/schedule-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
+          "inventory:P12-04"
         ]
       },
       "native": {
         "state": "tested",
         "notes": "Finite declared contract; variant-specific limits remain in the linked canonical evidence.",
         "evidence": [
-          "inventory:P12-04",
-          "docs/schedule-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
+          "inventory:P12-04"
         ]
       },
       "accesskit": {
@@ -5735,32 +5595,28 @@
         "state": "tested",
         "notes": "Finite resource/date window, real single-canvas day/week/month grid in both axes, query-backed permitted editing proposals and equivalent keyboard actions. Web42 twelve actual mouse/CDP-touch/adoption cases and native four-theme layout/hit/pixels/queued semantic edit tests. No OS device, conflict policy, authorization or persistence promise.",
         "evidence": [
-          "inventory:P12-05",
-          "docs/schedule-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
+          "inventory:P12-05"
         ]
       },
       "ssr": {
         "state": "tested",
         "notes": "Finite resource/date window, real single-canvas day/week/month grid in both axes, query-backed permitted editing proposals and equivalent keyboard actions. Web42 twelve actual mouse/CDP-touch/adoption cases and native four-theme layout/hit/pixels/queued semantic edit tests. No OS device, conflict policy, authorization or persistence promise. SSR establishes serialization/adoption only.",
         "evidence": [
-          "inventory:P12-05",
-          "docs/schedule-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
+          "inventory:P12-05"
         ]
       },
       "web": {
         "state": "tested",
         "notes": "Finite resource/date window, real single-canvas day/week/month grid in both axes, query-backed permitted editing proposals and equivalent keyboard actions. Web42 twelve actual mouse/CDP-touch/adoption cases and native four-theme layout/hit/pixels/queued semantic edit tests. No OS device, conflict policy, authorization or persistence promise.",
         "evidence": [
-          "inventory:P12-05",
-          "docs/schedule-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
+          "inventory:P12-05"
         ]
       },
       "native": {
         "state": "tested",
         "notes": "Finite resource/date window, real single-canvas day/week/month grid in both axes, query-backed permitted editing proposals and equivalent keyboard actions. Web42 twelve actual mouse/CDP-touch/adoption cases and native four-theme layout/hit/pixels/queued semantic edit tests. No OS device, conflict policy, authorization or persistence promise.",
         "evidence": [
-          "inventory:P12-05",
-          "docs/schedule-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
+          "inventory:P12-05"
         ]
       },
       "accesskit": {

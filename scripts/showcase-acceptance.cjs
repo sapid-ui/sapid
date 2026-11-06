@@ -4,9 +4,7 @@ const http = require('node:http');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { spawn, spawnSync } = require('node:child_process');
-const artifactRootValue = process.env.SAPID_BUILD_ROOT;
-if (!artifactRootValue) throw Error('SAPID_BUILD_ROOT is required');
-const artifactRoot = path.resolve(artifactRootValue);
+const { buildRoot: artifactRoot } = require('./showcase-browser-env.cjs');
 const hash = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
 const mime = { '.html': 'text/html; charset=utf-8', '.js': 'application/javascript',
   '.wasm': 'application/wasm', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png',
@@ -109,32 +107,38 @@ function showcaseSuites(root, output) {
       args: ['-NoProfile', '-File', script('check-theme-export.ps1')] },
     browser('navigation', 'showcase-navigation-browser.cjs'),
     browser('routing', 'showcase-routing-browser.cjs'),
-    browser('feedback', 'showcase-feedback-browser.cjs'),
-    browser('layout', 'showcase-layout-browser.cjs'),
-    browser('style', 'showcase-style-browser.cjs'),
-    browser('date-picker-presets', 'date-picker-presets-browser.cjs'),
-    browser('calendar-showcase', 'calendar-showcase-browser.cjs'),
-    browser('input-showcase', 'input-showcase-browser.cjs'),
-    browser('popover-showcase', 'popover-showcase-browser.cjs'),
-    browser('typography-showcase', 'typography-showcase-browser.cjs'),
-    browser('image-showcase', 'image-showcase-browser.cjs'),
-    browser('date-input-showcase', 'date-input-showcase-browser.cjs'),
-    browser('time-input-showcase', 'time-input-showcase-browser.cjs'),
-    browser('time-picker-showcase', 'time-picker-showcase-browser.cjs'),
-    browser('date-time-picker-showcase', 'date-time-picker-showcase-browser.cjs'),
-    browser('combobox-showcase', 'combobox-showcase-browser.cjs'),
-    browser('select-showcase', 'select-showcase-browser.cjs'),
-    browser('tree-showcase', 'tree-showcase-browser.cjs'),
-    browser('tree-select-showcase', 'tree-select-showcase-browser.cjs'),
-    browser('color-picker-showcase', 'color-picker-showcase-browser.cjs'),
-    browser('modal-showcase', 'modal-showcase-browser.cjs'),
-    browser('rich-editor-showcase', 'rich-editor-showcase-browser.cjs'),
-    browser('cartesian-chart-showcase', 'cartesian-chart-showcase-browser.cjs'),
-    browser('schedule-showcase', 'schedule-showcase-browser.cjs'),
-    browser('resources-schedule-showcase', 'resources-schedule-showcase-browser.cjs'),
-    browser('schedule-timelines-showcase', 'schedule-timelines-showcase-browser.cjs'),
-    browser('schedule-calendars-showcase', 'schedule-calendars-showcase-browser.cjs'),
-    browser('mantine-api', 'mantine-api-browser.cjs'),
+    browser('navigation-docs', 'showcase-remediation-navigation.cjs', 'navigation-remediation.json'),
+    browser('composites-docs', 'showcase-remediation-composites.cjs', 'composite-remediation.json'),
+    browser('geometry-docs', 'showcase-remediation-geometry.cjs', 'geometry-remediation.json'),
+    browser('inputs-docs', 'showcase-remediation-inputs.cjs', 'input-remediation.json'),
+    browser('media-docs', 'showcase-remediation-media.cjs', 'media-remediation.json'),
+    browser('menus-docs', 'showcase-remediation-menus.cjs', 'menu-remediation.json'),
+    browser('mini-calendar-docs', 'showcase-remediation-mini-calendar.cjs', 'mini-calendar-remediation.json'),
+    browser('heatmap-docs', 'showcase-remediation-heatmap.cjs', 'heatmap-remediation.json'),
+    browser('transition-docs', 'showcase-remediation-transition.cjs', 'transition-remediation.json'),
+    browser('password-docs', 'showcase-remediation-password.cjs', 'password-remediation.json'),
+    browser('shell-docs', 'showcase-remediation-shell.cjs', 'shell-remediation.json'),
+    browser('buttons-docs', 'showcase-remediation-buttons.cjs', 'button-remediation.json'),
+    browser('choice-docs', 'showcase-remediation-choice.cjs', 'choice-remediation.json'),
+    browser('color-docs', 'showcase-remediation-color.cjs', 'color-remediation.json'),
+    browser('combobox-docs', 'showcase-remediation-combobox.cjs', 'combobox-remediation.json'),
+    browser('selection-docs', 'showcase-remediation-selection.cjs', 'selection-remediation.json'),
+    browser('switch-docs', 'showcase-remediation-switch.cjs', 'switch-remediation.json'),
+    browser('form-input-docs', 'showcase-remediation-form-input.cjs', 'form-input-remediation.json'),
+    browser('data-input-docs', 'showcase-remediation-data-input.cjs', 'data-input-remediation.json'),
+    browser('feedback-docs', 'showcase-remediation-feedback.cjs', 'feedback-remediation.json'),
+    browser('overlays-docs', 'showcase-remediation-overlays.cjs', 'overlays-remediation.json'),
+    browser('layout-docs', 'showcase-remediation-layout.cjs', 'layout-remediation.json'),
+    browser('navigation-extra-docs', 'showcase-remediation-navigation-extra.cjs', 'navigation-extra-remediation.json'),
+    browser('data-display-docs', 'showcase-remediation-data-display.cjs', 'data-display-remediation.json'),
+    browser('typography-docs', 'showcase-remediation-typography.cjs', 'typography-remediation.json'),
+    browser('text-docs', 'showcase-remediation-text.cjs', 'text-remediation.json'),
+    browser('misc-docs', 'showcase-remediation-misc.cjs', 'misc-remediation.json'),
+    browser('dates-docs', 'showcase-remediation-dates.cjs', 'dates-remediation.json'),
+    browser('charts-docs', 'showcase-remediation-charts.cjs', 'charts-remediation.json'),
+    browser('schedule-docs', 'showcase-remediation-schedule.cjs', 'schedule-remediation.json'),
+    browser('extensions-docs', 'showcase-remediation-extensions.cjs', 'extensions-remediation.json'),
+    browser('all-pages-docs', 'showcase-remediation-all-pages.cjs', 'all-pages-current.json'),
     { id: 'cache', program: process.execPath, source: script('cache-browser.cjs'), args: [script('cache-browser.cjs')] },
   ];
 }
@@ -144,16 +148,13 @@ async function runAcceptance(options) {
   const directory = path.resolve(options.directory);
   const output = artifactPath(options.output || `${artifactRoot}/showcase-acceptance`);
   fs.mkdirSync(output, { recursive: true });
-  const env = { ...process.env, TEMP: path.join(output, 'tmp'), TMP: path.join(output, 'tmp'),
+  const env = { ...process.env,
     SAPID_BUILD_ROOT: artifactRoot, SAPID_BROWSER_OUTPUT: artifactRoot,
     SAPID_SHOWCASE_MANIFEST: path.join(directory, 'asset-hashes.json'),
     SAPID_PALETTE_REPORT: path.join(output, 'palette-order-browser.json'),
     SAPID_STUDIO_EXPORT: process.env.SAPID_STUDIO_EXPORT || path.join(output, 'studio-export.rs'),
-    SAPID_EXPORT_ROOT: process.env.SAPID_EXPORT_ROOT || path.join(output, 'export-check'),
-    SAPID_EXPORT_TARGET: process.env.SAPID_EXPORT_TARGET || path.join(output, 'export-target'),
-    PLAYWRIGHT_BROWSERS_PATH: process.env.PLAYWRIGHT_BROWSERS_PATH || `${artifactRoot}/browsers` };
-  fs.mkdirSync(env.TEMP, { recursive: true });
-  for (const name of ['SAPID_STUDIO_EXPORT', 'SAPID_EXPORT_ROOT', 'SAPID_EXPORT_TARGET']) artifactPath(env[name]);
+    SAPID_EXPORT_ROOT: process.env.SAPID_EXPORT_ROOT || path.join(output, 'export-check') };
+  for (const name of ['SAPID_STUDIO_EXPORT', 'SAPID_EXPORT_ROOT']) artifactPath(env[name]);
   const suites = options.suites || showcaseSuites(root, output);
   const summary = { complete: false, directory, suiteManifest: suites.map(suite => suite.id),
     suites: suites.map(suite => ({ id: suite.id, status: 'pending' })), errors: [], sourceHashes: {}, artifactHashes: {} };
@@ -189,7 +190,7 @@ async function runAcceptance(options) {
         result.log = path.basename(log);
         if (suite.report) {
           const report = JSON.parse(fs.readFileSync(suite.report, 'utf8').replace(/^\uFEFF/, ''));
-          if (!Array.isArray(report.errors) || report.errors.length) throw Error(`${suite.id}: browser errors: ${JSON.stringify(report.errors)}`);
+          if (report.failure || !Array.isArray(report.errors) || report.errors.length) throw Error(`${suite.id}: browser errors: ${JSON.stringify({ failure: report.failure, errors: report.errors })}`);
           result.report = `${suite.id}.json`;
           fs.writeFileSync(path.join(output, result.report), JSON.stringify(report, null, 2));
         }

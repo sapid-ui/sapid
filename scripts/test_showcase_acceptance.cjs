@@ -3,9 +3,25 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { outputPath } = require('./showcase-browser-env.cjs');
-const { serve, runAcceptance } = require('./showcase-acceptance.cjs');
+const { serve, runAcceptance, showcaseSuites } = require('./showcase-acceptance.cjs');
 const temporary = outputPath('tmp');
 fs.mkdirSync(temporary, { recursive: true });
+
+test('the release gate includes every current documentation acceptance batch exactly once', () => {
+  const root = path.resolve(__dirname, '..');
+  const suites = showcaseSuites(root, temporary);
+  assert.equal(new Set(suites.map(suite => suite.id)).size, suites.length);
+  const expected = fs.readdirSync(__dirname).filter(name => /^showcase-remediation-.*\.cjs$/.test(name)
+    && name !== 'showcase-remediation-p1.cjs'); // P1 is an aggregate of nine included batches.
+  for (const file of expected) {
+    const matches = suites.filter(suite => suite.source === path.join(__dirname, file));
+    assert.equal(matches.length, 1, file);
+    assert(matches[0].report, `${file} must preserve its structured report`);
+  }
+  for (const id of ['showcase', 'theme-studio', 'palette-order', 'theme-export', 'navigation', 'routing', 'cache']) {
+    assert(suites.some(suite => suite.id === id), `missing site contract: ${id}`);
+  }
+});
 
 function fixture(t) {
   const root = fs.mkdtempSync(path.join(temporary, 'showcase-runner-'));
@@ -58,6 +74,16 @@ test('a hung child is bounded and cannot produce passing evidence', async t => {
   const result = await runAcceptance(options);
   assert.equal(result.complete, false);
   assert.equal(result.suites[0].status, 'failed');
+});
+
+test('a caught assertion in a documentation failure field cannot become passing evidence', async t => {
+  const options = fixture(t), report = path.join(options.root, 'driver.json');
+  options.suites = [suite(options.root, 'caught-failure', `
+    require('node:fs').writeFileSync(${JSON.stringify(report)}, JSON.stringify({ errors: [], failure: 'assertion failed' }));
+  `, report)];
+  const result = await runAcceptance(options);
+  assert.equal(result.complete, false);
+  assert.match(result.errors.join('\n'), /assertion failed/);
 });
 
 test('the in-process server rejects traversal and follows no directory junction outside the site', async t => {

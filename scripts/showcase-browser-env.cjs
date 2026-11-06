@@ -18,8 +18,6 @@ for (const directory of [buildRoot, outputRoot]) {
 const tempDir = os.tmpdir();
 fs.mkdirSync(outputRoot, { recursive: true });
 
-const playwrightModule = process.env.SAPID_PLAYWRIGHT || 'playwright';
-const { chromium } = require(playwrightModule);
 const base = process.env.SAPID_SHOWCASE_BASE || 'http://127.0.0.1:8795';
 
 function outputPath(name) {
@@ -35,4 +33,5 @@ function writeReport(name, report) {
   fs.writeFileSync(outputPath(name), JSON.stringify(report, null, 2));
 }
 
-module.exports = { base, buildRoot, chromium, outputPath, outputRoot, tempDir, writeReport };
+module.exports = { base, buildRoot, outputPath, outputRoot, tempDir, writeReport,
+  get chromium() { return require(process.env.SAPID_PLAYWRIGHT || 'playwright').chromium; } };

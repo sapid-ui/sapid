@@ -11,6 +11,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 env:
   BUILD_ROOT: ${{ github.workspace }}/sapid/target/verification/sapid/pages-ci
+  SAPID_BUILD_ROOT: ${{ github.workspace }}/sapid/target/verification/sapid/pages-ci
   CARGO_TARGET_DIR: ${{ github.workspace }}/sapid/target
   CARGO_INCREMENTAL: '0'
   CARGO_BUILD_JOBS: '2'

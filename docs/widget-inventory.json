@@ -239,7 +239,12 @@
           "examples/native/target/remediation/text-docs-native-complete.log: 4 tests, four-theme fixed rows, inset action, controlled editor identity and explicit autosize rejection; text-docs-native-clippy.log",
           "examples/web/target/remediation/data-text-build.log: release gates passed",
           "examples/web/target/remediation/text-remediation.json: this page 8 cases, all 24 passed, errors [], assets-8560c6d31d55fb3702fb, Chromium 148.0.7778.96",
-          "web: examples/web/target/remediation/text-remediation.json: this page 8 cases, all 24 passed, errors [], assets-8560c6d31d55fb3702fb, Chromium 148.0.7778.96"
+          "web: examples/web/target/remediation/text-remediation.json: this page 8 cases, all 24 passed, errors [], assets-8560c6d31d55fb3702fb, Chromium 148.0.7778.96",
+          "../glory/crates/apace/tests/placeholder.rs",
+          "../glory/crates/apace/src/editing_tests.rs: placeholder_updates_leave_selection_preedit_and_empty_pointer_geometry_unchanged"
+        ],
+        "documentation": [
+          "docs/capability-evidence-review-2026-11-06.md"
         ]
       }
     },
@@ -312,6 +317,9 @@
           "scripts/showcase-remediation-misc.cjs",
           "examples/native/tests/misc_docs.rs",
           "examples/web/target/remediation/misc-final.json"
+        ],
+        "documentation": [
+          "docs/misc-pages.md: finite contracts and current browser/native evidence; no additional OS acceptance"
         ]
       }
     },
@@ -579,6 +587,9 @@
           "scripts/showcase-remediation-misc.cjs",
           "examples/native/tests/misc_docs.rs",
           "examples/web/target/remediation/misc-final.json"
+        ],
+        "documentation": [
+          "docs/misc-pages.md: finite contracts and current browser/native evidence; no additional OS acceptance"
         ]
       }
     },
@@ -652,6 +663,9 @@
           "scripts/showcase-remediation-misc.cjs",
           "examples/native/tests/misc_docs.rs",
           "examples/web/target/remediation/misc-final.json"
+        ],
+        "documentation": [
+          "docs/misc-pages.md: finite contracts and current browser/native evidence; no additional OS acceptance"
         ]
       }
     },
@@ -690,6 +704,9 @@
           "scripts/check-showcase.ps1",
           "D:/BuildCache/sapid/showcase-browser.json",
           "D:/BuildCache/sapid/showcase-gate.log"
+        ],
+        "documentation": [
+          "docs/capability-evidence-review-2026-11-06.md"
         ]
       }
     },
@@ -848,7 +865,12 @@
           "examples/web/target/remediation/data-text-build.log: release gates passed",
           "examples/web/target/remediation/text-remediation.json: this page 8 cases, all 24 passed, errors [], assets-8560c6d31d55fb3702fb, Chromium 148.0.7778.96",
           "web: examples/web/target/remediation/text-remediation.json: this page 8 cases, all 24 passed, errors [], assets-8560c6d31d55fb3702fb, Chromium 148.0.7778.96",
-          "web: HTML FieldSizing::Content actual growth/shrink tested in Chromium; native Apace explicitly rejects autosize and retains fixed-row support."
+          "web: HTML FieldSizing::Content actual growth/shrink tested in Chromium; native Apace explicitly rejects autosize and retains fixed-row support.",
+          "../glory/crates/apace/tests/placeholder.rs",
+          "../glory/crates/apace/src/editing_tests.rs: placeholder_updates_leave_selection_preedit_and_empty_pointer_geometry_unchanged"
+        ],
+        "documentation": [
+          "docs/capability-evidence-review-2026-11-06.md"
         ]
       }
     },
@@ -886,7 +908,12 @@
           "tests/inputs.rs (8 passed; inset decorative eye, accessible visibility name, stable input/revision, custom right section and loading replacement)",
           "scripts/showcase-layout-acceptance.cjs",
           "D:/BuildCache/sapid/layout-acceptance/showcase-layout-acceptance.json (12 passed across four themes for PasswordInput/AppShell/Menubar; Chromium 156.0.8078.4)",
-          "D:/BuildCache/sapid/layout-fixture-acceptance.json (28 passed: Input 9, AppShell 9, Menubar 10; themed CSR/hydration, dirty adoption, focus/selection, retirement and classic stream)"
+          "D:/BuildCache/sapid/layout-fixture-acceptance.json (28 passed: Input 9, AppShell 9, Menubar 10; themed CSR/hydration, dirty adoption, focus/selection, retirement and classic stream)",
+          "../glory/crates/apace/tests/placeholder.rs",
+          "../glory/crates/apace/src/editing_tests.rs: placeholder_updates_leave_selection_preedit_and_empty_pointer_geometry_unchanged"
+        ],
+        "documentation": [
+          "docs/capability-evidence-review-2026-11-06.md"
         ]
       }
     },
@@ -1323,6 +1350,9 @@
           "scripts/showcase-remediation-misc.cjs",
           "examples/native/tests/misc_docs.rs",
           "examples/web/target/remediation/misc-final.json"
+        ],
+        "documentation": [
+          "docs/misc-pages.md: finite contracts and current browser/native evidence; no additional OS acceptance"
         ]
       }
     },
@@ -1662,6 +1692,9 @@
           "scripts/showcase-remediation-misc.cjs",
           "examples/native/tests/misc_docs.rs",
           "examples/web/target/remediation/misc-final.json"
+        ],
+        "documentation": [
+          "docs/misc-pages.md: finite contracts and current browser/native evidence; no additional OS acceptance"
         ]
       }
     },
@@ -1694,6 +1727,9 @@
           "scripts/showcase-remediation-misc.cjs",
           "examples/native/tests/misc_docs.rs",
           "examples/web/target/remediation/misc-final.json"
+        ],
+        "documentation": [
+          "docs/misc-pages.md: finite contracts and current browser/native evidence; no additional OS acceptance"
         ]
       }
     },
@@ -2033,7 +2069,11 @@
           "scripts/menu-search-stream-browser.cjs",
           "D:/BuildCache/sapid/remediation/menu-remediation.json (16 passed)",
           "D:/BuildCache/sapid/remediation/menu-regression.json (35 passed)",
-          "D:/BuildCache/sapid/remediation/menu-search-stream.json (passed)"
+          "D:/BuildCache/sapid/remediation/menu-search-stream.json (passed)",
+          "examples/native/target/remediation-ci-evidence.log (2026-11-06: 12 focused native consumer tests passed; four themes where declared)"
+        ],
+        "documentation": [
+          "docs/capability-evidence-review-2026-11-06.md"
         ]
       }
     },
@@ -2064,6 +2104,9 @@
           "D:/BuildCache/sapid/context-menu-browser-root17.json (14 passed, Chromium 148.0.7778.96)",
           "/Volumes/Data/Caches/glory/menu-consumer-tests.log (8 actual native consumer tests; four themes where applicable)",
           "/Volumes/Data/Caches/glory/native-menus/browser-results.json (49 reports across Menu/Menubar/ContextMenu/Command; four-theme CSR/hydration)"
+        ],
+        "documentation": [
+          "docs/capability-evidence-review-2026-11-06.md"
         ]
       }
     },
@@ -2113,7 +2156,11 @@
           "scripts/menu-search-stream-browser.cjs",
           "D:/BuildCache/sapid/remediation/menu-remediation.json (16 passed)",
           "D:/BuildCache/sapid/remediation/menu-regression.json (35 passed)",
-          "D:/BuildCache/sapid/remediation/menu-search-stream.json (passed)"
+          "D:/BuildCache/sapid/remediation/menu-search-stream.json (passed)",
+          "examples/native/target/remediation-ci-evidence.log (2026-11-06: 12 focused native consumer tests passed; four themes where declared)"
+        ],
+        "documentation": [
+          "docs/capability-evidence-review-2026-11-06.md"
         ]
       }
     },
@@ -2183,7 +2230,13 @@
           "examples/native/tests/input_actions.rs (3 passed, four themes, actual hit/focus/geometry)",
           "scripts/showcase-remediation-inputs.cjs",
           "D:/BuildCache/sapid/remediation/input-remediation.json (40 passed, four themes / two widths)",
-          "D:/BuildCache/sapid/remediation-input-shell-build-final.log"
+          "D:/BuildCache/sapid/remediation-input-shell-build-final.log",
+          "examples/native/tests/input_actions.rs",
+          "examples/native/tests/combobox_docs.rs",
+          "examples/native/target/remediation-ci-evidence.log (2026-11-06: 12 focused native consumer tests passed; four themes where declared)"
+        ],
+        "documentation": [
+          "docs/capability-evidence-review-2026-11-06.md"
         ]
       }
     },
@@ -2214,6 +2267,9 @@
           "D:/BuildCache/sapid/gate-snapshot10.log",
           "tests/placeholders.rs",
           "examples/web/target/remediation/combobox-final.json (72 passed; errors []; assets-78c3911462ca7e3fb88d)"
+        ],
+        "documentation": [
+          "docs/capability-evidence-review-2026-11-06.md"
         ]
       }
     },
@@ -2244,6 +2300,9 @@
           "D:/BuildCache/sapid/browser-web14-results.json (43 suites, 378 reports)",
           "tests/placeholders.rs",
           "examples/web/target/remediation/combobox-final.json (72 passed; errors []; assets-78c3911462ca7e3fb88d)"
+        ],
+        "documentation": [
+          "docs/capability-evidence-review-2026-11-06.md"
         ]
       }
     },
@@ -2277,7 +2336,12 @@
           "scripts/showcase-style-browser.cjs",
           "src/combobox_advanced_tests.rs",
           "scripts/mantine-api-browser.cjs",
-          "examples/web/target/remediation/combobox-final.json (72 passed; errors []; assets-78c3911462ca7e3fb88d)"
+          "examples/web/target/remediation/combobox-final.json (72 passed; errors []; assets-78c3911462ca7e3fb88d)",
+          "examples/native/tests/token_editor_layout.rs",
+          "examples/native/target/remediation-ci-evidence.log (2026-11-06: 12 focused native consumer tests passed; four themes where declared)"
+        ],
+        "documentation": [
+          "docs/capability-evidence-review-2026-11-06.md"
         ]
       }
     },
@@ -2315,7 +2379,12 @@
           "tests/placeholders.rs",
           "/Volumes/Data/Caches/glory/tags-workspace-tests.log (8 native input/AX regressions within the 1032-test workspace)",
           "/Volumes/Data/Caches/glory/tags-consumer-tests.log (5 actual native consumers, four themes)",
-          "examples/web/target/remediation/combobox-final.json (72 passed; errors []; assets-78c3911462ca7e3fb88d)"
+          "examples/web/target/remediation/combobox-final.json (72 passed; errors []; assets-78c3911462ca7e3fb88d)",
+          "examples/native/tests/token_editor_layout.rs",
+          "examples/native/target/remediation-ci-evidence.log (2026-11-06: 12 focused native consumer tests passed; four themes where declared)"
+        ],
+        "documentation": [
+          "docs/capability-evidence-review-2026-11-06.md"
         ]
       }
     },
@@ -2350,6 +2419,10 @@
           "scripts/showcase-remediation-extensions.cjs",
           "examples/native/tests/extension_docs.rs",
           "examples/web/target/remediation/extensions-final.json"
+        ],
+        "documentation": [
+          "docs/extension-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance",
+          "docs/capability-evidence-review-2026-11-06.md"
         ]
       }
     },
@@ -2561,6 +2634,9 @@
           "scripts/showcase-remediation-extensions.cjs",
           "examples/native/tests/extension_docs.rs",
           "examples/web/target/remediation/extensions-final.json"
+        ],
+        "documentation": [
+          "docs/extension-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
         ]
       }
     },
@@ -2666,6 +2742,9 @@
           "scripts/showcase-remediation-extensions.cjs",
           "examples/native/tests/extension_docs.rs",
           "examples/web/target/remediation/extensions-final.json"
+        ],
+        "documentation": [
+          "docs/extension-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
         ]
       }
     },
@@ -2810,6 +2889,9 @@
           "scripts/showcase-remediation-extensions.cjs",
           "examples/native/tests/extension_docs.rs",
           "examples/web/target/remediation/extensions-final.json"
+        ],
+        "documentation": [
+          "docs/extension-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
         ]
       }
     },
@@ -3102,6 +3184,9 @@
           "scripts/showcase-remediation-misc.cjs",
           "examples/native/tests/misc_docs.rs",
           "examples/web/target/remediation/misc-final.json"
+        ],
+        "documentation": [
+          "docs/misc-pages.md: finite contracts and current browser/native evidence; no additional OS acceptance"
         ]
       }
     },
@@ -3208,6 +3293,9 @@
           "scripts/showcase-remediation-misc.cjs",
           "examples/native/tests/misc_docs.rs",
           "examples/web/target/remediation/misc-final.json"
+        ],
+        "documentation": [
+          "docs/misc-pages.md: finite contracts and current browser/native evidence; no additional OS acceptance"
         ]
       }
     },
@@ -3351,6 +3439,9 @@
           "scripts/showcase-remediation-misc.cjs",
           "examples/native/tests/misc_docs.rs",
           "examples/web/target/remediation/misc-final.json"
+        ],
+        "documentation": [
+          "docs/misc-pages.md: finite contracts and current browser/native evidence; no additional OS acceptance"
         ]
       }
     },
@@ -3748,7 +3839,12 @@
           "examples/native/target/remediation/data-input-native.log; data-input-docs-native.log; data-input-docs-native-clippy.log: real editor identity, formatting, error positions and bounded failure",
           "examples/web/target/remediation/data-text-build.log: release gates passed",
           "examples/web/target/remediation/data-input-remediation.json: this page 8/8 cases passed, errors []; NumberInput remains in progress; assets-8560c6d31d55fb3702fb, Chromium 148.0.7778.96",
-          "web: examples/web/target/remediation/data-input-remediation.json: this page 8/8 cases passed, errors []; NumberInput remains in progress; assets-8560c6d31d55fb3702fb, Chromium 148.0.7778.96"
+          "web: examples/web/target/remediation/data-input-remediation.json: this page 8/8 cases passed, errors []; NumberInput remains in progress; assets-8560c6d31d55fb3702fb, Chromium 148.0.7778.96",
+          "../glory/crates/apace/tests/placeholder.rs",
+          "../glory/crates/apace/src/editing_tests.rs: placeholder_updates_leave_selection_preedit_and_empty_pointer_geometry_unchanged"
+        ],
+        "documentation": [
+          "docs/capability-evidence-review-2026-11-06.md"
         ]
       }
     },
@@ -3972,6 +4068,9 @@
           "src/dates.rs (7 passed)",
           "D:/BuildCache/sapid/dates-model-rust.log",
           "D:/BuildCache/sapid/dates-model-clippy.log"
+        ],
+        "documentation": [
+          "docs/capability-evidence-review-2026-11-06.md"
         ]
       }
     },
@@ -4016,6 +4115,9 @@
           "scripts/showcase-remediation-dates.cjs",
           "examples/native/tests/date_docs.rs",
           "examples/web/target/remediation/dates-final.json"
+        ],
+        "documentation": [
+          "docs/date-pages.md: finite civil date/time contracts and current browser/native evidence; no additional OS acceptance"
         ]
       }
     },
@@ -4061,6 +4163,9 @@
           "scripts/showcase-remediation-dates.cjs",
           "examples/native/tests/date_docs.rs",
           "examples/web/target/remediation/dates-final.json"
+        ],
+        "documentation": [
+          "docs/date-pages.md: finite civil date/time contracts and current browser/native evidence; no additional OS acceptance"
         ]
       }
     },
@@ -4094,6 +4199,9 @@
           "scripts/showcase-remediation-dates.cjs",
           "examples/native/tests/date_docs.rs",
           "examples/web/target/remediation/dates-final.json"
+        ],
+        "documentation": [
+          "docs/date-pages.md: finite civil date/time contracts and current browser/native evidence; no additional OS acceptance"
         ]
       }
     },
@@ -4139,6 +4247,9 @@
           "scripts/showcase-remediation-dates.cjs",
           "examples/native/tests/date_docs.rs",
           "examples/web/target/remediation/dates-final.json"
+        ],
+        "documentation": [
+          "docs/date-pages.md: finite civil date/time contracts and current browser/native evidence; no additional OS acceptance"
         ]
       }
     },
@@ -4184,6 +4295,9 @@
           "scripts/showcase-remediation-dates.cjs",
           "examples/native/tests/date_docs.rs",
           "examples/web/target/remediation/dates-final.json"
+        ],
+        "documentation": [
+          "docs/date-pages.md: finite civil date/time contracts and current browser/native evidence; no additional OS acceptance"
         ]
       }
     },
@@ -4223,6 +4337,9 @@
           "scripts/showcase-remediation-dates.cjs",
           "examples/native/tests/date_docs.rs",
           "examples/web/target/remediation/dates-final.json"
+        ],
+        "documentation": [
+          "docs/date-pages.md: finite civil date/time contracts and current browser/native evidence; no additional OS acceptance"
         ]
       }
     },
@@ -4272,6 +4389,9 @@
           "scripts/showcase-remediation-dates.cjs",
           "examples/native/tests/date_docs.rs",
           "examples/web/target/remediation/dates-final.json"
+        ],
+        "documentation": [
+          "docs/date-pages.md: finite civil date/time contracts and current browser/native evidence; no additional OS acceptance"
         ]
       }
     },
@@ -4314,6 +4434,9 @@
           "scripts/showcase-remediation-dates.cjs",
           "examples/native/tests/date_docs.rs",
           "examples/web/target/remediation/dates-final.json"
+        ],
+        "documentation": [
+          "docs/date-pages.md: finite civil date/time contracts and current browser/native evidence; no additional OS acceptance"
         ]
       }
     },
@@ -4512,6 +4635,9 @@
           "scripts/showcase-remediation-extensions.cjs",
           "examples/native/tests/extension_docs.rs",
           "examples/web/target/remediation/extensions-final.json"
+        ],
+        "documentation": [
+          "docs/extension-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
         ]
       }
     },
@@ -4547,6 +4673,9 @@
           "scripts/showcase-remediation-extensions.cjs",
           "examples/native/tests/extension_docs.rs",
           "examples/web/target/remediation/extensions-final.json"
+        ],
+        "documentation": [
+          "docs/extension-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
         ]
       }
     },
@@ -4583,6 +4712,9 @@
           "scripts/showcase-remediation-extensions.cjs",
           "examples/native/tests/extension_docs.rs",
           "examples/web/target/remediation/extensions-final.json"
+        ],
+        "documentation": [
+          "docs/extension-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
         ]
       }
     },
@@ -4699,6 +4831,9 @@
           "scripts/showcase-remediation-charts.cjs",
           "examples/native/tests/chart_docs.rs",
           "examples/web/target/remediation/charts-final.json"
+        ],
+        "documentation": [
+          "docs/chart-pages.md: finite portable geometry and current browser/native evidence; no additional OS acceptance"
         ]
       }
     },
@@ -4738,6 +4873,9 @@
           "scripts/showcase-remediation-charts.cjs",
           "examples/native/tests/chart_docs.rs",
           "examples/web/target/remediation/charts-final.json"
+        ],
+        "documentation": [
+          "docs/chart-pages.md: finite portable geometry and current browser/native evidence; no additional OS acceptance"
         ]
       }
     },
@@ -4777,6 +4915,9 @@
           "scripts/showcase-remediation-charts.cjs",
           "examples/native/tests/chart_docs.rs",
           "examples/web/target/remediation/charts-final.json"
+        ],
+        "documentation": [
+          "docs/chart-pages.md: finite portable geometry and current browser/native evidence; no additional OS acceptance"
         ]
       }
     },
@@ -4816,6 +4957,9 @@
           "scripts/showcase-remediation-charts.cjs",
           "examples/native/tests/chart_docs.rs",
           "examples/web/target/remediation/charts-final.json"
+        ],
+        "documentation": [
+          "docs/chart-pages.md: finite portable geometry and current browser/native evidence; no additional OS acceptance"
         ]
       }
     },
@@ -4862,6 +5006,9 @@
           "scripts/showcase-remediation-charts.cjs",
           "examples/native/tests/chart_docs.rs",
           "examples/web/target/remediation/charts-final.json"
+        ],
+        "documentation": [
+          "docs/chart-pages.md: finite portable geometry and current browser/native evidence; no additional OS acceptance"
         ]
       }
     },
@@ -4901,6 +5048,9 @@
           "scripts/showcase-remediation-charts.cjs",
           "examples/native/tests/chart_docs.rs",
           "examples/web/target/remediation/charts-final.json"
+        ],
+        "documentation": [
+          "docs/chart-pages.md: finite portable geometry and current browser/native evidence; no additional OS acceptance"
         ]
       }
     },
@@ -4940,6 +5090,9 @@
           "scripts/showcase-remediation-charts.cjs",
           "examples/native/tests/chart_docs.rs",
           "examples/web/target/remediation/charts-final.json"
+        ],
+        "documentation": [
+          "docs/chart-pages.md: finite portable geometry and current browser/native evidence; no additional OS acceptance"
         ]
       }
     },
@@ -4977,6 +5130,10 @@
           "scripts/showcase-remediation-schedule.cjs",
           "examples/native/tests/schedule_docs.rs",
           "examples/web/target/remediation/schedule-final.json"
+        ],
+        "documentation": [
+          "docs/schedule-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance",
+          "docs/capability-evidence-review-2026-11-06.md"
         ]
       }
     },
@@ -5011,6 +5168,9 @@
           "scripts/showcase-remediation-schedule.cjs",
           "examples/native/tests/schedule_docs.rs",
           "examples/web/target/remediation/schedule-final.json"
+        ],
+        "documentation": [
+          "docs/schedule-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
         ]
       }
     },
@@ -5045,6 +5205,9 @@
           "scripts/showcase-remediation-schedule.cjs",
           "examples/native/tests/schedule_docs.rs",
           "examples/web/target/remediation/schedule-final.json"
+        ],
+        "documentation": [
+          "docs/schedule-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
         ]
       }
     },
@@ -5076,6 +5239,9 @@
           "scripts/showcase-remediation-schedule.cjs",
           "examples/native/tests/schedule_docs.rs",
           "examples/web/target/remediation/schedule-final.json"
+        ],
+        "documentation": [
+          "docs/schedule-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
         ]
       }
     },
@@ -5117,6 +5283,9 @@
           "scripts/showcase-remediation-schedule.cjs",
           "examples/native/tests/schedule_docs.rs",
           "examples/web/target/remediation/schedule-final.json"
+        ],
+        "documentation": [
+          "docs/schedule-pages.md: bounded public examples and current native/browser evidence; no additional OS acceptance"
         ]
       }
     }

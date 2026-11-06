@@ -36,6 +36,8 @@ jobs:
       CARGO_TARGET_DIR: ${{ github.workspace }}/sapid/target
       PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/sapid/target/verification/sapid/browsers
       SAPID_PLAYWRIGHT: ${{ github.workspace }}/sapid/target/verification/sapid/browser/node_modules/playwright
+      SAPID_BUILD_ROOT: ${{ github.workspace }}/sapid/target/verification/sapid
+      SAPID_BROWSER_OUTPUT: ${{ github.workspace }}/sapid/target/verification/sapid
       SAPID_BROWSER_RUNNER: ${{ inputs.acceptance_ref && '../acceptance/scripts/browser.cjs' || 'scripts/browser.cjs' }}
       CARGO_INCREMENTAL: '0'
       CARGO_PROFILE_DEV_DEBUG: '0'
@@ -124,6 +126,8 @@ jobs:
           if ($LASTEXITCODE) { throw 'Release tooling tests failed' }
           python scripts/widget-plan.py --check
           if ($LASTEXITCODE) { throw 'Widget inventory failed' }
+          python scripts/capability-gallery.py --check
+          if ($LASTEXITCODE) { throw 'Capability evidence or generated gallery failed' }
           python scripts/showcase-catalog.py --check
           if ($LASTEXITCODE) { throw 'Showcase sources failed' }
       - name: Validate publication sources for a frozen release

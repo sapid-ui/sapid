@@ -4,7 +4,6 @@ param()
 $ErrorActionPreference='Stop'
 $projectRoot=Split-Path -Parent $PSScriptRoot
 $exportRoot=if($env:SAPID_EXPORT_ROOT){$env:SAPID_EXPORT_ROOT}else{"$PSScriptRoot/../target/verification/sapid/export-check"}
-$exportTarget=if($env:SAPID_EXPORT_TARGET){$env:SAPID_EXPORT_TARGET}else{"$PSScriptRoot/../target/verification/sapid/export-target"}
 $sourcePath=if($env:SAPID_STUDIO_EXPORT){$env:SAPID_STUDIO_EXPORT}else{"$PSScriptRoot/../target/verification/sapid/studio-export.rs"}
 if (-not (Test-Path -LiteralPath $sourcePath)) { throw 'Run theme-studio-browser.cjs to copy a real export first.' }
 $saved=@{}
@@ -12,13 +11,7 @@ $names=@('CARGO_HOME','CARGO_TARGET_DIR','CARGO_PROFILE_DEV_DEBUG','CARGO_INCREM
 foreach($name in $names){$saved[$name]=[Environment]::GetEnvironmentVariable($name,'Process')}
 try {
 
-    $env:CARGO_TARGET_DIR = Get-NormalCargoTarget
-    $env:CARGO_PROFILE_DEV_DEBUG='0'
-    $env:CARGO_INCREMENTAL='0'
-    if(-not $env:CARGO_BUILD_JOBS){$env:CARGO_BUILD_JOBS='1'}
-    $env:TEMP=Join-Path $exportRoot 'tmp'
-
-    New-Item -ItemType Directory -Force -Path "$exportRoot/src",$env:TEMP | Out-Null
+    New-Item -ItemType Directory -Force -Path "$exportRoot/src" | Out-Null
     $sapidPath=$projectRoot.Replace('\','/')
     $gloryPath=(Join-Path (Split-Path -Parent $projectRoot) 'glory/crates/glory').Replace('\','/')
     @"
@@ -47,12 +40,15 @@ fn main() {
 }
 '@
     ($source+"`n"+$checks) | Set-Content -LiteralPath "$exportRoot/src/main.rs"
-    $meta=& cargo metadata --offline --manifest-path "$exportRoot/Cargo.toml" --no-deps --format-version 1 | ConvertFrom-Json
+    Push-Location $exportRoot
+    try {
+    $meta=& cargo metadata --offline --no-deps --format-version 1 | ConvertFrom-Json
     if($LASTEXITCODE -ne 0){throw 'export metadata failed'}
-    if([IO.Path]::GetFullPath($meta.target_directory) -ne [IO.Path]::GetFullPath($exportTarget)){throw "Unexpected export target: $($meta.target_directory)"}
+    if($env:SAPID_EXPORT_TARGET -and [IO.Path]::GetFullPath($meta.target_directory) -ne [IO.Path]::GetFullPath($env:SAPID_EXPORT_TARGET)){throw "Unexpected export target: $($meta.target_directory)"}
     Write-Output "Export target verified: $($meta.target_directory)"
-    & cargo run --offline --manifest-path "$exportRoot/Cargo.toml"
+    & cargo run --offline
     if($LASTEXITCODE -ne 0){throw 'copied Rust theme did not compile or resolve correctly'}
+    } finally { Pop-Location }
 } finally {
     foreach($name in $names){[Environment]::SetEnvironmentVariable($name,$saved[$name],'Process')}
 }

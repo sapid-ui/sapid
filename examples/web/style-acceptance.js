@@ -56,9 +56,9 @@ async (hostPage) => {
       'sapid-navigation-menu-trigger', 'sapid-sidebar-trigger', 'sapid-spoiler-trigger', 'sapid-stepper-trigger'];
     const isolation = await page.locator('#fixture').evaluate((root, classes) => {
       root.replaceChildren();
-      const cursor = (className, disabled = false, unstyledParent = false, ariaDisabled = false) => {
+      const cursor = (className, disabled = false, unstyledParent = false, ariaDisabled = false, parentClass = '') => {
         const wrapper = document.createElement('div');
-        if (unstyledParent) wrapper.className = 'sapid-unstyled';
+        wrapper.className = `${parentClass} ${unstyledParent ? 'sapid-unstyled' : ''}`;
         const element = document.createElement('button');
         element.className = className;
         element.disabled = disabled;
@@ -71,7 +71,11 @@ async (hostPage) => {
       return { foreign: getComputedStyle(foreign).cursor, native: cursor(''), nativeDisabled: cursor('', true),
         triggers: classes.map(name => ({ name,
         enabled: cursor(name), disabled: cursor(name, true), ownUnstyled: cursor(`${name} sapid-unstyled`),
-        parentUnstyled: cursor(name, false, true), ariaDisabled: cursor(name, false, false, true) })) };
+        parentUnstyled: cursor(name, false, true), ariaDisabled: cursor(name, false, false, true) })),
+        menubar: { enabled: cursor('sapid-menu-trigger', false, false, false, 'sapid-menubar'),
+          disabled: cursor('sapid-menu-trigger', true, false, false, 'sapid-menubar'),
+          unstyled: cursor('sapid-menu-trigger', false, true, false, 'sapid-menubar'),
+          ariaDisabled: cursor('sapid-menu-trigger', false, false, true, 'sapid-menubar') } };
     }, triggerClasses);
     assert(isolation.foreign === 'auto', `Sapid styled a host application's trigger: ${JSON.stringify(isolation)}`);
     for (const trigger of isolation.triggers) {
@@ -80,6 +84,11 @@ async (hostPage) => {
         && trigger.ariaDisabled === isolation.native,
         `trigger cursor ignored disabled/unstyled: ${JSON.stringify(trigger)}`);
     }
+    assert(isolation.menubar.enabled === 'pointer'
+      && isolation.menubar.disabled === isolation.nativeDisabled
+      && isolation.menubar.unstyled === isolation.native
+      && isolation.menubar.ariaDisabled === isolation.native,
+      `menubar descendant cursor ignored disabled/unstyled: ${JSON.stringify(isolation.menubar)}`);
     reports.push({ suite: 'style-trigger-isolation', status: 'passed' });
     assert(errors.length === 0, JSON.stringify(errors));
     return { reports, errors };
