@@ -1,0 +1,44 @@
+name: Determine required checks
+on:
+  workflow_call:
+    inputs:
+      release_ref:
+        type: string
+        default: ''
+    outputs:
+      rust:
+        value: ${{ jobs.classify.outputs.rust }}
+      showcase:
+        value: ${{ jobs.classify.outputs.showcase }}
+      showcase_rust:
+        value: ${{ jobs.classify.outputs.showcase_rust }}
+      docs:
+        value: ${{ jobs.classify.outputs.docs }}
+      base:
+        value: ${{ jobs.classify.outputs.base }}
+permissions:
+  contents: read
+jobs:
+  classify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      rust: ${{ steps.plan.outputs.rust }}
+      showcase: ${{ steps.plan.outputs.showcase }}
+      showcase_rust: ${{ steps.plan.outputs.showcase_rust }}
+      docs: ${{ steps.plan.outputs.docs }}
+      base: ${{ steps.plan.outputs.base }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Test scope and documentation regression gates
+        run: python3 -m unittest discover -s scripts -p test_ci_scope.py
+      - name: Determine scope from immutable Git endpoints
+        id: plan
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          RELEASE_REF: ${{ inputs.release_ref }}
+        run: python3 scripts/ci_scope.py

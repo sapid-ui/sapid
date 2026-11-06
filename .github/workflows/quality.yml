@@ -12,7 +12,11 @@ concurrency:
   group: sapid-quality-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
+  scope:
+    uses: ./.github/workflows/change-scope.yml
   msrv:
+    needs: scope
+    if: needs.scope.outputs.rust == 'true'
     runs-on: windows-latest
     timeout-minutes: 45
     strategy:
@@ -73,6 +77,8 @@ jobs:
           python -m unittest discover -s scripts -p test_library_lock.py
           if ($LASTEXITCODE) { throw 'Fresh library lock regressions failed' }
   dependencies:
+    needs: scope
+    if: needs.scope.outputs.rust == 'true'
     runs-on: windows-latest
     timeout-minutes: 45
     env:

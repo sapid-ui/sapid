@@ -2,6 +2,7 @@ param(
     [switch]$Serve,
     [switch]$Browser,
     [switch]$Release,
+    [switch]$StylesOnly,
     [string]$BuildRoot = '',
     [string]$Bindgen = 'wasm-bindgen'
 )
@@ -51,13 +52,17 @@ try {
     Write-Output "Showcase target verified: $($metadata.target_directory)"
     & python scripts/showcase-catalog.py --check
     if ($LASTEXITCODE -ne 0) { throw 'showcase catalog is stale' }
-    Invoke-ShowcaseCargo -Arguments @('fmt','--manifest-path','examples/web/Cargo.toml','--','--check')
-    Invoke-ShowcaseCargo -Arguments @('run','--locked','--manifest-path','examples/web/Cargo.toml','--bin','theme_audit')
-    Invoke-ShowcaseCargo -Arguments @('test','--locked','--manifest-path','examples/web/Cargo.toml','--test','showcase_site')
-    Invoke-ShowcaseCargo -Arguments @('test','--locked','--manifest-path','examples/web/Cargo.toml','--test','showcase_routing')
-    Invoke-ShowcaseCargo -Arguments @('test','--locked','--manifest-path','examples/web/Cargo.toml','--lib')
-    Invoke-ShowcaseCargo -Arguments @('clippy','--locked','--manifest-path','examples/web/Cargo.toml','--all-targets','--','-D','warnings')
-    Invoke-ShowcaseCargo -Arguments @('clippy','--locked','--manifest-path','examples/web/Cargo.toml','--lib','--features','public-showcase','--target','wasm32-unknown-unknown','--','-D','warnings')
+    if ($StylesOnly) {
+        Write-Output 'Showcase styles/assets only: skip Rust tests, fmt and Clippy; build and browser acceptance remain required.'
+    } else {
+        Invoke-ShowcaseCargo -Arguments @('fmt','--manifest-path','examples/web/Cargo.toml','--','--check')
+        Invoke-ShowcaseCargo -Arguments @('run','--locked','--manifest-path','examples/web/Cargo.toml','--bin','theme_audit')
+        Invoke-ShowcaseCargo -Arguments @('test','--locked','--manifest-path','examples/web/Cargo.toml','--test','showcase_site')
+        Invoke-ShowcaseCargo -Arguments @('test','--locked','--manifest-path','examples/web/Cargo.toml','--test','showcase_routing')
+        Invoke-ShowcaseCargo -Arguments @('test','--locked','--manifest-path','examples/web/Cargo.toml','--lib')
+        Invoke-ShowcaseCargo -Arguments @('clippy','--locked','--manifest-path','examples/web/Cargo.toml','--all-targets','--','-D','warnings')
+        Invoke-ShowcaseCargo -Arguments @('clippy','--locked','--manifest-path','examples/web/Cargo.toml','--lib','--features','public-showcase','--target','wasm32-unknown-unknown','--','-D','warnings')
+    }
     if ((& $Bindgen --version).Trim() -ne 'wasm-bindgen 0.2.130') { throw 'showcase requires wasm-bindgen-cli 0.2.130' }
     $profileName = if ($Release) { 'release' } else { 'debug' }
     $buildArguments = @('build','--locked','--manifest-path','examples/web/Cargo.toml','--lib','--features','public-showcase','--target','wasm32-unknown-unknown')

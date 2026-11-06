@@ -18,6 +18,10 @@ on:
       mode:
         type: string
         default: full
+      check_rust:
+        description: Run showcase Rust tests and Clippy (always true for schedules and releases)
+        type: boolean
+        default: true
     outputs:
       dist_artifact:
         description: Release assets accepted in this run
@@ -113,9 +117,13 @@ jobs:
         run: python scripts/test-site-assets.py
 
       - name: Validate and build production showcase
+        env:
+          CHECK_RUST: ${{ inputs.check_rust != false || inputs.source_ref == '' }}
         run: |
           ./scripts/install-build-tools.ps1 -BuildRoot $env:BUILD_ROOT -VerifyOnly | Out-Null
-          ./scripts/check-showcase.ps1 -Release -BuildRoot $env:BUILD_ROOT -Bindgen $env:SAPID_BINDGEN
+          $arguments = @{ Release=$true; BuildRoot=$env:BUILD_ROOT; Bindgen=$env:SAPID_BINDGEN }
+          if ($env:CHECK_RUST -eq 'false') { $arguments.StylesOnly = $true }
+          ./scripts/check-showcase.ps1 @arguments
       - name: Browser acceptance of actual release assets
         env:
           ACCEPTANCE_MODE: ${{ inputs.mode || 'full' }}
