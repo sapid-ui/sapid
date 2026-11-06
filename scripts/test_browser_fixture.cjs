@@ -27,3 +27,32 @@ test('a stale service cannot produce acceptance for different files on disk', as
     await assert.rejects(verifyServedArtifacts(base, { 'missing.wasm': hashes['asset.wasm'] }), /HTTP 404/);
   } finally { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); }
 });
+
+const { runSuiteWithInfrastructureRetry } = require('./browser.cjs');
+test('socket exhaustion reruns every assertion in a fresh browser and retains failed evidence', async () => {
+  const first = { file: 'fixture.js', reports: [], errors: ['page.waitForFunction: Timeout 30000ms exceeded'],
+    diagnostics: [{ type: 'requestfailed', message: 'net::ERR_NO_BUFFER_SPACE' }] };
+  const passed = { file: 'fixture.js', reports: [{ mode: 'all assertions passed' }], errors: [], diagnostics: [] };
+  let runs = 0, restarts = 0;
+  const result = await runSuiteWithInfrastructureRetry(async () => ++runs === 1 ? first : passed, async () => { restarts++; });
+  assert.equal(runs, 2); assert.equal(restarts, 1);
+  assert.deepEqual(result.reports, passed.reports); assert.deepEqual(result.errors, []);
+  assert.deepEqual(result.infrastructureAttempts, [first]);
+});
+test('assertion failures and generic timeouts never get infrastructure retries', async () => {
+  for (const diagnostics of [[], [{ type: 'requestfailed', message: 'net::ERR_CONNECTION_REFUSED' }], [{ type: 'requestfailed', message: 'net::ERR_NO_BUFFER_SPACE' }]]) {
+    let runs = 0;
+    const failed = { errors: ['assertion failed'], reports: [], diagnostics };
+    assert.deepEqual(await runSuiteWithInfrastructureRetry(async () => { runs++; return failed; },
+      async () => assert.fail('must not restart')), failed);
+    assert.equal(runs, 1);
+  }
+});
+test('repeated socket exhaustion stays a failure after one bounded retry', async () => {
+  const failed = { file: 'fixture.js', errors: ['page.waitForFunction: Timeout 30000ms exceeded'], reports: [],
+    diagnostics: [{ type: 'requestfailed', message: 'net::ERR_NO_BUFFER_SPACE' }] };
+  let runs = 0;
+  const result = await runSuiteWithInfrastructureRetry(async () => { runs++; return failed; }, async () => {});
+  assert.equal(runs, 2); assert.deepEqual(result.errors, failed.errors);
+  assert.deepEqual(result.infrastructureAttempts, [failed]);
+});

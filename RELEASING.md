@@ -66,3 +66,9 @@ Chrome AX checks, native layout/input regressions and AccessKit exports are
 separate records. OS IME, screen-reader speech and physical-device acceptance
 require their own dated platform/tool versions, steps and results; automated
 protocol checks alone do not establish those outcomes.
+
+The widget driver may rerun one complete suite in a fresh browser only when an
+actual failed request records Windows `net::ERR_NO_BUFFER_SPACE`. The original
+failed reports and diagnostics remain in `infrastructureAttempts`; the retry
+must pass every original assertion. Assertion failures and generic timeouts are
+not retried, and a repeated infrastructure failure still blocks publication.

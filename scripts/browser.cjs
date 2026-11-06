@@ -49,6 +49,18 @@ async function withClipboardLock(run) {
   await before;
   try { return await run(); } finally { release(); }
 }
+// Windows can reject a loopback asset with ERR_NO_BUFFER_SPACE. Retry the
+// complete suite once in a fresh browser, retaining the failed attempt as evidence.
+async function runSuiteWithInfrastructureRetry(run, restart) {
+  const first = await run();
+  const loadFailure = first.errors.some(error => /page\.(?:goto|waitForFunction|waitForLoadState):.*(?:Timeout|net::ERR_NO_BUFFER_SPACE)/s.test(error));
+  if (!loadFailure || !first.diagnostics?.some(item =>
+    item.type === 'requestfailed' && item.message === 'net::ERR_NO_BUFFER_SPACE')) return first;
+  console.log(`Retrying complete suite after Windows socket exhaustion: ${first.file}`);
+  await restart();
+  const second = await run();
+  return { ...second, infrastructureAttempts: [first] };
+}
 async function runBrowser() {
   const { chromium } = require('./showcase-browser-env.cjs');
   const fixtureBase = normalizeBase(process.env.SAPID_FIXTURE_BASE);
@@ -61,7 +73,8 @@ async function runBrowser() {
     const done = results.filter(Boolean);
     return { browser: [...versions].join(', '), jobs, browserIsolation: 'suite', complete,
       completedSuites: done.map(result => result.file), reports: done.flatMap(result => result.reports),
-      errors: [...runErrors, ...done.flatMap(result => result.errors)], sourceHashes, effectiveSourceHashes, fixtureBase, artifactHashes };
+      errors: [...runErrors, ...done.flatMap(result => result.errors)],
+      infrastructureAttempts: done.flatMap(result => result.infrastructureAttempts || []), sourceHashes, effectiveSourceHashes, fixtureBase, artifactHashes };
   }
   function save(name, value) {
     const destination = path.join(output, name), temporary = `${destination}.tmp`;
@@ -105,12 +118,17 @@ async function runBrowser() {
             if (hash(source) !== sourceHashes[file]) throw new Error('acceptance source changed during this run');
             const acceptance = new Function(`return (${sourceAtBase(source, fixtureBase)})`)();
             const result = await acceptance(page);
-            return { file, reports: result.reports, errors: result.errors.map(error => `${file}: ${error}`) };
+            return { file, reports: result.reports, errors: result.errors.map(error => `${file}: ${error}`), diagnostics: [...diagnostics] };
           } catch (error) {
-            return { file, reports: [], errors: [`${file} at ${page.url()}: ${error.stack || error}\nBrowser diagnostics: ${JSON.stringify(diagnostics)}`] };
+            return { file, reports: [], errors: [`${file} at ${page.url()}: ${error.stack || error}\nBrowser diagnostics: ${JSON.stringify(diagnostics)}`], diagnostics: [...diagnostics] };
           } finally { await page.close(); }
         };
-        results[index] = await (/clipboard|copy/i.test(source) ? withClipboardLock(run) : run());
+        const completeSuite = () => runSuiteWithInfrastructureRetry(run, async () => {
+          await browser.close();
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          browser = await launchBrowser(); versions.add(browser.version()); diagnostics = [];
+        });
+        results[index] = await (/clipboard|copy/i.test(source) ? withClipboardLock(completeSuite) : completeSuite());
         processed++;
         save('browser-progress.json', snapshot(false));
       }
@@ -149,5 +167,5 @@ async function runBrowser() {
   console.log(JSON.stringify({ browser: result.browser, jobs, suites: result.completedSuites.length, reports: result.reports.length, errors: result.errors }, null, 2));
   if (result.errors.length) process.exitCode = 1;
 }
-module.exports = { normalizeBase, sourceAtBase, verifyServedArtifacts };
+module.exports = { normalizeBase, sourceAtBase, verifyServedArtifacts, runSuiteWithInfrastructureRetry };
 if (require.main === module) runBrowser().catch(error => { console.error(error); process.exitCode = 1; });
