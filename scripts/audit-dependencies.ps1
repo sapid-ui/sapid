@@ -20,9 +20,7 @@ $report = @{ tool = 'cargo-audit 0.22.2'; complete = $false; locks = @(); errors
 Push-Location $ProjectRoot
 try {
 
-    $env:CARGO_TARGET_DIR = Get-NormalCargoTarget
-    $env:TEMP = Join-Path $BuildRoot 'tmp';
-    New-Item -ItemType Directory -Force -Path $BuildRoot,$env:TEMP | Out-Null
+    New-Item -ItemType Directory -Force -Path $BuildRoot | Out-Null
     $version = (& $AuditBinary --version | Out-String).Trim()
     if ($LASTEXITCODE -ne 0 -or $version -ne $report.tool) { throw "Expected $($report.tool), got $version" }
     # Only the library root is local. Missing application locks remain errors.
@@ -36,10 +34,14 @@ try {
         $snapshot = Join-Path $BuildRoot "audit-$index.lock"
         if (Test-Path -LiteralPath $snapshot) { Remove-Item -LiteralPath $snapshot -Force }
         try {
-            $metadata = & cargo metadata --locked --manifest-path $manifest --no-deps --format-version 1 | ConvertFrom-Json
-            if ($LASTEXITCODE -ne 0 -or [IO.Path]::GetFullPath($metadata.target_directory) -ne [IO.Path]::GetFullPath($env:CARGO_TARGET_DIR)) {
+            $ownedManifest = [IO.Path]::GetFullPath($manifest)
+            Push-Location (Split-Path -Parent $ownedManifest)
+            try { $metadata = & cargo metadata --locked --manifest-path $ownedManifest --no-deps --format-version 1 | ConvertFrom-Json }
+            finally { Pop-Location }
+            if ($LASTEXITCODE -ne 0 -or -not $metadata.target_directory -or -not [IO.Path]::IsPathFullyQualified($metadata.target_directory)) {
                 throw "Unexpected metadata target for $manifest"
             }
+            $entry.target_directory = [IO.Path]::GetFullPath($metadata.target_directory)
             $entry.sha256 = (Get-FileHash -LiteralPath $lock -Algorithm SHA256).Hash
             Copy-Item -LiteralPath $lock -Destination $snapshot
             $entry.snapshot = "audit-$index.lock"

@@ -77,7 +77,7 @@ class AdvisoryGateTests(unittest.TestCase):
             self.assertNotEqual(failed.returncode, 0, failed.stdout + failed.stderr)
             report = json.loads((output / "results.json").read_text(encoding="utf-8-sig"))
             self.assertFalse(report["complete"])
-            self.assertEqual(len(report["locks"]), 3)
+            self.assertEqual(len(report["locks"]), 3, (report, failed.stdout, failed.stderr))
             for entry in report["locks"]:
                 self.assertTrue(entry["vulnerabilities"], (entry, failed.stdout, failed.stderr))
                 self.assertEqual(entry["vulnerabilities"][0]["advisory"]["id"], "RUSTSEC-2020-0071", entry)
