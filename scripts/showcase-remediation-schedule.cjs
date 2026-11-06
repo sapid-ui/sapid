@@ -1,5 +1,5 @@
 const assert=require('node:assert/strict'),fs=require('node:fs');
-const {chromium,base,outputPath,writeReport}=require('./showcase-browser-env.cjs');
+const {matrix,chromium,base,outputPath,writeReport}=require('./showcase-browser-env.cjs');
 const normal=['schedule','day-view','week-view','month-view','year-view','mobile-month-view','agenda-view'];
 const resources=['resources-day-view','resources-week-view','resources-month-view','resources-schedule'];
 (async()=>{
@@ -22,7 +22,7 @@ const resources=['resources-day-view','resources-week-view','resources-month-vie
  };
  const visit=async url=>{for(let attempt=0;;attempt++){try{await page.goto(url);return;}catch(error){if(attempt>=2||!String(error).includes('ERR_NO_BUFFER_SPACE'))throw error;(report.navigationRetries??=[]).push({url,attempt,error:String(error)});await page.waitForTimeout(250*(attempt+1));}}};
  try{
- for(const theme of (process.env.SAPID_SCHEDULE_THEMES||'blue,green').split(','))for(const scheme of (process.env.SAPID_SCHEDULE_SCHEMES||'light,dark').split(','))for(const width of (process.env.SAPID_SCHEDULE_WIDTHS||'1280,390').split(',').map(Number))for(const slug of (process.env.SAPID_SCHEDULE_PAGES||[...normal,...resources,'recurring-events','events-data'].join(',')).split(',')){
+ for(const theme of (process.env.SAPID_SCHEDULE_THEMES||matrix.themes.join(',')).split(','))for(const scheme of (process.env.SAPID_SCHEDULE_SCHEMES||matrix.schemes.join(',')).split(','))for(const width of (process.env.SAPID_SCHEDULE_WIDTHS||'1280,390').split(',').map(Number))for(const slug of (process.env.SAPID_SCHEDULE_PAGES||[...normal,...resources,'recurring-events','events-data'].join(',')).split(',')){
   const key=slug+'-'+theme+'-'+scheme+'-'+width;
   try{
    await page.setViewportSize({width,height:1100});await visit(base+'/showcase.html?widget='+slug+'&theme='+theme+'&scheme='+scheme);await page.waitForFunction(slug=>window.ready===true&&document.documentElement.getAttribute('data-sapid-widget')===slug,slug,{timeout:30000});await tick();

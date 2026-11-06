@@ -197,7 +197,8 @@ The [inventory](docs/widget-inventory.json) and generated catalog are validated 
 `python scripts/widget-plan.py --check`. The older Web galleries on port 8794
 remain acceptance fixtures; the Rust showcase on port 8795 is the public site.
 
-Pushes to `main` also run the [showcase deployment workflow](deploy/README.md).
+Pushes to `main` deploy the [accepted showcase artifact](deploy/README.md) after
+widget and showcase checks pass. Full page/palette sweeps run daily and for releases.
 Its [pinned dependencies](deploy/dependencies.json) describe the reproducible
 production source set, separately from ordinary sibling-source development.
 

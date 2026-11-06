@@ -30,7 +30,11 @@ async (hostPage) => {
     await go(p, 'showcase.html?widget=button');
     const routes = await p.locator('.site-nav-link').evaluateAll(elements => elements.map(e => ({href:e.getAttribute('href'),label:e.textContent.trim()})));
     assert(routes.length === 181 && new Set(routes.map(r => new URL(r.href, base).searchParams.get('widget'))).size === 181, '181 unique canonical navigation links');
-    for (const route of routes) {
+    const smokeRoutes = ['button', 'text-input', 'select', 'accordion', 'dialog', 'date-picker', 'line-chart', 'schedule'];
+    const visitedRoutes = process.env.SAPID_SHOWCASE_MODE === 'quick'
+      ? routes.filter(route => smokeRoutes.includes(new URL(route.href, base).searchParams.get('widget'))) : routes;
+    assert(visitedRoutes.length === (process.env.SAPID_SHOWCASE_MODE === 'quick' ? smokeRoutes.length : 181), 'expected navigation coverage');
+    for (const route of visitedRoutes) {
       const id = new URL(route.href, base).searchParams.get('widget');
       const anchor = p.locator(`.site-nav-link[href="${route.href}"]`);
       await anchor.click();
@@ -41,7 +45,7 @@ async (hostPage) => {
       assert((await p.locator('.site-code').first().textContent()).trim().length > 30, `${id}: readable source`);
       assert(await p.locator('iframe').count() === 0, `${id}: no fixture iframe`);
       reports.push({suite:`showcase-route-${id}`,status:'passed'});
-      console.log(`showcase route ${reports.length - 1}/181 ${id} passed`);
+      console.log(`showcase route ${reports.length - 1}/${visitedRoutes.length} ${id} passed`);
     }
 
     await go(p, 'showcase.html?widget=button');

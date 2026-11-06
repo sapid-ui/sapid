@@ -1,0 +1,42 @@
+name: Cache Cargo builds and downloaded tools
+description: Discover actual workspace targets without overriding caller paths
+inputs:
+  scope:
+    description: Separate incompatible compiler, profile and workload caches
+    required: true
+  toolchain:
+    description: Installed compiler version
+    default: '1.98.0'
+  tools-root:
+    description: Optional project-local root used by install-build-tools.ps1
+    default: ''
+runs:
+  using: composite
+  steps:
+    - name: Discover Cargo cache paths
+      id: paths
+      shell: pwsh
+      working-directory: sapid
+      run: '& "$env:GITHUB_ACTION_PATH/../../../scripts/ci-cache-paths.ps1" -ProjectRoot $PWD.Path'
+    - name: Restore Cargo downloads and actual compiled outputs
+      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+      with:
+        path: ${{ steps.paths.outputs.paths }}
+        key: sapid-cargo-v1-${{ runner.os }}-${{ inputs.toolchain }}-${{ inputs.scope }}-${{ hashFiles('sapid/**/Cargo.toml', 'glory/**/Cargo.toml', 'apace/**/Cargo.toml', 'takia/**/Cargo.toml', 'wingy/**/Cargo.toml', 'sapid/deploy/dependencies.json') }}-${{ github.sha }}
+        restore-keys: |
+          sapid-cargo-v1-${{ runner.os }}-${{ inputs.toolchain }}-${{ inputs.scope }}-${{ hashFiles('sapid/**/Cargo.toml', 'glory/**/Cargo.toml', 'apace/**/Cargo.toml', 'takia/**/Cargo.toml', 'wingy/**/Cargo.toml', 'sapid/deploy/dependencies.json') }}-
+          sapid-cargo-v1-${{ runner.os }}-${{ inputs.toolchain }}-${{ inputs.scope }}-
+    - name: Restore verified tools and npm downloads
+      if: inputs.tools-root != ''
+      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+      with:
+        path: |
+          ${{ inputs.tools-root }}/tools
+          ${{ inputs.tools-root }}/npm
+        key: sapid-tools-v3-${{ runner.os }}-${{ hashFiles('sapid/deploy/build-tools.json', 'sapid/deploy/tools/package-lock.json') }}
+    - name: Restore Chromium for acceptance
+      if: inputs.tools-root != ''
+      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+      with:
+        path: ${{ inputs.tools-root }}/browsers
+        key: sapid-chromium-v1-${{ runner.os }}-${{ hashFiles('sapid/deploy/tools/package-lock.json') }}

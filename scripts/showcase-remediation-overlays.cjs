@@ -1,5 +1,5 @@
 const assert=require('node:assert/strict'),fs=require('node:fs');
-const {chromium,base,outputPath,writeReport}=require('./showcase-browser-env.cjs');
+const {matrix,chromium,base,outputPath,writeReport}=require('./showcase-browser-env.cjs');
 (async()=>{
  const browser=await chromium.launch(),context=await browser.newContext(),page=await context.newPage();page.setDefaultTimeout(9000);
  const report={browser:browser.version(),pages:[],errors:[]};page.on('pageerror',e=>report.errors.push(e.message));page.on('console',m=>{if(m.type()==='error')report.errors.push(m.text());});
@@ -14,7 +14,7 @@ const {chromium,base,outputPath,writeReport}=require('./showcase-browser-env.cjs
  const counts={modal:6,drawer:5,popover:5,dialog:3,'loading-overlay':3,overlay:3,tooltip:5,'hover-card':4,'action-bar':3,'floating-indicator':3,tour:3};
  fs.mkdirSync(outputPath('overlays-remediation'),{recursive:true});
  try{
- for(const theme of (process.env.SAPID_OVERLAY_THEMES||'blue,green').split(','))for(const scheme of (process.env.SAPID_OVERLAY_SCHEMES||'light,dark').split(','))for(const width of (process.env.SAPID_OVERLAY_WIDTHS||'1280,390').split(',').map(Number))for(const slug of (process.env.SAPID_OVERLAY_PAGES||Object.keys(counts).join(',')).split(',')){
+ for(const theme of (process.env.SAPID_OVERLAY_THEMES||matrix.themes.join(',')).split(','))for(const scheme of (process.env.SAPID_OVERLAY_SCHEMES||matrix.schemes.join(',')).split(','))for(const width of (process.env.SAPID_OVERLAY_WIDTHS||'1280,390').split(',').map(Number))for(const slug of (process.env.SAPID_OVERLAY_PAGES||Object.keys(counts).join(',')).split(',')){
   const key=`${slug}-${theme}-${scheme}-${width}`;
   try{
    await page.setViewportSize({width,height:1100});await page.goto(`${base}/showcase.html?widget=${slug}&theme=${theme}&scheme=${scheme}`);await page.waitForFunction(()=>window.ready===true,undefined,{timeout:25000});await tick();

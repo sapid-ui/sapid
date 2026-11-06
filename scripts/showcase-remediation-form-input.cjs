@@ -1,5 +1,5 @@
 const assert=require('node:assert/strict'),fs=require('node:fs');
-const {chromium,base,outputPath,writeReport}=require('./showcase-browser-env.cjs');
+const {matrix,chromium,base,outputPath,writeReport}=require('./showcase-browser-env.cjs');
 (async()=>{
  const browser=await chromium.launch(),page=await browser.newPage(),report={browser:browser.version(),pages:[],errors:[]};
  page.on('pageerror',e=>report.errors.push(e.message));page.on('console',m=>{if(m.type()==='error')report.errors.push(m.text());});
@@ -12,7 +12,7 @@ const {chromium,base,outputPath,writeReport}=require('./showcase-browser-env.cjs
  fs.mkdirSync(outputPath('file-input-fixtures'),{recursive:true});
  fs.mkdirSync(outputPath('form-input-remediation'),{recursive:true});
  try{
- for(const theme of ['blue','green'])for(const scheme of ['light','dark'])for(const width of [1280,390])for(const slug of ['mask-input','native-select','file-input']){
+ for(const theme of matrix.themes)for(const scheme of matrix.schemes)for(const width of [1280,390])for(const slug of ['mask-input','native-select','file-input']){
   const key=`${slug}-${theme}-${scheme}-${width}`;
   try{
    await page.setViewportSize({width,height:1000});await page.goto(`${base}/showcase.html?widget=${slug}&theme=${theme}&scheme=${scheme}`);await page.waitForFunction(()=>window.ready===true,undefined,{timeout:20000});await tick();

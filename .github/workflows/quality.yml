@@ -61,6 +61,14 @@ jobs:
           New-Item -ItemType Directory -Force $env:CARGO_TARGET_DIR,$env:TEMP | Out-Null
           rustup toolchain install 1.95.0 --profile minimal
           if ($LASTEXITCODE) { throw 'MSRV toolchain installation failed' }
+      - uses: ./sapid/.github/actions/build-cache
+        with:
+          scope: msrv-${{ matrix.features }}
+          toolchain: '1.95.0'
+      - name: Validate MSRV and fresh dependency resolution
+        env:
+          FEATURE_SET: ${{ matrix.features }}
+        run: |
           ./scripts/check-msrv.ps1 -FeatureSet $env:FEATURE_SET
           python -m unittest discover -s scripts -p test_library_lock.py
           if ($LASTEXITCODE) { throw 'Fresh library lock regressions failed' }
@@ -115,6 +123,16 @@ jobs:
           if ($LASTEXITCODE) { throw 'Library dependency resolution failed' }
           $metadata = cargo metadata --locked --no-deps --format-version 1 | ConvertFrom-Json
           if ($LASTEXITCODE -or [IO.Path]::GetFullPath($metadata.target_directory) -ne [IO.Path]::GetFullPath($env:CARGO_TARGET_DIR)) { throw 'Unexpected tool target' }
+      - uses: ./sapid/.github/actions/build-cache
+        with:
+          scope: audit
+      - name: Restore pinned audit executable
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ${{ github.workspace }}/sapid/target/verification/sapid/quality-tools
+          key: sapid-audit-v1-${{ runner.os }}-1.98.0-0.22.2
+      - name: Install pinned audit tool
+        run: |
           # Version verified from https://crates.io/api/v1/crates/cargo-audit/0.22.2.
           cargo install cargo-audit --version 0.22.2 --locked --root ${{ github.workspace }}/sapid/target/verification/sapid/quality-tools
           if ($LASTEXITCODE) { throw 'Pinned audit installation failed' }

@@ -1,5 +1,5 @@
 const assert = require('node:assert/strict'), fs = require('node:fs');
-const { chromium, base, outputPath, writeReport } = require('./showcase-browser-env.cjs');
+const {matrix, chromium, base, outputPath, writeReport } = require('./showcase-browser-env.cjs');
 (async () => {
  const browser=await chromium.launch(), context=await browser.newContext(), page=await context.newPage();
  page.setDefaultTimeout(10000);
@@ -15,7 +15,7 @@ const { chromium, base, outputPath, writeReport } = require('./showcase-browser-
  const shot=async(l,name)=>l.screenshot({path:outputPath(`data-display-remediation/${name}.png`)});
  fs.mkdirSync(outputPath('data-display-remediation'),{recursive:true});
  try {
- for(const theme of (process.env.SAPID_DATA_DISPLAY_THEMES||'blue,green').split(',')) for(const scheme of (process.env.SAPID_DATA_DISPLAY_SCHEMES||'light,dark').split(',')) for(const width of (process.env.SAPID_DATA_DISPLAY_WIDTHS||'1280,390').split(',').map(Number)) for(const slug of (process.env.SAPID_DATA_DISPLAY_PAGES||Object.keys(counts).join(',')).split(',')) {
+ for(const theme of (process.env.SAPID_DATA_DISPLAY_THEMES||matrix.themes.join(',')).split(',')) for(const scheme of (process.env.SAPID_DATA_DISPLAY_SCHEMES||matrix.schemes.join(',')).split(',')) for(const width of (process.env.SAPID_DATA_DISPLAY_WIDTHS||'1280,390').split(',').map(Number)) for(const slug of (process.env.SAPID_DATA_DISPLAY_PAGES||Object.keys(counts).join(',')).split(',')) {
   const key=`${slug}-${theme}-${scheme}-${width}`;
   try {
    await page.setViewportSize({width,height:1100});await page.emulateMedia({reducedMotion:'no-preference'});

@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const { chromium, base, outputPath, writeReport } = require('./showcase-browser-env.cjs');
+const {matrix, chromium, base, outputPath, writeReport } = require('./showcase-browser-env.cjs');
 (async () => {
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage();
@@ -13,7 +13,7 @@ const { chromium, base, outputPath, writeReport } = require('./showcase-browser-
   const focused = locator => locator.evaluate(e => e === document.activeElement);
   fs.mkdirSync(outputPath('heatmap-remediation'), { recursive: true });
   try {
-    for (const theme of ['blue', 'green']) for (const scheme of ['light', 'dark']) for (const width of [1280, 390]) {
+    for (const theme of matrix.themes) for (const scheme of matrix.schemes) for (const width of [1280, 390]) {
       const key = `${theme}-${scheme}-${width}`;
       await page.setViewportSize({ width, height: 1000 });
       await page.goto(`${base}/showcase.html?widget=heatmap&theme=${theme}&scheme=${scheme}`);

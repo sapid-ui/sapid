@@ -1,5 +1,5 @@
 const assert=require('node:assert/strict'),fs=require('node:fs');
-const {chromium,base,outputPath,writeReport}=require('./showcase-browser-env.cjs');
+const {matrix,chromium,base,outputPath,writeReport}=require('./showcase-browser-env.cjs');
 (async()=>{
  const browser=await chromium.launch(),page=await browser.newPage();const report={browser:browser.version(),pages:[],errors:[]};
  const watch=p=>{p.on('pageerror',e=>report.errors.push(e.message));p.on('console',m=>{if(m.type()==='error')report.errors.push(m.text());});};watch(page);
@@ -8,7 +8,7 @@ const {chromium,base,outputPath,writeReport}=require('./showcase-browser-env.cjs
  const number=async l=>Number(await l.getAttribute('aria-valuenow'));
  fs.mkdirSync(outputPath('selection-remediation'),{recursive:true});
  try{
- for(const theme of ['blue','green'])for(const scheme of ['light','dark'])for(const width of [1280,390])for(const slug of ['slider','range-slider','rating','segmented-control']){
+ for(const theme of matrix.themes)for(const scheme of matrix.schemes)for(const width of [1280,390])for(const slug of ['slider','range-slider','rating','segmented-control']){
   const key=`${slug}-${theme}-${scheme}-${width}`;
   try{
    await page.setViewportSize({width,height:1000});await page.goto(`${base}/showcase.html?widget=${slug}&theme=${theme}&scheme=${scheme}`);await page.waitForFunction(()=>window.ready===true,undefined,{timeout:20000});await tick(page);
@@ -39,7 +39,7 @@ const {chromium,base,outputPath,writeReport}=require('./showcase-browser-env.cjs
    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await primary.evaluate(e=>e.scrollIntoView({block:'center'}));await primary.screenshot({path:outputPath(`selection-remediation/${key}.png`)});report.pages.push({key,passed:true});console.log(`PASS ${key}`);
   }catch(error){report.pages.push({key,passed:false,failure:error.stack});console.error(`FAIL ${key}: ${error.message}`);await page.screenshot({path:outputPath(`selection-remediation/failure-${key}.png`)});}
  }
- for(const theme of ['blue','green'])for(const scheme of ['light','dark'])for(const slug of ['slider','range-slider']){
+ for(const theme of matrix.themes)for(const scheme of matrix.schemes)for(const slug of ['slider','range-slider']){
   const key=`${slug}-touch-${theme}-${scheme}`,context=await browser.newContext({viewport:{width:390,height:900},hasTouch:true,isMobile:true}),p=await context.newPage();watch(p);
   try{
    await p.goto(`${base}/showcase.html?widget=${slug}&theme=${theme}&scheme=${scheme}`);await p.waitForFunction(()=>window.ready===true,undefined,{timeout:20000});const primary=p.locator('.site-preview .site-demo').first();await primary.evaluate(e=>e.scrollIntoView({block:'center'}));const root=primary.locator(slug==='slider'?'.sapid-slider':'.sapid-range-slider'),rect=await root.boundingBox();const handle=slug==='slider'?primary.locator('.sapid-slider-thumb'):primary.getByRole('slider',{name:'Minimum price',exact:true});const start=await handle.boundingBox(),session=await context.newCDPSession(p);const point=(x,y)=>[{x,y,radiusX:2,radiusY:2,force:1}];await session.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:point(start.x+start.width/2,start.y+start.height/2)});for(let i=1;i<=6;i++)await session.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:point(start.x+start.width/2+(rect.x+rect.width*.95-start.x-start.width/2)*i/6,start.y+start.height/2)});await session.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await tick(p);

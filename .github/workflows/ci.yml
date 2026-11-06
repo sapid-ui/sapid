@@ -26,6 +26,11 @@ concurrency:
   group: sapid-ci-${{ github.ref }}-${{ inputs.release_ref || 'branch' }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
+  showcase:
+    uses: ./.github/workflows/deploy-showcase.yml
+    with:
+      source_ref: ${{ inputs.release_ref || github.sha }}
+      mode: ${{ inputs.release_ref != '' && 'full' || 'quick' }}
   widgets:
     runs-on: windows-latest
     timeout-minutes: 120
@@ -35,7 +40,6 @@ jobs:
     env:
       CARGO_TARGET_DIR: ${{ github.workspace }}/sapid/target
       PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/sapid/target/verification/sapid/browsers
-      SAPID_PLAYWRIGHT: ${{ github.workspace }}/sapid/target/verification/sapid/browser/node_modules/playwright
       SAPID_BUILD_ROOT: ${{ github.workspace }}/sapid/target/verification/sapid
       SAPID_BROWSER_OUTPUT: ${{ github.workspace }}/sapid/target/verification/sapid
       SAPID_BROWSER_RUNNER: ${{ inputs.acceptance_ref && '../acceptance/scripts/browser.cjs' || 'scripts/browser.cjs' }}
@@ -106,20 +110,31 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: 24
-      - name: Prepare compiler and tools
+      - name: Prepare compiler
         run: |
           New-Item -ItemType Directory -Force $env:CARGO_TARGET_DIR,$env:TEMP | Out-Null
           rustup toolchain install 1.98.0 --profile minimal --component rustfmt,clippy --target wasm32-unknown-unknown
           if ($LASTEXITCODE) { throw 'Compiler installation failed' }
           rustup default 1.98.0
-          cargo install wasm-bindgen-cli --version 0.2.130 --locked --root ${{ github.workspace }}/sapid/target/verification/sapid/tools
-          if ($LASTEXITCODE) { throw 'WASM tools installation failed' }
-          '${{ github.workspace }}/sapid/target/verification/sapid/tools/bin' >> $env:GITHUB_PATH
-          npm install --prefix ${{ github.workspace }}/sapid/target/verification/sapid/browser --no-save --package-lock=false playwright@1.64.1
-          if ($LASTEXITCODE) { throw 'Browser tools installation failed' }
-          node ${{ github.workspace }}/sapid/target/verification/sapid/browser/node_modules/playwright/cli.js install chromium
+      # Cache helpers follow the workflow revision, including validation of an older release tag.
+      - name: Check out workflow-versioned CI support
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          path: ci-support
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: ./ci-support/.github/actions/build-cache
+        with:
+          scope: widgets
+          tools-root: ${{ env.SAPID_BUILD_ROOT }}
+      - name: Install verified prebuilt WASM and browser tools
+        run: |
+          $tools = ./scripts/install-build-tools.ps1 -BuildRoot $env:SAPID_BUILD_ROOT
+          "SAPID_BINDGEN=$($tools.Bindgen)" >> $env:GITHUB_ENV
+          "SAPID_PLAYWRIGHT=$($tools.Playwright)" >> $env:GITHUB_ENV
+          "SAPID_TOOLS_RECEIPT_SHA256=$($tools.ReceiptSha256)" >> $env:GITHUB_ENV
+          node (Join-Path $tools.Playwright 'cli.js') install chromium
           if ($LASTEXITCODE) { throw 'Chromium installation failed' }
-          'NODE_PATH=${{ github.workspace }}/sapid/target/verification/sapid/browser/node_modules' >> $env:GITHUB_ENV
       - name: Validate release, inventory and showcase sources
         run: |
           python -m unittest discover -s scripts -p test_release.py
@@ -138,9 +153,9 @@ jobs:
           python scripts/release.py --check-package sapid
           if ($LASTEXITCODE) { throw 'Archive contents failed' }
       - name: Widget, SSR, native and browser compilation checks
-        run: ./scripts/check.ps1 -Web -Native
+        run: ./scripts/check.ps1 -Web -Native -Bindgen $env:SAPID_BINDGEN
       - name: Mixed DSL hydration and native acceptance
-        run: ./scripts/check-dsl.ps1 -Browser -Native -Bindgen ${{ github.workspace }}/sapid/target/verification/sapid/tools/bin/wasm-bindgen.exe
+        run: ./scripts/check-dsl.ps1 -Browser -Native -Bindgen $env:SAPID_BINDGEN
       - name: Check out the independently versioned browser harness
         if: inputs.acceptance_ref != ''
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -165,7 +180,7 @@ jobs:
               catch { Start-Sleep -Seconds 1 }
             }
             if (-not $ready) { throw 'Browser fixture did not start' }
-            node $env:SAPID_BROWSER_RUNNER --jobs=1
+            node $env:SAPID_BROWSER_RUNNER --jobs=2
             if ($LASTEXITCODE) { throw 'Widget browser acceptance failed' }
           }
           finally { Stop-Process -Id $fixture.Id -ErrorAction SilentlyContinue }
@@ -195,3 +210,59 @@ jobs:
             ${{ github.workspace }}/sapid/target/verification/sapid/browser-provenance.json
             ${{ github.workspace }}/sapid/target/verification/sapid/library-Cargo.lock
           if-no-files-found: ignore
+
+  deploy:
+    needs: [widgets, showcase]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: windows-latest
+    timeout-minutes: 15
+    concurrency:
+      group: sapid-pages-production
+      cancel-in-progress: false
+    env:
+      BUILD_ROOT: ${{ github.workspace }}/sapid/target/verification/sapid/pages-ci
+      WRANGLER_SEND_METRICS: 'false'
+      PYTHONUTF8: '1'
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: sapid
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          path: sapid
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+      - name: Restore downloaded deployment tools
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            ${{ env.BUILD_ROOT }}/tools
+            ${{ env.BUILD_ROOT }}/npm
+          key: sapid-tools-v3-${{ runner.os }}-${{ hashFiles('sapid/deploy/build-tools.json', 'sapid/deploy/tools/package-lock.json') }}
+      - name: Install verified deployment tools without credentials
+        run: |
+          $tools = ./scripts/install-build-tools.ps1 -BuildRoot $env:BUILD_ROOT
+          "SAPID_TOOLS_RECEIPT_SHA256=$($tools.ReceiptSha256)" >> $env:GITHUB_ENV
+      - name: Download the exact accepted site from this run
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: ${{ needs.showcase.outputs.dist_artifact }}
+          path: ${{ env.BUILD_ROOT }}/showcase
+      - name: Skip a superseded main commit
+        id: current
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $head = gh api "repos/$env:GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha
+          if ($LASTEXITCODE) { throw 'Cannot verify production revision' }
+          "deploy=$($head -eq $env:GITHUB_SHA)".ToLowerInvariant() >> $env:GITHUB_OUTPUT
+      - name: Deploy to Cloudflare Pages
+        if: steps.current.outputs.deploy == 'true'
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: ./scripts/deploy-pages.ps1 -Directory "$env:BUILD_ROOT/showcase" -BuildRoot $env:BUILD_ROOT

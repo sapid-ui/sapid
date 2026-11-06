@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const { chromium, base, outputPath, writeReport } = require('./showcase-browser-env.cjs');
+const {matrix, chromium, base, outputPath, writeReport } = require('./showcase-browser-env.cjs');
 
 (async () => {
   const browser = await chromium.launch({ headless: true });
@@ -12,7 +12,7 @@ const { chromium, base, outputPath, writeReport } = require('./showcase-browser-
   const detail = title => page.locator('.site-component-detail').filter({ has: page.getByRole('heading', { name: title, exact: true }) });
   fs.mkdirSync(outputPath('composite-remediation'), { recursive: true });
   try {
-    for (const theme of ['blue', 'green']) for (const scheme of ['light', 'dark']) {
+    for (const theme of matrix.themes) for (const scheme of matrix.schemes) {
       for (const width of [1280, 390]) for (const slug of ['accordion', 'tabs', 'timeline']) {
         const key = `${slug}-${theme}-${scheme}-${width}`;
         await page.setViewportSize({ width, height: 1000 });

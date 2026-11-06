@@ -1,5 +1,5 @@
 const assert=require('node:assert/strict'),fs=require('node:fs');
-const {chromium,base,outputPath,writeReport}=require('./showcase-browser-env.cjs');
+const {matrix,chromium,base,outputPath,writeReport}=require('./showcase-browser-env.cjs');
 (async()=>{
  const browser=await chromium.launch(),context=await browser.newContext({permissions:['clipboard-read','clipboard-write']}),page=await context.newPage();
  const report={browser:browser.version(),pages:[],errors:[],nativeBoundary:'Injected native providers cover cancellation and clipboard outcomes; browser tests do not establish actual OS dialogs or assistive technology.'};
@@ -10,7 +10,7 @@ const {chromium,base,outputPath,writeReport}=require('./showcase-browser-env.cjs
  fs.mkdirSync(outputPath('button-remediation'),{recursive:true});fs.mkdirSync(outputPath('button-file-fixtures'),{recursive:true});
  const file=(name,body)=>{const path=outputPath(`button-file-fixtures/${name}`);fs.writeFileSync(path,body);return path;};
  try {
- for(const theme of (process.env.SAPID_BUTTON_THEMES||'blue,green').split(','))for(const scheme of (process.env.SAPID_BUTTON_SCHEMES||'light,dark').split(','))for(const width of (process.env.SAPID_BUTTON_WIDTHS||'1280,390').split(',').map(Number))for(const slug of (process.env.SAPID_BUTTON_PAGES||'action-icon,button,close-button,copy-button,file-button,toggle,unstyled-button').split(',')){
+ for(const theme of (process.env.SAPID_BUTTON_THEMES||matrix.themes.join(',')).split(','))for(const scheme of (process.env.SAPID_BUTTON_SCHEMES||matrix.schemes.join(',')).split(','))for(const width of (process.env.SAPID_BUTTON_WIDTHS||'1280,390').split(',').map(Number))for(const slug of (process.env.SAPID_BUTTON_PAGES||'action-icon,button,close-button,copy-button,file-button,toggle,unstyled-button').split(',')){
  const key=`${slug}-${theme}-${scheme}-${width}`;
  try {
  await context.grantPermissions(['clipboard-read','clipboard-write']);await page.setViewportSize({width,height:1000});await page.goto(`${base}/showcase.html?widget=${slug}&theme=${theme}&scheme=${scheme}`);await page.waitForFunction(()=>window.ready===true,undefined,{timeout:20000});await tick();

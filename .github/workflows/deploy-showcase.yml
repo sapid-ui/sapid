@@ -1,25 +1,47 @@
-name: Deploy Sapid showcase to Cloudflare Pages
+name: Showcase acceptance
 on:
-  push:
-    branches: [main]
-  pull_request:
+  schedule:
+    - cron: '43 18 * * *'
   workflow_dispatch:
+    inputs:
+      mode:
+        description: Showcase acceptance coverage
+        type: choice
+        options: [full, quick]
+        default: full
+  workflow_call:
+    inputs:
+      source_ref:
+        description: Immutable product commit (PR merge commit for pull requests)
+        type: string
+        default: ''
+      mode:
+        type: string
+        default: full
+    outputs:
+      dist_artifact:
+        description: Release assets accepted in this run
+        value: ${{ jobs.validate.outputs.dist_artifact }}
 permissions:
   contents: read
 concurrency:
-  group: sapid-pages-${{ github.event_name == 'pull_request' && github.ref || 'production' }}
+  group: sapid-showcase-${{ github.workflow }}-${{ github.ref }}-${{ inputs.source_ref || 'branch' }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 env:
   BUILD_ROOT: ${{ github.workspace }}/sapid/target/verification/sapid/pages-ci
   SAPID_BUILD_ROOT: ${{ github.workspace }}/sapid/target/verification/sapid/pages-ci
   CARGO_TARGET_DIR: ${{ github.workspace }}/sapid/target
   CARGO_INCREMENTAL: '0'
+  CARGO_PROFILE_DEV_DEBUG: '0'
+  CARGO_PROFILE_TEST_DEBUG: '0'
   CARGO_BUILD_JOBS: '2'
   PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/sapid/target/verification/sapid/pages-ci/browsers
   WRANGLER_SEND_METRICS: 'false'
   PYTHONUTF8: '1'
 jobs:
-  deploy:
+  validate:
+    outputs:
+      dist_artifact: sapid-showcase-dist-${{ github.run_attempt }}
     runs-on: windows-latest
     timeout-minutes: 120
     defaults:
@@ -33,6 +55,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           path: sapid
+          ref: ${{ inputs.source_ref || github.sha }}
           persist-credentials: false
       - name: Check out coordinated development engines
         shell: bash
@@ -56,14 +79,6 @@ jobs:
       - name: Prepare D drive
         run: |
           New-Item -ItemType Directory -Force $env:BUILD_ROOT,$env:CARGO_TARGET_DIR,$env:TEMP,${{ github.workspace }}/sapid/target/verification/sapid/tmp | Out-Null
-      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
-        with:
-          path: |
-            ${{ github.workspace }}/sapid/target/verification/sapid/pages-ci/cargo
-            ${{ github.workspace }}/sapid/target/verification/sapid/pages-ci/rustup
-            ${{ github.workspace }}/sapid/target/verification/sapid/pages-ci/target
-            ${{ github.workspace }}/sapid/target/verification/sapid/pages-ci/tools
-          key: sapid-pages-tools-v2-${{ runner.os }}-1.98.0-${{ hashFiles('sapid/Cargo.toml', 'sapid/examples/web/Cargo.lock', 'sapid/deploy/dependencies.json', 'sapid/deploy/build-tools.json', 'sapid/deploy/tools/package-lock.json') }}
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '24'
@@ -73,6 +88,17 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Rust installation failed' }
           rustup default 1.98.0
           if ($LASTEXITCODE -ne 0) { throw 'Rust selection failed' }
+      # Cache helpers follow the workflow revision, including validation of an older release tag.
+      - name: Check out workflow-versioned CI support
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          path: ci-support
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: ./ci-support/.github/actions/build-cache
+        with:
+          scope: showcase
+          tools-root: ${{ env.BUILD_ROOT }}
       - name: Install verified build and deployment tools without credentials
         run: |
           $tools = ./scripts/install-build-tools.ps1 -BuildRoot $env:BUILD_ROOT
@@ -83,8 +109,6 @@ jobs:
           if ($LASTEXITCODE) { throw 'Chromium installation failed' }
       - name: Test tool integrity rejection paths
         run: python -m unittest discover -s scripts -p test_tools.py
-      - name: Validate library and shared adapters
-        run: ./scripts/check.ps1 -BuildRoot $env:BUILD_ROOT
       - name: Verify immutable assets and release retention
         run: python scripts/test-site-assets.py
 
@@ -93,22 +117,24 @@ jobs:
           ./scripts/install-build-tools.ps1 -BuildRoot $env:BUILD_ROOT -VerifyOnly | Out-Null
           ./scripts/check-showcase.ps1 -Release -BuildRoot $env:BUILD_ROOT -Bindgen $env:SAPID_BINDGEN
       - name: Browser acceptance of actual release assets
+        env:
+          ACCEPTANCE_MODE: ${{ inputs.mode || 'full' }}
         run: |
           ./scripts/install-build-tools.ps1 -BuildRoot $env:BUILD_ROOT -VerifyOnly | Out-Null
-          node scripts/showcase-acceptance.cjs --directory "$env:BUILD_ROOT/showcase" --output "$env:BUILD_ROOT/acceptance"
+          node ../ci-support/scripts/showcase-acceptance.cjs --root . --directory "$env:BUILD_ROOT/showcase" --output "$env:BUILD_ROOT/acceptance" --mode $env:ACCEPTANCE_MODE --jobs=2
           if ($LASTEXITCODE) { throw 'Showcase acceptance failed' }
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - name: Preserve accepted release assets
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: sapid-showcase-dist-${{ github.run_attempt }}
+          path: ${{ env.BUILD_ROOT }}/showcase
+          if-no-files-found: error
+          retention-days: 7
+      - name: Preserve acceptance evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
-          name: sapid-showcase-dist
-          path: |
-            ${{ github.workspace }}/sapid/target/verification/sapid/pages-ci/showcase
-            ${{ github.workspace }}/sapid/target/verification/sapid/pages-ci/acceptance
+          name: sapid-showcase-acceptance-${{ github.run_attempt }}
+          path: ${{ env.BUILD_ROOT }}/acceptance
           if-no-files-found: warn
-          retention-days: 30
-      - name: Deploy to Cloudflare Pages
-        if: github.event_name != 'pull_request'
-        env:
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        run: ./scripts/deploy-pages.ps1 -Directory "$env:BUILD_ROOT/showcase" -BuildRoot $env:BUILD_ROOT
+          retention-days: 14

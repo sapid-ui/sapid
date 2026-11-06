@@ -4,13 +4,27 @@ The public showcase is https://sapid.taidge.org/ and runs as the `sapid-showcase
 Direct Upload Pages project. Its custom domain belongs to the Cloudflare-managed
 `taidge.org` zone in the same account as Glory.
 
-Pushes to `main` run `.github/workflows/deploy-showcase.yml`: check out Sapid and
-the full Glory revision in `dependencies.json` as sibling directories, validate
-the showcase, build release WASM and static entry/SSR documents, run Chromium
-acceptance, and upload to Pages. `workflow_dispatch` can rerun production.
-Pull requests run the same build and all nine showcase acceptance suites, but
-the deploy step is disabled and receives no Cloudflare credentials. Each PR has
-its own concurrency group so it cannot replace a production run.
+Pushes to `main` and pull requests run `.github/workflows/ci.yml`. Widget/native
+checks and the reusable showcase build run in parallel, with library and shared
+adapter tests executed once in the widget job. The showcase job builds release
+WASM and static entry/SSR documents against `dependencies.json` and accepts those
+exact files. Production deployment waits for both jobs, downloads the accepted
+artifact from the same run, and skips commits superseded on `main`. Pull requests
+and release-tag validation never receive Cloudflare credentials or deploy.
+
+Every commit retains all 110 widget browser suites, DSL hydration/native checks,
+and all 38 showcase behavior suites. Showcase category checks use blue/light at
+both 1280px and 390px; the shared site suite still checks palette/dark switching,
+representative navigation, SSR adoption, dirty editors and mobile navigation.
+The full cross-product of palettes/schemes and both 181-page navigation/rendering
+sweeps run in `.github/workflows/deploy-showcase.yml` daily at 02:43 Asia/Shanghai,
+on manual dispatch (default `full`), and during frozen release validation.
+Manual showcase dispatch validates and preserves artifacts; it does not deploy.
+
+Browser jobs use two workers. Showcase clipboard suites run exclusively, theme
+export compilation waits for the actual copied export, and a failed suite stops
+new work while in-flight workers settle. Each report names its coverage mode and
+records suite durations, so quick success is distinguishable from full evidence.
 
 Repository Actions secrets:
 
@@ -28,6 +42,14 @@ Windows runner (build root `pages-ci`); Cargo home and compiler temporary files
 inherit the caller environment. Cargo's actual output
 directory is checked before compilation. Individual assets must fit Pages'
 25 MiB limit. HTML revalidates; content-addressed asset directories are immutable.
+
+Cargo caches use `cargo metadata --no-deps --format-version 1` in the explicit
+library, web, native and Glory workspaces to find their actual target directories.
+They retain compiled debug/release/WASM outputs and the caller's Cargo downloads,
+with separate compiler/workload keys and cross-commit restore prefixes. They do
+not cache local lockfiles or move Cargo home/target/TEMP. Verified bindgen downloads,
+npm downloads and Chromium have a separate tools cache; Node modules are always
+installed from the committed lockfile before a fresh receipt is recorded.
 
 `build-tools.json` pins the official Windows wasm-bindgen archive SHA-256 and
 the extracted executable SHA-256. `scripts/install-build-tools.ps1` verifies both
@@ -50,9 +72,9 @@ The deployment step invokes the verified local Wrangler entrypoint through Node.
 It never runs `npx` or installs packages while holding the Cloudflare token, and
 it verifies local tools before asset-retention requests or Cloudflare API calls.
 Wrangler logs, configuration, cache and working files remain inside the build
-root. Production browser acceptance uses the same
-`scripts/showcase-acceptance.cjs` suite runner as quality CI, including the actual
-theme export compilation; its reports are retained beside the deployment assets.
+root. Production browser acceptance uses `scripts/showcase-acceptance.cjs`,
+including the actual theme export compilation. Accepted site artifacts are kept
+for seven days and acceptance reports for fourteen days.
 
 For an isolated local release build:
 
@@ -65,8 +87,11 @@ $env:PLAYWRIGHT_BROWSERS_PATH = "$buildRoot/browsers"
 node (Join-Path $tools.Playwright 'cli.js') install chromium
 ./scripts/install-build-tools.ps1 -BuildRoot $buildRoot -VerifyOnly
 ./scripts/check-showcase.ps1 -Release -BuildRoot $buildRoot -Bindgen $tools.Bindgen
-node scripts/showcase-acceptance.cjs --directory "$buildRoot/showcase" --output "$buildRoot/acceptance"
+node scripts/showcase-acceptance.cjs --directory "$buildRoot/showcase" --output "$buildRoot/acceptance" --mode full --jobs=2
 ```
+
+Use `--mode quick` for the per-commit coverage. Omitting `--mode` preserves full
+local acceptance; `--jobs` accepts 1–4 and defaults to serial execution.
 
 Publish only that build's `showcase` directory. Query-based guide and theme URLs
 are supported by `showcase.html`; representative `ssr-*.html` documents exercise

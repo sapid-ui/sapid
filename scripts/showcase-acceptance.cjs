@@ -1,4 +1,4 @@
-// One fail-fast entry point for the complete showcase acceptance contract.
+// Bounded workers for quick behavior checks and the complete release matrix.
 const fs = require('node:fs');
 const http = require('node:http');
 const path = require('node:path');
@@ -92,11 +92,13 @@ function fileHashes(directory) {
   return hashes;
 }
 
-function showcaseSuites(root, output) {
+function showcaseSuites(root, output, mode = 'full') {
+  if (!['quick', 'full'].includes(mode)) throw Error(`Unknown showcase mode: ${mode}`);
   const script = name => path.join(root, 'scripts', name);
   const browser = (id, name, report = `${name.replace(/\.cjs$/, '')}.json`) => ({
     id, program: process.execPath, args: [script(name)], source: script(name),
     report: path.join(artifactRoot, report),
+    exclusive: ['showcase', 'theme-studio', 'buttons-docs', 'combobox-docs'].includes(id),
   });
   return [
     browser('showcase', 'showcase-browser.cjs'),
@@ -104,7 +106,7 @@ function showcaseSuites(root, output) {
       copiedExport: path.join(artifactRoot, 'studio-export.rs') },
     { ...browser('palette-order', 'palette-order-browser.cjs'), report: path.join(output, 'palette-order-browser.json') },
     { id: 'theme-export', program: process.env.SAPID_PWSH || 'pwsh', source: script('check-theme-export.ps1'),
-      args: ['-NoProfile', '-File', script('check-theme-export.ps1')] },
+      args: ['-NoProfile', '-File', script('check-theme-export.ps1')], after: 'theme-studio' },
     browser('navigation', 'showcase-navigation-browser.cjs'),
     browser('routing', 'showcase-routing-browser.cjs'),
     browser('navigation-docs', 'showcase-remediation-navigation.cjs', 'navigation-remediation.json'),
@@ -140,23 +142,27 @@ function showcaseSuites(root, output) {
     browser('extensions-docs', 'showcase-remediation-extensions.cjs', 'extensions-remediation.json'),
     browser('all-pages-docs', 'showcase-remediation-all-pages.cjs', 'all-pages-current.json'),
     { id: 'cache', program: process.execPath, source: script('cache-browser.cjs'), args: [script('cache-browser.cjs')] },
-  ];
+  ].filter(suite => mode === 'full' || suite.id !== 'all-pages-docs');
 }
 
 async function runAcceptance(options) {
-  const root = options.root || path.resolve(__dirname, '..');
+  const mode = options.mode || 'full', jobs = Number(options.jobs ?? 1);
+  if (!['quick', 'full'].includes(mode)) throw Error(`Unknown showcase mode: ${mode}`);
+  if (!Number.isInteger(jobs) || jobs < 1 || jobs > 4) throw Error('--jobs must be an integer in 1..4');
+  const root = path.resolve(options.root || path.join(__dirname, '..'));
   const directory = path.resolve(options.directory);
   const output = artifactPath(options.output || `${artifactRoot}/showcase-acceptance`);
   fs.mkdirSync(output, { recursive: true });
   const env = { ...process.env,
+    SAPID_SHOWCASE_MODE: mode,
     SAPID_BUILD_ROOT: artifactRoot, SAPID_BROWSER_OUTPUT: artifactRoot,
     SAPID_SHOWCASE_MANIFEST: path.join(directory, 'asset-hashes.json'),
     SAPID_PALETTE_REPORT: path.join(output, 'palette-order-browser.json'),
     SAPID_STUDIO_EXPORT: process.env.SAPID_STUDIO_EXPORT || path.join(output, 'studio-export.rs'),
     SAPID_EXPORT_ROOT: process.env.SAPID_EXPORT_ROOT || path.join(output, 'export-check') };
   for (const name of ['SAPID_STUDIO_EXPORT', 'SAPID_EXPORT_ROOT']) artifactPath(env[name]);
-  const suites = options.suites || showcaseSuites(root, output);
-  const summary = { complete: false, directory, suiteManifest: suites.map(suite => suite.id),
+  const suites = options.suites || showcaseSuites(root, output, mode);
+  const summary = { complete: false, mode, jobs, directory, suiteManifest: suites.map(suite => suite.id),
     suites: suites.map(suite => ({ id: suite.id, status: 'pending' })), errors: [], sourceHashes: {}, artifactHashes: {} };
   const revision = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8', windowsHide: true });
   const dirty = spawnSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8', windowsHide: true });
@@ -172,15 +178,16 @@ async function runAcceptance(options) {
     summary.artifactHashes = fileHashes(directory);
     summary.sourceHashes[path.relative(root, __filename)] = hash(fs.readFileSync(__filename));
     for (const suite of suites) summary.sourceHashes[path.relative(root, suite.source)] = hash(fs.readFileSync(suite.source));
-    for (const name of ['examples/web/showcase-acceptance.js', 'scripts/test_theme_studio_browser.cjs']) {
+    for (const name of ['examples/web/showcase-acceptance.js', 'scripts/showcase-browser-env.cjs', 'scripts/test_theme_studio_browser.cjs']) {
       if (fs.existsSync(path.join(root, name))) summary.sourceHashes[name] = hash(fs.readFileSync(path.join(root, name)));
     }
     server = await serve(directory); env.SAPID_SHOWCASE_BASE = server.base; summary.base = server.base;
     save();
-    for (let index = 0; index < suites.length; index++) {
+    async function runSuite(index) {
       const suite = suites[index], result = summary.suites[index];
       console.log(`Showcase acceptance ${index + 1}/${suites.length}: ${suite.id}`);
-      result.status = 'running'; save();
+      result.status = 'running'; result.startedAt = new Date().toISOString(); save();
+      const started = Date.now();
       try {
         if (suite.report) fs.rmSync(suite.report, { force: true });
         if (suite.copiedExport) fs.rmSync(suite.copiedExport, { force: true });
@@ -203,9 +210,33 @@ async function runAcceptance(options) {
         }
         result.status = 'passed';
       } catch (error) {
-        result.status = 'failed'; summary.errors.push(error.stack || String(error)); save(); break;
+        result.status = 'failed'; summary.errors.push(error.stack || String(error));
       }
+      result.durationMs = Date.now() - started;
       save();
+    }
+    // An exclusive suite owns the desktop clipboard. Dependencies (the copied
+    // theme export) only become runnable after their producer has passed.
+    const active = new Map();
+    while (summary.suites.some(result => result.status === 'pending') || active.size) {
+      if (!summary.errors.length) {
+        for (let index = 0; index < suites.length && active.size < jobs; index++) {
+          const suite = suites[index];
+          if (summary.suites[index].status !== 'pending') continue;
+          if (suite.after && !summary.suites.some(result => result.id === suite.after && result.status === 'passed')) continue;
+          if ([...active.keys()].some(other => suites[other].exclusive)) break;
+          if (suite.exclusive && active.size) break;
+          active.set(index, runSuite(index).finally(() => active.delete(index)));
+          if (suite.exclusive) break;
+        }
+      }
+      if (!active.size) {
+        if (!summary.errors.length && summary.suites.some(result => result.status === 'pending')) {
+          summary.errors.push('Unresolved showcase suite dependencies');
+        }
+        break;
+      }
+      await Promise.race(active.values());
     }
     if (JSON.stringify(fileHashes(directory)) !== JSON.stringify(summary.artifactHashes)) summary.errors.push('Showcase fixtures changed during acceptance');
     for (const [file, expected] of Object.entries(summary.sourceHashes)) {
@@ -221,7 +252,7 @@ function argumentsFrom(args) {
   const result = {};
   for (let index = 0; index < args.length; index++) {
     const [name, ...rest] = args[index].split('=');
-    if (!['--directory', '--output'].includes(name)) throw Error(`Unknown argument: ${name}`);
+    if (!['--directory', '--output', '--root', '--mode', '--jobs'].includes(name)) throw Error(`Unknown argument: ${name}`);
     result[name.slice(2)] = rest.length ? rest.join('=') : args[++index];
     if (!result[name.slice(2)]) throw Error(`Missing value for ${name}`);
   }

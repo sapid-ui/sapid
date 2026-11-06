@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const {chromium, base, outputPath, writeReport} = require('./showcase-browser-env.cjs');
+const {matrix,chromium, base, outputPath, writeReport} = require('./showcase-browser-env.cjs');
 (async () => {
  const browser = await chromium.launch(), page = await browser.newPage();
  const report = {browser: browser.version(), pages: [], errors: []};
@@ -11,7 +11,7 @@ const {chromium, base, outputPath, writeReport} = require('./showcase-browser-en
  const clickCaption = async (area, name) => { const r=await area.locator('.sapid-switch-label').filter({hasText:name}).boundingBox(); assert(r); await page.mouse.click(r.x+r.width/2,r.y+r.height/2); await tick(); };
  fs.mkdirSync(outputPath('switch-remediation'), {recursive:true});
  try {
- for(const theme of ['blue','green']) for(const scheme of ['light','dark']) for(const width of [1280,390]) {
+ for(const theme of matrix.themes) for(const scheme of matrix.schemes) for(const width of [1280,390]) {
   const key=`switch-${theme}-${scheme}-${width}`;
   try {
    await page.setViewportSize({width,height:1000});
@@ -52,7 +52,7 @@ const {chromium, base, outputPath, writeReport} = require('./showcase-browser-en
    report.pages.push({key,passed:true}); console.log(`PASS ${key}`);
   } catch(error) { report.pages.push({key,passed:false,failure:error.stack}); console.error(`FAIL ${key}: ${error.message}`); await page.screenshot({path:outputPath(`switch-remediation/failure-${key}.png`)}); }
  }
- for(const theme of ['blue','green']) for(const scheme of ['light','dark']) {
+ for(const theme of matrix.themes) for(const scheme of matrix.schemes) {
   const key=`switch-touch-${theme}-${scheme}`;
   const context=await browser.newContext({viewport:{width:390,height:850},isMobile:true,hasTouch:true});
   const mobile=await context.newPage(); mobile.on('pageerror',e=>report.errors.push(e.message));

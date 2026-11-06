@@ -1,5 +1,5 @@
 const assert=require('node:assert/strict'),fs=require('node:fs');
-const {chromium,base,outputPath,writeReport}=require('./showcase-browser-env.cjs');
+const {matrix,chromium,base,outputPath,writeReport}=require('./showcase-browser-env.cjs');
 (async()=>{
  const browser=await chromium.launch(),context=await browser.newContext(),page=await context.newPage();page.setDefaultTimeout(8000);
  const report={browser:browser.version(),pages:[],errors:[]};page.on('pageerror',e=>report.errors.push(e.message));page.on('console',m=>{if(m.type()==='error')report.errors.push(m.text());});
@@ -11,7 +11,7 @@ const {chromium,base,outputPath,writeReport}=require('./showcase-browser-env.cjs
  const reduced=async l=>{await page.emulateMedia({reducedMotion:'reduce'});await tick();assert((await motion(l)).every(s=>s.animation==='none'));await page.emulateMedia({reducedMotion:'no-preference'});await tick();};
  fs.mkdirSync(outputPath('feedback-remediation'),{recursive:true});
  try{
- for(const theme of (process.env.SAPID_FEEDBACK_THEMES||'blue,green').split(','))for(const scheme of (process.env.SAPID_FEEDBACK_SCHEMES||'light,dark').split(','))for(const width of (process.env.SAPID_FEEDBACK_WIDTHS||'1280,390').split(',').map(Number))for(const slug of (process.env.SAPID_FEEDBACK_PAGES||'alert,empty-state,loader,notification,skeleton,progress,ring-progress,semi-circle-progress').split(',')){
+ for(const theme of (process.env.SAPID_FEEDBACK_THEMES||matrix.themes.join(',')).split(','))for(const scheme of (process.env.SAPID_FEEDBACK_SCHEMES||matrix.schemes.join(',')).split(','))for(const width of (process.env.SAPID_FEEDBACK_WIDTHS||'1280,390').split(',').map(Number))for(const slug of (process.env.SAPID_FEEDBACK_PAGES||'alert,empty-state,loader,notification,skeleton,progress,ring-progress,semi-circle-progress').split(',')){
   const key=`${slug}-${theme}-${scheme}-${width}`;
   try{
    await page.setViewportSize({width,height:1100});await page.emulateMedia({reducedMotion:'no-preference'});await page.goto(`${base}/showcase.html?widget=${slug}&theme=${theme}&scheme=${scheme}`);await page.waitForFunction(()=>window.ready===true,undefined,{timeout:25000});await tick();

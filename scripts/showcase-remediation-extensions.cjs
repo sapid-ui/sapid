@@ -1,5 +1,5 @@
 const assert=require('node:assert/strict'),fs=require('node:fs');
-const {chromium,base,outputPath,writeReport}=require('./showcase-browser-env.cjs');
+const {matrix,chromium,base,outputPath,writeReport}=require('./showcase-browser-env.cjs');
 const counts={'code-highlight':5,'json-viewer':4,'notifications-system':5,spotlight:4,lightbox:4,'navigation-progress':4,'modals-manager':4};
 (async()=>{
  const browser=await chromium.launch(),page=await browser.newPage();page.setDefaultTimeout(7000);
@@ -14,7 +14,7 @@ const counts={'code-highlight':5,'json-viewer':4,'notifications-system':5,spotli
  const remember=async l=>l.evaluate(e=>window.__retained=e),retained=async l=>assert(await l.evaluate(e=>e===window.__retained));
  const close=async()=>{await page.keyboard.press('Escape');await tick();};
  try{
- for(const theme of (process.env.SAPID_EXTENSIONS_THEMES||'blue,green').split(','))for(const scheme of (process.env.SAPID_EXTENSIONS_SCHEMES||'light,dark').split(','))for(const width of (process.env.SAPID_EXTENSIONS_WIDTHS||'1280,390').split(',').map(Number))for(const slug of (process.env.SAPID_EXTENSIONS_PAGES||Object.keys(counts).join(',')).split(',')){
+ for(const theme of (process.env.SAPID_EXTENSIONS_THEMES||matrix.themes.join(',')).split(','))for(const scheme of (process.env.SAPID_EXTENSIONS_SCHEMES||matrix.schemes.join(',')).split(','))for(const width of (process.env.SAPID_EXTENSIONS_WIDTHS||'1280,390').split(',').map(Number))for(const slug of (process.env.SAPID_EXTENSIONS_PAGES||Object.keys(counts).join(',')).split(',')){
   const key=[slug,theme,scheme,width].join('-');
   try{
    await page.setViewportSize({width,height:1100});await page.goto(base+'/showcase.html?widget='+slug+'&theme='+theme+'&scheme='+scheme);await page.waitForFunction(slug=>window.ready===true&&document.documentElement.getAttribute('data-sapid-widget')===slug,slug,{timeout:30000});await tick();

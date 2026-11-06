@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const { chromium, base, outputPath, writeReport, tempDir } = require('./showcase-browser-env.cjs');
+const {matrix, chromium, base, outputPath, writeReport, tempDir } = require('./showcase-browser-env.cjs');
 
 (async () => {
   const browser = await chromium.launch({ headless: true });
@@ -26,7 +26,7 @@ const { chromium, base, outputPath, writeReport, tempDir } = require('./showcase
   const text = { name: 'review.txt', mimeType: 'text/plain', buffer: Buffer.from('A bounded review\n第二行') };
   fs.mkdirSync(outputPath('media-remediation'), { recursive: true });
   try {
-    for (const theme of ['blue', 'green']) for (const scheme of ['light', 'dark']) for (const width of [1280, 390]) {
+    for (const theme of matrix.themes) for (const scheme of matrix.schemes) for (const width of [1280, 390]) {
       for (const slug of ['floating-window', 'carousel', 'dropzone']) {
         const key = `${slug}-${theme}-${scheme}-${width}`;
         await page.setViewportSize({ width, height: 1000 });

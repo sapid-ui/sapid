@@ -1,5 +1,5 @@
 const assert=require('node:assert/strict'),fs=require('node:fs');
-const {chromium,base,outputPath,writeReport}=require('./showcase-browser-env.cjs');
+const {matrix,chromium,base,outputPath,writeReport}=require('./showcase-browser-env.cjs');
 (async()=>{
  const browser=await chromium.launch(),context=await browser.newContext(),page=await context.newPage();page.setDefaultTimeout(9000);
  const report={browser:browser.version(),pages:[],errors:[]};page.on('pageerror',e=>report.errors.push(e.message));page.on('console',m=>{if(m.type()==='error')report.errors.push(m.text());});
@@ -11,7 +11,7 @@ const {chromium,base,outputPath,writeReport}=require('./showcase-browser-env.cjs
  const associations=async table=>assert(await table.evaluate(t=>[...t.querySelectorAll('tbody td')].every(c=>{const headers=(c.getAttribute('headers')||'').split(/\s+/).filter(Boolean);return headers.length>=2&&headers.every(id=>{const h=document.getElementById(id);return h?.tagName==='TH'&&h.closest('table')===t;});})));
  fs.mkdirSync(outputPath('typography-remediation'),{recursive:true});
  try{
- for(const theme of (process.env.SAPID_TYPOGRAPHY_THEMES||'blue,green').split(','))for(const scheme of (process.env.SAPID_TYPOGRAPHY_SCHEMES||'light,dark').split(','))for(const width of (process.env.SAPID_TYPOGRAPHY_WIDTHS||'1280,390').split(',').map(Number))for(const slug of (process.env.SAPID_TYPOGRAPHY_PAGES||Object.keys(counts).join(',')).split(',')){
+ for(const theme of (process.env.SAPID_TYPOGRAPHY_THEMES||matrix.themes.join(',')).split(','))for(const scheme of (process.env.SAPID_TYPOGRAPHY_SCHEMES||matrix.schemes.join(',')).split(','))for(const width of (process.env.SAPID_TYPOGRAPHY_WIDTHS||'1280,390').split(',').map(Number))for(const slug of (process.env.SAPID_TYPOGRAPHY_PAGES||Object.keys(counts).join(',')).split(',')){
   const key=`${slug}-${theme}-${scheme}-${width}`;
   try{
    await page.setViewportSize({width,height:1100});await page.goto(`${base}/showcase.html?widget=${slug}&theme=${theme}&scheme=${scheme}`);await page.waitForFunction(()=>window.ready===true,undefined,{timeout:30000});await tick();

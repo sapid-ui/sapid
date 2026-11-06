@@ -1,5 +1,5 @@
 const assert = require('node:assert/strict'), fs = require('node:fs');
-const { chromium, base, outputPath, writeReport } = require('./showcase-browser-env.cjs');
+const {matrix, chromium, base, outputPath, writeReport } = require('./showcase-browser-env.cjs');
 (async () => {
  const browser = await chromium.launch(), context = await browser.newContext({permissions:['clipboard-read','clipboard-write']}), page = await context.newPage();
  page.setDefaultTimeout(7000);
@@ -17,7 +17,7 @@ const { chromium, base, outputPath, writeReport } = require('./showcase-browser-
  const counts = {autocomplete:6,combobox:4,'combobox-popover':4,'multi-select':5,pill:4,'pills-input':5,'tags-input':6,'tree-select':9,cascader:5};
  fs.mkdirSync(outputPath('combobox-remediation'),{recursive:true});
  try {
- for(const theme of (process.env.SAPID_COMBO_THEMES||'blue,green').split(','))for(const scheme of (process.env.SAPID_COMBO_SCHEMES||'light,dark').split(','))for(const width of (process.env.SAPID_COMBO_WIDTHS||'1280,390').split(',').map(Number))for(const slug of (process.env.SAPID_COMBO_PAGES||Object.keys(counts).join(',')).split(',')){
+ for(const theme of (process.env.SAPID_COMBO_THEMES||matrix.themes.join(',')).split(','))for(const scheme of (process.env.SAPID_COMBO_SCHEMES||matrix.schemes.join(',')).split(','))for(const width of (process.env.SAPID_COMBO_WIDTHS||'1280,390').split(',').map(Number))for(const slug of (process.env.SAPID_COMBO_PAGES||Object.keys(counts).join(',')).split(',')){
  const key=`${slug}-${theme}-${scheme}-${width}`;
  try {
  await page.setViewportSize({width,height:1000});await page.goto(`${base}/showcase.html?widget=${slug}&theme=${theme}&scheme=${scheme}`);await page.waitForFunction(()=>window.ready===true,undefined,{timeout:25000});await tick();

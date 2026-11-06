@@ -1,5 +1,5 @@
 const assert=require('node:assert/strict'),fs=require('node:fs');
-const {chromium,base,outputPath,writeReport}=require('./showcase-browser-env.cjs');
+const {matrix,chromium,base,outputPath,writeReport}=require('./showcase-browser-env.cjs');
 const chartPages=['area-chart','bar-chart','line-chart','composite-chart'];
 const plots=['candlestick-chart','donut-chart','pie-chart','funnel-chart','radar-chart','scatter-chart','bubble-chart','radial-bar-chart','sparkline','bars-list','bullet-chart','gauge-chart','waffle-chart','treemap','sunburst-chart','sankey-chart','matrix-chart'];
 (async()=>{
@@ -12,7 +12,7 @@ const plots=['candlestick-chart','donut-chart','pie-chart','funnel-chart','radar
  const section=(slug,part)=>page.locator('.site-component-detail').filter({has:page.locator(`#chart-${slug}-${part}`)}).locator('.site-demo').first();
  const remember=async(l,k)=>l.evaluate((e,k)=>window[k]=e,k),retained=async(l,k)=>assert(await l.evaluate((e,k)=>e===window[k],k));
  try{
- for(const theme of (process.env.SAPID_CHART_THEMES||'blue,green').split(','))for(const scheme of (process.env.SAPID_CHART_SCHEMES||'light,dark').split(','))for(const width of (process.env.SAPID_CHART_WIDTHS||'1280,390').split(',').map(Number))for(const slug of (process.env.SAPID_CHART_PAGES||[...chartPages,...plots].join(',')).split(',')){
+ for(const theme of (process.env.SAPID_CHART_THEMES||matrix.themes.join(',')).split(','))for(const scheme of (process.env.SAPID_CHART_SCHEMES||matrix.schemes.join(',')).split(','))for(const width of (process.env.SAPID_CHART_WIDTHS||'1280,390').split(',').map(Number))for(const slug of (process.env.SAPID_CHART_PAGES||[...chartPages,...plots].join(',')).split(',')){
  const key=`${slug}-${theme}-${scheme}-${width}`;
  try{
  await page.setViewportSize({width,height:1100});await page.goto(`${base}/showcase.html?widget=${slug}&theme=${theme}&scheme=${scheme}`);await page.waitForFunction(()=>window.ready===true,undefined,{timeout:30000});await tick();

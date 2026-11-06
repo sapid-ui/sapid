@@ -19,6 +19,12 @@ const tempDir = os.tmpdir();
 fs.mkdirSync(outputRoot, { recursive: true });
 
 const base = process.env.SAPID_SHOWCASE_BASE || 'http://127.0.0.1:8795';
+const acceptanceMode = process.env.SAPID_SHOWCASE_MODE || 'full';
+if (!['quick', 'full'].includes(acceptanceMode)) throw Error(`Unknown showcase mode: ${acceptanceMode}`);
+// Both responsive widths and all behavior assertions remain in quick runs.
+// The shared site suite still covers palette switching, dark mode and SSR.
+const matrix = { themes: acceptanceMode === 'quick' ? ['blue'] : ['blue', 'green'],
+  schemes: acceptanceMode === 'quick' ? ['light'] : ['light', 'dark'] };
 
 function outputPath(name) {
   const resolved = path.resolve(outputRoot, name);
@@ -33,5 +39,5 @@ function writeReport(name, report) {
   fs.writeFileSync(outputPath(name), JSON.stringify(report, null, 2));
 }
 
-module.exports = { base, buildRoot, outputPath, outputRoot, tempDir, writeReport,
+module.exports = { base, buildRoot, outputPath, outputRoot, tempDir, writeReport, matrix,
   get chromium() { return require(process.env.SAPID_PLAYWRIGHT || 'playwright').chromium; } };

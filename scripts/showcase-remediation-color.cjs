@@ -1,5 +1,5 @@
 const assert=require('node:assert/strict');const fs=require('node:fs');
-const {chromium,base,outputPath,writeReport}=require('./showcase-browser-env.cjs');
+const {matrix,chromium,base,outputPath,writeReport}=require('./showcase-browser-env.cjs');
 (async()=>{
  const browser=await chromium.launch();const page=await browser.newPage();
  const report={browser:browser.version(),pages:[],errors:[]};
@@ -10,7 +10,7 @@ const {chromium,base,outputPath,writeReport}=require('./showcase-browser-env.cjs
  const counts={'alpha-slider':2,'hue-slider':2,'angle-slider':2,'color-picker':4,'color-input':17};
  fs.mkdirSync(outputPath('color-remediation'),{recursive:true});
  try{
-  for(const theme of ['blue','green'])for(const scheme of ['light','dark'])for(const width of [1280,390])for(const slug of Object.keys(counts)){
+  for(const theme of matrix.themes)for(const scheme of matrix.schemes)for(const width of [1280,390])for(const slug of Object.keys(counts)){
    const key=`${slug}-${theme}-${scheme}-${width}`;await page.setViewportSize({width,height:1000});await page.goto(`${base}/showcase.html?widget=${slug}&theme=${theme}&scheme=${scheme}`);
    await page.waitForFunction(slug=>window.ready===true&&document.documentElement.getAttribute('data-sapid-widget')===slug,slug,{timeout:20000});await tick(page);
    report.asset=await page.evaluate(()=>document.documentElement.innerHTML.match(/assets-[a-f0-9]{20}/)?.[0]);assert(report.asset);assert.equal(await page.locator('.site-component-detail').count(),counts[slug]);
@@ -58,7 +58,7 @@ const {chromium,base,outputPath,writeReport}=require('./showcase-browser-env.cjs
     assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await primary.evaluate(e=>e.scrollIntoView({block:'center'}));await primary.screenshot({path:outputPath(`color-remediation/${key}.png`)});report.pages.push({key,passed:true});console.log(`PASS ${key}`);
    }catch(error){report.pages.push({key,passed:false,failure:error.stack});console.error(`FAIL ${key}: ${error.message}`);await page.screenshot({path:outputPath(`color-remediation/failure-${key}.png`)});}
   }
-  for(const theme of ['blue','green'])for(const scheme of ['light','dark']){
+  for(const theme of matrix.themes)for(const scheme of matrix.schemes){
    const context=await browser.newContext({viewport:{width:390,height:900},hasTouch:true,isMobile:true});const p=await context.newPage();watch(p);const key=`color-input-touch-${theme}-${scheme}`;
    try{await p.goto(`${base}/showcase.html?widget=color-input&theme=${theme}&scheme=${scheme}`);await p.waitForFunction(()=>window.ready===true,undefined,{timeout:20000});const primary=p.locator('.site-preview .site-demo').first(),editor=primary.getByLabel('Accent color',{exact:true});await editor.tap();const popup=primary.getByRole('dialog',{name:'Choose color',exact:true});await popup.waitFor({state:'visible'});const before=await editor.inputValue(),plane=popup.locator('.sapid-color-plane'),rect=await plane.boundingBox();await plane.tap({position:{x:rect.width*.2,y:rect.height*.8}});await tick(p);assert.notEqual(await editor.inputValue(),before);await p.touchscreen.tap(388,898);await popup.waitFor({state:'hidden'});await primary.getByRole('button',{name:'Open color picker',exact:true}).tap();await popup.waitFor({state:'visible'});report.pages.push({key,passed:true});console.log(`PASS ${key}`);}catch(error){report.pages.push({key,passed:false,failure:error.stack});console.error(`FAIL ${key}: ${error.message}`);}finally{await context.close();}
   }
