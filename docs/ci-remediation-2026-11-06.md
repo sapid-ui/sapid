@@ -134,3 +134,12 @@ multi-choice bulk buttons are activated after Escape closes the covering popup,
 with the accepted filter and successful form values still checked. Cross-App
 Owner cleanup explicitly preserves a real focused editor, and the nested App
 also verifies the documented first-header-control default.
+
+
+The complete repaired fixture run produced 110 suites and 1141 reports without
+assertion errors, then exposed the same old initial-focus assumption in the
+driver's final screenshot step. That step now waits for the real open layer and
+explicitly focuses its editor. Final screenshot errors are saved into the result
+before it is marked complete, so a successful suite summary cannot conceal a
+failed driver. The full command is rerun after this driver repair; a zero-error
+JSON alone is not treated as a successful process exit.

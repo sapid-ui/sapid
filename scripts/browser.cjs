@@ -122,12 +122,10 @@ async function runBrowser() {
     if (hash(fs.readFileSync(path.join(sourceRoot, file))) !== sourceHashes[file]) runErrors.push(`${file}: source changed during this run`);
   }
   if (JSON.stringify(fixtureHashes()) !== JSON.stringify(artifactHashes)) runErrors.push('Fixture assets changed during this run');
-  const result = snapshot(true);
-  save('browser-results.json', result);
-  console.log(JSON.stringify({ browser: result.browser, jobs, suites: result.completedSuites.length, reports: result.reports.length, errors: result.errors }, null, 2));
-  if (result.errors.length) process.exitCode = 1;
-  const browser = await chromium.launch({ headless: true, executablePath: process.env.SAPID_CHROME });
+  save('browser-results.json', snapshot(false));
+  let browser;
   try {
+    browser = await chromium.launch({ headless: true, executablePath: process.env.SAPID_CHROME });
     const page = await browser.newPage();
     await page.goto(`${fixtureBase}/`);
     await page.waitForFunction(() => window.ready === true);
@@ -138,9 +136,18 @@ async function runBrowser() {
     await page.goto(`${fixtureBase}/overlays.html`);
     await page.waitForFunction(() => window.ready === true);
     await page.getByRole('button', { name: 'Open dialog', exact: true }).click();
+    await page.waitForFunction(() => document.querySelector('.sapid-dialog:popover-open'));
+    await page.locator('.dialog-input').focus();
     await page.waitForFunction(() => document.activeElement?.matches('.dialog-input'));
     await page.screenshot({ path: `${output}/overlays.png` });
-  } finally { await browser.close(); }
+  } catch (error) {
+    runErrors.push(`Final screenshots: ${error.stack || error}`);
+  } finally { if (browser) await browser.close(); }
+  const result = snapshot(true);
+  save('browser-results.json', result);
+  save('browser-progress.json', result);
+  console.log(JSON.stringify({ browser: result.browser, jobs, suites: result.completedSuites.length, reports: result.reports.length, errors: result.errors }, null, 2));
+  if (result.errors.length) process.exitCode = 1;
 }
 module.exports = { normalizeBase, sourceAtBase, verifyServedArtifacts };
 if (require.main === module) runBrowser().catch(error => { console.error(error); process.exitCode = 1; });
