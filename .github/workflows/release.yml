@@ -10,6 +10,7 @@ on:
         type: string
 permissions:
   contents: read
+  actions: read
 concurrency:
   group: sapid-release
   cancel-in-progress: false

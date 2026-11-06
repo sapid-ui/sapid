@@ -8,6 +8,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+  actions: read
 concurrency:
   group: sapid-quality-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}

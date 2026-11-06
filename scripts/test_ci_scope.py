@@ -66,10 +66,33 @@ class GitScopeTests(unittest.TestCase):
         self.commit()
         self.write("docs/notes.md", "notes")
         head = self.commit()
-        self.assertFalse(ci_scope.plan(self.base, head, "push")["rust"])
-        self.assertTrue(ci_scope.plan(self.base, head, "pull_request")["showcase"])
+        self.assertFalse(ci_scope.plan(self.base, head, "push", validated_base=self.base)["rust"])
+        self.assertTrue(ci_scope.plan(self.base, head, "pull_request", validated_base=self.base)["showcase"])
         self.git("mv", "docs/notes.md", "runtime.rs")
         self.assertTrue(ci_scope.plan(head, self.commit(), "push")["rust"])
+
+    def test_css_after_an_unvalidated_runtime_push_cannot_skip_the_runtime_changes(self):
+        self.write("src/lib.rs", "pub fn changed() {}")
+        runtime = self.commit()
+        self.write("examples/web/site.css", "body{}")
+        head = self.commit()
+        self.assertTrue(ci_scope.plan(runtime, head, "push", validated_base=self.base)["rust"])
+        self.assertTrue(ci_scope.plan(runtime, head, "push")["rust"])
+        self.assertFalse(ci_scope.plan(runtime, head, "push", validated_base=runtime)["rust"])
+
+    def test_successful_baseline_requires_matching_completed_workflow_and_ancestry(self):
+        valid = {"head_sha": self.base, "status": "completed", "conclusion": "success", "event": "push", "head_branch": "main", "path": ".github/workflows/ci.yml"}
+        invalid = dict(valid, path=".github/workflows/other.yml")
+        actual_git = subprocess.check_output
+        def api(*args, **kwargs):
+            if args[0][0] == "gh":
+                import json
+                return json.dumps({"workflow_runs": [invalid, valid]}).encode()
+            return actual_git(*args, **kwargs)
+        with patch.object(ci_scope.subprocess, "check_output", side_effect=api):
+            self.assertEqual(ci_scope.successful_base(self.base, "main", "sapid-ui/sapid"), self.base)
+        with patch.object(ci_scope.subprocess, "check_output", side_effect=OSError("offline")):
+            self.assertEqual(ci_scope.successful_base(self.base, "main", "sapid-ui/sapid"), "")
 
     def test_missing_diffs_manual_schedules_and_release_refs_always_require_full(self):
         self.write("docs/notes.md", "notes")

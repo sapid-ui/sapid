@@ -2,7 +2,9 @@
 
 The shared [scope policy](../scripts/ci_scope.py) reads the complete Git diff,
 including both sides of renames and every commit in a push. Pull requests compare
-the merge base with the tested merge commit. Missing history, unknown paths,
+the merge base with the tested merge commit. The diff also includes every change
+since a successful ancestor CI run: a CSS push after an unvalidated Rust push
+cannot bypass that Rust change. Missing validation/history, unknown paths,
 manual checks and release validation select the full path.
 
 | Changes | Required checks |
