@@ -104,3 +104,33 @@ The scan's original failures are retained under `target/remediation`, including
 `ci-first-full-fixture-results.json`, `ci-first-full-fixture-failures.json` and
 `ci-fixture-browser-owned.log`. A changed source or artifact invalidates a run;
 passing evidence must come from a fresh immutable run after the repairs.
+
+
+## Passive option pointer regression
+
+The next complete 110-suite run retained six failures after the initial repairs.
+Its immutable results are kept in `target/remediation/ci-second-full-fixture-results.json`.
+Select's rich option rows exposed an actual defect: a pointer move originating on
+a passive label, description or icon did not reach the option's direct Pointer
+listener. Select and editable Combobox now observe the existing PointerWithin
+Move event, preserving the shared cursor and composition policy. The regression
+`passive_option_descendants_update_activity_in_select_and_editable_choices`
+fails before the fix and passes afterward for Select, Combobox, Autocomplete and
+Multiple kinds. It dispatches from the real passive description and verifies the
+resolved active descendant, rather than calling the option's handler directly.
+
+The remaining fixture repairs retain their original checks: Stepper verifies the
+supplied validation message and actual error icon, and Select reads the option's
+accessible label separately from its selected checkmark. ColorPicker verifies
+updates to the retained continuous hue layer. ColorInput opens through its real
+`Open color picker` swatch, exercises the popup plane and hue keyboard control,
+and verifies Escape returns focus to the editor. Precision controls stay on the
+standalone picker; the compact input popup does not invent hidden sliders.
+
+The color fixture's hard-coded blue outer focus rectangle masked the component's
+existing slider focus policy. Removing that fixture override lets the shared CSS
+and typed thumb ring apply; no extra component CSS override is required. External
+multi-choice bulk buttons are activated after Escape closes the covering popup,
+with the accepted filter and successful form values still checked. Cross-App
+Owner cleanup explicitly preserves a real focused editor, and the nested App
+also verifies the documented first-header-control default.

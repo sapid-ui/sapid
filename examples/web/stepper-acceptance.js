@@ -16,7 +16,7 @@ async (hostPage) => {
    assert(await page.locator('.readonly-stepper .sapid-stepper-headers').evaluate(e=>getComputedStyle(e).flexDirection)==='column',`${mode}: vertical layout missing`);
    assert(await page.locator('.readonly-stepper .sapid-stepper-trigger:not(:disabled)').count()===0,`${mode}: default header selection is enabled`);
    await header(1).click();await tick();assert(await current()==='1. Account',`${mode}: failed form validation advanced workflow`);
-   assert(await email.getAttribute('aria-invalid')==='true'&&(await workflow.locator('.sapid-stepper-description').first().textContent()).includes('Error'),`${mode}: form errors not reflected in step status`);
+   assert(await email.getAttribute('aria-invalid')==='true'&&(await workflow.locator('.sapid-stepper-description').first().textContent())==='Enter a valid email before continuing'&&(await header(0).textContent())==='!',`${mode}: form errors not reflected in step status`);
    await email.fill('alex@example.test');await email.evaluate(e=>window.firstStepInput=e);await email.press('Enter');await tick();
    assert(await current()==='2. Details',`${mode}: implicit form Enter did not pass validation barrier`);
    const note=workflow.getByRole('textbox',{name:'Review note'});await note.fill('Kept local note');await note.evaluate(e=>window.keptNote=e);
@@ -44,7 +44,7 @@ async (hostPage) => {
   await page.locator('.stepper-email').fill('before@hydrate.test');await page.locator('.stepper-email').evaluate(e=>{window.preStepInput=e;e.focus();e.setSelectionRange(2,8,'backward')});
   await page.evaluate(()=>window.demo.mount_stepper(true,'green','dark'));await tick();
   assert(await page.locator('.stepper-email').evaluate(e=>e===window.preStepInput&&e.value==='before@hydrate.test'&&e.selectionStart===2&&e.selectionEnd===8&&document.activeElement===e),'Stepper dirty hydration replaced draft/caret/focus');
-  await page.locator('.main-stepper .sapid-stepper-trigger').nth(1).click();await tick();assert(await page.locator('.main-stepper [aria-current=step]').textContent()==='2. Details','hydrated email was not adopted into validation source');
+  await page.locator('.main-stepper .sapid-stepper-trigger').nth(1).click();await tick();assert(await page.locator('.main-stepper [aria-current=step]').getAttribute('aria-label')==='2. Details','hydrated email was not adopted into validation source');
   await page.evaluate(()=>window.demo.unmount_stepper());await tick();assert(await page.locator('.stepper-demo').count()===0,'Stepper Owner retirement leaked content');
   reports.push({suite:'stepper-dirty-hydration-retirement',status:'passed'});return{reports,errors};
  }finally{await context.close()}

@@ -52,7 +52,7 @@ async(hostPage,baseURL='http://127.0.0.1:8794')=>{
     checkpoint='reverse-open-and-owner-cleanup';
     await state('b','open',true);await opened('b');await second('b').focus();await state('a','open',true);await opened('a');await page.keyboard.press('Escape');await closed('a');await opened('b');await tick();
     assert(await second('b').evaluate(e=>e===document.activeElement),'Escape follows open order rather than listener registration order');
-    await state('a','open',true);await opened('a');await page.evaluate(()=>demo.unmount_layer_document_app('b'));await tick();
+    await state('a','open',true);await opened('a');await first('a').focus();await page.evaluate(()=>demo.unmount_layer_document_app('b'));await tick();
     assert(await dialog('a').evaluate(e=>e.matches(':popover-open'))&&await first('a').evaluate(e=>e===document.activeElement),'lower Owner retirement leaves current modal intact');
     await page.evaluate(()=>demo.unmount_layer_document_app('a'));await tick();
     assert(await page.locator(':popover-open').count()===0&&await page.evaluate(()=>document.body.style.getPropertyValue('overflow-y')==='auto'),'last Owner retirement releases layers and scroll lock');
@@ -62,7 +62,7 @@ async(hostPage,baseURL='http://127.0.0.1:8794')=>{
     await page.getByRole('button',{name:'Open a',exact:true}).click();await opened('a');
     await page.evaluate(()=>document.querySelector('#app-a .sapid-dialog').append(document.querySelector('#app-b')));
     await state('b','open',true);await opened('b');await tick();
-    assert(await first('b').evaluate(e=>e===document.activeElement),'nested independent App retains its actual focus scope');
+    assert(await dialog('b').locator(':scope > .sapid-layer-header .sapid-layer-close').evaluate(e=>e===document.activeElement),'nested independent App retains its actual focus scope');
     await page.evaluate(()=>demo.unmount_layer_document_app('a'));await tick();
     assert(await page.locator(':popover-open').count()===0&&await page.evaluate(()=>document.body.style.getPropertyValue('overflow-y')===''),'removing a containing root releases disconnected foreign layers immediately');
     await page.evaluate(()=>demo.unmount_layer_document_app('b'));reports.push({suite:'layer-document-nested-root-retirement',status:'passed'});

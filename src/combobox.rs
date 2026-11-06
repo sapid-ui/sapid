@@ -1991,13 +1991,13 @@ fn mount_option(
             }
             controller.activated.emit(scope.id(), event);
         })
-        .on(EventKind::Pointer, move |event| {
+        .on(EventKind::PointerWithin, move |event| {
             let Some(scope) = pointer_weak.upgrade() else {
                 return;
             };
             if matches!(
                 event,
-                Event::Pointer {
+                Event::PointerWithin {
                     phase: glory::render::PointerPhase::Move,
                     ..
                 }

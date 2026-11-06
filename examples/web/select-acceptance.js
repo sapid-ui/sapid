@@ -4,7 +4,7 @@ async (hostPage,baseURL='http://127.0.0.1:8794')=>{
   try{
     const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
     const tick=()=>page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
-    const active=()=>page.getByRole('combobox',{name:'Destination',exact:true}).evaluate(e=>document.getElementById(e.getAttribute('aria-activedescendant'))?.textContent);
+    const active=()=>page.getByRole('combobox',{name:'Destination',exact:true}).evaluate(e=>document.getElementById(e.getAttribute('aria-activedescendant'))?.getAttribute('aria-label'));
     const state=(kind,value)=>page.evaluate(([k,v])=>demo.select_state(k,v),[kind,value]);
     for(const hue of ['blue','green'])for(const scheme of ['light','dark'])for(const hydrate of [false,true]){
       const suite=`select-${hue}-${scheme}-${hydrate?'hydrate':'csr'}`;
@@ -32,7 +32,7 @@ async (hostPage,baseURL='http://127.0.0.1:8794')=>{
       await state('value','ca');await state('disabled','true');await tick();assert(await trigger.isDisabled()&&(await page.locator('form').evaluate(e=>Array.from(new FormData(e).entries()))).length===0,`${suite}: disabled proxy and trigger agree`);await state('disabled','false');
       await state('value','us');await trigger.focus();await trigger.evaluate(e=>{for(const key of ['ArrowDown','ArrowDown','Enter'])e.dispatchEvent(new KeyboardEvent('keydown',{key,bubbles:true,cancelable:true}));});await tick();assert(await trigger.textContent()==='Canada'&&await trigger.getAttribute('aria-expanded')==='false',`${suite}: one host tick interprets rapid keys from current controller state`);
       await long.focus();await page.keyboard.press('ArrowDown');await tick();const pageBeforeReveal=await page.evaluate(()=>scrollY);await page.keyboard.press('End');await tick();
-      const scroll=await long.evaluate(e=>{const box=document.getElementById(e.getAttribute('aria-controls')),item=document.getElementById(e.getAttribute('aria-activedescendant')),b=box.getBoundingClientRect(),r=item.getBoundingClientRect();return {top:box.scrollTop,revealed:r.bottom<=b.bottom+1&&r.top>=b.top,focused:document.activeElement===e,page:scrollY,label:item.textContent};});
+      const scroll=await long.evaluate(e=>{const box=document.getElementById(e.getAttribute('aria-controls')),item=document.getElementById(e.getAttribute('aria-activedescendant')),b=box.getBoundingClientRect(),r=item.getBoundingClientRect();return {top:box.scrollTop,revealed:r.bottom<=b.bottom+1&&r.top>=b.top,focused:document.activeElement===e,page:scrollY,label:item.getAttribute('aria-label')};});
       assert(scroll.top>0&&scroll.revealed&&scroll.focused&&scroll.label==='Number 79'&&scroll.page===pageBeforeReveal,`${suite}: RevealOption scrolls owning listbox and keeps trigger focus without scrolling the page`);
       await page.screenshot({path:`target/verification/sapid/${suite}.png`,fullPage:true});await page.keyboard.press('Escape');await page.setViewportSize({width:390,height:844});await tick();const rect=await trigger.boundingBox();assert(rect&&rect.x>=0&&rect.x+rect.width<=391,`${suite}: narrow viewport`);await page.setViewportSize({width:1100,height:900});
       await page.evaluate(()=>demo.unmount_select());assert(await page.locator('#app').evaluate(e=>e.childElementCount===0),`${suite}: Owner retirement removes options and bindings`);reports.push({suite,status:'passed'});

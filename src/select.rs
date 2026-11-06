@@ -1121,13 +1121,13 @@ fn mount_option(
             }
             controller.activated.emit(scope.id(), event);
         })
-        .on(EventKind::Pointer, move |event| {
+        .on(EventKind::PointerWithin, move |event| {
             let Some(scope) = weak_pointer.upgrade() else {
                 return;
             };
             if matches!(
                 event,
-                Event::Pointer {
+                Event::PointerWithin {
                     phase: glory::render::PointerPhase::Move,
                     ..
                 }
@@ -1236,6 +1236,63 @@ mod tests {
             })
             .unwrap()
     }
+    #[test]
+    fn passive_option_descendants_update_activity_in_select_and_editable_choices() {
+        for kind in 0..4 {
+            let app = App::memory();
+            let options = [
+                crate::select_option("a", "Alpha"),
+                crate::select_option("b", "Beta"),
+            ];
+            let content = SelectOptionContent::default().description("Second option");
+            if kind == 0 {
+                app.mount(
+                    select("passive-hover")
+                        .default_open(true)
+                        .options(options)
+                        .option_content("b", content),
+                )
+                .unwrap();
+            } else {
+                let widget = crate::combobox("passive-hover")
+                    .default_open(true)
+                    .options(options)
+                    .option_content("b", content);
+                app.mount(match kind {
+                    2 => widget.autocomplete(),
+                    3 => widget.multiple(),
+                    _ => widget,
+                })
+                .unwrap();
+            }
+            let trigger = trigger(&app);
+            let beta = option_node(&app, "Beta");
+            let child = nodes(&app)
+                .into_iter()
+                .find(|id| {
+                    matches!(app.tree().node(*id).unwrap().descriptor.view().props,
+                        Props::Text(text) if text.content == "Second option")
+                })
+                .unwrap();
+            app.dispatch(
+                child,
+                Event::Pointer {
+                    from: child,
+                    related: None,
+                    phase: glory::render::PointerPhase::Move,
+                },
+            )
+            .unwrap();
+            assert_eq!(
+                app.tree().resolve_active_descendant(trigger).unwrap(),
+                Some(beta),
+                "kind {kind}: movement over a passive description belongs to its option"
+            );
+            app.clear().unwrap();
+            assert_eq!(app.stats().nodes, 0);
+        }
+    }
+
     #[test]
     fn custom_trigger_content_reads_accepted_state_once_and_retains_real_choice_semantics() {
         use std::cell::Cell;
