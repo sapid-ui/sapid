@@ -1,6 +1,6 @@
 [package]
 name = "sapid"
-version = "0.7.0"
+version = "0.7.1"
 edition = "2024"
 authors = ["Chris Young <chris@veco.id>"]
 rust-version = "1.95"

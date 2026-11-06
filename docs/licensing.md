@@ -1,6 +1,6 @@
 # Licensing
 
-Sapid 0.7.0 sources and project-authored documentation are
+Sapid 0.7.1 sources and project-authored documentation are
 licensed under **Apache-2.0**. Package metadata, the root LICENSE, and NOTICE
 use the same license declaration. Previously published releases retain their
 original license grants.

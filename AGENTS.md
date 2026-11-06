@@ -1,6 +1,6 @@
 # Sapid
 
-- The coordinated 0.7.0 versions require Rust 1.95 and use
+- Sapid 0.7.1 and Glory 0.7.0 require Rust 1.95 and use
   resolver 3. Keep sapid/glory/apace/takia/wingy as sibling repositories. All
   library and example Cargo.lock files are ignored and prepared locally before
   --locked checks. See docs/development-versions.md and docs/licensing.md.
