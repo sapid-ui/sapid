@@ -1,7 +1,13 @@
 use glory::prelude::*;
 use glory::render::{Event, EventKind, InputProps, NodeId, Props, RangeCommand, Role, Semantics};
 use sapid::{ColorEyeDropper, ColorFormat, Hsva, color_input, color_picker};
-use std::{cell::RefCell, rc::Rc};
+use std::{
+    cell::{Cell, RefCell},
+    future::Future,
+    pin::Pin,
+    rc::Rc,
+    task::{Context, Poll, Waker},
+};
 fn nodes(app: &App, class: &str) -> Vec<NodeId> {
     let tree = app.tree();
     let mut todo = tree.roots().to_vec();
@@ -561,6 +567,267 @@ fn color_input_uses_only_the_explicit_eye_dropper_service_and_commits_its_result
     let editor = nodes(&app, "sapid-color-editor")[0];
     assert_eq!(input(&app, editor).value, "#12b886");
     assert_eq!((changes.get(), commits.get()), (1, 1));
+}
+
+#[derive(Default)]
+struct PickReply {
+    result: RefCell<Option<sapid::ColorEyeDropperResult>>,
+    wake: RefCell<Option<Waker>>,
+    dropped: Cell<bool>,
+    on_drop: RefCell<Option<Box<dyn FnOnce()>>>,
+}
+struct DelayedPick(Rc<PickReply>);
+impl Future for DelayedPick {
+    type Output = sapid::ColorEyeDropperResult;
+    fn poll(self: Pin<&mut Self>, context: &mut Context<'_>) -> Poll<Self::Output> {
+        if let Some(result) = self.0.result.borrow_mut().take() {
+            Poll::Ready(result)
+        } else {
+            *self.0.wake.borrow_mut() = Some(context.waker().clone());
+            Poll::Pending
+        }
+    }
+}
+impl Drop for DelayedPick {
+    fn drop(&mut self) {
+        self.0.dropped.set(true);
+        let callback = self.0.on_drop.borrow_mut().take();
+        if let Some(callback) = callback {
+            callback();
+        }
+    }
+}
+fn finish_pick(reply: &PickReply) {
+    *reply.result.borrow_mut() = Some(Ok(Some(glory::style::Color(18, 184, 134, 255))));
+    if let Some(waker) = reply.wake.borrow_mut().take() {
+        waker.wake();
+    }
+}
+
+#[test]
+fn delayed_eye_dropper_is_revoked_by_current_permission_source_revision_and_owner() {
+    for scenario in [
+        "readonly",
+        "disabled",
+        "composition",
+        "value",
+        "equal-write",
+        "disable-restore",
+        "unflushed-value",
+        "unflushed-equal-write",
+        "unflushed-disable-restore",
+        "retired",
+    ] {
+        let executor = Rc::new(glory::core::executor::Executor::new(8));
+        let app = App::with_host(executor.clone(), glory::render::memory::Memory::new);
+        let enabled = app.scope().cage(true);
+        let readonly = app.scope().cage(false);
+        let source = app.scope().cage("#000000".to_owned());
+        let log = Rc::new(RefCell::new(Vec::new()));
+        let changes = log.clone();
+        let commits = log.clone();
+        let reply = Rc::new(PickReply::default());
+        let selected = reply.clone();
+        app.mount(
+            color_input("delayed-pick")
+                .value(source)
+                .enabled(enabled)
+                .readonly(readonly)
+                .eye_dropper(ColorEyeDropper::new(move || DelayedPick(selected.clone())))
+                .on_value_change(move |next| {
+                    changes.borrow_mut().push(format!("change:{next}"));
+                    source.revise(|value| *value = next);
+                })
+                .on_commit(move |next| commits.borrow_mut().push(format!("commit:{next}"))),
+        )
+        .unwrap();
+        app.dispatch(
+            nodes(&app, "sapid-color-input-eye-dropper")[0],
+            Event::Activate,
+        )
+        .unwrap();
+        assert!(executor.poll_one());
+        assert!(!reply.dropped.get());
+        match scenario {
+            "readonly" => readonly.revise(|value| *value = true),
+            "disabled" | "disable-restore" => enabled.revise(|value| *value = false),
+            "composition" => {
+                app.dispatch(
+                    nodes(&app, "sapid-color-editor")[0],
+                    Event::Composition { active: true },
+                )
+                .unwrap();
+            }
+            "value" | "unflushed-value" => source.revise(|value| *value = "#ffffff".into()),
+            "equal-write" => source.revise(|_| ()),
+            "unflushed-equal-write" => source.revise(|_| ()),
+            "unflushed-disable-restore" => {
+                enabled.revise(|value| *value = false);
+                enabled.revise(|value| *value = true);
+            }
+            "retired" => app.clear().unwrap(),
+            _ => unreachable!(),
+        }
+        if !scenario.starts_with("unflushed-") {
+            app.flush().unwrap();
+            assert!(
+                reply.dropped.get(),
+                "{scenario}: cancellation should release the future"
+            );
+        }
+        if scenario == "disable-restore" {
+            enabled.revise(|value| *value = true);
+            app.flush().unwrap();
+        }
+        finish_pick(&reply);
+        for _ in 0..8 {
+            if !executor.poll_one() {
+                break;
+            }
+        }
+        app.flush().unwrap();
+        assert!(log.borrow().is_empty(), "{scenario}: {:?}", log.borrow());
+        assert_eq!(
+            source.get(),
+            if matches!(scenario, "value" | "unflushed-value") {
+                "#ffffff"
+            } else {
+                "#000000"
+            }
+        );
+    }
+}
+
+#[test]
+fn eye_dropper_factory_can_retire_its_owner_without_writing_retired_pending_state() {
+    let executor = Rc::new(glory::core::executor::Executor::new(8));
+    let app = Rc::new(App::with_host(
+        executor.clone(),
+        glory::render::memory::Memory::new,
+    ));
+    let retiring = Rc::downgrade(&app);
+    app.mount(
+        color_input("retiring-factory")
+            .eye_dropper(ColorEyeDropper::new(move || {
+                retiring.upgrade().unwrap().clear().unwrap();
+                async { Ok(Some(glory::style::Color(18, 184, 134, 255))) }
+            }))
+            .on_value_change(|_| panic!("retired factory must not submit")),
+    )
+    .unwrap();
+    app.dispatch(
+        nodes(&app, "sapid-color-input-eye-dropper")[0],
+        Event::Activate,
+    )
+    .unwrap();
+    app.flush().unwrap();
+    assert_eq!(app.stats().nodes, 0);
+    assert!(!executor.poll_one());
+}
+
+#[test]
+fn completed_service_future_destructor_cannot_clear_a_reentrant_new_pick() {
+    let executor = Rc::new(glory::core::executor::Executor::new(8));
+    let app = Rc::new(App::with_host(
+        executor.clone(),
+        glory::render::memory::Memory::new,
+    ));
+    let readonly = app.scope().cage(false);
+    let replies = Rc::new(RefCell::new(Vec::new()));
+    let output = replies.clone();
+    let changes = Rc::new(Cell::new(0));
+    let changed = changes.clone();
+    app.mount(
+        color_input("destructor-reentry")
+            .readonly(readonly)
+            .eye_dropper(ColorEyeDropper::new(move || {
+                let reply = Rc::new(PickReply::default());
+                output.borrow_mut().push(reply.clone());
+                DelayedPick(reply)
+            }))
+            .on_value_change(move |_| changed.set(changed.get() + 1)),
+    )
+    .unwrap();
+    let button = nodes(&app, "sapid-color-input-eye-dropper")[0];
+    app.dispatch(button, Event::Activate).unwrap();
+    assert!(executor.poll_one());
+    let reentering = Rc::downgrade(&app);
+    *replies.borrow()[0].on_drop.borrow_mut() = Some(Box::new(move || {
+        let app = reentering.upgrade().unwrap();
+        readonly.revise(|value| *value = true);
+        app.flush().unwrap();
+        readonly.revise(|value| *value = false);
+        app.flush().unwrap();
+        app.dispatch(button, Event::Activate).unwrap();
+    }));
+    finish_pick(&replies.borrow()[0]);
+    assert!(executor.poll_one());
+    assert_eq!(replies.borrow().len(), 2);
+    assert_eq!(changes.get(), 0);
+    // A stale completion clearing loading would incorrectly permit a third request.
+    app.dispatch(button, Event::Activate).unwrap();
+    assert_eq!(replies.borrow().len(), 2);
+    finish_pick(&replies.borrow()[1]);
+    for _ in 0..8 {
+        if !executor.poll_one() {
+            break;
+        }
+    }
+    app.flush().unwrap();
+    assert_eq!(changes.get(), 1);
+    assert_eq!(
+        input(&app, nodes(&app, "sapid-color-editor")[0]).value,
+        "#12b886"
+    );
+}
+
+#[test]
+fn cancelled_eye_dropper_releases_loading_and_a_new_request_commits_once() {
+    let executor = Rc::new(glory::core::executor::Executor::new(8));
+    let app = App::with_host(executor.clone(), glory::render::memory::Memory::new);
+    let readonly = app.scope().cage(false);
+    let replies = Rc::new(RefCell::new(Vec::new()));
+    let output = replies.clone();
+    let log = Rc::new(RefCell::new(Vec::new()));
+    let changed = log.clone();
+    let committed = log.clone();
+    app.mount(
+        color_input("restart-pick")
+            .readonly(readonly)
+            .eye_dropper(ColorEyeDropper::new(move || {
+                let reply = Rc::new(PickReply::default());
+                output.borrow_mut().push(reply.clone());
+                DelayedPick(reply)
+            }))
+            .on_value_change(move |next| changed.borrow_mut().push(format!("change:{next}")))
+            .on_commit(move |next| committed.borrow_mut().push(format!("commit:{next}"))),
+    )
+    .unwrap();
+    let button = nodes(&app, "sapid-color-input-eye-dropper")[0];
+    app.dispatch(button, Event::Activate).unwrap();
+    assert!(executor.poll_one());
+    app.dispatch(button, Event::Activate).unwrap();
+    assert_eq!(replies.borrow().len(), 1);
+    readonly.revise(|value| *value = true);
+    app.flush().unwrap();
+    readonly.revise(|value| *value = false);
+    app.flush().unwrap();
+    app.dispatch(button, Event::Activate).unwrap();
+    assert!(executor.poll_one());
+    assert_eq!(replies.borrow().len(), 2);
+    finish_pick(&replies.borrow()[0]);
+    finish_pick(&replies.borrow()[1]);
+    for _ in 0..8 {
+        if !executor.poll_one() {
+            break;
+        }
+    }
+    app.flush().unwrap();
+    assert_eq!(*log.borrow(), ["change:#12b886", "commit:#12b886"]);
+    assert_eq!(
+        input(&app, nodes(&app, "sapid-color-editor")[0]).value,
+        "#12b886"
+    );
 }
 
 #[test]

@@ -49,6 +49,28 @@ async (hostPage) => {
       assert(focus.contrasts.every(value => value >= 3), `${mode}: focus contrast below 3:1: ${focus.contrasts}`);
       await page.locator('#fixture').screenshot({ path: `${process.env.SAPID_STYLE_OUTPUT || 'target/verification/sapid'}/focus-${mode}.png` });
       reports.push({ suite: `style-focus-${mode}`, status: 'passed', contrasts: focus.contrasts });
+      for (const inputClass of ['sapid-text-field', 'sapid-combobox', 'sapid-tags-input', 'sapid-pills-input']) {
+        await page.locator('#fixture').evaluate((root, inputClass) => {
+          root.innerHTML = '<button id="before">Before</button>';
+          const input = document.createElement('input');
+          input.id = 'invalid'; input.className = inputClass;
+          input.setAttribute('data-gly-invalid', '');
+          input.style.cssText = 'border:1px solid var(--sp-danger);background:var(--sp-input)';
+          root.append(input);
+        }, inputClass);
+        const before = await page.locator('#invalid').evaluate(node => getComputedStyle(node).borderColor);
+        await page.locator('#before').focus();
+        await page.keyboard.press('Tab');
+        const focused = await page.locator('#invalid').evaluate(node => {
+          const style = getComputedStyle(node);
+          return { active: document.activeElement === node, visible: node.matches(':focus-visible'),
+            outline: style.outlineStyle, width: style.outlineWidth, border: style.borderColor };
+        });
+        assert(focused.active && focused.visible && focused.outline === 'solid' && focused.width === '2px',
+          `${mode}/${inputClass}: invalid input lost its focus ring: ${JSON.stringify(focused)}`);
+        assert(focused.border === before, `${mode}/${inputClass}: focus erased the error border`);
+        reports.push({ suite: `style-invalid-focus-${inputClass}-${mode}`, status: 'passed' });
+      }
     }
     const triggerClasses = ['sapid-accordion-trigger', 'sapid-tab', 'sapid-collapsible-trigger',
       'sapid-dialog-trigger', 'sapid-alert-dialog-trigger', 'sapid-floating-dialog-trigger', 'sapid-drawer-trigger', 'sapid-popover-trigger',

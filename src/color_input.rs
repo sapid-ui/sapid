@@ -15,6 +15,13 @@ const MAX_DRAFT_BYTES: usize = 256;
 pub type ColorEyeDropperResult = std::result::Result<Option<glory::style::Color>, String>;
 type ColorEyeDropperFuture = Pin<Box<dyn Future<Output = ColorEyeDropperResult>>>;
 
+fn source_version<T>(source: &Vary<T>) -> Option<u64> {
+    match source {
+        Vary::Cage(source) => source.try_version().ok(),
+        _ => None,
+    }
+}
+
 /// An application-supplied color selection service. Sapid never reaches for an
 /// ambient browser or operating-system eyedropper capability on its own.
 #[derive(Clone)]
@@ -904,6 +911,32 @@ impl Widget for ColorInput {
         }
         if let Some(service) = self.eye_dropper.take() {
             let pending = scope.cage(false);
+            let revision = scope.cage(());
+            let task = Rc::new(Cell::new(None::<glory::core::TaskToken>));
+            let cancel = task.clone();
+            scope.on_cleanup(move || {
+                if let Some(task) = cancel.take() {
+                    task.cancel();
+                }
+            })?;
+            let cancel = task.clone();
+            let source = control.source.clone();
+            let watch_enabled = enabled.clone();
+            let watch_readonly = readonly.clone();
+            scope.structural(move || {
+                // Every source revision revokes the operation, including an
+                // equal-value write or disabling and subsequently re-enabling.
+                source.with(|_| ());
+                watch_enabled.get();
+                watch_readonly.get();
+                composing.get();
+                revision.revise(|_| ());
+                let cancelled = cancel.take();
+                pending.revise(|value| *value = false);
+                if let Some(task) = cancelled {
+                    task.cancel();
+                }
+            });
             let failure = Callback::new(self.eye_dropper_error.take());
             let cleanup = failure.clone();
             scope.on_cleanup(move || cleanup.clear())?;
@@ -911,6 +944,8 @@ impl Widget for ColorInput {
             let changed = change.clone();
             let committed = commit.clone();
             let weak = scope.downgrade();
+            let permission_enabled = enabled.clone();
+            let permission_readonly = readonly.clone();
             let enabled = picker_enabled;
             let mut button = crate::button()
                 .theme(self.common.theme.clone())
@@ -929,9 +964,15 @@ impl Widget for ColorInput {
                         .padding(glory::style::Edges::all(0.)),
                 )
                 .on_press(move || {
-                    if pending.get_untracked() {
+                    if pending.get_untracked() || !enabled.get() {
                         return;
                     }
+                    revision.revise(|_| ());
+                    let version = revision.try_version().ok();
+                    let value = editing.source.get();
+                    let input_version = source_version(&editing.source);
+                    let enabled_version = source_version(&permission_enabled);
+                    let readonly_version = source_version(&permission_readonly);
                     pending.revise(|value| *value = true);
                     let future = service.pick();
                     let editing = editing.clone();
@@ -939,37 +980,71 @@ impl Widget for ColorInput {
                     let committed = committed.clone();
                     let failure = failure.clone();
                     let weak_task = weak.clone();
+                    let task_slot = task.clone();
+                    let permission_enabled = permission_enabled.clone();
+                    let permission_readonly = permission_readonly.clone();
                     let spawned = weak
                         .upgrade()
                         .ok_or(glory::ui::Error::Gone)
                         .and_then(|scope| {
-                            scope
-                                .spawn(async move {
-                                    let result = future.await;
-                                    let Some(scope) = weak_task.upgrade() else {
-                                        return;
-                                    };
-                                    pending.revise(|value| *value = false);
-                                    match result {
-                                        Ok(Some(color)) => {
-                                            let text = format_color(color, format);
-                                            match editing.accept(&text) {
-                                                Ok(()) => {
-                                                    changed.emit(owner, text.clone());
-                                                    committed.emit(owner, text);
-                                                }
-                                                Err(error) => scope.report_error(error),
+                            let token = scope.spawn(async move {
+                                let result = future.await;
+                                let Some(scope) = weak_task.upgrade() else {
+                                    return;
+                                };
+                                // An arbitrary Future destructor may have
+                                // cancelled this pick and started a newer one.
+                                if revision.try_version().ok() != version {
+                                    return;
+                                }
+                                if !enabled.try_get().unwrap_or(false)
+                                    || source_version(&editing.source) != input_version
+                                    || source_version(&permission_enabled) != enabled_version
+                                    || source_version(&permission_readonly) != readonly_version
+                                    || !editing
+                                        .source
+                                        .try_with(|current| current == &value)
+                                        .unwrap_or(false)
+                                {
+                                    task_slot.take();
+                                    let _ = pending.try_revise(|value| *value = false);
+                                    return;
+                                }
+                                task_slot.take();
+                                pending.revise(|value| *value = false);
+                                match result {
+                                    Ok(Some(color)) => {
+                                        let text = format_color(color, format);
+                                        match editing.accept(&text) {
+                                            Ok(()) => {
+                                                changed.emit(owner, text.clone());
+                                                committed.emit(owner, text);
                                             }
+                                            Err(error) => scope.report_error(error),
                                         }
-                                        Ok(None) => {}
-                                        Err(error) => failure.emit(owner, error),
                                     }
-                                })
-                                .map(|_| ())
-                                .map_err(Into::into)
+                                    Ok(None) => {}
+                                    Err(error) => failure.emit(owner, error),
+                                }
+                            })?;
+                            // The service factory may re-enter application state.
+                            if revision.try_version().ok() == version
+                                && enabled.try_get().unwrap_or(false)
+                                && token.is_current()
+                            {
+                                task.set(Some(token));
+                            } else {
+                                token.cancel();
+                                if revision.try_version().ok() == version {
+                                    let _ = pending.try_revise(|value| *value = false);
+                                }
+                            }
+                            Ok(())
                         });
                     if let Err(error) = spawned {
-                        pending.revise(|value| *value = false);
+                        if revision.try_version().ok() == version {
+                            let _ = pending.try_revise(|value| *value = false);
+                        }
                         if let Some(scope) = weak.upgrade() {
                             scope.report_error(error)
                         }

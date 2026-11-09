@@ -7,8 +7,8 @@ use crate::{
     tree_model::*,
 };
 use glory::render::{
-    Direction, DragPhase, Event, EventKind, FocusMode, NodeId, Query, QueryValue, Role, Semantics,
-    TreeCommand, TreeNavigation,
+    Direction, DragPhase, Event, EventKind, FocusMode, NodeId, Query, QueryToken, QueryValue, Role,
+    Semantics, TreeCommand, TreeNavigation,
 };
 use glory::style::{Align, BorderStyle, Display, Edges, FlexDirection, Length, Overflow, Style};
 use glory::ui::{Result, WeakScope, Widget};
@@ -229,7 +229,7 @@ fn guides(row: &TreeRow, direction: Direction, color: glory::style::Color) -> Ve
     ));
     result
 }
-fn accept_model(scope: &Scope, source: Vary<Vec<TreeNode>>) -> Result<Cage<Rc<TreeModel>>> {
+fn accept_model(scope: &Scope, source: &Vary<Vec<TreeNode>>) -> Result<Cage<Rc<TreeModel>>> {
     let read = || {
         source.try_with(|nodes| {
             TreeModel::validate(nodes).map_err(error)?;
@@ -237,6 +237,10 @@ fn accept_model(scope: &Scope, source: Vary<Vec<TreeNode>>) -> Result<Cage<Rc<Tr
         })?
     };
     let model = scope.cage(read()?);
+    if !source.is_reactive() {
+        return Ok(model);
+    }
+    let source = source.clone();
     let weak = scope.downgrade();
     scope.structural(move || {
         let Some(scope) = weak.upgrade() else { return };
@@ -302,6 +306,9 @@ struct State {
     owner: glory::core::InstanceId,
     weak: WeakScope,
     model: Cage<Rc<TreeModel>>,
+    source: Vary<Vec<TreeNode>>,
+    drop_revision: Cage<()>,
+    drop_request: RefCell<Option<(WeakScope, QueryToken)>>,
     expanded: SetControl,
     selected: SetControl,
     mode: TreeSelectionMode,
@@ -321,6 +328,35 @@ struct State {
     columns_select_branches: bool,
 }
 impl State {
+    fn cancel_drop(&self) {
+        let _ = self.drop_revision.try_revise(|_| ());
+        let pending = self.drop_request.borrow_mut().take();
+        if let Some((requester, token)) = pending
+            && let Some(scope) = requester.upgrade()
+        {
+            self.report(scope.cancel_request(token).map(|_| ()));
+        }
+    }
+    fn current_drop(
+        &self,
+        revision: u64,
+        model_version: u64,
+        from: NodeId,
+        dragged: &str,
+        target_node: NodeId,
+        target: &str,
+    ) -> bool {
+        self.owner.is_alive()
+            && self.drop_revision.try_version().ok() == Some(revision)
+            && self.model.try_version().ok() == Some(model_version)
+            && self.usable(dragged)
+            && self.usable(target)
+            && self.mounted.borrow().nodes.get(&from).is_some_and(|key| key == dragged)
+            && self.mounted.borrow().nodes.get(&target_node).is_some_and(|key| key == target)
+            // User allow_drop callbacks can revise the raw source before the
+            // accepted model's structural observer has had a chance to run.
+            && self.source.try_with(|nodes| self.model.with(|model| model.nodes() == nodes)).unwrap_or(false)
+    }
     fn ensure(&self) -> Result {
         if self.owner.is_alive() {
             Ok(())
@@ -798,10 +834,8 @@ impl Widget for Tree {
         {
             return Err(error(TreeError::State));
         }
-        let model = accept_model(
-            scope,
-            self.source.take().ok_or_else(|| error(TreeError::Nodes))?,
-        )?;
+        let source = self.source.take().ok_or_else(|| error(TreeError::Nodes))?;
+        let model = accept_model(scope, &source)?;
         let expanded = std::mem::take(&mut self.expanded).mount(scope);
         let selected = std::mem::take(&mut self.selected).mount(scope);
         let columns = self.columns;
@@ -832,6 +866,9 @@ impl Widget for Tree {
             owner: scope.id(),
             weak: scope.downgrade(),
             model,
+            source,
+            drop_revision: scope.cage(()),
+            drop_request: RefCell::new(None),
             expanded: SetControl {
                 control: expanded,
                 accepted: accepted_expanded,
@@ -860,6 +897,21 @@ impl Widget for Tree {
             columns: self.columns,
             columns_select_branches: self.columns_select_branches,
         });
+        let weak = Rc::downgrade(&state);
+        scope.effect(move || {
+            if let Some(state) = weak.upgrade() {
+                model.with(|_| ());
+                state.enabled.get();
+                accepted_expanded.get();
+                state.cancel_drop();
+            }
+        });
+        let weak = Rc::downgrade(&state);
+        scope.on_cleanup(move || {
+            if let Some(state) = weak.upgrade() {
+                state.cancel_drop();
+            }
+        })?;
         let weak = Rc::downgrade(&state);
         scope.structural(move || {
             let Some(state) = weak.upgrade() else { return };
@@ -1305,6 +1357,7 @@ impl Widget for Tree {
                         let allowed = allow_drop.clone();
                         let weak = scope.downgrade();
                         item = item.on(EventKind::Drag, move |event| {
+                            s.cancel_drop();
                             let Event::Drag {
                                 from,
                                 phase: DragPhase::Drop,
@@ -1318,18 +1371,49 @@ impl Widget for Tree {
                             let Some(dragged) = s.mounted.borrow().nodes.get(&from).cloned() else {
                                 return;
                             };
+                            if !s.usable(&dragged) || !s.usable(&target_key) {
+                                return;
+                            }
                             let Ok(Some(target_node)) = target_reference.try_get() else {
                                 return;
                             };
                             let target = target_key.clone();
                             let model = s.model;
+                            let Ok(model_version) = model.try_version() else {
+                                return;
+                            };
+                            let Ok(revision) = s.drop_revision.try_version() else {
+                                return;
+                            };
                             let dropped = dropped.clone();
                             let allowed = allowed.clone();
+                            let weak_state = Rc::downgrade(&s);
                             let result = scope.request(Query::Bounds(target_node), move |result| {
+                                let Some(state) = weak_state.upgrade() else {
+                                    return;
+                                };
+                                let current = || {
+                                    state.current_drop(
+                                        revision,
+                                        model_version,
+                                        from,
+                                        &dragged,
+                                        target_node,
+                                        &target,
+                                    )
+                                };
+                                if !current() {
+                                    return;
+                                }
+                                state.drop_request.borrow_mut().take();
                                 let Ok(QueryValue::Bounds(bounds)) = result else {
                                     return;
                                 };
-                                if bounds.height <= 0. || !bounds.height.is_finite() {
+                                if bounds.height <= 0.
+                                    || !bounds.height.is_finite()
+                                    || !bounds.y.is_finite()
+                                    || !y.is_finite()
+                                {
                                     return;
                                 }
                                 let ratio = ((y - bounds.y) / bounds.height).clamp(0., 1.);
@@ -1358,12 +1442,19 @@ impl Widget for Tree {
                                     && allowed
                                         .as_ref()
                                         .is_none_or(|allowed| (allowed.borrow_mut())(&proposal))
+                                    && current()
                                 {
                                     (dropped.borrow_mut())(proposal);
                                 }
                             });
-                            if let Err(error) = result {
-                                scope.report_error(error);
+                            match result {
+                                Ok(token)
+                                    if s.drop_revision.try_version().ok() == Some(revision) =>
+                                {
+                                    s.drop_request.replace(Some((scope.downgrade(), token)));
+                                }
+                                Ok(token) => s.report(scope.cancel_request(token).map(|_| ())),
+                                Err(error) => scope.report_error(error),
                             }
                         });
                     }
