@@ -18,6 +18,7 @@ import urllib.request
 
 from library_lock import prepare_library_lock
 from audit_evidence import verify as verify_audit, digest as audit_digest
+import registry_package_audit as registry_audit
 
 ROOT = Path(__file__).resolve().parents[1]
 LIBRARY_LOCK_ARTIFACT = "library-Cargo.lock"
@@ -104,7 +105,8 @@ def acceptance_assets(provenance, run_id, attempt):
                 provenance.with_name(LIBRARY_LOCK_ARTIFACT))]
     audit = provenance.parent / 'dependency-audit'
     if audit.is_dir():
-        for name in ['provenance.json', 'results.json', *(f'audit-{index}.lock' for index in range(3))]:
+        for name in ['provenance.json', 'results.json', *(f'audit-{index}.lock' for index in range(3)),
+                     *registry_audit.FILES]:
             source = audit / name
             sources.append((source, 'dependency-' + source.stem))
     for source, stem in sources:
@@ -187,7 +189,7 @@ def record_acceptance(options):
         raise SystemExit("Acceptance requires the actual checked library lockfile") from failure
     audit = Path(options.provenance).parent / 'dependency-audit'
     try:
-        verify_audit(ROOT, audit, product, current_locks=True, current_sources=True)
+        verify_audit(ROOT, audit, product, current_locks=True, current_sources=True, require_package=True)
         dependency_audit_sha256 = audit_digest(audit / 'provenance.json')
     except (OSError, ValueError, KeyError, TypeError) as failure:
         raise SystemExit(f"Invalid dependency audit evidence: {failure}") from failure
@@ -265,11 +267,22 @@ def validate_release_gate(options, plan, tag, head):
         expected_audit = evidence.get('dependency_audit_sha256')
         if not isinstance(expected_audit, str) or not re.fullmatch(r'[a-f0-9]{64}', expected_audit):
             raise ValueError('Missing dependency audit digest')
-        verify_audit(ROOT, audit, head, expected_audit, current_sources=True)
+        verify_audit(ROOT, audit, head, expected_audit, current_sources=True, require_package=True)
         if audit_digest(audit / 'audit-0.lock') != evidence['library_lock_sha256']:
             raise ValueError('Dependency audit lock differs from checked publication lock')
     except (OSError, ValueError, KeyError, TypeError) as failure:
         raise SystemExit(f"Invalid dependency audit evidence: {failure}") from failure
+
+
+def validate_packaged_publication(options, plan, tag, head, archive):
+    """Recheck trusted evidence and the newly packaged graph before every upload."""
+    validate_release_gate(options, plan, tag, head)
+    audit_directory = Path(options.provenance).parent / 'dependency-audit'
+    try:
+        database = json.loads((audit_directory / 'registry-package.json').read_text())['database']
+        registry_audit.verify(audit_directory, head, database, archive)
+    except (OSError, ValueError, KeyError, TypeError, tarfile.TarError) as failure:
+        raise SystemExit(f'Packaged registry audit rejected publication: {failure}') from failure
 
 
 def restore_checked_library_lock(provenance, expected_digest):
@@ -441,7 +454,9 @@ def main():
                 command.append("--no-verify")
             # Packaging can take time. Refuse a tag change immediately before
             # each irreversible upload as well as at the initial gate.
-            publish(command, before_upload=lambda: verify_remote_tag(tag, head))
+            publish(command, before_upload=lambda: validate_packaged_publication(
+                options, plan, tag, head,
+                package_targets[name] / 'package' / f'{name}-{package_version}.crate'))
         # Let sparse-index propagation finish before building dependent crates.
         ready = False
         for attempt in range(30):

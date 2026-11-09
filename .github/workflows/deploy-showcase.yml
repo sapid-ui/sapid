@@ -147,7 +147,7 @@ jobs:
           subject: ${{ env.BUILD_ROOT }}/showcase/asset-hashes.json
       - name: Bind dependency audit to the accepted site
         run: |
-          python ../ci-support/scripts/audit_evidence.py verify --root . --directory "$env:BUILD_ROOT/dependency-audit" --expected-commit (git rev-parse HEAD) --subject "$env:BUILD_ROOT/showcase/asset-hashes.json" --current-locks --current-sources --export "$env:BUILD_ROOT/dependency-audit-export"
+          python ../ci-support/scripts/audit_evidence.py verify --root . --directory "$env:BUILD_ROOT/dependency-audit" --expected-commit (git rev-parse HEAD) --subject "$env:BUILD_ROOT/showcase/asset-hashes.json" --current-locks --current-sources --require-package --export "$env:BUILD_ROOT/dependency-audit-export"
           if ($LASTEXITCODE) { throw 'Showcase audit export failed' }
       - name: Preserve accepted dependency audit
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

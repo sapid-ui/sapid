@@ -14,7 +14,11 @@ class AuditEvidenceTests(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory(prefix='sapid-audit-evidence-')
         self.addCleanup(temporary.cleanup)
-        self.root = Path(temporary.name) / 'product'
+        # Windows runners can return an 8.3 TEMP spelling which resolve()
+        # expands. Exercise a noncanonical spelling on every platform so the
+        # mock identifies the physical checkout, rather than its path text.
+        base = Path(temporary.name)
+        self.root = base / '..' / base.name / 'product'
         self.directory = Path(temporary.name) / 'audit'
         self.root.mkdir()
         self.directory.mkdir()
@@ -34,7 +38,7 @@ class AuditEvidenceTests(unittest.TestCase):
                 'vulnerabilities': [], 'database': 'd' * 40,
                 'snapshot': snapshot.name, 'sha256': audit.digest(snapshot)})
         self.save_report()
-        self.commits = patch.object(audit, 'commit', side_effect=lambda root: 'a' * 40 if root == self.root else 'b' * 40)
+        self.commits = patch.object(audit, 'commit', side_effect=lambda root: 'a' * 40 if root.resolve() == self.root.resolve() else 'b' * 40)
         self.commits.start()
         self.addCleanup(self.commits.stop)
         self.environment = patch.dict(os.environ, {'GITHUB_RUN_ID': '123', 'GITHUB_RUN_ATTEMPT': '2'})

@@ -35,7 +35,15 @@ runs:
         }
         $scripts = [IO.Path]::GetFullPath((Join-Path $env:GITHUB_ACTION_PATH '../../../scripts'))
         & (Join-Path $scripts 'audit-dependencies.ps1') -ProjectRoot $PWD.Path -BuildRoot $env:AUDIT_OUTPUT -AuditBinary $auditor
-        $arguments = @('record','--root',$PWD.Path,'--directory',$env:AUDIT_OUTPUT)
+        # Cargo generates this lock from the normalized registry manifest. It
+        # does not need the new Sapid version to exist on crates.io yet.
+        cargo package --locked --no-verify --manifest-path (Join-Path $PWD 'Cargo.toml') -p sapid
+        if ($LASTEXITCODE) { throw 'Packaged registry graph preparation failed' }
+        $package = $metadata.packages | Where-Object name -EQ 'sapid'
+        $archive = Join-Path $metadata.target_directory "package/sapid-$($package.version).crate"
+        python (Join-Path $scripts 'registry_package_audit.py') --archive $archive --directory $env:AUDIT_OUTPUT --auditor $auditor --database (Join-Path $env:AUDIT_OUTPUT 'advisory-db') --expected-commit (git rev-parse HEAD)
+        if ($LASTEXITCODE) { throw 'Packaged registry dependency audit failed' }
+        $arguments = @('record','--root',$PWD.Path,'--directory',$env:AUDIT_OUTPUT,'--require-package')
         if ($env:AUDIT_SUBJECT) { $arguments += @('--subject',$env:AUDIT_SUBJECT) }
         $digest = python (Join-Path $scripts 'audit_evidence.py') @arguments
         if ($LASTEXITCODE) { throw 'Audit provenance validation failed' }

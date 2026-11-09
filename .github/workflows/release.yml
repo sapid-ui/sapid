@@ -92,6 +92,7 @@ jobs:
             scripts/release.py
             scripts/library_lock.py
             scripts/audit_evidence.py
+            scripts/registry_package_audit.py
             scripts/browser.cjs
             examples/web/*acceptance.js
           sparse-checkout-cone-mode: false

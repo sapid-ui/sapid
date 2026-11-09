@@ -7,6 +7,7 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import registry_package_audit as registry
 
 LOCKS = ('Cargo.lock', 'examples/web/Cargo.lock', 'examples/native/Cargo.lock')
 
@@ -45,7 +46,7 @@ def scans(directory):
     return report
 
 
-def record(root, directory, subject=None):
+def record(root, directory, subject=None, require_package=False):
     root, directory = Path(root).resolve(), Path(directory).resolve()
     report = scans(directory)
     pin = load(root / 'deploy/dependencies.json')['glory']
@@ -61,11 +62,14 @@ def record(root, directory, subject=None):
                 'workflow_run_attempt': os.environ.get('GITHUB_RUN_ATTEMPT')}
     if subject:
         evidence['subject_sha256'] = digest(subject)
+    if require_package or (directory / 'registry-package.json').is_file():
+        registry.verify(directory, evidence['product_commit'], report['locks'][0]['database'])
+        evidence['registry_package_sha256'] = digest(directory / 'registry-package.json')
     (directory / 'provenance.json').write_text(json.dumps(evidence, indent=2) + '\n', encoding='utf-8')
     return evidence
 
 
-def verify(root, directory, expected_commit, expected_digest=None, subject=None, current_locks=False, current_sources=False):
+def verify(root, directory, expected_commit, expected_digest=None, subject=None, current_locks=False, current_sources=False, require_package=False):
     root, directory = Path(root), Path(directory)
     evidence = load(directory / 'provenance.json')
     if expected_digest is not None and digest(directory / 'provenance.json') != expected_digest:
@@ -90,6 +94,10 @@ def verify(root, directory, expected_commit, expected_digest=None, subject=None,
         for entry, name in zip(report['locks'], LOCKS):
             if digest(root / name) != entry['sha256'].lower():
                 raise ValueError('Dependency audit differs from the actual used lockfile')
+    if require_package or evidence.get('registry_package_sha256'):
+        if digest(directory / 'registry-package.json') != evidence.get('registry_package_sha256'):
+            raise ValueError('Packaged registry audit digest differs from dependency provenance')
+        registry.verify(directory, expected_commit, report['locks'][0]['database'])
     return evidence
 
 
@@ -97,7 +105,10 @@ def export(directory, destination):
     directory, destination = Path(directory), Path(destination)
     scans(directory)
     destination.mkdir(parents=True, exist_ok=True)
-    for name in ['results.json', 'provenance.json', *(f'audit-{index}.lock' for index in range(3))]:
+    names = ['results.json', 'provenance.json', *(f'audit-{index}.lock' for index in range(3))]
+    if load(directory / 'provenance.json').get('registry_package_sha256'):
+        names.extend(registry.FILES)
+    for name in names:
         shutil.copyfile(directory / name, destination / name)
 
 
@@ -112,15 +123,16 @@ def main():
     parser.add_argument('--export', type=Path)
     parser.add_argument('--current-locks', action='store_true')
     parser.add_argument('--current-sources', action='store_true')
+    parser.add_argument('--require-package', action='store_true')
     args = parser.parse_args()
     try:
         if args.mode == 'record':
-            record(args.root, args.directory, args.subject)
+            record(args.root, args.directory, args.subject, args.require_package)
         else:
             if not args.expected_commit:
                 raise ValueError('Verification requires the frozen product commit')
             verify(args.root, args.directory, args.expected_commit, args.expected_digest,
-                   args.subject, args.current_locks, args.current_sources)
+                   args.subject, args.current_locks, args.current_sources, args.require_package)
         if args.export:
             export(args.directory, args.export)
         print(digest(args.directory / 'provenance.json'))
