@@ -5,7 +5,8 @@ $projectRoot = Split-Path -Parent $PSScriptRoot
 foreach ($target in @(
     @{ Manifest = 'Cargo.toml'; Package = 'sapid' },
     @{ Manifest = 'examples/web/Cargo.toml'; Package = 'sapid-web-example' },
-    @{ Manifest = 'examples/native/Cargo.toml'; Package = 'sapid-native-acceptance' }
+    @{ Manifest = 'examples/native/Cargo.toml'; Package = 'sapid-native-acceptance' },
+    @{ Manifest = 'benchmarks/wasm-size/Cargo.toml'; Package = 'sapid-wasm-size' }
 )) {
     $manifest = $target.Manifest
     # --all also traverses path dependencies, including the sibling Glory checkout.
