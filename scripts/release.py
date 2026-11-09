@@ -17,6 +17,7 @@ import urllib.error
 import urllib.request
 
 from library_lock import prepare_library_lock
+from audit_evidence import verify as verify_audit, digest as audit_digest
 
 ROOT = Path(__file__).resolve().parents[1]
 LIBRARY_LOCK_ARTIFACT = "library-Cargo.lock"
@@ -98,9 +99,16 @@ def acceptance_assets(provenance, run_id, attempt):
     output = provenance.parent / "release-assets"
     output.mkdir(parents=True, exist_ok=True)
     assets = []
-    for source in (provenance.with_name("browser-results.json"), provenance,
-                   provenance.with_name(LIBRARY_LOCK_ARTIFACT)):
-        destination = output / f"{source.stem}-run-{run_id}-attempt-{attempt}{source.suffix}"
+    sources = [(source, source.stem) for source in
+               (provenance.with_name("browser-results.json"), provenance,
+                provenance.with_name(LIBRARY_LOCK_ARTIFACT))]
+    audit = provenance.parent / 'dependency-audit'
+    if audit.is_dir():
+        for name in ['provenance.json', 'results.json', *(f'audit-{index}.lock' for index in range(3))]:
+            source = audit / name
+            sources.append((source, 'dependency-' + source.stem))
+    for source, stem in sources:
+        destination = output / f"{stem}-run-{run_id}-attempt-{attempt}{source.suffix}"
         payload = source.read_bytes()
         if destination.exists():
             if destination.read_bytes() != payload:
@@ -177,13 +185,20 @@ def record_acceptance(options):
         Path(options.provenance).with_name(LIBRARY_LOCK_ARTIFACT).write_bytes(library_lock)
     except OSError as failure:
         raise SystemExit("Acceptance requires the actual checked library lockfile") from failure
+    audit = Path(options.provenance).parent / 'dependency-audit'
+    try:
+        verify_audit(ROOT, audit, product, current_locks=True, current_sources=True)
+        dependency_audit_sha256 = audit_digest(audit / 'provenance.json')
+    except (OSError, ValueError, KeyError, TypeError) as failure:
+        raise SystemExit(f"Invalid dependency audit evidence: {failure}") from failure
     evidence = {"schema": 1, "repository": os.environ["GITHUB_REPOSITORY"],
                 "workflow_run_id": os.environ["GITHUB_RUN_ID"],
                 "workflow_run_attempt": os.environ["GITHUB_RUN_ATTEMPT"],
                 "product_commit": product, "glory_repository": dependency["repository"],
                 "glory_commit": glory, "acceptance_commit": harness,
                 "fixture_protocol": "HTTP/1.1", "browser_isolation": "suite",
-                "library_lock_sha256": hashlib.sha256(library_lock).hexdigest(), **digests}
+                "library_lock_sha256": hashlib.sha256(library_lock).hexdigest(),
+                "dependency_audit_sha256": dependency_audit_sha256, **digests}
     Path(options.provenance).write_text(json.dumps(evidence, indent=2) + "\n", encoding="utf-8")
 
 
@@ -245,6 +260,16 @@ def validate_release_gate(options, plan, tag, head):
         raise SystemExit("Publisher Glory checkout differs from the validated dependency pin")
     verify_remote_tag(tag, head)
     restore_checked_library_lock(options.provenance, evidence.get("library_lock_sha256"))
+    audit = Path(options.provenance).parent / 'dependency-audit'
+    try:
+        expected_audit = evidence.get('dependency_audit_sha256')
+        if not isinstance(expected_audit, str) or not re.fullmatch(r'[a-f0-9]{64}', expected_audit):
+            raise ValueError('Missing dependency audit digest')
+        verify_audit(ROOT, audit, head, expected_audit, current_sources=True)
+        if audit_digest(audit / 'audit-0.lock') != evidence['library_lock_sha256']:
+            raise ValueError('Dependency audit lock differs from checked publication lock')
+    except (OSError, ValueError, KeyError, TypeError) as failure:
+        raise SystemExit(f"Invalid dependency audit evidence: {failure}") from failure
 
 
 def restore_checked_library_lock(provenance, expected_digest):

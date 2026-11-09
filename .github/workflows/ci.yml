@@ -174,7 +174,11 @@ jobs:
           if ($LASTEXITCODE) { throw 'Chromium installation failed' }
       - name: Validate release, inventory and showcase sources
         run: |
+          node --test benchmarks/wasm-size/test.cjs
+          if ($LASTEXITCODE) { throw 'WASM consumer measurement regressions failed' }
           & ../ci-support/scripts/test-ci-cache.ps1 -ProjectRoot $PWD.Path
+          python -m unittest discover -s ../ci-support/scripts -p test_audit_evidence.py
+          if ($LASTEXITCODE) { throw 'Audit evidence regressions failed' }
           python -m unittest discover -s scripts -p test_release.py
           if ($LASTEXITCODE) { throw 'Release tooling tests failed' }
           python scripts/widget-plan.py --check
@@ -206,6 +210,7 @@ jobs:
             scripts/showcase-browser-env.cjs
             scripts/release.py
             scripts/library_lock.py
+            scripts/audit_evidence.py
             examples/web
           sparse-checkout-cone-mode: false
       - name: Actual widget browser acceptance
@@ -222,6 +227,21 @@ jobs:
             if ($LASTEXITCODE) { throw 'Widget browser acceptance failed' }
           }
           finally { Stop-Process -Id $fixture.Id -ErrorAction SilentlyContinue }
+      - name: Audit the exact widget dependency resolution
+        id: audit
+        uses: ./ci-support/.github/actions/dependency-audit
+        with:
+          output: ${{ github.workspace }}/sapid/target/verification/sapid/dependency-audit
+      - name: Preserve exact dependency audit evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: sapid-widget-dependency-audit-${{ github.run_attempt }}
+          path: |
+            ${{ github.workspace }}/sapid/target/verification/sapid/dependency-audit/results.json
+            ${{ github.workspace }}/sapid/target/verification/sapid/dependency-audit/provenance.json
+            ${{ github.workspace }}/sapid/target/verification/sapid/dependency-audit/audit-*.lock
+          if-no-files-found: warn
       - name: Record successful acceptance provenance
         if: inputs.release_ref != ''
         id: provenance
@@ -247,6 +267,9 @@ jobs:
             ${{ github.workspace }}/sapid/target/verification/sapid/browser-progress.json
             ${{ github.workspace }}/sapid/target/verification/sapid/browser-provenance.json
             ${{ github.workspace }}/sapid/target/verification/sapid/library-Cargo.lock
+            ${{ github.workspace }}/sapid/target/verification/sapid/dependency-audit/provenance.json
+            ${{ github.workspace }}/sapid/target/verification/sapid/dependency-audit/results.json
+            ${{ github.workspace }}/sapid/target/verification/sapid/dependency-audit/audit-*.lock
           if-no-files-found: ignore
 
       - name: Trim disposable Cargo cache binaries
@@ -298,6 +321,20 @@ jobs:
         with:
           name: ${{ needs.showcase.outputs.dist_artifact }}
           path: ${{ env.BUILD_ROOT }}/showcase
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.13'
+      - name: Download the exact accepted dependency audit
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: ${{ needs.showcase.outputs.audit_artifact }}
+          path: ${{ env.BUILD_ROOT }}/dependency-audit
+      - name: Verify the accepted site's dependency audit
+        env:
+          AUDIT_DIGEST: ${{ needs.showcase.outputs.audit_digest }}
+        run: |
+          python scripts/audit_evidence.py verify --directory "$env:BUILD_ROOT/dependency-audit" --expected-commit $env:GITHUB_SHA --expected-digest $env:AUDIT_DIGEST --subject "$env:BUILD_ROOT/showcase/asset-hashes.json"
+          if ($LASTEXITCODE) { throw 'Deployment dependency audit differs from accepted assets' }
       - name: Skip a superseded main commit
         id: current
         env:
