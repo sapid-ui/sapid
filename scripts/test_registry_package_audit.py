@@ -20,13 +20,20 @@ class PackagedRegistryTests(unittest.TestCase):
         self.output = self.root / 'evidence'
         self.manifest = b'[package]\nname="sample"\nversion="1.0.0"\n'
         self.lock = b'version = 4\n[[package]]\nname="sample"\nversion="1.0.0"\n'
+        self.sources = {'src/lib.rs': b'pub fn sample() {}\n'}
         self.write_archive()
         self.report = {'vulnerabilities': {'found': False, 'count': 0, 'list': []},
                        'settings': {}, 'database': {'last-commit': None}}
 
-    def write_archive(self, *, omit=(), commit='a' * 40):
+    def write_archive(self, *, omit=(), commit='a' * 40, dirty=False, original=None, vcs_extra=None):
+        vcs = {'git': {'sha1': commit}}
+        if dirty:
+            vcs['git']['dirty'] = True
+        if vcs_extra:
+            vcs.update(vcs_extra)
         files = {'Cargo.toml': self.manifest, 'Cargo.lock': self.lock,
-                 '.cargo_vcs_info.json': json.dumps({'git': {'sha1': commit}}).encode()}
+                 'Cargo.toml.orig': self.manifest if original is None else original,
+                 '.cargo_vcs_info.json': json.dumps(vcs).encode(), **self.sources}
         with tarfile.open(self.archive, 'w:gz') as archive:
             for name, content in files.items():
                 if name not in omit:
@@ -34,13 +41,13 @@ class PackagedRegistryTests(unittest.TestCase):
                     entry.size = len(content)
                     archive.addfile(entry, io.BytesIO(content))
 
-    def produce(self):
+    def produce(self, expected_commit='a' * 40):
         def capture(command, **kwargs):
             return 'cargo-audit 0.22.2\n' if command[0] == 'auditor' else 'd' * 40
         response = SimpleNamespace(returncode=0, stdout=json.dumps(self.report))
         with patch.object(audit.subprocess, 'check_output', side_effect=capture), \
              patch.object(audit.subprocess, 'run', return_value=response):
-            return audit.audit_archive(self.archive, self.output, 'auditor', self.root / 'db', 'a' * 40)
+            return audit.audit_archive(self.archive, self.output, 'auditor', self.root / 'db', expected_commit)
 
     def test_audits_packaged_source_without_resolving_an_unpublished_version(self):
         proof = self.produce()
@@ -94,6 +101,56 @@ class PackagedRegistryTests(unittest.TestCase):
         self.write_archive()
         with self.assertRaisesRegex(ValueError, 'Repackaged'):
             audit.verify(self.output, 'a' * 40, 'd' * 40, self.archive)
+
+    def test_normalized_dirty_exception_is_explicit_and_preserves_all_source_files(self):
+        self.produce()
+        self.write_archive(dirty=True)
+        with self.assertRaisesRegex(ValueError, 'frozen source'):
+            audit.verify(self.output, 'a' * 40, 'd' * 40, self.archive)
+        audit.verify(self.output, 'a' * 40, 'd' * 40, self.archive, normalized_publication=True)
+        original = dict(self.sources)
+        for changed in [{'src/lib.rs': b'changed source'}, {}, {**original, 'extra.rs': b'added source'}]:
+            self.sources = changed
+            self.write_archive(dirty=True)
+            with self.assertRaisesRegex(ValueError, 'source files differ'):
+                audit.verify(self.output, 'a' * 40, 'd' * 40, self.archive, normalized_publication=True)
+        self.sources = original
+        self.write_archive(dirty=True, commit='b' * 40)
+        with self.assertRaisesRegex(ValueError, 'frozen source'):
+            audit.verify(self.output, 'a' * 40, 'd' * 40, self.archive, normalized_publication=True)
+        self.write_archive(dirty=True, original=b'unexpected original manifest')
+        with self.assertRaisesRegex(ValueError, 'original manifest differs'):
+            audit.verify(self.output, 'a' * 40, 'd' * 40, self.archive, normalized_publication=True)
+        self.write_archive(dirty=True, vcs_extra={'path_in_vcs': 'unrelated'})
+        with self.assertRaisesRegex(ValueError, 'VCS metadata differs'):
+            audit.verify(self.output, 'a' * 40, 'd' * 40, self.archive, normalized_publication=True)
+
+    def test_duplicate_unsafe_and_nonregular_members_are_rejected(self):
+        for name, kind in [('sample-1.0.0/src/lib.rs', tarfile.REGTYPE),
+                           ('sample-1.0.0/../escape', tarfile.REGTYPE),
+                           ('/absolute', tarfile.REGTYPE), ('sample-1.0.0/link', tarfile.SYMTYPE)]:
+            self.write_archive()
+            with tarfile.open(self.archive) as original:
+                entries = [(entry, original.extractfile(entry).read()) for entry in original.getmembers()]
+            with tarfile.open(self.archive, 'w:gz') as changed:
+                for entry, content in entries:
+                    changed.addfile(entry, io.BytesIO(content))
+                extra = tarfile.TarInfo(name)
+                extra.type = kind
+                extra.linkname = 'src/lib.rs' if kind == tarfile.SYMTYPE else ''
+                changed.addfile(extra, io.BytesIO(b''))
+            with self.assertRaisesRegex(ValueError, 'duplicate, unsafe or nonregular'):
+                audit.package_inputs(self.archive, 'a' * 40)
+
+    def test_existing_original_and_normalized_packages_can_both_be_verified(self):
+        self.write_archive(original=b'original source manifest containing path dependencies')
+        self.produce()
+        self.assertFalse(audit.verify_published(self.output, 'a' * 40, 'd' * 40, self.archive))
+        self.write_archive(dirty=True)
+        self.assertTrue(audit.verify_published(self.output, 'a' * 40, 'd' * 40, self.archive))
+        self.write_archive(original=b'changed original source manifest')
+        with self.assertRaisesRegex(ValueError, 'Original package manifest differs'):
+            audit.verify_published(self.output, 'a' * 40, 'd' * 40, self.archive)
 
     def test_wrong_database_and_tampered_raw_output_are_rejected(self):
         self.produce()

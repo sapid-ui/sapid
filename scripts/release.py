@@ -19,6 +19,7 @@ import urllib.request
 from library_lock import prepare_library_lock
 from audit_evidence import verify as verify_audit, digest as audit_digest
 import registry_package_audit as registry_audit
+import normalized_publication
 
 ROOT = Path(__file__).resolve().parents[1]
 LIBRARY_LOCK_ARTIFACT = "library-Cargo.lock"
@@ -30,12 +31,12 @@ def run(*args, capture=False):
     return result.stdout.strip() if capture else None
 
 
-def publish(command, *, before_upload=None):
+def publish(command, *, before_upload=None, cwd=None):
     """Retry only an explicit registry rate limit, at the server's stated time."""
     for attempt in range(12):
         if before_upload is not None:
             before_upload()
-        result = subprocess.run(command, cwd=ROOT, text=True, encoding="utf-8", errors="replace",
+        result = subprocess.run(command, cwd=cwd or ROOT, text=True, encoding="utf-8", errors="replace",
                                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         print(result.stdout, end="", flush=True)
         if result.returncode == 0:
@@ -59,7 +60,7 @@ def publish(command, *, before_upload=None):
     raise SystemExit("Repeated registry rate limits; resume this release later")
 
 
-def validate_archive(archive, expected_commit):
+def validate_archive(archive, expected_commit, *, normalized_publication=False):
     """Inspect the actual upload, including dereferenced license/readme contents."""
     with tarfile.open(archive) as source:
         records = source.getmembers()
@@ -67,7 +68,7 @@ def validate_archive(archive, expected_commit):
         if provenance is None:
             raise SystemExit("Packaged source has no Git provenance")
         vcs = json.load(source.extractfile(provenance))
-        if vcs["git"]["sha1"] != expected_commit or vcs["git"].get("dirty"):
+        if vcs["git"]["sha1"] != expected_commit or (vcs["git"].get("dirty") and not normalized_publication):
             raise SystemExit("Packaged source differs from the reviewed release commit")
         for entry in records:
             basename = entry.name.rsplit("/", 1)[-1].upper()
@@ -274,13 +275,13 @@ def validate_release_gate(options, plan, tag, head):
         raise SystemExit(f"Invalid dependency audit evidence: {failure}") from failure
 
 
-def validate_packaged_publication(options, plan, tag, head, archive):
+def validate_packaged_publication(options, plan, tag, head, archive, *, normalized=False):
     """Recheck trusted evidence and the newly packaged graph before every upload."""
     validate_release_gate(options, plan, tag, head)
     audit_directory = Path(options.provenance).parent / 'dependency-audit'
     try:
         database = json.loads((audit_directory / 'registry-package.json').read_text())['database']
-        registry_audit.verify(audit_directory, head, database, archive)
+        registry_audit.verify(audit_directory, head, database, archive, normalized_publication=normalized)
     except (OSError, ValueError, KeyError, TypeError, tarfile.TarError) as failure:
         raise SystemExit(f'Packaged registry audit rejected publication: {failure}') from failure
 
@@ -449,14 +450,23 @@ def main():
             # immutable registry upload, including Windows Git symlink failures.
             run("cargo", "package", "--locked", "--no-verify", "--manifest-path", package["manifest_path"], "-p", name)
             validate_archive(package_targets[name] / "package" / f"{name}-{package_version}.crate", head)
-            command = ["cargo", "publish", "--locked", "--manifest-path", package["manifest_path"], "-p", name]
+            audit_directory = Path(options.provenance).parent / 'dependency-audit'
+            checkout, publication_target = normalized_publication.prepare(
+                ROOT, audit_directory, package_targets[name] / 'package' / f'{name}-{package_version}.crate',
+                target, head)
+            transform = output / f'{name}-normalized-publication.json'
+            command = ['cargo', 'publish', '--locked', '--allow-dirty', '--registry', 'crates-io',
+                       '--manifest-path', str(checkout / 'Cargo.toml'), '-p', name]
             if name in cross:
-                command.append("--no-verify")
-            # Packaging can take time. Refuse a tag change immediately before
-            # each irreversible upload as well as at the initial gate.
-            publish(command, before_upload=lambda: validate_packaged_publication(
-                options, plan, tag, head,
-                package_targets[name] / 'package' / f'{name}-{package_version}.crate'))
+                command.append('--no-verify')
+            def before_upload():
+                # The dry run produces the actual publish temporary archive.
+                # The original path workspace never supplies its lock graph.
+                validate_release_gate(options, plan, tag, head)
+                candidate = normalized_publication.candidate(checkout, publication_target, audit_directory, head)
+                validate_packaged_publication(options, plan, tag, head, candidate, normalized=True)
+                normalized_publication.record_transform(audit_directory, candidate, head, transform)
+            publish(command, before_upload=before_upload, cwd=checkout)
         # Let sparse-index propagation finish before building dependent crates.
         ready = False
         for attempt in range(30):
@@ -479,7 +489,14 @@ def main():
         checksum = hashlib.sha256(archive.read_bytes()).hexdigest()
         if checksum != published["checksum"]:
             raise SystemExit(f"Registry checksum differs from packaged artifact: {name}")
-        validate_archive(archive, expected_commit)
+        audit_directory = Path(options.provenance).parent / 'dependency-audit'
+        database = json.loads((audit_directory / 'registry-package.json').read_text())['database']
+        transformed = registry_audit.verify_published(audit_directory, expected_commit, database, archive)
+        validate_archive(archive, expected_commit, normalized_publication=transformed)
+        if transformed:
+            transform = output / f'{name}-normalized-publication.json'
+            normalized_publication.record_transform(audit_directory, archive, expected_commit, transform, published=True)
+            artifacts.append(transform)
         artifacts.append(archive)
         release_packages.append({"name": name, "version": package_version,
                                  "checksum": checksum, "source_commit": expected_commit})

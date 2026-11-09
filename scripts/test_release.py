@@ -281,6 +281,9 @@ class ReleaseProvenanceTests(unittest.TestCase):
         (self.audit / 'registry-package.json').write_text(json.dumps({
             'schema': 1, 'kind': 'packaged-source-registry-graph', 'source_commit': self.product_commit,
             'tool': 'cargo-audit 0.22.2', 'database': 'd' * 40,
+            'source_files_sha256': {}, 'publication_transform': 'normalized-manifest-and-registry-lock',
+            'vcs_info': {'git': {'sha1': self.product_commit}},
+            'original_manifest_sha256': hashlib.sha256(normalized).hexdigest(),
             'manifest_sha256': hashlib.sha256(normalized).hexdigest(),
             'lock_sha256': hashlib.sha256(registry_lock).hexdigest(),
             'report_sha256': hashlib.sha256(raw).hexdigest()}))
@@ -369,6 +372,7 @@ class ReleaseProvenanceTests(unittest.TestCase):
         archive = self.base / 'repackaged.crate'
         with tarfile.open(archive, 'w:gz') as packaged:
             payloads = {'Cargo.toml': (self.audit / 'registry-package.toml').read_bytes(),
+                        'Cargo.toml.orig': (self.audit / 'registry-package.toml').read_bytes(),
                         'Cargo.lock': (self.audit / 'registry-package.lock').read_bytes() + b'# drift\n',
                         '.cargo_vcs_info.json': json.dumps({'git': {'sha1': self.product_commit}}).encode()}
             for name, content in payloads.items():
@@ -678,7 +682,7 @@ class SparseReleaseToolsTests(unittest.TestCase):
             self.assertTrue(base.is_relative_to(parent))
             repository = base / 'repository'
             repository.mkdir()
-            files = ('.gitattributes', 'scripts/release.py', 'scripts/library_lock.py', 'scripts/audit_evidence.py', 'scripts/registry_package_audit.py',
+            files = ('.gitattributes', 'scripts/release.py', 'scripts/library_lock.py', 'scripts/audit_evidence.py', 'scripts/registry_package_audit.py', 'scripts/normalized_publication.py',
                      'scripts/browser.cjs', 'examples/web/acceptance.js')
             for name in files:
                 target = repository / name

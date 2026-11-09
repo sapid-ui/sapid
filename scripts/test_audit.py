@@ -89,6 +89,7 @@ class AdvisoryGateTests(unittest.TestCase):
                 archive = directory / 'audit-root-0.0.0.crate'
                 payloads = {
                     'Cargo.toml': b'[package]\nname="audit-root"\nversion="0.0.0"\n',
+                    'Cargo.toml.orig': b'[package]\nname="audit-root"\nversion="0.0.0"\n',
                     'Cargo.lock': (project / 'Cargo.lock').read_bytes(),
                     '.cargo_vcs_info.json': json.dumps({'git': {'sha1': 'a' * 40}}).encode(),
                 }

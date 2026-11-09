@@ -177,6 +177,8 @@ jobs:
           node --test ../ci-support/benchmarks/wasm-size/test.cjs
           if ($LASTEXITCODE) { throw 'WASM consumer measurement regressions failed' }
           & ../ci-support/scripts/test-ci-cache.ps1 -ProjectRoot $PWD.Path
+          python -m unittest discover -s ../ci-support/scripts -p test_normalized_publication.py
+          if ($LASTEXITCODE) { throw 'Normalized publication dry-run regression failed' }
           python -m unittest discover -s ../ci-support/scripts -p test_registry_package_audit.py
           if ($LASTEXITCODE) { throw 'Packaged registry audit regressions failed' }
           python -m unittest discover -s ../ci-support/scripts -p test_audit_evidence.py
@@ -214,6 +216,7 @@ jobs:
             scripts/library_lock.py
             scripts/audit_evidence.py
             scripts/registry_package_audit.py
+            scripts/normalized_publication.py
             examples/web
           sparse-checkout-cone-mode: false
       - name: Actual widget browser acceptance
