@@ -1,6 +1,9 @@
 //! The documentation website is a Glory application, including its navigation.
 use glory::prelude::*;
-use glory::render::{Current, Role, SemanticId, Semantics, TextKind};
+use glory::render::{
+    Action, AnchorAlign, AnchorPlacement, Current, Event, EventKind, FocusMode, Layer, LayerFocus,
+    LayerPlacement, NodeId, Role, SemanticId, Semantics, TextKind,
+};
 use sapid::{ColorScheme, Theme};
 
 use crate::showcase_catalog::{ENTRIES, Entry, find};
@@ -74,6 +77,22 @@ fn sidebar(
             "Extensions",
         ];
         let mut children: Vec<Box<dyn Widget>> = Vec::new();
+        // The document drawer contains both site destinations and the catalogue.
+        // These links stay out of the desktop sidebar's tab sequence via CSS.
+        children.push(Box::new(view().class("site-sidebar-primary").fill((
+            link(
+                "Theme studio",
+                route("theme-studio", &theme),
+                "site-mobile-link",
+            ),
+            link("Overview", route("", &theme), "site-mobile-link"),
+            link("Glory", "https://glory.taidge.org/", "site-mobile-link"),
+            link(
+                "GitHub",
+                "https://github.com/sapid-ui/sapid",
+                "site-mobile-link",
+            ),
+        ))));
         children.push(Box::new(
             text().class("site-sidebar-heading").content("Widgets"),
         ));
@@ -136,7 +155,7 @@ fn sidebar(
     })
 }
 
-fn search_results(query: Cage<String>, theme: Theme) -> impl Widget {
+fn search_results(query: Cage<String>, opened: Cage<bool>, theme: Theme) -> impl Widget {
     widget(move |scope| {
         let theme = theme.clone();
         let items = scope.bond(move || {
@@ -149,8 +168,27 @@ fn search_results(query: Cage<String>, theme: Theme) -> impl Widget {
         });
         let none = scope.bond(move || !ENTRIES.iter().any(|entry| matching(entry, &query.get())));
         view()
+            .role(Role::Dialog)
+            .focus(FocusMode::Programmatic)
             .class("site-search-results")
             .name("Search results")
+            .semantics(Some(Box::new(Semantics {
+                id: Some(SemanticId::new("site-search-results").expect("static id")),
+                layer: Some(Layer {
+                    modal: false,
+                    focus: LayerFocus::Preserve,
+                    anchor: Some(SemanticId::new("site-search-anchor").expect("static id")),
+                    placement: LayerPlacement::Anchor(AnchorPlacement {
+                        align: AnchorAlign::End,
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            })))
+            .on(EventKind::Dismiss, move |_| {
+                opened.revise(|value| *value = false)
+            })
             .fill((
                 each(items).key(|id| *id).children(move |entry| {
                     let id = entry.value;
@@ -190,7 +228,18 @@ fn header(
         "Switch to dark theme"
     };
     widget(move |scope| {
-        let has_query = scope.bond(move || !query.get().trim().is_empty());
+        let opened = scope.cage(false);
+        let focused = scope.cage(None::<NodeId>);
+        let focus_loss = scope.cage(false);
+        // FocusWithin reports each physical source, not a boundary transition.
+        // Reconcile after the complete host tick so input -> result focus stays
+        // inside the search instead of retiring the newly focused result.
+        scope.effect(move || {
+            if focus_loss.get() && focused.get().is_none() {
+                opened.revise(|value| *value = false);
+            }
+        });
+        let has_query = scope.bond(move || opened.get() && !query.get().trim().is_empty());
         let is_empty = scope.bond(move || query.get().is_empty());
         let menu_name = scope.bond(move || {
             if menu.get() {
@@ -268,25 +317,52 @@ fn header(
                         text()
                             .class("site-version")
                             .content(format!("v{}", sapid::VERSION)),
-                        view().class("site-search").fill((
-                            when(is_empty, || {
-                                text()
-                                    .class("site-search-placeholder")
-                                    .content("Search widgets…")
-                            }),
-                            sapid::text_field()
-                                .theme(theme.clone())
-                                .name("Search widgets")
-                                .value(query)
-                                .on_value_change(move |value| {
-                                    query.revise(|current| {
-                                        *current = value.chars().take(96).collect()
-                                    })
+                        view()
+                            .class("site-search")
+                            .semantics(Some(Box::new(Semantics {
+                                id: Some(SemanticId::new("site-search-anchor").expect("static id")),
+                                ..Default::default()
+                            })))
+                            .on(EventKind::FocusWithin, move |event| {
+                                if let Event::FocusWithin {
+                                    node,
+                                    focused: active,
+                                } = event
+                                {
+                                    if active {
+                                        focused.revise(|value| *value = Some(node));
+                                        focus_loss.revise(|value| *value = false);
+                                    } else if focused.get_untracked() == Some(node) {
+                                        focused.revise(|value| *value = None);
+                                        focus_loss.revise(|value| *value = true);
+                                    }
+                                }
+                            })
+                            .fill((
+                                when(is_empty, || {
+                                    text()
+                                        .class("site-search-placeholder")
+                                        .content("Search widgets…")
                                 }),
-                            when(has_query, move || {
-                                search_results(query, search_theme.clone())
-                            }),
-                        )),
+                                sapid::text_field()
+                                    .theme(theme.clone())
+                                    .name("Search widgets")
+                                    .value(query)
+                                    .on_value_change(move |value| {
+                                        query.revise(|current| {
+                                            *current = value.chars().take(96).collect()
+                                        });
+                                        opened.revise(|value| *value = true);
+                                    })
+                                    .on(EventKind::FocusChanged, move |event| {
+                                        if matches!(event, Event::FocusChanged(true)) {
+                                            opened.revise(|value| *value = true);
+                                        }
+                                    }),
+                                when(has_query, move || {
+                                    search_results(query, opened, search_theme.clone())
+                                }),
+                            )),
                         palette_choices(&theme, &selected, catalog),
                         when(toggle_supported, move || {
                             link(
@@ -549,7 +625,12 @@ fn api_styles(entry: &'static Entry, theme: Theme) -> impl Widget {
     ))
 }
 
-fn documentation(entry: &'static Entry, theme: Theme, tab: Cage<u8>) -> impl Widget {
+fn documentation(
+    entry: &'static Entry,
+    theme: Theme,
+    tab: Cage<u8>,
+    main_ref: Cage<Option<NodeId>>,
+) -> impl Widget {
     widget(move |scope| {
         let mut tabs = Vec::new();
         for (index, label) in [
@@ -571,6 +652,7 @@ fn documentation(entry: &'static Entry, theme: Theme, tab: Cage<u8>) -> impl Wid
                     .unstyled()
                     .class(class)
                     .label(label)
+                    .pressed(scope.bond(move || tab.get() == index))
                     .on_press(move || tab.revise(|value| *value = index)),
             );
         }
@@ -584,7 +666,14 @@ fn documentation(entry: &'static Entry, theme: Theme, tab: Cage<u8>) -> impl Wid
         let styles_theme = theme.clone();
         let code_theme = theme.clone();
         let caps_theme = theme.clone();
-        view().role(Role::Main).class("site-doc-main").fill((
+        view().role(Role::Main).class("site-doc-main")
+        .focus(FocusMode::Programmatic)
+        .node_ref(main_ref)
+        .semantics(Some(Box::new(Semantics {
+            id: Some(SemanticId::new("site-main").expect("static id")),
+            ..Default::default()
+        })))
+        .fill((
             text().class("site-breadcrumb").content(format!("Widgets  /  {}", entry.group)),
             text().kind(TextKind::Heading(1)).class("site-title").content(label(entry)),
             text().class("site-lead").content(entry.description),
@@ -593,7 +682,7 @@ fn documentation(entry: &'static Entry, theme: Theme, tab: Cage<u8>) -> impl Wid
                 text().content("Package"), text().content("sapid"),
                 text().content("Built with"), text().content("Glory · handwritten Rust builders"),
             )),
-            view().class("site-doc-tabs").name("Documentation views").fill(tabs),
+            view().role(Role::Group).class("site-doc-tabs").name("Documentation views").fill(tabs),
             when(usage, move || {
                 let details = crate::showcase_examples::detail_sections(entry.slug, demo_theme.clone())
                     .into_iter()
@@ -664,6 +753,7 @@ pub fn site_with_state(
         let query = scope.cage(String::new());
         let menu = scope.cage(false);
         let tab = scope.cage(0u8);
+        let main_ref = scope.cage(None);
         let shell_revision = page.with(|page| page.shell_revision);
         let revisions = scope.bond(move || {
             page.with(|page| {
@@ -697,7 +787,6 @@ pub fn site_with_state(
             )
         });
         let selected = find(&selection);
-        let toc_selection = selection.clone();
         let content: Box<dyn Widget> = if selection == "theme-studio" {
             Box::new(crate::theme_studio::editor(
                 theme.clone(),
@@ -707,37 +796,48 @@ pub fn site_with_state(
         } else if selection.is_empty() {
             Box::new(crate::showcase_home::home(theme.clone()))
         } else if selected.is_some() {
-            Box::new(view().class("site-doc-layout").fill((
-                sidebar(query, page, theme.clone()),
-                each(revisions).key(|revision| *revision).children({
-                    let theme = theme.clone();
-                    move |_| {
-                        let entry = page
-                            .with(|page| find(&page.route.widget))
-                            .expect("document route");
-                        documentation(entry, theme.clone(), tab)
-                    }
-                }),
-                when(contents, move || {
-                    view()
-                        .role(Role::Navigation)
-                        .name("On this page")
-                        .class("site-toc")
-                        .fill((
-                            text().class("site-toc-title").content("Table of contents"),
-                            link("Usage", "#usage", "site-toc-link is-active"),
-                            link("Example source", "#example-source", "site-toc-link"),
-                            view().fill(
-                                crate::showcase_examples::detail_navigation(&toc_selection)
-                                    .into_iter()
-                                    .map(|(label, target)| link(label, target, "site-toc-link"))
-                                    .collect::<Vec<_>>(),
-                            ),
-                            link("Composition", "#composition", "site-toc-link"),
-                            link("Host support", "#support", "site-toc-link"),
-                        ))
-                }),
-            )))
+            Box::new(
+                view().class("site-doc-layout").fill((
+                    sidebar(query, page, theme.clone()),
+                    each(revisions).key(|revision| *revision).children({
+                        let theme = theme.clone();
+                        move |_| {
+                            let entry = page
+                                .with(|page| find(&page.route.widget))
+                                .expect("document route");
+                            documentation(entry, theme.clone(), tab, main_ref)
+                        }
+                    }),
+                    each(revisions)
+                        .key(|revision| *revision)
+                        .children(move |_| {
+                            let toc_selection = page.with(|page| page.route.widget.clone());
+                            when(contents, move || {
+                                view()
+                                    .role(Role::Navigation)
+                                    .name("On this page")
+                                    .class("site-toc")
+                                    .fill((
+                                        text().class("site-toc-title").content("Table of contents"),
+                                        link("Usage", "#usage", "site-toc-link"),
+                                        link("Example source", "#example-source", "site-toc-link"),
+                                        view().fill(
+                                            crate::showcase_examples::detail_navigation(
+                                                &toc_selection,
+                                            )
+                                            .into_iter()
+                                            .map(|(label, target)| {
+                                                link(label, target, "site-toc-link")
+                                            })
+                                            .collect::<Vec<_>>(),
+                                        ),
+                                        link("Composition", "#composition", "site-toc-link"),
+                                        link("Host support", "#support", "site-toc-link"),
+                                    ))
+                            })
+                        }),
+                )),
+            )
         } else {
             Box::new(
                 view().role(Role::Main).class("site-not-found").fill((
@@ -753,9 +853,26 @@ pub fn site_with_state(
                 )),
             )
         };
+        let weak = scope.downgrade();
         view()
             .class(class)
             .fill((
+                when(selected.is_some(), move || {
+                    let weak = weak.clone();
+                    sapid::anchor()
+                        .unstyled()
+                        .label("Skip to main content")
+                        .href("#site-main")
+                        .class("site-skip-link")
+                        .on_navigate(move |_| {
+                            let Some(scope) = weak.upgrade() else { return };
+                            if let Some(main) = main_ref.get_untracked()
+                                && let Err(error) = scope.action(Action::Focus(main))
+                            {
+                                scope.report_error(error);
+                            }
+                        })
+                }),
                 each(revisions).key(|revision| *revision).children({
                     let theme = theme.clone();
                     move |_| {
