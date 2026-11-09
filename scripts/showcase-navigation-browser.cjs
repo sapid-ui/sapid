@@ -29,6 +29,56 @@ const {chromium,base,outputPath,writeReport}=require('./showcase-browser-env.cjs
   await page.setViewportSize(viewport);
   ok(`${mode} Showcase aligns the header and documentation edges from 320 to 2200px`);
  };
+ const review=await context.newPage();review.on('pageerror',e=>report.errors.push(String(e)));
+ const reviewReady=widget=>review.waitForFunction(widget=>window.ready===true&&document.documentElement.getAttribute('data-sapid-widget')===widget,widget);
+ const focused=selector=>review.waitForFunction(selector=>document.querySelector(selector)===document.activeElement,selector);
+ const verifyToc=async()=>{
+  await review.locator('.site-toc').waitFor({state:'visible'});
+  await review.waitForFunction(()=>document.querySelectorAll('.site-toc-link').length>0);
+  const count=await review.locator('.site-toc-link').count();assert(count>0,'Documentation must expose a nonempty table of contents');
+  const missing=await review.locator('.site-toc-link').evaluateAll(links=>links.map(link=>link.getAttribute('href')).filter(href=>!href?.startsWith('#')||!document.getElementById(href.slice(1))));
+  assert.deepEqual(missing,[],'Every current table-of-contents destination must exist');
+ };
+ await review.goto(base+'/showcase.html?widget=button&theme=blue&scheme=dark');await reviewReady('button');
+ await review.keyboard.press('Tab');const skip=review.getByRole('link',{name:'Skip to main content',exact:true});await skip.waitFor({state:'visible'});await focused('.site-skip-link');
+ const skipBox=await skip.boundingBox();assert(skipBox.y>=0&&skipBox.y<review.viewportSize().height);
+ await review.keyboard.press('Enter');await focused('.site-doc-main');
+ await review.keyboard.press('Tab');await review.waitForFunction(()=>document.querySelector('.site-doc-main')?.contains(document.activeElement));
+ const docViews=review.getByRole('group',{name:'Documentation views',exact:true});
+ await docViews.getByRole('button',{name:'Properties',exact:true}).click();await review.waitForFunction(()=>{const group=document.querySelector('.site-doc-tabs');return [...group.querySelectorAll('button')].some(button=>button.textContent==='Properties'&&button.getAttribute('aria-pressed')==='true')&&[...group.querySelectorAll('button')].some(button=>button.textContent==='Documentation'&&button.getAttribute('aria-pressed')==='false')});
+ await review.getByRole('heading',{name:'Button properties',exact:true}).waitFor();
+ await docViews.getByRole('button',{name:'Documentation',exact:true}).click();await review.waitForFunction(()=>[...document.querySelectorAll('.site-doc-tabs button')].some(button=>button.textContent==='Documentation'&&button.getAttribute('aria-pressed')==='true'));await verifyToc();
+ for(const [name,slug] of [['TextInput','text-input'],['Slider','slider']]){await review.locator('.site-sidebar .site-nav-link').filter({hasText:new RegExp(`^${name}$`)}).click();await reviewReady(slug);await verifyToc();}
+ await review.goBack();await reviewReady('text-input');await verifyToc();await review.goBack();await reviewReady('button');await verifyToc();
+ await review.goForward();await reviewReady('text-input');await verifyToc();await review.goForward();await reviewReady('slider');await verifyToc();
+ ok('First Tab skips the catalogue into main; view buttons expose pressed state; TOC follows document navigation and history');
+ const search=review.getByRole('textbox',{name:'Search widgets',exact:true}),results=review.getByRole('dialog',{name:'Search results',exact:true});
+ const verifySearchGeometry=async()=>{
+  await review.waitForFunction(()=>{
+   const element=document.querySelector('.site-search-results'),target=document.getElementById('site-search-anchor');if(!element||!target)return false;
+   const panel=element.getBoundingClientRect(),anchor=target.getBoundingClientRect();
+   return getComputedStyle(element).position==='fixed'&&panel.width>0&&panel.height>0&&panel.left>=0&&panel.right<=innerWidth+1&&panel.top>=0&&panel.bottom<=innerHeight+1&&Math.abs(panel.top-anchor.bottom)<=20&&panel.left<anchor.right&&panel.right>anchor.left;
+  });
+  const geometry=await results.evaluate(element=>{
+   const panel=element.getBoundingClientRect(),anchor=document.getElementById('site-search-anchor').getBoundingClientRect();
+   return {position:getComputedStyle(element).position,left:panel.left,right:panel.right,top:panel.top,bottom:panel.bottom,anchorLeft:anchor.left,anchorRight:anchor.right,anchorBottom:anchor.bottom,width:innerWidth,height:innerHeight};
+  });
+  assert.equal(geometry.position,'fixed',JSON.stringify(geometry));
+  assert(geometry.left>=0&&geometry.right<=geometry.width+1&&geometry.top>=0&&geometry.bottom<=geometry.height+1,JSON.stringify(geometry));
+  assert(Math.abs(geometry.top-geometry.anchorBottom)<=20&&geometry.left<geometry.anchorRight&&geometry.right>geometry.anchorLeft,JSON.stringify(geometry));
+ };
+ await search.fill('Calendar');await results.waitFor();await verifySearchGeometry();await review.keyboard.press('Escape');await results.waitFor({state:'hidden'});assert.equal(await search.inputValue(),'Calendar');
+ await review.getByRole('heading',{name:'Slider',exact:true}).click();await search.focus();await results.waitFor();
+ await review.getByRole('heading',{name:'Slider',exact:true}).click();await results.waitFor({state:'hidden'});assert.equal(await search.inputValue(),'Calendar');
+ await search.focus();await results.waitFor();await review.keyboard.press('Tab');await review.waitForFunction(()=>document.querySelector('.site-search-results')?.contains(document.activeElement));
+ const resultCount=await results.locator('.site-search-result').count();for(let index=0;index<resultCount;index++)await review.keyboard.press('Tab');await results.waitFor({state:'hidden'});assert.equal(await search.inputValue(),'Calendar');
+ ok('Search Escape, outside click and Tab departure close the shared layer without clearing query; refocus reopens it');
+ await review.setViewportSize({width:390,height:844});await search.focus();await results.waitFor();await verifySearchGeometry();await review.keyboard.press('Escape');await results.waitFor({state:'hidden'});await review.getByRole('button',{name:'Open navigation',exact:true}).click();
+ await review.getByRole('navigation',{name:'Widget navigation',exact:true}).getByRole('link',{name:'Theme studio',exact:true}).click();await reviewReady('theme-studio');
+ ok('A narrow document drawer exposes Theme Studio directly');
+ await review.setViewportSize({width:1720,height:1200});await review.goto(base+'/ssr-button-blue-dark.html');await reviewReady('button');await verifyToc();
+ await review.keyboard.press('Tab');await focused('.site-skip-link');await review.keyboard.press('Enter');await focused('.site-doc-main');
+ await review.close();ok('Hydrated documents preserve the same skip-to-main keyboard path');
  await page.goto(base+'/showcase.html?widget=theme-studio&theme=blue&scheme=dark');await ready('theme-studio','blue','dark');
  await page.evaluate(()=>{window.navigationIdentity={token:'same-document'};});const initialDocuments=documents;
  await input('Theme name').fill('My retained workspace');await input('Base canvas').fill('#1');await until(()=>button('Save & preview').isDisabled(),'invalid draft must disable save');

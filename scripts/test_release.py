@@ -193,8 +193,10 @@ class ReleaseProvenanceTests(unittest.TestCase):
         (self.glory / 'source').write_text('validated Glory', encoding='utf-8')
         self.commit(self.glory)
         self.glory_commit = self.git(self.glory, 'rev-parse', 'HEAD')
+        for name in ('apace', 'takia', 'wingy'):
+            shutil.copytree(self.glory, self.base / name)
         self.git(self.root, 'init')
-        (self.root / '.gitignore').write_text('/Cargo.lock\n', encoding='utf-8')
+        (self.root / '.gitignore').write_text('/Cargo.lock\n/examples/*/Cargo.lock\n', encoding='utf-8')
         self.root_lock = self.root / 'Cargo.lock'
         self.root_lock.write_bytes(b'version = 4\n# Resolution used by successful checks\n')
         (self.root / 'Cargo.toml').write_text('[package]\nname="owned"\nversion="0.6.0"\n', encoding='utf-8')
@@ -231,7 +233,9 @@ class ReleaseProvenanceTests(unittest.TestCase):
                        'sourceHashes': {'acceptance.js': hashlib.sha256(source).hexdigest()},
                        'artifactHashes': {'product.js': hashlib.sha256((self.fixtures / 'product.js').read_bytes()).hexdigest()}}
         self.write_report()
+        self.write_audit()
         self.evidence = {
+            'dependency_audit_sha256': publisher.audit_digest(self.audit / 'provenance.json'),
             'schema': 1, 'repository': 'example/owned', 'workflow_run_id': '123',
             'workflow_run_attempt': '2', 'product_commit': self.product_commit,
             'acceptance_commit': self.acceptance_commit, 'glory_repository': 'example/glory',
@@ -250,6 +254,45 @@ class ReleaseProvenanceTests(unittest.TestCase):
         self.options = SimpleNamespace(provenance=self.provenance, expected_commit=self.product_commit,
                                        acceptance_commit=self.acceptance_commit, harness_root=self.harness,
                                        fixtures_root=self.fixtures)
+
+    def write_audit(self):
+        self.audit = self.base / 'dependency-audit'
+        self.audit.mkdir(exist_ok=True)
+        entries = []
+        for index, name in enumerate(('Cargo.lock', 'examples/web/Cargo.lock', 'examples/native/Cargo.lock')):
+            snapshot = self.audit / f'audit-{index}.lock'
+            snapshot.write_bytes(self.root_lock.read_bytes())
+            destination = self.root / name
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            if not destination.exists():
+                destination.write_bytes(snapshot.read_bytes())
+            entries.append({'lockfile': name, 'snapshot': snapshot.name, 'status': 'passed',
+                            'sha256': publisher.audit_digest(snapshot), 'database': 'd' * 40,
+                            'vulnerabilities': []})
+        (self.audit / 'results.json').write_text(json.dumps({
+            'tool': 'cargo-audit 0.22.2', 'complete': True, 'errors': [], 'locks': entries}))
+        normalized = b'[package]\nname="owned"\nversion="0.6.0"\n'
+        registry_lock = b'version = 4\n[[package]]\nname="owned"\nversion="0.6.0"\n'
+        raw = json.dumps({'vulnerabilities': {'found': False, 'count': 0, 'list': []},
+                          'settings': {}, 'database': {}}).encode()
+        for name, payload in [('registry-package.toml', normalized), ('registry-package.lock', registry_lock),
+                              ('registry-audit.json', raw)]:
+            (self.audit / name).write_bytes(payload)
+        (self.audit / 'registry-package.json').write_text(json.dumps({
+            'schema': 1, 'kind': 'packaged-source-registry-graph', 'source_commit': self.product_commit,
+            'tool': 'cargo-audit 0.22.2', 'database': 'd' * 40,
+            'source_files_sha256': {}, 'publication_transform': 'normalized-manifest-and-registry-lock',
+            'vcs_info': {'git': {'sha1': self.product_commit}},
+            'original_manifest_sha256': hashlib.sha256(normalized).hexdigest(),
+            'manifest_sha256': hashlib.sha256(normalized).hexdigest(),
+            'lock_sha256': hashlib.sha256(registry_lock).hexdigest(),
+            'report_sha256': hashlib.sha256(raw).hexdigest()}))
+        (self.audit / 'provenance.json').write_text(json.dumps({
+            'schema': 1, 'product_commit': self.product_commit,
+            'registry_package_sha256': publisher.audit_digest(self.audit / 'registry-package.json'),
+            'sources': {name: self.glory_commit for name in ('glory', 'apace', 'takia', 'wingy')},
+            'glory_repository': self.pin['repository'], 'workflow_run_id': '123',
+            'results_sha256': publisher.audit_digest(self.audit / 'results.json')}))
 
     @staticmethod
     def git(root, *args, cwd=None):
@@ -302,6 +345,60 @@ class ReleaseProvenanceTests(unittest.TestCase):
             registry.assert_not_called()
             upload.assert_not_called()
 
+    def test_missing_failed_and_tampered_audit_rejected_before_registry(self):
+        audit_path = self.audit / 'provenance.json'
+        original = audit_path.read_bytes()
+        audit_path.unlink()
+        self.assert_rejected_before_registry('Invalid dependency audit')
+        audit_path.write_bytes(original + b'\n')
+        self.assert_rejected_before_registry('provenance digest differs')
+        audit_path.write_bytes(original)
+        report_path = self.audit / 'results.json'
+        report = json.loads(report_path.read_text())
+        report['complete'] = False
+        report_path.write_text(json.dumps(report))
+        self.assert_rejected_before_registry('incomplete or failed')
+
+    def test_missing_or_changed_packaged_registry_evidence_blocks_publication(self):
+        proof = self.audit / 'registry-package.json'
+        payload = proof.read_bytes()
+        proof.unlink()
+        self.assert_rejected_before_registry('Invalid dependency audit')
+        proof.write_bytes(payload)
+        (self.audit / 'registry-package.lock').write_bytes(b'changed package resolution')
+        self.assert_rejected_before_registry('input or report digest differs')
+
+    def test_repackaged_graph_drift_is_rejected_before_the_upload_command(self):
+        archive = self.base / 'repackaged.crate'
+        with tarfile.open(archive, 'w:gz') as packaged:
+            payloads = {'Cargo.toml': (self.audit / 'registry-package.toml').read_bytes(),
+                        'Cargo.toml.orig': (self.audit / 'registry-package.toml').read_bytes(),
+                        'Cargo.lock': (self.audit / 'registry-package.lock').read_bytes() + b'# drift\n',
+                        '.cargo_vcs_info.json': json.dumps({'git': {'sha1': self.product_commit}}).encode()}
+            for name, content in payloads.items():
+                entry = tarfile.TarInfo('owned-0.6.0/' + name)
+                entry.size = len(content)
+                packaged.addfile(entry, io.BytesIO(content))
+        original = publisher.subprocess.run
+        uploads = []
+        def command(args, *rest, **kwargs):
+            if args[0] == 'cargo':
+                uploads.append(args)
+                return SimpleNamespace(returncode=0, stdout='')
+            return original(args, *rest, **kwargs)
+        with patch.object(publisher, 'ROOT', self.root), patch.dict(os.environ, self.environment), \
+             patch.object(publisher.subprocess, 'run', side_effect=command):
+            with self.assertRaisesRegex(SystemExit, 'Repackaged registry dependency graph differs'):
+                publisher.publish(['cargo', 'publish'], before_upload=lambda:
+                    publisher.validate_packaged_publication(self.options, self.plan, 'v0.6.0',
+                                                           self.product_commit, archive))
+        self.assertEqual(uploads, [])
+
+    def test_audit_must_cover_the_checked_publication_lock(self):
+        path = self.audit / 'audit-0.lock'
+        path.write_text('another lock resolution')
+        self.assert_rejected_before_registry('snapshot or result differs')
+
     def test_matching_evidence_accepts_lightweight_and_annotated_tags(self):
         self.gate()
         self.git(self.root, 'tag', '-f', '-a', 'v0.6.0', '-m', 'Annotated release')
@@ -333,8 +430,14 @@ class ReleaseProvenanceTests(unittest.TestCase):
         assets = [Path(value) for value in uploads[0][6:]]
         self.assertEqual([path.name for path in assets], [
             'browser-results-run-123-attempt-2.json', 'browser-provenance-run-123-attempt-2.json',
-            'library-Cargo-run-123-attempt-2.lock'])
-        self.assertEqual([path.read_bytes() for path in assets], [self.results.read_bytes(), self.provenance.read_bytes(), self.checked_lock.read_bytes()])
+            'library-Cargo-run-123-attempt-2.lock', 'dependency-provenance-run-123-attempt-2.json',
+            'dependency-results-run-123-attempt-2.json', *[f'dependency-audit-{index}-run-123-attempt-2.lock' for index in range(3)],
+            *[f'dependency-{Path(name).stem}-run-123-attempt-2{Path(name).suffix}' for name in publisher.registry_audit.FILES]])
+        expected = [self.results, self.provenance, self.checked_lock,
+                    self.audit / 'provenance.json', self.audit / 'results.json',
+                    *[self.audit / f'audit-{index}.lock' for index in range(3)],
+                    *[self.audit / name for name in publisher.registry_audit.FILES]]
+        self.assertEqual([path.read_bytes() for path in assets], [path.read_bytes() for path in expected])
 
     def test_missing_root_lock_is_restored_before_the_first_cargo_operation(self):
         self.root_lock.unlink()
@@ -399,6 +502,8 @@ class ReleaseProvenanceTests(unittest.TestCase):
         self.git(self.root, 'tag', '-f', 'v0.6.0')
         self.git(self.root, 'push', '--force', 'origin', 'refs/tags/v0.6.0')
         self.options.expected_commit = self.product_commit
+        self.write_audit()
+        self.evidence['dependency_audit_sha256'] = publisher.audit_digest(self.audit / 'provenance.json')
         self.evidence['product_commit'] = self.product_commit
         self.write_evidence()
         self.gate()
@@ -577,7 +682,7 @@ class SparseReleaseToolsTests(unittest.TestCase):
             self.assertTrue(base.is_relative_to(parent))
             repository = base / 'repository'
             repository.mkdir()
-            files = ('.gitattributes', 'scripts/release.py', 'scripts/library_lock.py',
+            files = ('.gitattributes', 'scripts/release.py', 'scripts/library_lock.py', 'scripts/audit_evidence.py', 'scripts/registry_package_audit.py', 'scripts/normalized_publication.py',
                      'scripts/browser.cjs', 'examples/web/acceptance.js')
             for name in files:
                 target = repository / name

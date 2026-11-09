@@ -4,6 +4,9 @@ import sys as _build_sys
 _build_sys.path.insert(0, str(_BuildPath(__file__).resolve().parents[1] / "scripts"))
 from local_build_paths import local_build_path
 import json
+import io
+import tarfile
+import registry_package_audit
 import hashlib
 import os
 from pathlib import Path
@@ -82,6 +85,25 @@ class AdvisoryGateTests(unittest.TestCase):
                 self.assertTrue(entry["vulnerabilities"], (entry, failed.stdout, failed.stderr))
                 self.assertEqual(entry["vulnerabilities"][0]["advisory"]["id"], "RUSTSEC-2020-0071", entry)
                 self.assertEqual(entry["status"], "failed")
+            def audit_packaged_graph():
+                archive = directory / 'audit-root-0.0.0.crate'
+                payloads = {
+                    'Cargo.toml': b'[package]\nname="audit-root"\nversion="0.0.0"\n',
+                    'Cargo.toml.orig': b'[package]\nname="audit-root"\nversion="0.0.0"\n',
+                    'Cargo.lock': (project / 'Cargo.lock').read_bytes(),
+                    '.cargo_vcs_info.json': json.dumps({'git': {'sha1': 'a' * 40}}).encode(),
+                }
+                with tarfile.open(archive, 'w:gz') as packaged:
+                    for name, content in payloads.items():
+                        entry = tarfile.TarInfo('audit-root-0.0.0/' + name)
+                        entry.size = len(content)
+                        packaged.addfile(entry, io.BytesIO(content))
+                return registry_package_audit.audit_archive(
+                    archive, directory / 'packaged-audit', AUDITOR, database, 'a' * 40)
+
+            with self.assertRaisesRegex(ValueError, 'failed or filtered'):
+                audit_packaged_graph()
+            self.assertFalse((directory / 'packaged-audit/registry-package.json').exists())
             for lock in project.rglob("Cargo.lock"):
                 lock.write_text(lock.read_text(encoding="utf-8").split('[[package]]\nname="time"')[0], encoding="utf-8")
             passed = audit()
@@ -89,6 +111,10 @@ class AdvisoryGateTests(unittest.TestCase):
             report = json.loads((output / "results.json").read_text(encoding="utf-8-sig"))
             self.assertTrue(report["complete"])
             self.assertTrue(all(entry["status"] == "passed" for entry in report["locks"]))
+
+            packaged_proof = audit_packaged_graph()
+            self.assertEqual(packaged_proof['kind'], 'packaged-source-registry-graph')
+            self.assertEqual(packaged_proof['database'], report['locks'][0]['database'])
 
             # A fresh checkout has no library root lock. Run the real gate,
             # including Cargo generation, while preserving both application locks.

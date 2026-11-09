@@ -1,0 +1,165 @@
+"""Packaged graph rejection tests without uploads or dependency builds."""
+import io
+import json
+from pathlib import Path
+import tarfile
+import tempfile
+from types import SimpleNamespace
+import unittest
+from unittest.mock import patch
+
+import registry_package_audit as audit
+
+
+class PackagedRegistryTests(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory(prefix='sapid-packaged-audit-')
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+        self.archive = self.root / 'sample.crate'
+        self.output = self.root / 'evidence'
+        self.manifest = b'[package]\nname="sample"\nversion="1.0.0"\n'
+        self.lock = b'version = 4\n[[package]]\nname="sample"\nversion="1.0.0"\n'
+        self.sources = {'src/lib.rs': b'pub fn sample() {}\n'}
+        self.write_archive()
+        self.report = {'vulnerabilities': {'found': False, 'count': 0, 'list': []},
+                       'settings': {}, 'database': {'last-commit': None}}
+
+    def write_archive(self, *, omit=(), commit='a' * 40, dirty=False, original=None, vcs_extra=None):
+        vcs = {'git': {'sha1': commit}}
+        if dirty:
+            vcs['git']['dirty'] = True
+        if vcs_extra:
+            vcs.update(vcs_extra)
+        files = {'Cargo.toml': self.manifest, 'Cargo.lock': self.lock,
+                 'Cargo.toml.orig': self.manifest if original is None else original,
+                 '.cargo_vcs_info.json': json.dumps(vcs).encode(), **self.sources}
+        with tarfile.open(self.archive, 'w:gz') as archive:
+            for name, content in files.items():
+                if name not in omit:
+                    entry = tarfile.TarInfo('sample-1.0.0/' + name)
+                    entry.size = len(content)
+                    archive.addfile(entry, io.BytesIO(content))
+
+    def produce(self, expected_commit='a' * 40):
+        def capture(command, **kwargs):
+            return 'cargo-audit 0.22.2\n' if command[0] == 'auditor' else 'd' * 40
+        response = SimpleNamespace(returncode=0, stdout=json.dumps(self.report))
+        with patch.object(audit.subprocess, 'check_output', side_effect=capture), \
+             patch.object(audit.subprocess, 'run', return_value=response):
+            return audit.audit_archive(self.archive, self.output, 'auditor', self.root / 'db', expected_commit)
+
+    def test_audits_packaged_source_without_resolving_an_unpublished_version(self):
+        proof = self.produce()
+        self.assertEqual(proof['kind'], 'packaged-source-registry-graph')
+        self.assertEqual(proof['lock_sha256'], audit.sha(self.lock))
+        audit.verify(self.output, 'a' * 40, 'd' * 40, self.archive)
+
+    def test_missing_package_lock_wrong_source_and_nonregistry_graph_refuse_before_tool(self):
+        with patch.object(audit.subprocess, 'run') as tool, \
+             patch.object(audit.subprocess, 'check_output') as commands:
+            self.write_archive(omit=('Cargo.lock',))
+            with self.assertRaises(KeyError):
+                audit.audit_archive(self.archive, self.output, 'auditor', self.root / 'db', 'a' * 40)
+            commands.assert_not_called()
+            self.write_archive(commit='b' * 40)
+            with self.assertRaisesRegex(ValueError, 'frozen source'):
+                audit.package_inputs(self.archive, 'a' * 40)
+            self.lock += b'[[package]]\nname="path-glory"\nversion="0.7.0"\n'
+            self.write_archive()
+            with self.assertRaisesRegex(ValueError, 'crates.io-only'):
+                audit.package_inputs(self.archive, 'a' * 40)
+            tool.assert_not_called()
+
+    def test_non_normalized_manifest_is_rejected(self):
+        self.manifest += b'[dependencies.glory]\nversion="=0.7.0"\npath="../glory"\n'
+        self.write_archive()
+        with self.assertRaisesRegex(ValueError, 'path or Git'):
+            audit.package_inputs(self.archive, 'a' * 40)
+
+    def test_vulnerable_or_filtered_report_cannot_receive_successful_proof(self):
+        for field, value in [('vulnerabilities', {'found': True, 'count': 1, 'list': ['vulnerable']}),
+                             ('settings', {'ignore': ['RUSTSEC-test']})]:
+            self.produce()  # A failed rescan must retire a previous success proof.
+            original = self.report[field]
+            self.report[field] = value
+            with self.assertRaisesRegex(ValueError, 'failed or filtered'):
+                self.produce()
+            self.assertFalse((self.output / 'registry-package.json').exists())
+            self.assertTrue((self.output / 'registry-audit.json').exists())
+            self.report[field] = original
+
+    def test_repackaged_manifest_and_lock_drift_stop_before_upload(self):
+        self.produce()
+        original = self.manifest
+        self.manifest += b'[features]\nextra=[]\n'
+        self.write_archive()
+        with self.assertRaisesRegex(ValueError, 'Repackaged'):
+            audit.verify(self.output, 'a' * 40, 'd' * 40, self.archive)
+        self.manifest = original
+        self.lock += b'# independently resolved package lock\n'
+        self.write_archive()
+        with self.assertRaisesRegex(ValueError, 'Repackaged'):
+            audit.verify(self.output, 'a' * 40, 'd' * 40, self.archive)
+
+    def test_normalized_dirty_exception_is_explicit_and_preserves_all_source_files(self):
+        self.produce()
+        self.write_archive(dirty=True)
+        with self.assertRaisesRegex(ValueError, 'frozen source'):
+            audit.verify(self.output, 'a' * 40, 'd' * 40, self.archive)
+        audit.verify(self.output, 'a' * 40, 'd' * 40, self.archive, normalized_publication=True)
+        original = dict(self.sources)
+        for changed in [{'src/lib.rs': b'changed source'}, {}, {**original, 'extra.rs': b'added source'}]:
+            self.sources = changed
+            self.write_archive(dirty=True)
+            with self.assertRaisesRegex(ValueError, 'source files differ'):
+                audit.verify(self.output, 'a' * 40, 'd' * 40, self.archive, normalized_publication=True)
+        self.sources = original
+        self.write_archive(dirty=True, commit='b' * 40)
+        with self.assertRaisesRegex(ValueError, 'frozen source'):
+            audit.verify(self.output, 'a' * 40, 'd' * 40, self.archive, normalized_publication=True)
+        self.write_archive(dirty=True, original=b'unexpected original manifest')
+        with self.assertRaisesRegex(ValueError, 'original manifest differs'):
+            audit.verify(self.output, 'a' * 40, 'd' * 40, self.archive, normalized_publication=True)
+        self.write_archive(dirty=True, vcs_extra={'path_in_vcs': 'unrelated'})
+        with self.assertRaisesRegex(ValueError, 'VCS metadata differs'):
+            audit.verify(self.output, 'a' * 40, 'd' * 40, self.archive, normalized_publication=True)
+
+    def test_duplicate_unsafe_and_nonregular_members_are_rejected(self):
+        for name, kind in [('sample-1.0.0/src/lib.rs', tarfile.REGTYPE),
+                           ('sample-1.0.0/../escape', tarfile.REGTYPE),
+                           ('/absolute', tarfile.REGTYPE), ('sample-1.0.0/link', tarfile.SYMTYPE)]:
+            self.write_archive()
+            with tarfile.open(self.archive) as original:
+                entries = [(entry, original.extractfile(entry).read()) for entry in original.getmembers()]
+            with tarfile.open(self.archive, 'w:gz') as changed:
+                for entry, content in entries:
+                    changed.addfile(entry, io.BytesIO(content))
+                extra = tarfile.TarInfo(name)
+                extra.type = kind
+                extra.linkname = 'src/lib.rs' if kind == tarfile.SYMTYPE else ''
+                changed.addfile(extra, io.BytesIO(b''))
+            with self.assertRaisesRegex(ValueError, 'duplicate, unsafe or nonregular'):
+                audit.package_inputs(self.archive, 'a' * 40)
+
+    def test_existing_original_and_normalized_packages_can_both_be_verified(self):
+        self.write_archive(original=b'original source manifest containing path dependencies')
+        self.produce()
+        self.assertFalse(audit.verify_published(self.output, 'a' * 40, 'd' * 40, self.archive))
+        self.write_archive(dirty=True)
+        self.assertTrue(audit.verify_published(self.output, 'a' * 40, 'd' * 40, self.archive))
+        self.write_archive(original=b'changed original source manifest')
+        with self.assertRaisesRegex(ValueError, 'Original package manifest differs'):
+            audit.verify_published(self.output, 'a' * 40, 'd' * 40, self.archive)
+
+    def test_wrong_database_and_tampered_raw_output_are_rejected(self):
+        self.produce()
+        with self.assertRaisesRegex(ValueError, 'advisory database'):
+            audit.verify(self.output, 'a' * 40, 'e' * 40)
+        (self.output / 'registry-audit.json').write_text('{}')
+        with self.assertRaisesRegex(ValueError, 'digest differs'):
+            audit.verify(self.output, 'a' * 40, 'd' * 40)
+
+
+if __name__ == '__main__':
+    unittest.main()

@@ -1,15 +1,41 @@
-# WASM size baseline
+# WASM size probes
 
-The shared Glory/Sapid matrix lives in the sibling Glory repository:
-[`benchmarks/wasm-size`](../../glory/benchmarks/wasm-size/README.md).
-The [full results and methodology](../../glory/docs/wasm-size-baseline.md)
-include 36 applications and checked-in before/optimized JSON baselines.
+The active consumer matrix belongs to Sapid:
+[`benchmarks/wasm-size`](../benchmarks/wasm-size/README.md). It has 17 cases:
+an empty WASM module, Glory text, unused Sapid, a reactive Sapid button,
+each of the six optional families both enabled-but-unused and actually mounted,
+and all six unused families together.
 
-It compares an empty module, an empty mounted app, text, reactive buttons,
-each optional feature enabled without use, all features enabled without use,
-and actual representative charts/code/files/editor/JSON/date widgets.
-Each representative is mounted in a browser; buttons update, the editor
-accepts input, and every application is unmounted to check cleanup.
+Builds inherit the caller environment and Cargo configuration. The runner reads
+`cargo metadata --no-deps --format-version 1` in the benchmark workspace and puts
+evidence beneath its returned `target_directory`. It does not redirect Cargo
+home, target, TEMP/TMP or install a shared cache root.
+
+```powershell
+node benchmarks/wasm-size/run.cjs --label baseline
+# Use the absolute report directory printed by the runner:
+node benchmarks/wasm-size/browser.cjs <run-directory>
+node benchmarks/wasm-size/run.cjs --label candidate --compare <baseline-report.json>
+```
+
+The current pipeline measures Rust release plus wasm-bindgen output, without a
+separate Binaryen pass. Reports record source commits and content digests for all
+five sibling repositories, dirty status, compiler/tool versions, release flags,
+lock hash, WASM and transitively imported JavaScript hashes, and raw/Brotli/gzip
+sizes. A changed source set during a run fails the measurement. Preserve the
+recorded source revisions and any dirty changes to reproduce that run.
+
+Browser checks mount every selected case, exercise the reactive button and
+editable inputs, and unmount to check cleanup. External structural/theme CSS,
+fonts and images are separate assets. These are transport-size probes; they do
+not measure allocator usage, frame time or complete widget-family parity.
+
+## Historical measurements
+
+The former 36-application Glory/Sapid matrix and its optimized results are
+historical evidence. Glory now maintains a Glory-only matrix; its current runner
+is not the Sapid consumer entry point. The values below used a different pipeline
+and must not be compared directly with a new active run.
 
 Unused Sapid and all six unused optional features produce byte-identical
 WASM to Glory text in the measured configuration. Using a widget retains its
@@ -27,17 +53,3 @@ construction, so standalone buttons no longer retain collection and roving
 focus behavior. Public behavior and default features are preserved; toolbar
 setup uses one boxed private hook. Existing action, button and toolbar tests,
 the full Sapid check script, and browser fixtures validate the change.
-
-Run from the Glory checkout, with the sibling Sapid checkout present:
-
-```powershell
-node benchmarks/wasm-size/run.cjs --label candidate --compare benchmarks/wasm-size/baseline.json --check
-node benchmarks/wasm-size/browser.cjs D:/BuildCache/sapid/wasm-size/runs/candidate
-```
-
-See the runner README for pinned CLI/tool installation. All outputs and
-compiler temporaries stay under `D:/BuildCache/sapid`; Cargo metadata verifies
-the target path. Reports preserve source hashes, dirty Git status, features,
-lockfile, WASM/JS hashes and raw/Brotli/gzip sizes. External structural/theme
-CSS, fonts and images are separate assets. These are transport-size probes;
-they do not measure allocator usage, rendering speed or full feature parity.

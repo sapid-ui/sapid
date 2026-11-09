@@ -24,7 +24,8 @@ class WorkspaceFormattingTests(unittest.TestCase):
             shutil.copyfile(ROOT / "scripts/format.ps1", root / "scripts/format.ps1")
             shutil.copyfile(ROOT / "rustfmt.toml", root / "rustfmt.toml")
             for relative, name in [(".", "sapid"), ("examples/web", "sapid-web-example"),
-                                   ("examples/native", "sapid-native-acceptance"), ("../sibling", "sibling")]:
+                                   ("examples/native", "sapid-native-acceptance"),
+                                   ("benchmarks/wasm-size", "sapid-wasm-size"), ("../sibling", "sibling")]:
                 package = root / relative
                 (package / "src").mkdir(parents=True)
                 dependency = '\n[dependencies]\nsibling = { path = "../sibling" }\n' if relative == "." else ""

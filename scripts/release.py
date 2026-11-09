@@ -17,6 +17,9 @@ import urllib.error
 import urllib.request
 
 from library_lock import prepare_library_lock
+from audit_evidence import verify as verify_audit, digest as audit_digest
+import registry_package_audit as registry_audit
+import normalized_publication
 
 ROOT = Path(__file__).resolve().parents[1]
 LIBRARY_LOCK_ARTIFACT = "library-Cargo.lock"
@@ -28,12 +31,12 @@ def run(*args, capture=False):
     return result.stdout.strip() if capture else None
 
 
-def publish(command, *, before_upload=None):
+def publish(command, *, before_upload=None, cwd=None):
     """Retry only an explicit registry rate limit, at the server's stated time."""
     for attempt in range(12):
         if before_upload is not None:
             before_upload()
-        result = subprocess.run(command, cwd=ROOT, text=True, encoding="utf-8", errors="replace",
+        result = subprocess.run(command, cwd=cwd or ROOT, text=True, encoding="utf-8", errors="replace",
                                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         print(result.stdout, end="", flush=True)
         if result.returncode == 0:
@@ -57,7 +60,7 @@ def publish(command, *, before_upload=None):
     raise SystemExit("Repeated registry rate limits; resume this release later")
 
 
-def validate_archive(archive, expected_commit):
+def validate_archive(archive, expected_commit, *, normalized_publication=False):
     """Inspect the actual upload, including dereferenced license/readme contents."""
     with tarfile.open(archive) as source:
         records = source.getmembers()
@@ -65,7 +68,7 @@ def validate_archive(archive, expected_commit):
         if provenance is None:
             raise SystemExit("Packaged source has no Git provenance")
         vcs = json.load(source.extractfile(provenance))
-        if vcs["git"]["sha1"] != expected_commit or vcs["git"].get("dirty"):
+        if vcs["git"]["sha1"] != expected_commit or (vcs["git"].get("dirty") and not normalized_publication):
             raise SystemExit("Packaged source differs from the reviewed release commit")
         for entry in records:
             basename = entry.name.rsplit("/", 1)[-1].upper()
@@ -98,9 +101,17 @@ def acceptance_assets(provenance, run_id, attempt):
     output = provenance.parent / "release-assets"
     output.mkdir(parents=True, exist_ok=True)
     assets = []
-    for source in (provenance.with_name("browser-results.json"), provenance,
-                   provenance.with_name(LIBRARY_LOCK_ARTIFACT)):
-        destination = output / f"{source.stem}-run-{run_id}-attempt-{attempt}{source.suffix}"
+    sources = [(source, source.stem) for source in
+               (provenance.with_name("browser-results.json"), provenance,
+                provenance.with_name(LIBRARY_LOCK_ARTIFACT))]
+    audit = provenance.parent / 'dependency-audit'
+    if audit.is_dir():
+        for name in ['provenance.json', 'results.json', *(f'audit-{index}.lock' for index in range(3)),
+                     *registry_audit.FILES]:
+            source = audit / name
+            sources.append((source, 'dependency-' + source.stem))
+    for source, stem in sources:
+        destination = output / f"{stem}-run-{run_id}-attempt-{attempt}{source.suffix}"
         payload = source.read_bytes()
         if destination.exists():
             if destination.read_bytes() != payload:
@@ -177,13 +188,20 @@ def record_acceptance(options):
         Path(options.provenance).with_name(LIBRARY_LOCK_ARTIFACT).write_bytes(library_lock)
     except OSError as failure:
         raise SystemExit("Acceptance requires the actual checked library lockfile") from failure
+    audit = Path(options.provenance).parent / 'dependency-audit'
+    try:
+        verify_audit(ROOT, audit, product, current_locks=True, current_sources=True, require_package=True)
+        dependency_audit_sha256 = audit_digest(audit / 'provenance.json')
+    except (OSError, ValueError, KeyError, TypeError) as failure:
+        raise SystemExit(f"Invalid dependency audit evidence: {failure}") from failure
     evidence = {"schema": 1, "repository": os.environ["GITHUB_REPOSITORY"],
                 "workflow_run_id": os.environ["GITHUB_RUN_ID"],
                 "workflow_run_attempt": os.environ["GITHUB_RUN_ATTEMPT"],
                 "product_commit": product, "glory_repository": dependency["repository"],
                 "glory_commit": glory, "acceptance_commit": harness,
                 "fixture_protocol": "HTTP/1.1", "browser_isolation": "suite",
-                "library_lock_sha256": hashlib.sha256(library_lock).hexdigest(), **digests}
+                "library_lock_sha256": hashlib.sha256(library_lock).hexdigest(),
+                "dependency_audit_sha256": dependency_audit_sha256, **digests}
     Path(options.provenance).write_text(json.dumps(evidence, indent=2) + "\n", encoding="utf-8")
 
 
@@ -245,6 +263,27 @@ def validate_release_gate(options, plan, tag, head):
         raise SystemExit("Publisher Glory checkout differs from the validated dependency pin")
     verify_remote_tag(tag, head)
     restore_checked_library_lock(options.provenance, evidence.get("library_lock_sha256"))
+    audit = Path(options.provenance).parent / 'dependency-audit'
+    try:
+        expected_audit = evidence.get('dependency_audit_sha256')
+        if not isinstance(expected_audit, str) or not re.fullmatch(r'[a-f0-9]{64}', expected_audit):
+            raise ValueError('Missing dependency audit digest')
+        verify_audit(ROOT, audit, head, expected_audit, current_sources=True, require_package=True)
+        if audit_digest(audit / 'audit-0.lock') != evidence['library_lock_sha256']:
+            raise ValueError('Dependency audit lock differs from checked publication lock')
+    except (OSError, ValueError, KeyError, TypeError) as failure:
+        raise SystemExit(f"Invalid dependency audit evidence: {failure}") from failure
+
+
+def validate_packaged_publication(options, plan, tag, head, archive, *, normalized=False):
+    """Recheck trusted evidence and the newly packaged graph before every upload."""
+    validate_release_gate(options, plan, tag, head)
+    audit_directory = Path(options.provenance).parent / 'dependency-audit'
+    try:
+        database = json.loads((audit_directory / 'registry-package.json').read_text())['database']
+        registry_audit.verify(audit_directory, head, database, archive, normalized_publication=normalized)
+    except (OSError, ValueError, KeyError, TypeError, tarfile.TarError) as failure:
+        raise SystemExit(f'Packaged registry audit rejected publication: {failure}') from failure
 
 
 def restore_checked_library_lock(provenance, expected_digest):
@@ -411,12 +450,23 @@ def main():
             # immutable registry upload, including Windows Git symlink failures.
             run("cargo", "package", "--locked", "--no-verify", "--manifest-path", package["manifest_path"], "-p", name)
             validate_archive(package_targets[name] / "package" / f"{name}-{package_version}.crate", head)
-            command = ["cargo", "publish", "--locked", "--manifest-path", package["manifest_path"], "-p", name]
+            audit_directory = Path(options.provenance).parent / 'dependency-audit'
+            checkout, publication_target = normalized_publication.prepare(
+                ROOT, audit_directory, package_targets[name] / 'package' / f'{name}-{package_version}.crate',
+                target, head)
+            transform = output / f'{name}-normalized-publication.json'
+            command = ['cargo', 'publish', '--locked', '--allow-dirty', '--registry', 'crates-io',
+                       '--manifest-path', str(checkout / 'Cargo.toml'), '-p', name]
             if name in cross:
-                command.append("--no-verify")
-            # Packaging can take time. Refuse a tag change immediately before
-            # each irreversible upload as well as at the initial gate.
-            publish(command, before_upload=lambda: verify_remote_tag(tag, head))
+                command.append('--no-verify')
+            def before_upload():
+                # The dry run produces the actual publish temporary archive.
+                # The original path workspace never supplies its lock graph.
+                validate_release_gate(options, plan, tag, head)
+                candidate = normalized_publication.candidate(checkout, publication_target, audit_directory, head)
+                validate_packaged_publication(options, plan, tag, head, candidate, normalized=True)
+                normalized_publication.record_transform(audit_directory, candidate, head, transform)
+            publish(command, before_upload=before_upload, cwd=checkout)
         # Let sparse-index propagation finish before building dependent crates.
         ready = False
         for attempt in range(30):
@@ -439,7 +489,14 @@ def main():
         checksum = hashlib.sha256(archive.read_bytes()).hexdigest()
         if checksum != published["checksum"]:
             raise SystemExit(f"Registry checksum differs from packaged artifact: {name}")
-        validate_archive(archive, expected_commit)
+        audit_directory = Path(options.provenance).parent / 'dependency-audit'
+        database = json.loads((audit_directory / 'registry-package.json').read_text())['database']
+        transformed = registry_audit.verify_published(audit_directory, expected_commit, database, archive)
+        validate_archive(archive, expected_commit, normalized_publication=transformed)
+        if transformed:
+            transform = output / f'{name}-normalized-publication.json'
+            normalized_publication.record_transform(audit_directory, archive, expected_commit, transform, published=True)
+            artifacts.append(transform)
         artifacts.append(archive)
         release_packages.append({"name": name, "version": package_version,
                                  "checksum": checksum, "source_commit": expected_commit})

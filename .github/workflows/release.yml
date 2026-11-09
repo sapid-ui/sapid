@@ -91,6 +91,9 @@ jobs:
             .gitattributes
             scripts/release.py
             scripts/library_lock.py
+            scripts/audit_evidence.py
+            scripts/registry_package_audit.py
+            scripts/normalized_publication.py
             scripts/browser.cjs
             examples/web/*acceptance.js
           sparse-checkout-cone-mode: false

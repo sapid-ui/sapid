@@ -26,6 +26,12 @@ on:
       dist_artifact:
         description: Release assets accepted in this run
         value: ${{ jobs.validate.outputs.dist_artifact }}
+      audit_artifact:
+        description: Exact dependency audit artifact for the accepted site
+        value: ${{ jobs.validate.outputs.audit_artifact }}
+      audit_digest:
+        description: Successful dependency audit provenance for the accepted site
+        value: ${{ jobs.validate.outputs.audit_digest }}
 permissions:
   contents: read
 concurrency:
@@ -46,6 +52,8 @@ jobs:
   validate:
     outputs:
       dist_artifact: sapid-showcase-dist-${{ github.run_attempt }}
+      audit_digest: ${{ steps.audit.outputs.digest }}
+      audit_artifact: sapid-showcase-dependency-audit-${{ github.run_attempt }}
     runs-on: windows-latest
     timeout-minutes: 120
     defaults:
@@ -131,6 +139,23 @@ jobs:
           ./scripts/install-build-tools.ps1 -BuildRoot $env:BUILD_ROOT -VerifyOnly | Out-Null
           node ../ci-support/scripts/showcase-acceptance.cjs --root . --directory "$env:BUILD_ROOT/showcase" --output "$env:BUILD_ROOT/acceptance" --mode $env:ACCEPTANCE_MODE --jobs=2
           if ($LASTEXITCODE) { throw 'Showcase acceptance failed' }
+      - name: Audit the exact showcase dependency resolution
+        id: audit
+        uses: ./ci-support/.github/actions/dependency-audit
+        with:
+          output: ${{ env.BUILD_ROOT }}/dependency-audit
+          subject: ${{ env.BUILD_ROOT }}/showcase/asset-hashes.json
+      - name: Bind dependency audit to the accepted site
+        run: |
+          python ../ci-support/scripts/audit_evidence.py verify --root . --directory "$env:BUILD_ROOT/dependency-audit" --expected-commit (git rev-parse HEAD) --subject "$env:BUILD_ROOT/showcase/asset-hashes.json" --current-locks --current-sources --require-package --export "$env:BUILD_ROOT/dependency-audit-export"
+          if ($LASTEXITCODE) { throw 'Showcase audit export failed' }
+      - name: Preserve accepted dependency audit
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: sapid-showcase-dependency-audit-${{ github.run_attempt }}
+          path: ${{ env.BUILD_ROOT }}/dependency-audit-export
+          if-no-files-found: error
+          retention-days: 7
       - name: Preserve accepted release assets
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:

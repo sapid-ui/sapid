@@ -1,0 +1,50 @@
+name: Audit the exact built dependency resolution
+description: Scan actual locks and bind successful evidence to immutable sources
+inputs:
+  output:
+    required: true
+    description: Audit output directory
+  subject:
+    default: ''
+    description: Optional built artifact manifest to bind
+outputs:
+  digest:
+    value: ${{ steps.audit.outputs.digest }}
+    description: Successful audit provenance SHA256
+runs:
+  using: composite
+  steps:
+    - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+      with:
+        path: ${{ github.workspace }}/sapid/target/verification/sapid/quality-tools
+        key: sapid-audit-v1-${{ runner.os }}-1.98.0-0.22.2
+    - id: audit
+      shell: pwsh
+      working-directory: sapid
+      env:
+        AUDIT_OUTPUT: ${{ inputs.output }}
+        AUDIT_SUBJECT: ${{ inputs.subject }}
+      run: |
+        $metadata = cargo metadata --no-deps --format-version 1 | ConvertFrom-Json
+        if ($LASTEXITCODE -or -not $metadata.target_directory) { throw 'Audit tool workspace metadata failed' }
+        $tools = Join-Path $metadata.target_directory 'verification/sapid/quality-tools'
+        $auditor = Join-Path $tools 'bin/cargo-audit.exe'
+        if (-not (Test-Path -LiteralPath $auditor) -or (& $auditor --version) -ne 'cargo-audit 0.22.2') {
+          cargo install cargo-audit --version 0.22.2 --locked --root $tools
+          if ($LASTEXITCODE) { throw 'Pinned audit tool installation failed' }
+        }
+        $scripts = [IO.Path]::GetFullPath((Join-Path $env:GITHUB_ACTION_PATH '../../../scripts'))
+        & (Join-Path $scripts 'audit-dependencies.ps1') -ProjectRoot $PWD.Path -BuildRoot $env:AUDIT_OUTPUT -AuditBinary $auditor
+        # Cargo generates this lock from the normalized registry manifest. It
+        # does not need the new Sapid version to exist on crates.io yet.
+        cargo package --locked --no-verify --manifest-path (Join-Path $PWD 'Cargo.toml') -p sapid
+        if ($LASTEXITCODE) { throw 'Packaged registry graph preparation failed' }
+        $package = $metadata.packages | Where-Object name -EQ 'sapid'
+        $archive = Join-Path $metadata.target_directory "package/sapid-$($package.version).crate"
+        python (Join-Path $scripts 'registry_package_audit.py') --archive $archive --directory $env:AUDIT_OUTPUT --auditor $auditor --database (Join-Path $env:AUDIT_OUTPUT 'advisory-db') --expected-commit (git rev-parse HEAD)
+        if ($LASTEXITCODE) { throw 'Packaged registry dependency audit failed' }
+        $arguments = @('record','--root',$PWD.Path,'--directory',$env:AUDIT_OUTPUT,'--require-package')
+        if ($env:AUDIT_SUBJECT) { $arguments += @('--subject',$env:AUDIT_SUBJECT) }
+        $digest = python (Join-Path $scripts 'audit_evidence.py') @arguments
+        if ($LASTEXITCODE) { throw 'Audit provenance validation failed' }
+        "digest=$digest" >> $env:GITHUB_OUTPUT

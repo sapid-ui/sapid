@@ -109,11 +109,260 @@ fn documentation_tab_switches_directly_to_host_support() {
         .unwrap();
     app.dispatch(capabilities, Event::Activate).unwrap();
     app.flush().unwrap();
+    let selected: Vec<_> = nodes(&app)
+        .into_iter()
+        .filter(|id| {
+            let tree = app.tree();
+            let descriptor = tree.node(*id).unwrap().descriptor.view();
+            descriptor.classes.iter().any(|class| class == "site-tab")
+                && descriptor
+                    .semantics
+                    .as_ref()
+                    .is_some_and(|value| value.pressed == Some(true))
+        })
+        .collect();
+    assert_eq!(selected, vec![capabilities]);
     assert!(nodes(&app).into_iter().any(|id| {
         matches!(
             app.tree().node(id).unwrap().descriptor.view().props,
             Props::Text(text) if text.content == "Host support"
         )
+    }));
+}
+
+#[test]
+fn document_shell_refreshes_its_toc_and_exposes_main_and_mobile_destinations() {
+    use sapid_web_example::showcase_navigation::{Page, State};
+    let app = App::memory();
+    let state = State::new(
+        app.scope(),
+        Page::builtin(Theme::blue_light(), "button".into()),
+        Vec::new(),
+        false,
+    );
+    app.mount(showcase::site_with_state(
+        Theme::blue_light(),
+        "button".into(),
+        state.catalog,
+        "button".into(),
+        state.notice,
+        state.editor,
+        state.page,
+    ))
+    .unwrap();
+    for (revision, widget, expected, absent) in [
+        (1, "text-input", "#text-controlled", "#button-variants"),
+        (2, "slider", "#bounds-and-step", "#text-controlled"),
+    ] {
+        state.page.revise(|page| {
+            page.route.widget = widget.into();
+            page.revision = revision;
+        });
+        app.flush().unwrap();
+        let hrefs: Vec<_> = nodes(&app)
+            .into_iter()
+            .filter_map(|id| {
+                let tree = app.tree();
+                let descriptor = tree.node(id).unwrap().descriptor.view();
+                if descriptor
+                    .classes
+                    .iter()
+                    .any(|class| class == "site-toc-link")
+                    && let Props::Link(link) = descriptor.props
+                {
+                    return Some(link.target.clone());
+                }
+                None
+            })
+            .collect();
+        assert!(
+            hrefs.iter().any(|href| href == expected),
+            "{widget}: {hrefs:?}"
+        );
+        assert!(!hrefs.iter().any(|href| href == absent));
+        assert!(nodes(&app).into_iter().any(|id| {
+            let tree = app.tree();
+            let descriptor = tree.node(id).unwrap().descriptor.view();
+            descriptor.semantics.as_ref().is_some_and(|semantics| {
+                semantics
+                    .id
+                    .as_ref()
+                    .is_some_and(|id| id.as_str() == "site-main")
+            }) && descriptor.focus == glory::render::FocusMode::Programmatic
+        }));
+    }
+    assert!(nodes(&app).into_iter().any(|id| {
+        matches!(app.tree().node(id).unwrap().descriptor.view().props,
+            Props::Link(link) if link.label == "Skip to main content" && link.target == "#site-main")
+    }));
+    assert!(nodes(&app).into_iter().any(|id| {
+        let tree = app.tree();
+        let descriptor = tree.node(id).unwrap().descriptor.view();
+        descriptor
+            .classes
+            .iter()
+            .any(|class| class == "site-mobile-link")
+            && matches!(descriptor.props, Props::Link(link) if link.label == "Theme studio")
+    }));
+}
+
+#[test]
+fn search_dismissal_keeps_query_and_focus_reopens_the_shared_layer() {
+    use glory::render::{
+        Capabilities, DismissReason, Error, Input, Mutation, Query, QueryToken, Receipt, Render,
+    };
+    use std::{cell::RefCell, rc::Rc};
+    struct Queued {
+        memory: glory::render::memory::Memory,
+        inputs: Rc<RefCell<Vec<Input>>>,
+    }
+    impl Render for Queued {
+        fn style_profile(&self) -> glory::style::Profile {
+            glory::style::Profile::RECORD
+        }
+        fn capabilities(&self) -> Capabilities {
+            Capabilities::default()
+        }
+        fn apply(&mut self, mutations: &[Mutation]) -> Result<Receipt, Error> {
+            self.memory.apply(mutations)
+        }
+        fn request(&mut self, query: Query, token: QueryToken) -> Result<(), Error> {
+            self.memory.request(query, token)
+        }
+        fn drain(&mut self, output: &mut Vec<Input>) {
+            output.extend(self.inputs.borrow_mut().drain(..));
+        }
+    }
+    let inputs = Rc::new(RefCell::new(Vec::new()));
+    let queue = inputs.clone();
+    let app = App::new(move |runtime| Queued {
+        memory: glory::render::memory::Memory::new(runtime),
+        inputs: queue,
+    });
+    let focus_tick = |events: &[(NodeId, bool)]| {
+        inputs
+            .borrow_mut()
+            .extend(events.iter().map(|&(node, focused)| Input::Event {
+                node,
+                event: Event::FocusChanged(focused),
+            }));
+        app.pump().unwrap();
+    };
+    app.mount(showcase::site(Theme::blue_light(), "button".into()))
+        .unwrap();
+    let editor = nodes(&app)
+        .into_iter()
+        .find(|id| {
+            let tree = app.tree();
+            let descriptor = tree.node(*id).unwrap().descriptor.view();
+            descriptor.name.as_deref() == Some("Search widgets")
+                && matches!(descriptor.props, Props::Input(_))
+        })
+        .unwrap();
+    let revision = match app.tree().node(editor).unwrap().descriptor.view().props {
+        Props::Input(value) => value.revision,
+        _ => unreachable!(),
+    };
+    app.dispatch(
+        editor,
+        Event::ValueChanged {
+            value: "Calendar".into(),
+            composing: false,
+            revision,
+        },
+    )
+    .unwrap();
+    app.flush().unwrap();
+    let panel = nodes(&app)
+        .into_iter()
+        .find(|id| {
+            app.tree()
+                .node(*id)
+                .unwrap()
+                .descriptor
+                .view()
+                .classes
+                .iter()
+                .any(|class| class == "site-search-results")
+        })
+        .unwrap();
+    let tree = app.tree();
+    let layer = tree
+        .node(panel)
+        .unwrap()
+        .descriptor
+        .view()
+        .semantics
+        .as_ref()
+        .unwrap()
+        .layer
+        .as_ref()
+        .unwrap();
+    assert!(!layer.modal);
+    assert_eq!(layer.focus, glory::render::LayerFocus::Preserve);
+    drop(tree);
+    app.dispatch(editor, Event::FocusChanged(true)).unwrap();
+    let result = nodes(&app)
+        .into_iter()
+        .find(|id| {
+            app.tree()
+                .node(*id)
+                .unwrap()
+                .descriptor
+                .view()
+                .classes
+                .iter()
+                .any(|class| class == "site-search-result")
+        })
+        .unwrap();
+    focus_tick(&[(editor, false), (result, true)]);
+    app.flush().unwrap();
+    assert!(
+        app.tree().node(panel).is_ok(),
+        "input -> result must keep the newly focused layer mounted"
+    );
+    focus_tick(&[(result, false), (editor, true)]);
+    app.flush().unwrap();
+    assert!(app.tree().node(panel).is_ok());
+    app.dispatch(panel, Event::Dismiss(DismissReason::Escape))
+        .unwrap();
+    app.flush().unwrap();
+    assert!(!nodes(&app).into_iter().any(|id| {
+        app.tree()
+            .node(id)
+            .unwrap()
+            .descriptor
+            .view()
+            .classes
+            .iter()
+            .any(|class| class == "site-search-results")
+    }));
+    assert!(
+        matches!(app.tree().node(editor).unwrap().descriptor.view().props, Props::Input(value) if value.value == "Calendar")
+    );
+    app.dispatch(editor, Event::FocusChanged(true)).unwrap();
+    app.flush().unwrap();
+    assert!(nodes(&app).into_iter().any(|id| {
+        app.tree()
+            .node(id)
+            .unwrap()
+            .descriptor
+            .view()
+            .classes
+            .iter()
+            .any(|class| class == "site-search-results")
+    }));
+    app.dispatch(editor, Event::FocusChanged(false)).unwrap();
+    app.flush().unwrap();
+    assert!(!nodes(&app).into_iter().any(|id| {
+        app.tree()
+            .node(id)
+            .unwrap()
+            .descriptor
+            .view()
+            .classes
+            .iter()
+            .any(|class| class == "site-search-results")
     }));
 }
 
