@@ -7,7 +7,7 @@ rust-version = "1.95"
 license = "Apache-2.0"
 description = "Composable semantic widgets for Glory"
 homepage = "https://sapid.taidge.org"
-repository = "https://github.com/sapid-ui/sapid"
+repository = "https://github.com/taidge/sapid"
 
 [features]
 default = []

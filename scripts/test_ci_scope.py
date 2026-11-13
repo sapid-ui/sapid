@@ -90,9 +90,9 @@ class GitScopeTests(unittest.TestCase):
                 return json.dumps({"workflow_runs": [invalid, valid]}).encode()
             return actual_git(*args, **kwargs)
         with patch.object(ci_scope.subprocess, "check_output", side_effect=api):
-            self.assertEqual(ci_scope.successful_base(self.base, "main", "sapid-ui/sapid"), self.base)
+            self.assertEqual(ci_scope.successful_base(self.base, "main", "taidge/sapid"), self.base)
         with patch.object(ci_scope.subprocess, "check_output", side_effect=OSError("offline")):
-            self.assertEqual(ci_scope.successful_base(self.base, "main", "sapid-ui/sapid"), "")
+            self.assertEqual(ci_scope.successful_base(self.base, "main", "taidge/sapid"), "")
 
     def test_missing_diffs_manual_schedules_and_release_refs_always_require_full(self):
         self.write("docs/notes.md", "notes")

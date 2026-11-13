@@ -89,7 +89,7 @@ fn sidebar(
             link("Glory", "https://glory.taidge.org/", "site-mobile-link"),
             link(
                 "GitHub",
-                "https://github.com/sapid-ui/sapid",
+                "https://github.com/taidge/sapid",
                 "site-mobile-link",
             ),
         ))));
@@ -309,7 +309,7 @@ fn header(
                             link("Glory", "https://glory.taidge.org/", "site-topnav-link"),
                             link(
                                 "GitHub",
-                                "https://github.com/sapid-ui/sapid",
+                                "https://github.com/taidge/sapid",
                                 "site-topnav-link",
                             ),
                         )),

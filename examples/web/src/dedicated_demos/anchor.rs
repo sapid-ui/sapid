@@ -13,6 +13,6 @@ pub fn demo(theme: sapid::Theme) -> impl Widget {
         sapid::anchor()
             .theme(theme)
             .label("Source code")
-            .href("https://github.com/sapid-ui/sapid"),
+            .href("https://github.com/taidge/sapid"),
     ))
 }

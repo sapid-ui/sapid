@@ -17,7 +17,7 @@ plan=json.loads((root/'release.json').read_text(encoding='utf-8'))
 target=Path(json.loads(subprocess.check_output(['cargo','metadata','--no-deps','--format-version','1'],cwd=root,text=True))['target_directory']).resolve()
 pass  # Build paths follow the caller configuration.
 directory=Path(tempfile.mkdtemp(prefix='registry-consumer-',dir=target.parent))
-is_sapid=plan['repository']=='sapid-ui/sapid'
+is_sapid=plan['repository']=='taidge/sapid'
 manifest=tomllib.loads((root/'Cargo.toml').read_text(encoding='utf-8'))
 version=manifest.get('workspace',{}).get('package',{}).get('version') or manifest['package']['version']
 glory_version=manifest['dependencies']['glory']['version'] if is_sapid else '='+version

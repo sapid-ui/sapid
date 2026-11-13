@@ -4,7 +4,7 @@
 
 ## 修复结果与验证记录
 
-F01–F11 的修复与回归均已完成，独立 agent 复核未发现剩余阻断。代码和本完成记录统一通过 [PR 14](https://github.com/sapid-ui/sapid/pull/14) 提交，实现提交为 `e27cb269ae4e41b8d3eb3a7ab6c47a5c321a11e5`；后续报告提交没有改动组件或发布实现。合并条件是最终提交的 [PR CI](https://github.com/sapid-ui/sapid/pull/14/checks) 全部通过且评审问题清零，实际合并与 CI 状态以 PR 为准。下方初始评审保留历史事实，源码链接固定到原始基线提交，不能将其缺陷描述视作仍未修复。
+F01–F11 的修复与回归均已完成，独立 agent 复核未发现剩余阻断。代码和本完成记录统一通过 [PR 14](https://github.com/taidge/sapid/pull/14) 提交，实现提交为 `e27cb269ae4e41b8d3eb3a7ab6c47a5c321a11e5`；后续报告提交没有改动组件或发布实现。合并条件是最终提交的 [PR CI](https://github.com/taidge/sapid/pull/14/checks) 全部通过且评审问题清零，实际合并与 CI 状态以 PR 为准。下方初始评审保留历史事实，源码链接固定到原始基线提交，不能将其缺陷描述视作仍未修复。
 
 | 项目 | 完成状态 | 修复及回归证据 |
 | --- | --- | --- |
@@ -78,7 +78,7 @@ Sapid 未使用、六类 feature 各自未使用及 all-unused 的 WASM 与 Glor
 | Takia | `c7dfdfa0ca7fc94cad5c57e2f5e93b1d91b3de03` |
 | Wingy | `d6613df82dbdf2409d9bfa8762ef431639e42fdc` |
 
-[生产依赖配置](https://github.com/sapid-ui/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/deploy/dependencies.json) 固定的 Glory 为 `f7875f1252d2419c414741f0b861195ea9bd0d56`，与本地版本不同。因此，本地通过不等于重新验证生产固定组合、Rust 1.95 MSRV、原生宿主或 registry-only 消费端。
+[生产依赖配置](https://github.com/taidge/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/deploy/dependencies.json) 固定的 Glory 为 `f7875f1252d2419c414741f0b861195ea9bd0d56`，与本地版本不同。因此，本地通过不等于重新验证生产固定组合、Rust 1.95 MSRV、原生宿主或 registry-only 消费端。
 
 证据标记：**运行复现**表示本轮实际执行；**源码确认**表示调用链或配置已确定；**改进机会**表示尚未证明构成实际故障或性能瓶颈。P1 为高影响紧急问题，P2 为应安排修复的问题，P3 为后续增强。严重度与实施顺序分别表达。
 
@@ -121,9 +121,9 @@ Sapid 未使用、六类 feature 各自未使用及 all-unused 的 WASM 与 Glor
 
 ### F01 异步取色结果绕过当前可操作状态
 
-[color_input.rs 第 414 行](https://github.com/sapid-ui/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/src/color_input.rs#L414) 定义 `picker_enabled = enabled && !readonly && !composing`，但 [第 948 行的完成路径](https://github.com/sapid-ui/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/src/color_input.rs#L948) 只检查 WeakScope 是否仍存活，随后执行 `editing.accept` 并发出 change、commit。控件改为只读或禁用不会自动销毁 Owner。
+[color_input.rs 第 414 行](https://github.com/taidge/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/src/color_input.rs#L414) 定义 `picker_enabled = enabled && !readonly && !composing`，但 [第 948 行的完成路径](https://github.com/taidge/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/src/color_input.rs#L948) 只检查 WeakScope 是否仍存活，随后执行 `editing.accept` 并发出 change、commit。控件改为只读或禁用不会自动销毁 Owner。
 
-**本轮复现：** 采用与 [现有取色测试](https://github.com/sapid-ui/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/tests/color_pickers.rs#L531) 相同的 Executor，在激活后、执行任务前，分别设置 readonly、disabled 或更新 controlled 源，再执行任务。应用回调接受提议，三个场景都得到：
+**本轮复现：** 采用与 [现有取色测试](https://github.com/taidge/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/tests/color_pickers.rs#L531) 相同的 Executor，在激活后、执行任务前，分别设置 readonly、disabled 或更新 controlled 源，再执行任务。应用回调接受提议，三个场景都得到：
 
 | 任务执行前的变化 | 执行后业务值 | change 次数 | commit 次数 |
 | --- | --- | --- | --- |
@@ -139,37 +139,37 @@ Sapid 未使用、六类 feature 各自未使用及 all-unused 的 WASM 与 Glor
 
 ### F02 Tree 拖放查询没有重新验证当前状态
 
-[tree.rs 第 1328 行](https://github.com/sapid-ui/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/src/tree.rs#L1328) 发出 Bounds 查询，完成回调通过当前模型的结构校验后调用 `on_drag_drop`，未复核整棵树 enabled、源和目标 disabled、请求代次或模型版本。普通选择路径使用的 [usable](https://github.com/sapid-ui/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/src/tree.rs#L342) 没有用于这里。[move_tree_node](https://github.com/sapid-ui/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/src/tree_model.rs#L387) 验证树结构与循环，不负责可操作状态。
+[tree.rs 第 1328 行](https://github.com/taidge/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/src/tree.rs#L1328) 发出 Bounds 查询，完成回调通过当前模型的结构校验后调用 `on_drag_drop`，未复核整棵树 enabled、源和目标 disabled、请求代次或模型版本。普通选择路径使用的 [usable](https://github.com/taidge/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/src/tree.rs#L342) 没有用于这里。[move_tree_node](https://github.com/taidge/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/src/tree_model.rs#L387) 验证树结构与循环，不负责可操作状态。
 
 触发序列为 Drop 请求发出、树被禁用但行 Owner 保留、旧查询响应到达。正确的请求 watermark 只能证明响应对应原查询，不能证明当前业务状态仍允许移动。宿主的 Owner 限制也不能排除 Owner 仍存活的情况。这一项已完成调用链核验，尚未执行延迟 Render 的运行复现。
 
-**改进：** 参考 [资源日程拖动](https://github.com/sapid-ui/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/src/schedule/resources/drag.rs#L78) 的 ready 与版本复核。捕获模型版本和请求代次；结果到达后重新检查源、目标和整树当前可用性，再执行 allow_drop 与应用回调。
+**改进：** 参考 [资源日程拖动](https://github.com/taidge/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/src/schedule/resources/drag.rs#L78) 的 ready 与版本复核。捕获模型版本和请求代次；结果到达后重新检查源、目标和整树当前可用性，再执行 allow_drop 与应用回调。
 
 **验收：** 测试 Render 延迟 Bounds，发出 Drop 后分别禁用树、禁用节点、同键替换模型、卸载行、发出新请求；用原 token 与合法 watermark 回复，过期请求不得触发 drop callback。保持合法拖放行为。
 
 ### F03 文档目录没有跟随站内切页更新
 
-[showcase.rs 第 700 行](https://github.com/sapid-ui/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/examples/web/src/showcase.rs#L700) 把初始 selection 存入 `toc_selection`，[目录生成](https://github.com/sapid-ui/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/examples/web/src/showcase.rs#L731) 始终使用它；正文则按 revision 读取当前 route。[browser.rs 第 130 行](https://github.com/sapid-ui/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/examples/web/src/showcase_host/browser.rs#L130) 为同主题的文档间导航保留 shell，目录所在的真值 When 分支也因此保留。
+[showcase.rs 第 700 行](https://github.com/taidge/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/examples/web/src/showcase.rs#L700) 把初始 selection 存入 `toc_selection`，[目录生成](https://github.com/taidge/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/examples/web/src/showcase.rs#L731) 始终使用它；正文则按 revision 读取当前 route。[browser.rs 第 130 行](https://github.com/taidge/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/examples/web/src/showcase_host/browser.rs#L130) 为同主题的文档间导航保留 shell，目录所在的真值 When 分支也因此保留。
 
 例如从 Button 内部切到 TextInput，正文更新，而目录仍可能含 `#button-variants` 等旧锚点。完整页面重新加载不会暴露这个路径。
 
-**改进：** 目录与正文一起按文档 revision 更新，从当前 route 读取组件。顺便修正 [Usage 永久 is-active](https://github.com/sapid-ui/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/examples/web/src/showcase.rs#L728)：明确采用当前 fragment 高亮，或移除会误导阅读位置的固定高亮。
+**改进：** 目录与正文一起按文档 revision 更新，从当前 route 读取组件。顺便修正 [Usage 永久 is-active](https://github.com/taidge/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/examples/web/src/showcase.rs#L728)：明确采用当前 fragment 高亮，或移除会误导阅读位置的固定高亮。
 
 **验收：** Button → TextInput → Slider 连续内部导航、浏览器前进/后退；逐个断言目录 href 在当前文档中有对应标题，并验证真实跳转。
 
 ### F04 缺少跳过长侧栏的键盘入口
 
-[正文前的 sidebar](https://github.com/sapid-ui/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/examples/web/src/showcase.rs#L711) 包含完整组件目录，其 [链接生成](https://github.com/sapid-ui/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/examples/web/src/showcase.rs#L106) 使用普通可聚焦 Anchor；[站点测试](https://github.com/sapid-ui/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/examples/web/tests/showcase_site.rs#L60) 记录了 181 个导航链接。当前 shell 没有 skip link。
+[正文前的 sidebar](https://github.com/taidge/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/examples/web/src/showcase.rs#L711) 包含完整组件目录，其 [链接生成](https://github.com/taidge/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/examples/web/src/showcase.rs#L106) 使用普通可聚焦 Anchor；[站点测试](https://github.com/taidge/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/examples/web/tests/showcase_site.rs#L60) 记录了 181 个导航链接。当前 shell 没有 skip link。
 
 Main/Navigation landmark 有利于屏幕阅读器定位，但只使用 Tab 的用户仍要穿过长导航才能到正文交互区。
 
-**改进：** 增加首次 Tab 可见的“跳至主内容”，复用 [AppShell 已有能力](https://github.com/sapid-ui/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/src/app_shell.rs#L937) 的语义和焦点处理思路。
+**改进：** 增加首次 Tab 可见的“跳至主内容”，复用 [AppShell 已有能力](https://github.com/taidge/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/src/app_shell.rs#L937) 的语义和焦点处理思路。
 
 **验收：** 页面首次 Tab 出现入口，Enter 后实际焦点进入主内容，下一次 Tab 到正文控件；验证直达、内部切页和 SSR/hydration。
 
 ### F05 开发质量审计不能替代固定生产组合的审计
 
-[quality.yml 第 48 行](https://github.com/sapid-ui/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/.github/workflows/quality.yml#L48) 和 [第 106 行](https://github.com/sapid-ui/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/.github/workflows/quality.yml#L106) 读取固定 Glory revision，实际 checkout 却使用 main；[产品检查](https://github.com/sapid-ui/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/.github/workflows/ci.yml#L142) 使用固定 revision。[开发版本说明](https://github.com/sapid-ui/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/docs/development-versions.md#L23) 明确允许开发 CI 跟踪 sibling main，因此不能简单断言所有 main 检查都是配置错误。
+[quality.yml 第 48 行](https://github.com/taidge/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/.github/workflows/quality.yml#L48) 和 [第 106 行](https://github.com/taidge/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/.github/workflows/quality.yml#L106) 读取固定 Glory revision，实际 checkout 却使用 main；[产品检查](https://github.com/taidge/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/.github/workflows/ci.yml#L142) 使用固定 revision。[开发版本说明](https://github.com/taidge/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/docs/development-versions.md#L23) 明确允许开发 CI 跟踪 sibling main，因此不能简单断言所有 main 检查都是配置错误。
 
 真正的缺口是：对 main 的 MSRV/RustSec 结果无法直接证明固定生产版本及其传递依赖通过相同验证。Glory main 移动后，同一 Sapid 提交重跑也可能得到不同输入。
 
@@ -179,7 +179,7 @@ Main/Navigation landmark 有利于屏幕阅读器定位，但只使用 Tab 的�
 
 ### F06 发布部署没有依赖精确审计结果
 
-[release.yml 第 45 行](https://github.com/sapid-ui/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/.github/workflows/release.yml#L45) 仅调用 ci.yml，再允许 publish；RustSec 在独立 [quality.yml](https://github.com/sapid-ui/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/.github/workflows/quality.yml#L153) 执行，触发条件不含 tag push。[站点部署的 needs](https://github.com/sapid-ui/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/.github/workflows/ci.yml#L255) 也未包含质量审计结果。
+[release.yml 第 45 行](https://github.com/taidge/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/.github/workflows/release.yml#L45) 仅调用 ci.yml，再允许 publish；RustSec 在独立 [quality.yml](https://github.com/taidge/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/.github/workflows/quality.yml#L153) 执行，触发条件不含 tag push。[站点部署的 needs](https://github.com/taidge/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/.github/workflows/ci.yml#L255) 也未包含质量审计结果。
 
 因此，从仓库工作流看，独立审计失败或尚未完成，并不必然阻止本次发布/部署。没有检查远端分支保护或组织策略，也没有据此断言产品目前含已知漏洞。
 
@@ -189,7 +189,7 @@ Main/Navigation landmark 有利于屏幕阅读器定位，但只使用 Tab 的�
 
 ### F07 WASM 体积基线文档无法按当前入口重现
 
-[wasm-size.md](https://github.com/sapid-ui/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/docs/wasm-size.md#L3) 仍把 Sapid 的 36 应用矩阵描述为 sibling Glory 的当前入口，[第 35 行](https://github.com/sapid-ui/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/docs/wasm-size.md#L35) 的命令和第 39 行仍指向已停用的共享缓存目录。当前本地 Glory 的 `benchmarks/wasm-size/README.md` 已声明活跃矩阵只含 Glory；其 cases.json 也没有 Sapid case。
+[wasm-size.md](https://github.com/taidge/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/docs/wasm-size.md#L3) 仍把 Sapid 的 36 应用矩阵描述为 sibling Glory 的当前入口，[第 35 行](https://github.com/taidge/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/docs/wasm-size.md#L35) 的命令和第 39 行仍指向已停用的共享缓存目录。当前本地 Glory 的 `benchmarks/wasm-size/README.md` 已声明活跃矩阵只含 Glory；其 cases.json 也没有 Sapid case。
 
 这不会推翻历史测量数值，但读者不能把当前入口当作 Sapid 0.7.1 的可执行性能门禁。该发现针对当前 sibling 组合，不推断所有历史发布版本的 runner 行为。
 
@@ -199,7 +199,7 @@ Main/Navigation landmark 有利于屏幕阅读器定位，但只使用 Tab 的�
 
 ### F08 搜索面板缺少独立关闭状态
 
-[has_query](https://github.com/sapid-ui/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/examples/web/src/showcase.rs#L194) 只取决于查询是否非空，[搜索框与结果分支](https://github.com/sapid-ui/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/examples/web/src/showcase.rs#L277) 没有 Escape、外部关闭或独立 opened 状态。结果面板采用浮动定位，移动端采用 fixed；清空或导航之外缺少保留查询的关闭路径。
+[has_query](https://github.com/taidge/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/examples/web/src/showcase.rs#L194) 只取决于查询是否非空，[搜索框与结果分支](https://github.com/taidge/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/examples/web/src/showcase.rs#L277) 没有 Escape、外部关闭或独立 opened 状态。结果面板采用浮动定位，移动端采用 fixed；清空或导航之外缺少保留查询的关闭路径。
 
 **改进：** 分离 query 与 opened，使用共享非模态 Layer/Popover 处理关闭与焦点。不要在展示站手写第二套层行为。
 
@@ -207,7 +207,7 @@ Main/Navigation landmark 有利于屏幕阅读器定位，但只使用 Tab 的�
 
 ### F09 错误输入的焦点强调与正常输入不一致
 
-[sapid.css 第 34 行](https://github.com/sapid-ui/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/styles/sapid.css#L34) 去掉 TextField 的 outline/shadow，[第 38 行](https://github.com/sapid-ui/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/styles/sapid.css#L38) 仅为非 invalid 输入提供焦点边框变化；[TextField 默认边框](https://github.com/sapid-ui/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/src/text_field.rs#L333) 在 invalid 时固定为 danger。完整样式检索未找到补偿规则。
+[sapid.css 第 34 行](https://github.com/taidge/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/styles/sapid.css#L34) 去掉 TextField 的 outline/shadow，[第 38 行](https://github.com/taidge/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/styles/sapid.css#L38) 仅为非 invalid 输入提供焦点边框变化；[TextField 默认边框](https://github.com/taidge/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/src/text_field.rs#L333) 在 invalid 时固定为 danger。完整样式检索未找到补偿规则。
 
 Chromium 最小用例中，Tab 聚焦 invalid 输入时 `:focus-visible=true`，但 outline 为 none/0px、shadow 为 none，聚焦前后边框均为 `rgb(201,42,42)`；正常输入对照组聚焦后边框变为 `rgb(34,139,230)`。
 
@@ -217,7 +217,7 @@ Chromium 最小用例中，Tab 聚焦 invalid 输入时 `:focus-visible=true`，
 
 ### F10 移动文档菜单的信息架构不完整
 
-[site.css 第 210 行](https://github.com/sapid-ui/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/examples/web/site.css#L210) 在窄屏隐藏 topnav，文档页菜单展示组件侧栏；包含 Theme Studio/Glory 的 [mobile nav](https://github.com/sapid-ui/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/examples/web/src/showcase.rs#L784) 只在首页或 Theme Studio 生成。
+[site.css 第 210 行](https://github.com/taidge/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/examples/web/site.css#L210) 在窄屏隐藏 topnav，文档页菜单展示组件侧栏；包含 Theme Studio/Glory 的 [mobile nav](https://github.com/taidge/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/examples/web/src/showcase.rs#L784) 只在首页或 Theme Studio 生成。
 
 **改进：** 统一移动导航，使组件目录和主站入口都可直接访问，减少从组件文档进入 Theme Studio 的回首页绕路。
 
@@ -225,7 +225,7 @@ Chromium 最小用例中，Tab 聚焦 invalid 输入时 `:focus-visible=true`，
 
 ### F11 文档视图按钮没有公开当前选中状态
 
-[showcase.rs 第 569 行](https://github.com/sapid-ui/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/examples/web/src/showcase.rs#L569) 的 Documentation、Properties、Styles API、Source、Capabilities 是普通 Button，当前项通过 is-active 样式表达，没有 pressed 或 tab selected/panel 关系。
+[showcase.rs 第 569 行](https://github.com/taidge/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/examples/web/src/showcase.rs#L569) 的 Documentation、Properties、Styles API、Source、Capabilities 是普通 Button，当前项通过 is-active 样式表达，没有 pressed 或 tab selected/panel 关系。
 
 **改进：** 优先复用 Sapid Tabs。若产品选择普通切换按钮组，则公开当前按压状态并清楚关联内容，不要只增加角色而遗漏对应键盘行为。
 
@@ -235,9 +235,9 @@ Chromium 最小用例中，Tab 聚焦 invalid 输入时 `:focus-visible=true`，
 
 ### 先补代表性测量，再决定索引或虚拟化
 
-DataTable [实际筛选路径](https://github.com/sapid-ui/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/src/data_table/model.rs#L239) 会在过滤变化时对访问到的 cell 做 to_lowercase。现有 [派生 benchmark](https://github.com/sapid-ui/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/examples/data_table_derivation_bench.rs#L82) 重点是翻页与隐藏列。建议增加连续筛选、ASCII/Unicode、无匹配和末列匹配的耗时、分配量与浏览器输入延迟；只有收益明确时才增加受总内存预算约束的规范化索引。
+DataTable [实际筛选路径](https://github.com/taidge/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/src/data_table/model.rs#L239) 会在过滤变化时对访问到的 cell 做 to_lowercase。现有 [派生 benchmark](https://github.com/taidge/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/examples/data_table_derivation_bench.rs#L82) 重点是翻页与隐藏列。建议增加连续筛选、ASCII/Unicode、无匹配和末列匹配的耗时、分配量与浏览器输入延迟；只有收益明确时才增加受总内存预算约束的规范化索引。
 
-Tree [each(rows)](https://github.com/sapid-ui/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/src/tree.rs#L1121) 挂载当前展开的全部行，高度只形成滚动容器。[Tree 文档](https://github.com/sapid-ui/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/docs/tree.md#L88) 已说明有限树和虚拟化边界，因此这不是缺失已承诺功能。建议测 512/2048 行、复杂标签、展开/收起循环的节点、Owner、内存与输入到绘制耗时，再决定是否提供可选窗口化；不能以破坏 Tree 语义和键盘定位为代价。
+Tree [each(rows)](https://github.com/taidge/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/src/tree.rs#L1121) 挂载当前展开的全部行，高度只形成滚动容器。[Tree 文档](https://github.com/taidge/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/docs/tree.md#L88) 已说明有限树和虚拟化边界，因此这不是缺失已承诺功能。建议测 512/2048 行、复杂标签、展开/收起循环的节点、Owner、内存与输入到绘制耗时，再决定是否提供可选窗口化；不能以破坏 Tree 语义和键盘定位为代价。
 
 补一组小而稳定的运行时基线：资源周日程、DataTable 搜索、Tree 大展开、富文本历史和反复挂载卸载。记录 p50/p95、负载大小、宿主、源码哈希与测量环境；先建立历史分布，再定义回归阈值。传输体积、纯模型 CPU 时间和浏览器交互延迟应分开记录。
 
@@ -253,9 +253,9 @@ F01/F02 的共性是 Owner 存活不等于操作仍被允许。先修具体路�
 
 | 方向 | 当前证据 | 建议与验收 |
 | --- | --- | --- |
-| 移动端可读性 | [site.css 第 260 行](https://github.com/sapid-ui/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/examples/web/site.css#L260) 一带将 mosaic eyebrow、提示、checkbox 缩至 8–11px | 优先减少装饰卡片或改布局，保持 live 表单文字可读；检查 320/360/390px、200% 字号和长文本 |
-| 图标一致性 | [showcase.rs 第 294 行](https://github.com/sapid-ui/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/examples/web/src/showcase.rs#L294) 一带使用太阳、月亮、菜单等 Unicode 字符 | 统一矢量图标的描边、光学尺寸和基线，保留已有 accessible name；对照 Windows 字体与不同浏览器 |
-| 触控密度 | [palette 24px](https://github.com/sapid-ui/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/examples/web/site.css#L336)、主题/menu 控件 32px，与主 CTA 44–46px 并存 | 可以保持小圆形视觉并扩大实际命中区域；检查相邻点击区、焦点轮廓和窄屏排布，不仅凭尺寸判断合规 |
+| 移动端可读性 | [site.css 第 260 行](https://github.com/taidge/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/examples/web/site.css#L260) 一带将 mosaic eyebrow、提示、checkbox 缩至 8–11px | 优先减少装饰卡片或改布局，保持 live 表单文字可读；检查 320/360/390px、200% 字号和长文本 |
+| 图标一致性 | [showcase.rs 第 294 行](https://github.com/taidge/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/examples/web/src/showcase.rs#L294) 一带使用太阳、月亮、菜单等 Unicode 字符 | 统一矢量图标的描边、光学尺寸和基线，保留已有 accessible name；对照 Windows 字体与不同浏览器 |
+| 触控密度 | [palette 24px](https://github.com/taidge/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/examples/web/site.css#L336)、主题/menu 控件 32px，与主 CTA 44–46px 并存 | 可以保持小圆形视觉并扩大实际命中区域；检查相邻点击区、焦点轮廓和窄屏排布，不仅凭尺寸判断合规 |
 | 状态表达 | 目录 Usage 固定高亮、文档视图按钮仅样式选中 | 统一 hover、focus、selected、invalid、disabled 的视觉层次，并让语义状态与视觉一致 |
 | 响应式信息层级 | 文档侧栏、目录、搜索与主导航在窄屏采用不同隐藏策略 | 从“组件文档直达”测试完整任务，而不是仅检查页面无横向溢出；确保重要入口仍可发现 |
 
@@ -263,9 +263,9 @@ F01/F02 的共性是 Owner 存活不等于操作仍被允许。先修具体路�
 
 ## 安全增强与国际化边界
 
-[deploy/_headers](https://github.com/sapid-ui/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/deploy/_headers#L3) 定义 nosniff 与 Referrer-Policy，仓库未定义可验证的 CSP/嵌入策略。未检查 Cloudflare 外部规则，不能声称线上响应缺失。可先以 Report-Only 验证脚本与样式来源，再按实际需求配置 frame-ancestors；WASM bootloader、动态主题样式、SSR seed、文件 blob 预览均需纳入兼容性验证。相关机制见 [W3C CSP Level 3 草案](https://www.w3.org/TR/CSP3/)。这是纵深增强，非本轮确认漏洞。
+[deploy/_headers](https://github.com/taidge/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/deploy/_headers#L3) 定义 nosniff 与 Referrer-Policy，仓库未定义可验证的 CSP/嵌入策略。未检查 Cloudflare 外部规则，不能声称线上响应缺失。可先以 Report-Only 验证脚本与样式来源，再按实际需求配置 frame-ancestors；WASM bootloader、动态主题样式、SSR seed、文件 blob 预览均需纳入兼容性验证。相关机制见 [W3C CSP Level 3 草案](https://www.w3.org/TR/CSP3/)。这是纵深增强，非本轮确认漏洞。
 
-[显式 UI 环境](https://github.com/sapid-ui/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/docs/environment.md#L3) 已明确 Locale、RTL 和主题为应用显式消费的配置，不是自动修改所有控件的全局 Provider。因此不把“挂 Provider 后所有已有控件没有自动翻译”列为缺陷。后续可提供完整中文/阿拉伯文表单与弹层示例，检查内部提示词、日期数字、长文本和 RTL 几何，明确哪些字段必须由应用传入。OS IME 与真实屏幕阅读器应单列人工验收，不由 Chromium AX 或内存测试代替。
+[显式 UI 环境](https://github.com/taidge/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/docs/environment.md#L3) 已明确 Locale、RTL 和主题为应用显式消费的配置，不是自动修改所有控件的全局 Provider。因此不把“挂 Provider 后所有已有控件没有自动翻译”列为缺陷。后续可提供完整中文/阿拉伯文表单与弹层示例，检查内部提示词、日期数字、长文本和 RTL 几何，明确哪些字段必须由应用传入。OS IME 与真实屏幕阅读器应单列人工验收，不由 Chromium AX 或内存测试代替。
 
 ## 已有防护与历史问题复核
 
@@ -278,11 +278,11 @@ F01/F02 的共性是 Owner 存活不等于操作仍被允许。先修具体路�
 
 | 历史事项 | 当前实现证据 | 本轮判断 |
 | --- | --- | --- |
-| 资源日程重复展开 | [resources/snapshot.rs](https://github.com/sapid-ui/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/src/schedule/resources/snapshot.rs#L26) 一次 expand，传给 expanded 布局 | 已修复，不重报历史倍数和耗时 |
-| DataTable 翻页/隐藏列全量重新匹配 | [local.rs](https://github.com/sapid-ui/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/src/data_table/local.rs#L48) 按数据 Rc/filter/sort 缓存 Matches，并有派生次数测试 | 已修复 |
-| Plot 关闭表格仍格式化 | [plot_widget.rs](https://github.com/sapid-ui/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/src/plot_widget.rs#L270) 仅在 show_table 时构造 tables | 已修复 |
-| 公共错误缺少标准接口 | [DataTableError](https://github.com/sapid-ui/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/src/data_table/model.rs#L120)、[TreeError](https://github.com/sapid-ui/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/src/tree_model.rs#L112) 已有 Display/Error | 不重报 |
-| 独立示例格式检查缺失或失败 | [format.ps1](https://github.com/sapid-ui/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/scripts/format.ps1) 覆盖三个 workspace；本轮通过 | 当前检查通过 |
+| 资源日程重复展开 | [resources/snapshot.rs](https://github.com/taidge/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/src/schedule/resources/snapshot.rs#L26) 一次 expand，传给 expanded 布局 | 已修复，不重报历史倍数和耗时 |
+| DataTable 翻页/隐藏列全量重新匹配 | [local.rs](https://github.com/taidge/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/src/data_table/local.rs#L48) 按数据 Rc/filter/sort 缓存 Matches，并有派生次数测试 | 已修复 |
+| Plot 关闭表格仍格式化 | [plot_widget.rs](https://github.com/taidge/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/src/plot_widget.rs#L270) 仅在 show_table 时构造 tables | 已修复 |
+| 公共错误缺少标准接口 | [DataTableError](https://github.com/taidge/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/src/data_table/model.rs#L120)、[TreeError](https://github.com/taidge/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/src/tree_model.rs#L112) 已有 Display/Error | 不重报 |
+| 独立示例格式检查缺失或失败 | [format.ps1](https://github.com/taidge/sapid/blob/679127fe2b8b9d0ba5e882b5556589a4955c2877/scripts/format.ps1) 覆盖三个 workspace；本轮通过 | 当前检查通过 |
 
 ## 本轮验证结果
 

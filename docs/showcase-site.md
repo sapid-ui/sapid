@@ -32,7 +32,7 @@ bootstrap，先接管实际 SSR 页面，再处理 WASM 加载期间变化的地
 [样式复核](showcase-style-review.md)。共享修复位于 Sapid 本身；新增专项浏览器
 矩阵覆盖四主题、桌面/手机及 CSR/SSR 接管。展示站现生成 48 个代表性 SSR 页面。
 
-项目源码：[sapid-ui/sapid](https://github.com/sapid-ui/sapid)。顶栏 GitHub 与首页源码入口均指向此仓库。
+项目源码：[taidge/sapid](https://github.com/taidge/sapid)。顶栏 GitHub 与首页源码入口均指向此仓库。
 
 展示站对照 [Mantine 首页](https://mantine.dev/)与
 [Button 文档](https://mantine.dev/core/button/)的页面结构，采用 Sapid 自己的品牌：

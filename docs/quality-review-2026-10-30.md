@@ -181,17 +181,17 @@ README 仍有“publishing / standalone versioned Glory dependency pending”的
 
 ## 修复交付记录
 
-2026 年 10 月 30 日追加：按上述七批实施计划完成修复和回归测试，分为以下独立 PR。初次交付时均已转为可评审状态；后续复核及合并记录见末节。已有的 [#4](https://github.com/sapid-ui/sapid/pull/4) 是本轮起点，其余六个修复 PR 原以 #5 为基线。
+2026 年 10 月 30 日追加：按上述七批实施计划完成修复和回归测试，分为以下独立 PR。初次交付时均已转为可评审状态；后续复核及合并记录见末节。已有的 [#4](https://github.com/taidge/sapid/pull/4) 是本轮起点，其余六个修复 PR 原以 #5 为基线。
 
 | 批次 | 对应问题与修复 | PR |
 |---|---|---|
-| 1 | F01：稳定格式配置、独立 package 门禁、Native/DSL 的 D 盘 target/TEMP 初始化与隔离 | [#5](https://github.com/sapid-ui/sapid/pull/5) |
-| 2 | F02：冻结发布 SHA、完整证据绑定、每次上传重试前检查 tag、追加而不覆盖历史发布证据 | [#9](https://github.com/sapid-ui/sapid/pull/9) |
-| 3 | F03/F07：浅色 ring 对比度、真实 Tab 检查、Sapid trigger 样式隔离 | [#6](https://github.com/sapid-ui/sapid/pull/6) |
-| 4 | F04：资源及普通日程复用当前 occurrence/几何快照，保留公开输入校验 | [#7](https://github.com/sapid-ui/sapid/pull/7) |
-| 5 | F05/F06：DataTable 接纳数据与过滤/排序分层、翻页和列显示复用索引、Plot 按需生成表格 | [#11](https://github.com/sapid-ui/sapid/pull/11) |
-| 6 | 工具 hash/lockfile/receipt、完整九组 showcase runner、MSRV、三份 lockfile 审计、Theme Studio 驱动时序回归 | [#10](https://github.com/sapid-ui/sapid/pull/10) |
-| 7 | F08：标准错误 trait 与真实 `?` 传播回归、发布状态及证据边界文档 | [#8](https://github.com/sapid-ui/sapid/pull/8) |
+| 1 | F01：稳定格式配置、独立 package 门禁、Native/DSL 的 D 盘 target/TEMP 初始化与隔离 | [#5](https://github.com/taidge/sapid/pull/5) |
+| 2 | F02：冻结发布 SHA、完整证据绑定、每次上传重试前检查 tag、追加而不覆盖历史发布证据 | [#9](https://github.com/taidge/sapid/pull/9) |
+| 3 | F03/F07：浅色 ring 对比度、真实 Tab 检查、Sapid trigger 样式隔离 | [#6](https://github.com/taidge/sapid/pull/6) |
+| 4 | F04：资源及普通日程复用当前 occurrence/几何快照，保留公开输入校验 | [#7](https://github.com/taidge/sapid/pull/7) |
+| 5 | F05/F06：DataTable 接纳数据与过滤/排序分层、翻页和列显示复用索引、Plot 按需生成表格 | [#11](https://github.com/taidge/sapid/pull/11) |
+| 6 | 工具 hash/lockfile/receipt、完整九组 showcase runner、MSRV、三份 lockfile 审计、Theme Studio 驱动时序回归 | [#10](https://github.com/taidge/sapid/pull/10) |
+| 7 | F08：标准错误 trait 与真实 `?` 传播回归、发布状态及证据边界文档 | [#8](https://github.com/taidge/sapid/pull/8) |
 
 修复组合在隔离 checkout 中验证，依赖固定为部署使用的 Glory `e06bda4db278fc3d981331d6811c284c5a4559db`，未改动其他会话正在维护的 sibling。以下是修复后的本地结果，与前文初始评审结果分开记录：
 
@@ -215,7 +215,7 @@ README 仍有“publishing / standalone versioned Glory dependency pending”的
 
 同日根据后续授权复核全部 9 个未合并 PR（#4–#12）。三个 agent 独立复核发布/供应链、性能/状态语义及锁文件策略，主 agent 核对最新 head、CI、评论和合并依赖。未发现未解决的 review threads。#5–#11 最新 head 检查全部成功；#4 原有 Native 格式失败由 #5 修复，因此将包含 #4 的 #5 改为以 main 为基线并保留 merge 历史合入，GitHub 同时确认 #4 已合并。其余六个修复 PR 随后依次合入 main，组合源码树与前述本地完整验收的隔离 checkout 相同。
 
-新增 [#12](https://github.com/sapid-ui/sapid/pull/12) 起初未达到合并条件，已在本轮补齐：
+新增 [#12](https://github.com/taidge/sapid/pull/12) 起初未达到合并条件，已在本轮补齐：
 
 - 根库锁文件取消跟踪后，统一为 check、DSL、MSRV、审计和发布入口准备缺失锁；使用 Rust 版本兼容解析，核验 target，并保留已有本地锁及两份应用锁的原字节。
 - 审计归档实际扫描的锁文件及摘要；缺失应用锁仍失败。
@@ -224,7 +224,7 @@ README 仍有“publishing / standalone versioned Glory dependency pending”的
 
 #12 的修复 head 为 `bd5a7e5275fca99ff740dbef2cc50ab1878b209f`。5 条真实缺锁回归、34 条发布回归、实际 Sapid Rust 1.94 默认/全部 features 的 all-target 检查、真实审计回归及最终提交的两份真实 sparse checkout 检查均通过。实际 Sapid 打包及源码 provenance 检查通过，未执行 registry 发布。
 
-远端 #12 的全部 5 项 checks 成功：[完整门禁与 121 组组件浏览器验收](https://github.com/sapid-ui/sapid/actions/runs/41013370915)、[showcase 九组验收](https://github.com/sapid-ui/sapid/actions/runs/41013370868)、[MSRV 两组与依赖审计](https://github.com/sapid-ui/sapid/actions/runs/41013371109)。下载成功 artifact 后再次确认：`complete: true`、121 completed suites、1,276 reports、错误为空，报告/runner/根锁摘要一致。CI 记录的 GitHub PR 合并提交为 `ebd23da85129bdc3413c5dacbad4b6df1aa35b8c`，其源码树与待合并 head 完全一致；根锁 SHA-256 为 `59595540bc7dfe4756f6dd9f344ef09442f3c3cada8b86b01969a63dbc5429d0`。
+远端 #12 的全部 5 项 checks 成功：[完整门禁与 121 组组件浏览器验收](https://github.com/taidge/sapid/actions/runs/41013370915)、[showcase 九组验收](https://github.com/taidge/sapid/actions/runs/41013370868)、[MSRV 两组与依赖审计](https://github.com/taidge/sapid/actions/runs/41013371109)。下载成功 artifact 后再次确认：`complete: true`、121 completed suites、1,276 reports、错误为空，报告/runner/根锁摘要一致。CI 记录的 GitHub PR 合并提交为 `ebd23da85129bdc3413c5dacbad4b6df1aa35b8c`，其源码树与待合并 head 完全一致；根锁 SHA-256 为 `59595540bc7dfe4756f6dd9f344ef09442f3c3cada8b86b01969a63dbc5429d0`。
 
 最终 #4–#12 全部合并，当前未合并 PR 数为 0；main 为 `43f5122da8b7043ed44c83d71d08e280b9db9c5e`，其源码树与 #12 通过检查的源码树一致。合并后的 main 自动流程会重新运行，不将其尚未结束的运行计为通过。4 条 Native 依赖维护公告仍按前述文档保留并追踪。
 
